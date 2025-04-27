@@ -14,7 +14,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import neps
 import logging
 
-NUM_GPU = 8 # Number of GPUs to use for DDP
+NUM_GPU = 8  # Number of GPUs to use for DDP
 
 # On Windows platform, the torch.distributed package only
 # supports Gloo backend, FileStore and TcpStore.
@@ -28,12 +28,14 @@ NUM_GPU = 8 # Number of GPUs to use for DDP
 #    world_size=world_size)
 # For TcpStore, same way as on Linux.
 
+
 def setup(rank, world_size):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
     # initialize the process group
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
+
 
 def cleanup():
     dist.destroy_process_group()
@@ -62,7 +64,7 @@ def demo_basic(rank, world_size, loss_dict, learning_rate, epochs):
 
     loss_fn = nn.MSELoss()
     optimizer = optim.SGD(ddp_model.parameters(), lr=learning_rate)
-    
+
     total_loss = 0.0
     for epoch in range(epochs):
         optimizer.zero_grad()
@@ -75,27 +77,28 @@ def demo_basic(rank, world_size, loss_dict, learning_rate, epochs):
 
         if rank == 0:
             print(f"Epoch {epoch} complete")
-            
+
     loss_dict[rank] = total_loss
-    
+
     cleanup()
     print(f"Finished running basic DDP example on rank {rank}.")
 
 
-def run_pipeline(learning_rate, epochs):
+def evaluate_pipeline(learning_rate, epochs):
     from torch.multiprocessing import Manager
     world_size = NUM_GPU  # Number of GPUs
-    
+
     manager = Manager()
     loss_dict = manager.dict()
-    
+
     mp.spawn(demo_basic,
              args=(world_size, loss_dict, learning_rate, epochs),
              nprocs=world_size,
              join=True)
-    
+
     loss = sum(loss_dict.values()) // world_size
     return {'loss': loss}
+
 
 pipeline_space = dict(
     learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
@@ -104,7 +107,7 @@ pipeline_space = dict(
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    neps.run(run_pipeline=run_pipeline, 
+    neps.run(evaluate_pipeline=evaluate_pipeline,
              pipeline_space=pipeline_space,
-             root_directory="results/pytorch_ddp", 
+             root_directory="results/pytorch_ddp",
              max_evaluations_total=25)

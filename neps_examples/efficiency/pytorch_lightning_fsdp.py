@@ -1,7 +1,6 @@
 # Based on: https://lightning.ai/docs/pytorch/stable/advanced/model_parallel/fsdp.html
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 

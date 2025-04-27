@@ -33,7 +33,7 @@ def setup(rank, world_size):
 
 def cleanup():
     dist.destroy_process_group()
-    
+
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -59,7 +59,7 @@ class Net(nn.Module):
         x = self.fc2(x)
         output = F.log_softmax(x, dim=1)
         return output
-    
+
 def train(model, rank, world_size, train_loader, optimizer, epoch, sampler=None):
     model.train()
     ddp_loss = torch.zeros(2).to(rank)
@@ -78,7 +78,7 @@ def train(model, rank, world_size, train_loader, optimizer, epoch, sampler=None)
     dist.all_reduce(ddp_loss, op=dist.ReduceOp.SUM)
     if rank == 0:
         print('Train Epoch: {} \tLoss: {:.6f}'.format(epoch, ddp_loss[0] / ddp_loss[1]))
-        
+
 def test(model, rank, world_size, test_loader):
     model.eval()
     correct = 0
@@ -101,7 +101,7 @@ def test(model, rank, world_size, test_loader):
             test_loss, int(ddp_loss[1]), int(ddp_loss[2]),
             100. * ddp_loss[1] / ddp_loss[2]))
     return test_loss
-        
+
 def fsdp_main(rank, world_size, test_loss_tensor, lr, epochs, save_model=False):
     setup(rank, world_size)
 
@@ -145,7 +145,7 @@ def fsdp_main(rank, world_size, test_loss_tensor, lr, epochs, save_model=False):
 
     scheduler = StepLR(optimizer, step_size=1, gamma=0.7)
     init_start_event.record()
-    
+
     test_loss = math.inf
     for epoch in range(1, epochs + 1):
         train(model, rank, world_size, train_loader, optimizer, epoch, sampler=sampler1)
@@ -156,7 +156,7 @@ def fsdp_main(rank, world_size, test_loss_tensor, lr, epochs, save_model=False):
 
     if rank == 0:
         test_loss_tensor[0] = test_loss
-    
+
     init_end_event.record()
 
     if rank == 0:
@@ -170,33 +170,33 @@ def fsdp_main(rank, world_size, test_loss_tensor, lr, epochs, save_model=False):
         if rank == 0:
             torch.save(states, "mnist_cnn.pt")
     cleanup()
-    
+
 def evaluate_pipeline(lr=0.1, epoch=20):
     torch.manual_seed(42)
-    
+
     test_loss_tensor = torch.zeros(1)
     test_loss_tensor.share_memory_()
-    
+
     mp.spawn(fsdp_main,
         args=(NUM_GPU, test_loss_tensor, lr, epoch),
         nprocs=NUM_GPU,
         join=True)
-    
+
     loss = test_loss_tensor.item()
     return loss
-    
-    
+
+
 if __name__ == "__main__":
     import neps
     import logging
 
     logging.basicConfig(level=logging.INFO)
-    
+
     pipeline_space = dict(
         lr=neps.Float(
-            lower=0.0001, 
-            upper=0.1, 
-            log=True, 
+            lower=0.0001,
+            upper=0.1,
+            log=True,
             prior=0.01
             ),
         epoch=neps.Integer(
@@ -207,8 +207,8 @@ if __name__ == "__main__":
         )
 
     neps.run(
-        evaluate_pipeline=evaluate_pipeline, 
-        pipeline_space=pipeline_space, 
-        root_directory="results/pytorch_fsdp", 
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=pipeline_space,
+        root_directory="results/pytorch_fsdp",
         max_evaluations_total=20
         )
