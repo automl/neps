@@ -32,6 +32,7 @@ results
 neps_examples/results
 tests_tmpdir
 usage_example
+lightning_logs
 
 # Regression tests
 !losses.json
@@ -48,4 +49,4 @@ jahs_bench_data/
 path
 
 # From example that uses MNIST
-data/
+data/MNIST
