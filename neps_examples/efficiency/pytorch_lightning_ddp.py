@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import neps
 import logging
-    
+
 NUM_GPU = 8 # Number of GPUs to use for DDP
 
 class ToyModel(nn.Module):
@@ -18,13 +18,13 @@ class ToyModel(nn.Module):
 
     def forward(self, x):
         return self.net2(self.relu(self.net1(x)))
-    
+
 class LightningModel(L.LightningModule):
     def __init__(self, lr):
         super().__init__()
         self.lr = lr
         self.model = ToyModel()
-    
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.model(x)
@@ -38,17 +38,17 @@ class LightningModel(L.LightningModule):
         loss = F.mse_loss(y_hat, y)
         self.log("val_loss", loss, prog_bar=True, sync_dist=True)
         return loss
-    
+
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self.model(x)
         loss = F.mse_loss(y_hat, y)
         self.log("test_loss", loss, prog_bar=True, sync_dist=True)
         return loss
-    
+
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=self.lr)
-    
+
 def evaluate_pipeline(lr=0.1, epoch=20):
     L.seed_everything(42)
     # Model
@@ -59,7 +59,7 @@ def evaluate_pipeline(lr=0.1, epoch=20):
     labels = torch.rand((1000, 5))
 
     dataset = list(zip(data, labels))
-    
+
     train_dataset, val_dataset, test_dataset = random_split(dataset, [600, 200, 200])
 
     # Define simple data loaders using tensors and slicing
