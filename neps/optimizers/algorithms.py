@@ -421,14 +421,8 @@ def random_search(
     ):
         raise ValueError(
             "To use priors, you must set use_priors=True. Got priors:"
-            f" {
-                [
-                    parameter
-                    for parameter in parameters.values()
-                    if parameter.prior is not None
-                ]
-            }"
-        )
+            f" {[parameter for parameter in parameters.values()
+                    if parameter.prior is not None]}")
 
     return RandomSearch(
         space=pipeline_space,
