@@ -419,15 +419,11 @@ def random_search(
     if not use_priors and any(
         parameter.prior is not None for parameter in parameters.values()
     ):
+        priors = [
+            parameter for parameter in parameters.values() if parameter.prior is not None
+        ]
         raise ValueError(
-            "To use priors, you must set use_priors=True. Got priors:"
-            f" {
-                [
-                    parameter
-                    for parameter in parameters.values()
-                    if parameter.prior is not None
-                ]
-            }"
+            f"To use priors, you must set use_priors=True. Got priors: {priors}"
         )
 
     return RandomSearch(
@@ -542,15 +538,11 @@ def ifbo(
     if not use_priors and any(
         parameter.prior is not None for parameter in parameters.values()
     ):
+        priors = [
+            parameter for parameter in parameters.values() if parameter.prior is not None
+        ]
         raise ValueError(
-            "To use priors, you must set use_priors=True. Got priors:"
-            f" {
-                [
-                    parameter
-                    for parameter in parameters.values()
-                    if parameter.prior is not None
-                ]
-            }"
+            f"To use priors, you must set use_priors=True. Got priors: {priors}"
         )
 
     match initial_design_size:
@@ -989,16 +981,14 @@ def bayesian_optimization(
         )
 
     if any(parameter.prior is not None for parameter in space.searchables.values()):
+        priors = [
+            parameter
+            for parameter in space.searchables.values()
+            if parameter.prior is not None
+        ]
         raise ValueError(
             "Bayesian optimization does not support priors. Consider using pibo instead."
-            " Got priors:"
-            f" {
-                [
-                    parameter
-                    for parameter in space.searchables.values()
-                    if parameter.prior is not None
-                ]
-            }"
+            f" Got priors: {priors}"
         )
 
     return _bo(
