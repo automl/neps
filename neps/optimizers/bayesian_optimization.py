@@ -85,8 +85,14 @@ class BayesianOptimization:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        assert self.space.fidelity is None, "Fidelity not supported yet."
-        parameters = self.space.searchables
+        # If fidelities exist, sample from them as normal
+        # This is a bit of a hack, as we set them to max fidelity
+        # afterwards, but we need the complete space to sample
+
+        if self.space.fidelity is not None:
+            parameters = {**self.space.searchables, **self.space.fidelities}
+        else:
+            parameters = {**self.space.searchables}
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
@@ -117,6 +123,10 @@ class BayesianOptimization:
             design_samples = design_samples[n_evaluated:]
             for sample in design_samples:
                 sample.update(self.space.constants)
+                if self.space.fidelity is not None:
+                    sample.update(
+                        {key: value.upper for key, value in self.space.fidelities.items()}
+                    )
 
             sampled_configs.extend(
                 [
@@ -193,6 +203,10 @@ class BayesianOptimization:
         configs = encoder.decode(candidates)
         for config in configs:
             config.update(self.space.constants)
+            if self.space.fidelity is not None:
+                config.update(
+                    {key: value.upper for key, value in self.space.fidelities.items()}
+                )
 
         sampled_configs.extend(
             [
