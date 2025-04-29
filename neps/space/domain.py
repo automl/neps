@@ -42,7 +42,6 @@ If you need a unit-interval domain, please use the
 from __future__ import annotations
 
 import math
-import warnings
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Generic, TypeVar
