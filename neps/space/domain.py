@@ -283,6 +283,7 @@ class Domain(Generic[V]):
 
         if (x > upper).any():
             import warnings
+
             warnings.warn(  # noqa: B028
                 "Decoded value is above the upper bound of the domain. "
                 "Clipping to the upper bound. "

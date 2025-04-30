@@ -218,11 +218,10 @@ class Rung(Sized):
 
         mo_costs = np.vstack(contenders["perf"].values)
         indices = nondominated_sort(
-            X = mo_costs,
-            max_items = k,
+            X=mo_costs,
+            max_items=k,
         )
         return contenders.iloc[indices]
-
 
 
 @dataclass
@@ -237,7 +236,7 @@ class Sync:
     is_multi_objective: bool = field(default=False)
     """Whether the BracketOptimizer is multi-objective or not."""
 
-    mo_selector: Literal["nsga2", "eps_net"] = field(default="epsnet")
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
 
     def __post_init__(self) -> None:
@@ -305,7 +304,7 @@ class Sync:
         *,
         rung_sizes: dict[int, int],
         is_multi_objective: bool = False,
-        mo_selector: Literal["nsga2", "eps_net"] = "nsga2",
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> list[Sync]:
         """Create a list of brackets from the table.
 
@@ -408,7 +407,7 @@ class Async:
     is_multi_objective: bool = field(default=False)
     """Whether the BracketOptimizer is multi-objective or not."""
 
-    mo_selector: Literal["nsga2", "eps_net"] = field(default="epsnet")
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
 
     def __post_init__(self) -> None:
@@ -456,7 +455,7 @@ class Async:
         rungs: list[int],
         eta: int,
         is_multi_objective: bool = False,
-        mo_selector: Literal["nsga2", "eps_net"] = "nsga2",
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> Async:
         return cls(
             rungs=[
@@ -481,7 +480,7 @@ class Hyperband:
     _max_rung: int = field(init=False, repr=False)
 
     is_multi_objective: bool = field(default=False)
-    mo_selector: Literal["nsga2", "eps_net"] = field(default="nsga2")
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
 
     def __post_init__(self) -> None:
         if not self.sh_brackets:
@@ -501,7 +500,7 @@ class Hyperband:
         *,
         bracket_layouts: list[dict[int, int]],
         is_multi_objective: bool = False,
-        mo_selector: Literal["nsga2", "eps_net"] = "nsga2",
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> list[Hyperband]:
         """Create a list of brackets from the table.
 
@@ -644,7 +643,7 @@ class AsyncHyperband:
     is_multi_objective: bool = field(default=False)
     """Whether the BracketOptimizer is multi-objective or not."""
 
-    mo_selector: Literal["nsga2", "eps_net"] = field(default="epsnet")
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
 
     def __post_init__(self) -> None:
@@ -666,7 +665,7 @@ class AsyncHyperband:
         bracket_rungs: list[list[int]],
         eta: int,
         is_multi_objective: bool = False,
-        mo_selector: Literal["nsga2", "eps_net"] = "nsga2",
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> AsyncHyperband:
         """Create an AsyncHyperbandBrackets from the table.
 
