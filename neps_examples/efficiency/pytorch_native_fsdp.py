@@ -1,4 +1,6 @@
-# Based on: https://github.com/pytorch/examples/blob/master/mnist/main.py
+"""Based on: https://github.com/pytorch/examples/blob/master/mnist/main.py
+
+Mind that this example does not run on Windows at the moment."""
 
 import math
 import os

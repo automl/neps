@@ -1,4 +1,6 @@
-""" Some parts of this code are taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html """
+""" Some parts of this code are taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
+
+Mind that this example does not run on Windows at the moment."""
 
 import os
 import sys

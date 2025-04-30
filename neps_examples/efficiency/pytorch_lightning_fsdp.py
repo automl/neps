@@ -1,4 +1,6 @@
-# Based on: https://lightning.ai/docs/pytorch/stable/advanced/model_parallel/fsdp.html
+"""Based on: https://lightning.ai/docs/pytorch/stable/advanced/model_parallel/fsdp.html
+
+Mind that this example does not run on Windows at the moment."""
 
 import torch
 import torch.nn.functional as F
