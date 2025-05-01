@@ -97,7 +97,7 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 
 ??? example "Practical Tips"
 
-    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results.
+    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing neps's [checkpointing](../evaluate_pipeline.md#arguments-for-convenience) feature.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).
