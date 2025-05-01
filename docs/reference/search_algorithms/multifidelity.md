@@ -97,7 +97,7 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 
 ??? example "Practical Tips"
 
-    TODO Do we even use it?
+    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).
