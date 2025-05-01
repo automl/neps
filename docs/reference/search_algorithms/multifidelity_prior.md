@@ -7,7 +7,7 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer [here](lan
 
 ### 1 `PriorBand`
 
-`PriorBand` is an extension of [`HyperBand`](../../reference/search_algorithms/multifidelity.md#2-hyperband) that utilizes expert Priors to choose the next configuration.
+`PriorBand` (see [paper](https://openreview.net/pdf?id=uoiwugtpCH)) is an extension of [`HyperBand`](../../reference/search_algorithms/multifidelity.md#2-hyperband) that utilizes expert Priors to choose the next configuration.
 
 ``PriorBand``'s sampling module $\mathcal{E}_\pi$ balances the influence of the Prior, the incumbent configurations and randomness to select configurations.
 
@@ -15,11 +15,17 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer [here](lan
 |:--:|
 |The ``PriorBand`` sampling module balances the influence of the Prior, the $1/\eta$ incumbent configurations and randomness to select configurations. (Image Source: [PriorBand-paper](https://openreview.net/pdf?id=uoiwugtpCH), Jan 27, 2025)|
 
-The Prior sampling $p_\pi$ is most meaningful at full fidelity and when not much data is available yet, while the incumbent sampling $p_{\hat{\lambda}}$, coming from actual data, is most significant but sparse, and random sampling $p_{\mathcal{U}}$ is needed for exploration, especially at lower fidelities. This results in these inital sampling probabilities when there is no incument yet:
+The Prior sampling $p_\pi$ is most meaningful at full fidelity and when not much data is available yet, while the incumbent sampling $p_{\hat{\lambda}}$, coming from actual data, is most significant but sparse, and random sampling $p_{\mathcal{U}}$ is needed for exploration, especially at lower fidelities. This results in these inital sampling probabilities when there is no incumbent yet:
 
 $$
-p_{\mathcal{U}}=1/(1+\eta^r)\\
-p_\pi=1-p_{\mathcal{U}}\\
+p_{\mathcal{U}}=1/(1+\eta^r)
+$$
+
+$$
+p_\pi=1-p_{\mathcal{U}}
+$$
+
+$$
 p_{\hat{\lambda}}=0
 $$
 
@@ -28,8 +34,14 @@ where $\eta$ is the promotion-hyperparameter from [`HyperBand`](../../reference/
 When there is an incumbent, the probabilities are adjusted to:
 
 $$
-p_{\mathcal{U}}=1/(1+\eta^r)\\
-p_\pi=p_\pi\cdot\mathcal{S}_{\hat{\lambda}}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})\\
+p_{\mathcal{U}}=1/(1+\eta^r)
+$$
+
+$$
+p_\pi=p_\pi\cdot\mathcal{S}_{\hat{\lambda}}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})
+$$
+
+$$
 p_{\hat{\lambda}}=p_{\hat{\lambda}}\cdot\mathcal{S}_{\pi}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})
 $$
 
