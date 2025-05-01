@@ -3483,11 +3483,13 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer <a href=".
 </table>
 <p>The Prior sampling <span class="arithmatex">\(p_\pi\)</span> is most meaningful at full fidelity and when not much data is available yet, while the incumbent sampling <span class="arithmatex">\(p_{\hat{\lambda}}\)</span>, coming from actual data, is most significant but sparse, and random sampling <span class="arithmatex">\(p_{\mathcal{U}}\)</span> is needed for exploration, especially at lower fidelities. This results in these inital sampling probabilities when there is no incumbent yet:</p>
 <div class="arithmatex">\[
-\begin{align*}
-p_{\mathcal{U}}=1/(1+\eta^r)\\
-p_\pi=1-p_{\mathcal{U}}\\
+p_{\mathcal{U}}=1/(1+\eta^r)
+\]</div>
+<div class="arithmatex">\[
+p_\pi=1-p_{\mathcal{U}}
+\]</div>
+<div class="arithmatex">\[
 p_{\hat{\lambda}}=0
-\end{align*}
 \]</div>
 <p>where <span class="arithmatex">\(\eta\)</span> is the promotion-hyperparameter from <a href="../multifidelity/#2-hyperband"><code>HyperBand</code></a> and <span class="arithmatex">\(r\)</span> is the current fidelity level (<em>rung</em>), showing the decay of the random sampling probability with increasing fidelity.</p>
 <p>When there is an incumbent, the probabilities are adjusted to:</p>
