@@ -66,7 +66,7 @@ Learn the essentials of hyperparameter optimization with NePS.
 * **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**:
 Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
-* **[Utilizing Expert Priors for Hyperparameters](examples/template/priorband.md)**:
+* **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**:
 Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
 * **[Additional NePS Examples](examples/index.md)**:

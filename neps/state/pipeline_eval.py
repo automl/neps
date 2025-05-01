@@ -63,7 +63,7 @@ EvaluatePipelineReturn: TypeAlias = (
     Order is important.
 * `Exception`: The evaluation failed.
 * `Mapping[str, Any]`: A dict which follows the layout of
-    [`UserResultDict`][neps.state.pipeline_eval]
+    [`UserResultDict`][neps.state.pipeline_eval.EvaluatePipelineReturn].
 """
 
 
@@ -72,7 +72,7 @@ class UserResult:
     """The parsed values out of the possibilities the user can return
     from the `evaluate_pipeline_function()`.
 
-    See [`UserResultDict`][neps.state.pipeline_eval] for the possibilities.
+    See [`UserResultDict`][neps.state.pipeline_eval.EvaluatePipelineReturn] for the possibilities.
     """
 
     objective_to_minimize: float | list[float] | None = None
