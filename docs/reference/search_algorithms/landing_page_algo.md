@@ -4,17 +4,20 @@ Algorithms are the search strategies determining what configurations to evaluate
 
 We distinguish between algorithms that use different types of information and strategies to guide the search process:
 
-| Algorithm         | [Multi-Fidelity](landing_page_algo.md#what-is-multi-fidelity-optimization) | [Priors](landing_page_algo.md#what-are-priors) | [Model-based](bayesian_optimization.md) | Asynchronous (Parallelizable) |
+✅ = supported/necessary, ❌ = not supported, ✔️* = optional/ignorable, see [api](../api/neps/api.md) for details
+
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | Asynchronous |
 | :- | :------------: | :----: | :---------: | :-: |
-| `Grid Search`||||✅|
-| `Random Search`||||✅|
-| [`Successive Halving`](./multifidelity.md#1-successive-halfing)|✅||||
-| [`ASHA`](./multifidelity.md#asynchronous-successive-halving)|✅|||✅|
-| [`Hyperband`](./multifidelity.md#2-hyperband)|✅||||
-| [`Asynch HB`](./multifidelity.md)|✅|||✅|
-| [`IfBO`](./multifidelity.md#5-in-context-freeze-thaw-bayesian-optimization)|✅||✅||
-| [`PiBO`](./prior.md#1-pibo)||✅|✅||
-| [`PriorBand`](./multifidelity_prior.md#1-priorband)|✅|✅|✅||
+| `Grid Search`|[✔️*][neps.optimizers.algorithms.grid_search]|❌|❌|✅|
+| `Random Search`|[✔️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
+| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[✔️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|✅|
+| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
+| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|
+| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
+| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#5-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
+| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[✔️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
+| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|❌|
 
 ## What is Multi-Fidelity Optimization?
 
@@ -45,4 +48,4 @@ Priors are used when there exists some information about the search space, that 
     - **Less exploration**: By focusing on these regions, the optimizer _might_ miss out on other regions that could potentially be better.
     - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in NePS are specifically designed to handle bad priors, but they still slow down the search process.
 
-We present a collection of algorithms that use Priors [here](./prior.md) and algorithms that combine priors wiht Multi-Fidelity [here](./multifidelity_prior.md).
+We present a collection of algorithms that use Priors [here](./prior.md) and algorithms that combine priors with Multi-Fidelity [here](./multifidelity_prior.md).
