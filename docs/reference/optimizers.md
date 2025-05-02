@@ -51,7 +51,7 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 | [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|
 | [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
 | [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|
-| [`IfBO`](../reference/search_algorithms/multifidelity.md#5-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
 | [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[✔️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
 | [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|❌|
 

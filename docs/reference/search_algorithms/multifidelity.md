@@ -86,7 +86,7 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
 
 `In-Context Freeze-Thaw Bayesian Optimization`/``IfBO`` (see [paper](https://arxiv.org/pdf/2204.11051)) expands on the idea of [Freeze-Thaw Bayesian Optimization](https://arxiv.org/pdf/1406.3896) (``FT-BO``) by using a `Prior-data fitted network` (PFN) as a surrogate for the ``FT-BO``.
 
-Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), it uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
+Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. <!--Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), i-->It uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
 $$
 a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y| { \lbrace (\boldsymbol{x}_n,y_n) \rbrace }^N)dy
 $$
