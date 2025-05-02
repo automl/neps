@@ -12,7 +12,7 @@
         <link rel="prev" href="../pipeline_space/">
       
       
-        <link rel="next" href="../evaluate_pipeline/">
+        <link rel="next" href="../declarative_usage/">
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
@@ -716,6 +716,29 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
     </li>
   
 
@@ -3531,7 +3554,6 @@
 <h2 id="2-neps-optimizer-selection">2 NePS Optimizer Selection<a class="headerlink" href="#2-neps-optimizer-selection" title="Permanent link">#</a></h2>
 <h3 id="21-automatic-optimizer-selection">2.1 Automatic Optimizer Selection<a class="headerlink" href="#21-automatic-optimizer-selection" title="Permanent link">#</a></h3>
 <p>NePS provides a multitude of optimizers from the literature, the <a href="../search_algorithms/landing_page_algo/">algorithms</a> section goes into detail on each of them. This chapter focusses on how to select them when using NePS.</p>
-<p>✅ = supported/necessary, ❌ = not supported, ✔️* = optional/ignorable, see <a href="../../api/neps/api/">api</a> for details</p>
 <table>
 <thead>
 <tr>
@@ -3545,73 +3567,66 @@
 <tbody>
 <tr>
 <td style="text-align: left;"><code>Grid Search</code></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            grid_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.grid_search">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>Random Search</code></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">✔️*</a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">✅</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="../search_algorithms/bayesian_optimization/"><code>Bayesian Optimization</code></a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            bayesian_optimization" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.bayesian_optimization">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity/#1-successive-halfing"><code>Successive Halving</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            successive_halving" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.successive_halving">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity/#asynchronous-successive-halving"><code>ASHA</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            asha" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.asha">✔️*</a></td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity/#2-hyperband"><code>Hyperband</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            hyperband" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.hyperband">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity/"><code>Asynch HB</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            async_hb" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.async_hb">✔️*</a></td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity/#5-in-context-freeze-thaw-bayesian-optimization"><code>IfBO</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            ifbo" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.ifbo">✔️*</a></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/prior/#1-pibo"><code>PiBO</code></a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            pibo" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.pibo">✔️*</a></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
 <td style="text-align: left;"><a href="../search_algorithms/multifidelity_prior/#1-priorband"><code>PriorBand</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 </tbody>
 </table>
@@ -3638,7 +3653,7 @@ the <code>pipeline_space</code> passed.</p>
 <p>We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. The available optimizers are imported via the <code>neps.algorithms</code> module.
 You can use either the optimizer name or the optimizer class itself as the optimizer argument.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">evalute_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/&quot;</span><span class="p">,</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
@@ -3650,7 +3665,7 @@ You can use either the optimizer name or the optimizer class itself as the optim
 <h3 id="23-hyperparameter-overrides">2.3 Hyperparameter Overrides<a class="headerlink" href="#23-hyperparameter-overrides" title="Permanent link">#</a></h3>
 <p>For users who want more control over the optimizer's hyperparameters, you can input a dictionary with your parameter choices together with the optimizer name.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>    <span class="n">evalute_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/&quot;</span><span class="p">,</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
@@ -3676,7 +3691,7 @@ You can use either the optimizer name or the optimizer class itself as the optim
 </code></pre></div>
 <p>The class is then passed to the <code>neps.run()</code> function just like the built-in optimizers and can be configured the same way, using a dictionary:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="n">evalute_pipeline</span><span class="o">=</span><span class="n">run_function</span><span class="p">,</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/&quot;</span><span class="p">,</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span>
@@ -3730,13 +3745,13 @@ You can use either the optimizer name or the optimizer class itself as the optim
         
         
           
-          <a href="../evaluate_pipeline/" class="md-footer__link md-footer__link--next" aria-label="Next: The Evaluate Function">
+          <a href="../declarative_usage/" class="md-footer__link md-footer__link--next" aria-label="Next: Declarative Usage">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                The Evaluate Function
+                Declarative Usage
               </div>
             </div>
             <div class="md-footer__button md-icon">

@@ -597,6 +597,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3444,87 +3467,79 @@
 <h1 id="algorithms">Algorithms<a class="headerlink" href="#algorithms" title="Permanent link">#</a></h1>
 <p>Algorithms are the search strategies determining what configurations to evaluate next. In NePS, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms. This chapter gives an overview of the different algorithms available in NePS and practical tips for their usage.</p>
 <p>We distinguish between algorithms that use different types of information and strategies to guide the search process:</p>
-<p>✅ = supported/necessary, ❌ = not supported, ✔️* = optional/ignorable, see <a href="../api/neps/api.md">api</a> for details</p>
 <table>
 <thead>
 <tr>
 <th style="text-align: left;">Algorithm</th>
-<th style="text-align: center;"><a href="../reference/search_algorithms/multifidelity.md">Multi-Fidelity</a></th>
-<th style="text-align: center;"><a href="../reference/search_algorithms/prior.md">Priors</a></th>
-<th style="text-align: center;">Model-based</th>
-<th style="text-align: center;">Asynchronous</th>
+<th style="text-align: center;"><a href="./#what-is-multi-fidelity-optimization">Multi-Fidelity</a></th>
+<th style="text-align: center;"><a href="./#what-are-priors">Priors</a></th>
+<th style="text-align: center;"><a href="../bayesian_optimization/">Model-based</a></th>
+<th style="text-align: center;">Asynchronous (Parallelizable)</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td style="text-align: left;"><code>Grid Search</code></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            grid_search" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.grid_search">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>Random Search</code></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">✔️*</a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">✔️*</a></td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/bayesian_optimization.md"><code>Bayesian Optimization</code></a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            bayesian_optimization" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.bayesian_optimization">✔️*</a></td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: left;"><a href="../multifidelity/#1-successive-halfing"><code>Successive Halving</code></a></td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../multifidelity/#asynchronous-successive-halving"><code>ASHA</code></a></td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity.md#1-successive-halfing"><code>Successive Halving</code></a></td>
+<td style="text-align: left;"><a href="../multifidelity/#2-hyperband"><code>Hyperband</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            successive_halving" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.successive_halving">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving"><code>ASHA</code></a></td>
+<td style="text-align: left;"><a href="../multifidelity/"><code>Asynch HB</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            asha" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.asha">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">✅</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity.md#2-hyperband"><code>Hyperband</code></a></td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            hyperband" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.hyperband">✔️*</a></td>
-<td style="text-align: center;">❌</td>
-<td style="text-align: center;">❌</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity.md"><code>Asynch HB</code></a></td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            async_hb" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.async_hb">✔️*</a></td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity.md#5-in-context-freeze-thaw-bayesian-optimization"><code>IfBO</code></a></td>
+<td style="text-align: left;"><a href="../multifidelity/#5-in-context-freeze-thaw-bayesian-optimization"><code>IfBO</code></a></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            ifbo" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.ifbo">✔️*</a></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/prior.md#1-pibo"><code>PiBO</code></a></td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            pibo" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.pibo">✔️*</a></td>
+<td style="text-align: left;"><a href="../prior/#1-pibo"><code>PiBO</code></a></td>
+<td style="text-align: center;"></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../reference/search_algorithms/multifidelity_prior.md#1-priorband"><code>PriorBand</code></a></td>
+<td style="text-align: left;"><a href="../multifidelity_prior/#1-priorband"><code>PriorBand</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
-<td style="text-align: center;">❌</td>
+<td style="text-align: center;"></td>
 </tr>
 </tbody>
 </table>
@@ -3560,7 +3575,7 @@
 <li><strong>Bad priors</strong>: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in NePS are specifically designed to handle bad priors, but they still slow down the search process.</li>
 </ul>
 </div>
-<p>We present a collection of algorithms that use Priors <a href="../prior/">here</a> and algorithms that combine priors with Multi-Fidelity <a href="../multifidelity_prior/">here</a>.</p>
+<p>We present a collection of algorithms that use Priors <a href="../prior/">here</a> and algorithms that combine priors wiht Multi-Fidelity <a href="../multifidelity_prior/">here</a>.</p>
 
 
 

@@ -592,6 +592,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../reference/declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../reference/evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3416,8 +3439,8 @@
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="c1"># When adding pipeline_directory to evaluate_pipeline, neps detects its presence and</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="c1"># passes a directory unique for each pipeline configuration. You can then use this</span>
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="c1"># pipeline_directory to create / save files pertaining to a specific pipeline, e.g.:</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">pipeline_info</span> <span class="o">=</span> <span class="n">pipeline_directory</span> <span class="o">/</span> <span class="s2">&quot;info_file.txt&quot;</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">pipeline_info</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">float1</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">categorical</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">integer1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">weight_file</span> <span class="o">=</span> <span class="n">pipeline_directory</span> <span class="o">/</span> <span class="s2">&quot;weight_file.txt&quot;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">weight_file</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="s2">&quot;0&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">objective_to_minimize</span> <span class="o">=</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">float1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">categorical</span><span class="p">),</span> <span class="n">integer1</span><span class="p">]))</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="k">return</span> <span class="n">objective_to_minimize</span>

@@ -592,6 +592,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../reference/declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../reference/evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3465,7 +3488,7 @@
 <a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a><span class="sd">#5 Design the evaluate pipeline function.</span>
 <a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="sd">#6 Use neps.run the run the entire search using your specified optimizer.</span>
 <a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>
-<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="sd">Each step will be covered in detail throughout the code</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="sd">Each step will be covered in detail thourghout the code</span>
 <a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a>
 <a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="sd">&quot;&quot;&quot;</span>
 <a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>
@@ -3490,10 +3513,10 @@
 <a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">DataLoader</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">,</span> <span class="n">DataLoader</span><span class="p">]:</span>
 <a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>    <span class="c1"># Download MNIST training and test datasets if not already downloaded.</span>
 <a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a>    <span class="n">train_dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">MNIST</span><span class="p">(</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;.data&quot;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a>        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span>
 <a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a>    <span class="p">)</span>
 <a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>    <span class="n">test_dataset</span> <span class="o">=</span> <span class="n">torchvision</span><span class="o">.</span><span class="n">datasets</span><span class="o">.</span><span class="n">MNIST</span><span class="p">(</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;.data&quot;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>        <span class="n">root</span><span class="o">=</span><span class="s2">&quot;./data&quot;</span><span class="p">,</span> <span class="n">train</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transforms</span><span class="o">.</span><span class="n">ToTensor</span><span class="p">(),</span> <span class="n">download</span><span class="o">=</span><span class="kc">True</span>
 <a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>    <span class="p">)</span>
 <a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>
 <a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>    <span class="c1"># Determine the size of the reduced training dataset for faster training</span>
@@ -3730,7 +3753,7 @@
 <a id="__codelineno-0-325" name="__codelineno-0-325" href="#__codelineno-0-325"></a><span class="sd">    run bayesian optimization with 3 evaluations total.</span>
 <a id="__codelineno-0-326" name="__codelineno-0-326" href="#__codelineno-0-326"></a>
 <a id="__codelineno-0-327" name="__codelineno-0-327" href="#__codelineno-0-327"></a><span class="sd">    ```bash</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328" href="#__codelineno-0-328"></a><span class="sd">    python neps_examples\convenience\neps_tblogger_tutorial.py</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328" href="#__codelineno-0-328"></a><span class="sd">    python neps_tblogger_tutorial.py</span>
 <a id="__codelineno-0-329" name="__codelineno-0-329" href="#__codelineno-0-329"></a><span class="sd">    ```</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330" href="#__codelineno-0-330"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-331" name="__codelineno-0-331" href="#__codelineno-0-331"></a>    <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
@@ -3754,21 +3777,20 @@
 <a id="__codelineno-0-349" name="__codelineno-0-349" href="#__codelineno-0-349"></a><span class="sd">    To check live plots during this search, please open a new terminal</span>
 <a id="__codelineno-0-350" name="__codelineno-0-350" href="#__codelineno-0-350"></a><span class="sd">    and make sure to be at the same level directory of your project and</span>
 <a id="__codelineno-0-351" name="__codelineno-0-351" href="#__codelineno-0-351"></a><span class="sd">    run the following command on the file created by neps root_directory.</span>
-<a id="__codelineno-0-352" name="__codelineno-0-352" href="#__codelineno-0-352"></a><span class="sd">    Running both from root-directory, the command would be:</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353" href="#__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354" href="#__codelineno-0-354"></a><span class="sd">    ```bash:</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355" href="#__codelineno-0-355"></a><span class="sd">    tensorboard --logdir results\neps_tblogger_example</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356" href="#__codelineno-0-356"></a><span class="sd">    ```</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357" href="#__codelineno-0-357"></a>
-<a id="__codelineno-0-358" name="__codelineno-0-358" href="#__codelineno-0-358"></a><span class="sd">    To be able to check the visualization of tensorboard make sure to</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359" href="#__codelineno-0-359"></a><span class="sd">    follow the local link provided.</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360" href="#__codelineno-0-360"></a>
-<a id="__codelineno-0-361" name="__codelineno-0-361" href="#__codelineno-0-361"></a><span class="sd">    http://localhost:6006/</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362" href="#__codelineno-0-362"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363" href="#__codelineno-0-363"></a>
-<a id="__codelineno-0-364" name="__codelineno-0-364" href="#__codelineno-0-364"></a>    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>  <span class="c1"># Record the end time</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365" href="#__codelineno-0-365"></a>    <span class="n">execution_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366" href="#__codelineno-0-366"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Execution time: </span><span class="si">{</span><span class="n">execution_time</span><span class="si">}</span><span class="s2"> seconds</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352" href="#__codelineno-0-352"></a>
+<a id="__codelineno-0-353" name="__codelineno-0-353" href="#__codelineno-0-353"></a><span class="sd">    ```bash:</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354" href="#__codelineno-0-354"></a><span class="sd">    tensorboard --logdir output</span>
+<a id="__codelineno-0-355" name="__codelineno-0-355" href="#__codelineno-0-355"></a><span class="sd">    ```</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356" href="#__codelineno-0-356"></a>
+<a id="__codelineno-0-357" name="__codelineno-0-357" href="#__codelineno-0-357"></a><span class="sd">    To be able to check the visualization of tensorboard make sure to</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358" href="#__codelineno-0-358"></a><span class="sd">    follow the local link provided.</span>
+<a id="__codelineno-0-359" name="__codelineno-0-359" href="#__codelineno-0-359"></a>
+<a id="__codelineno-0-360" name="__codelineno-0-360" href="#__codelineno-0-360"></a><span class="sd">    http://localhost:6006/</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361" href="#__codelineno-0-361"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-362" name="__codelineno-0-362" href="#__codelineno-0-362"></a>
+<a id="__codelineno-0-363" name="__codelineno-0-363" href="#__codelineno-0-363"></a>    <span class="n">end_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>  <span class="c1"># Record the end time</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364" href="#__codelineno-0-364"></a>    <span class="n">execution_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">start_time</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365" href="#__codelineno-0-365"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Execution time: </span><span class="si">{</span><span class="n">execution_time</span><span class="si">}</span><span class="s2"> seconds</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 </code></pre></div>
 
 

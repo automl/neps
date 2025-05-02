@@ -597,6 +597,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../../reference/declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../reference/evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3414,7 +3437,7 @@
 </ol>
 <p>This example demonstrates how to perform hyperparameter optimization (HPO) for an image segmentation pipeline using NePS. The pipeline consists of a ResNet-50 model to segment images model trained on PASCAL Visual Object Classes (VOC) Dataset (<a href="http://host.robots.ox.ac.uk/pascal/VOC/">host.robots.ox.ac.uk/pascal/VOC/</a>).</p>
 <p>We compare the performance of the optimized hyperparameters with the default hyperparameters. using the validation loss achieved on the dataset after training the model with the respective hyperparameters.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>image_segmentation_pipeline_hpo.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>image_segmentation_pipeline_hpo.py
 </code></pre></div>
 <p>The search space has been set with the priors set to the hyperparameters found in this base example: <a href="https://lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning">lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning</a></p>
 <p>We run the HPO process for 188 trials and obtain new set of hyperpamereters that outperform the default hyperparameters.</p>
@@ -3449,7 +3472,7 @@
 </tr>
 </tbody>
 </table>
-<p><img alt="Validation Loss Curves" src="../../doc_images/examples/val_loss_image_segmentation.png" /></p>
+<p><img alt="Validation Loss Curves" src="./val_loss_image_segmentation.png" /></p>
 <p>The validation loss achieved on the dataset after training the model with the newly sampled hyperparameters is shown in the figure above.</p>
 <p>We compare the validation loss values when the model is trained with the default hyperparameters and the optimized hyperparameters:</p>
 <p>Validation Loss with Default Hyperparameters: 0.114094577729702</p>

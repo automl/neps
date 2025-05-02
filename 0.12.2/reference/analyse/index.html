@@ -602,6 +602,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3486,12 +3509,13 @@ NePS will also generate a summary CSV file for you.</p>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>│  └── config_1
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>│      ├── config.yaml
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>│      ├── metadata.yaml
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>│      └── report.yaml
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>├── summary
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>│  ├── full.csv
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>│  └── short.csv
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>├── optimizer_info.yaml
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>└── optimizer_state.pkl
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>│      └── result.yaml
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>├── summary_csv
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>│  ├── config_data.csv
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>│  └── run_status.csv
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>├── all_losses_and_configs.txt
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>├── best_loss_trajectory.txt
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>└── best_loss_with_config_trajectory.txt
 </code></pre></div>
 </div>
 <div class="tabbed-block">
@@ -3500,17 +3524,17 @@ NePS will also generate a summary CSV file for you.</p>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>│  └── config_1
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>│      ├── config.yaml
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>│      ├── metadata.yaml
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>│      └── report.yaml
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>├── optimizer_info.yaml
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>└── optimizer_state.pkl
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>│      └── result.yaml
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>├── all_losses_and_configs.txt
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>├── best_loss_trajectory.txt
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>└── best_loss_with_config_trajectory.txt
 </code></pre></div>
 </div>
 </div>
 </div>
-<p>The <code>full.csv</code> contains all configuration details in CSV format.
-Details include configuration hyperparameters and any returned result and cost from the <code>evaluate_pipeline</code> function.</p>
-<p>The <code>run_status.csv</code> provides general run details, such as the number of failed and successful configurations,
-and the best configuration with its corresponding objective value.</p>
+<p>The <code>config_data.csv</code> contains all configuration details in CSV format, ordered by ascending <code>loss</code>.
+Details include configuration hyperparameters, any returned result from the <code>evalute_pipeline</code> function, and metadata information.</p>
+<p>The <code>run_status.csv</code> provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.</p>
 <h1 id="tensorboard-integration">TensorBoard Integration<a class="headerlink" href="#tensorboard-integration" title="Permanent link">#</a></h1>
 <p>In NePS we replaced the traditional TensorBoard <code>SummaryWriter</code> with the <code>ConfigWriter</code> to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.</p>
 <h2 id="overview-of-configwriter">Overview of ConfigWriter<a class="headerlink" href="#overview-of-configwriter" title="Permanent link">#</a></h2>

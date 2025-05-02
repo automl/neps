@@ -602,6 +602,29 @@
   
   
     <li class="md-nav__item">
+      <a href="../declarative_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Declarative Usage
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../evaluate_pipeline/" class="md-nav__link">
         
   
@@ -3580,14 +3603,14 @@
 <li><code>--evaluate-pipeline</code> (Optional): Optional: Provide the path to a Python file and a function name separated by a colon, e.g., 'path/to/module.py:function_name'. If provided, it overrides the evaluate_pipeline setting from the YAML configuration.</li>
 <li><code>--pipeline-space</code> (Optional): Path to the YAML file defining the search space for the optimization. This can be provided here or defined within the 'run_args' YAML file.</li>
 <li><code>--root-directory</code> (Optional): The directory to save progress to. This is also used to synchronize multiple calls for parallelization.</li>
-<li><code>--overwrite-working-directory</code> (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a evaluate_pipeline function.</li>
+<li><code>--overwrite-working-directory</code> (Optional): If set, deletes the working directory at the start of the run. This is useful, for example, when debugging a evalute_pipeline function.</li>
 <li><code>--post-run-summary</code> (Optional): Provide a summary of the results after running.</li>
 <li><code>--no-post-run-summary</code> (Optional): Do not provide a summary of the results after running.</li>
 <li><code>--max-evaluations-total</code> (Optional): Total number of evaluations to run.</li>
 <li><code>--max-evaluations-per-run</code> (Optional): Number of evaluations a specific call should maximally do.</li>
 <li><code>--continue-until-max-evaluation-completed</code> (Optional): If set, only stop after max-evaluations-total have been completed. This is only relevant in the parallel setting.</li>
 <li><code>--max-cost-total</code> (Optional): No new evaluations will start when this cost is exceeded. Requires returning a cost
-  in the evaluate_pipeline function.</li>
+  in the evalute_pipeline function.</li>
 <li><code>--ignore-errors</code> (Optional): If set, ignore errors during the optimization process.</li>
 <li><code>--loss-value-on-error</code> (Optional): Loss value to assume on error.</li>
 <li><code>--cost-value-on-error</code> (Optional): Cost value to assume on error.</li>
