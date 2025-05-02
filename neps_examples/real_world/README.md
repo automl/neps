@@ -22,7 +22,7 @@ We run the HPO process for 188 trials and obtain new set of hyperpamereters that
 | weight_decay   | 0.0001 | 0.00012664785026572645 |
 
 
-![Validation Loss Curves](../../doc_images/examples/val_loss_image_segmentation.png)
+![Validation Loss Curves](../../doc_images/examples/val_loss_image_segmentation.jpg)
 
 The validation loss achieved on the dataset after training the model with the newly sampled hyperparameters is shown in the figure above.
 
