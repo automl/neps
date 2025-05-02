@@ -3498,6 +3498,7 @@
 <p><code>Successive Halfing</code>/<code>SH</code> (see <a href="https://proceedings.mlr.press/v51/jamieson16.pdf">paper</a>) is a simple but effective Multi-Fidelity algorithm.</p>
 <p>It starts with a large number of random configurations and evaluates them on a low-fidelity. The best-performing <span class="arithmatex">\(1/\eta\)</span> configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.</p>
+<p>See the implentation details in the <a class="autorefs autorefs-internal" title="            successive_halving" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.successive_halving">api</a>.</p>
 <details class="example">
 <summary>Practical Tips</summary>
 <ul>
