@@ -9,6 +9,8 @@ This section concerns optimizers that utilize Multi-Fidelity information to guid
 It starts with a large number of random configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.successive_halving].
+
 ??? example "Practical Tips"
 
     - For the same total compute, `SH` outperforms uninformed search algorithms like random search or grid search.
@@ -26,11 +28,15 @@ Instead of waiting for all $n$ configurations to finish on one fidelity, `ASHA` 
 
 Although not inherently a Prior-optimizer, ``SH`` (and ``ASHA``) can make use of [Priors](../search_algorithms/prior.md). Instead of sampling configurations uniformly, the optimizer can directly sample from the Prior, which results in a more focused search - highly beneficial _if_ the Prior is reliable. Alternatively, the ``SH`` can bias the promotion of configurations towards the Prior, keeping worse-performing, but recommended configurations longer in the optimization process.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.asha].
+
 ## 2 `HyperBand`
 
 `HyperBand`/`HB` (see [paper](https://arxiv.org/pdf/1603.06560)) is an extension of [``Successive Halfing``](../search_algorithms/multifidelity.md#1-successive-halfing) that employs multiple ``Successive Halfing``-rounds in parallel.
 
 Each of these runs has a different resource budget and different number of configurations. This makes ``HyperBand`` more flexible and parallelizable than ``SH``.
+
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.hyperband].
 
 ??? example "Practical Tips"
 
@@ -41,6 +47,7 @@ Each of these runs has a different resource budget and different number of confi
 !!! info
     ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
 
+<!---
 ## 3 `BOHB`
 
 `BOHB` (see [paper](https://arxiv.org/pdf/1807.01774)) is a combination of [``Bayesian Optimization``](../search_algorithms/bayesian_optimization.md) and [``HyperBand``](../search_algorithms/multifidelity.md#2-hyperband).
@@ -73,7 +80,9 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
     - ``A-BOHB`` is more efficient than ``BOHB`` when the correlation between lower and higher fidelities is low.
     - The algorithm itself is more computationally expensive than ``BOHB``, as it has to model the objective function across all fidelities.
 
-## 5 `In-Context Freeze-Thaw Bayesian Optimization`
+-->
+
+## 3 `In-Context Freeze-Thaw Bayesian Optimization`
 
 `In-Context Freeze-Thaw Bayesian Optimization`/``IfBO`` (see [paper](https://arxiv.org/pdf/2204.11051)) expands on the idea of [Freeze-Thaw Bayesian Optimization](https://arxiv.org/pdf/1406.3896) (``FT-BO``) by using a `Prior-data fitted network` (PFN) as a surrogate for the ``FT-BO``.
 
@@ -94,6 +103,8 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 |![Freeze-Thaw](../../doc_images/optimizers/freeze_thawing.jpg)|
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
+
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.ifbo].
 
 ??? example "Practical Tips"
 

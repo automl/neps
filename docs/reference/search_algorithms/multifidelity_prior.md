@@ -47,6 +47,8 @@ $$
 
 where $\mathcal{S}_\pi$ and $\mathcal{S}_{\hat{\lambda}}$ are the summed probabilities of the top $1/\eta$ configurations under Prior and incumbent sampling, respectively. This way, the balance is shifted towards the distribution that would have yielded the best configurations so far. Crucially, this compensates for potentially bad Priors, as the incumbent sampling will take over when it has proven to be better.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.priorband].
+
 ??? example "Practical Tips"
 
     - ``PriorBand`` is a good choice when you have a Prior but are wary of its quality and you can utilize Multi-Fidelity.
