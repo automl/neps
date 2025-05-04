@@ -17,6 +17,7 @@ from neps.optimizers.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
+from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
@@ -232,7 +233,7 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandSampler
+    sampler: Sampler | PriorBandSampler | MOPriorSampler
     """The sampler used to generate new trials."""
 
     gp_sampler: GPSampler | None
@@ -249,7 +250,7 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
-    def __call__(  # noqa: C901, PLR0912
+    def __call__(  # noqa: C901, PLR0911, PLR0912, PLR0915
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
@@ -368,6 +369,15 @@ class BracketOptimizer:
 
                     case PriorBandSampler():
                         config = self.sampler.sample_config(table, rung=rung)
+                        config = {
+                            **config,
+                            **space.constants,
+                            self.fid_name: self.rung_to_fid[rung],
+                        }
+                        return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+
+                    case MOPriorSampler():
+                        config = self.sampler.sample_config()
                         config = {
                             **config,
                             **space.constants,

@@ -128,7 +128,7 @@ class Prior(Sampler):
         """Create a prior distribution from dict of parameters.
 
         Args:
-            parameters: The parameters to createa a prior from. Will look
+            parameters: The parameters to create a prior from. Will look
                 at the `.prior` and `.prior_confidence` of the parameters
                 to create a truncated normal.
 

@@ -30,6 +30,7 @@ from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
+from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
@@ -123,7 +124,10 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband"] | PriorBandSampler | Sampler,
+    sampler: Literal["uniform", "prior", "priorband", "mopriorsampler"]
+    | PriorBandSampler
+    | MOPriorSampler
+    | Sampler,
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
@@ -133,6 +137,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     device: torch.device | None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     multi_objective: bool = False,
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -265,7 +271,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
     encoder = ConfigEncoder.from_parameters(parameters)
 
-    _sampler: Sampler | PriorBandSampler
+    _sampler: Sampler | PriorBandSampler | MOPriorSampler
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
@@ -283,7 +289,19 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
             )
+        case "mopriorsampler":
+            assert prior_centers is not None
+            assert prior_confidences is not None
+            _sampler = MOPriorSampler.from_mapping(
+                parameters=parameters,
+                prior_centers=prior_centers,
+                confidence_values=prior_confidences,
+            )
         case PriorBandSampler() | Sampler():
+            _sampler = sampler
+        case MOPriorSampler():
+            assert prior_centers is not None
+            assert prior_confidences is not None
             _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
@@ -757,6 +775,31 @@ def moasha(
     )
 
 
+def priormoasha(
+    space: SearchSpace,
+    *,
+    prior_centers: Mapping[str, Mapping[str, Any]],
+    eta: int = 3,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+) -> BracketOptimizer:
+    """MOASHA with the ability to sample from a prior distribution"""
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        sampler="mopriorsampler",
+        multi_objective=True,
+        mo_selector=mo_selector,
+        prior_centers=prior_centers,
+        prior_confidences=prior_confidences,
+        bayesian_optimization_kick_in_point=None,
+        sample_prior_first=False,
+        early_stopping_rate=0,
+        device=None,
+    )
+
+
 def async_hb(
     space: SearchSpace,
     *,
@@ -1037,6 +1080,7 @@ PredefinedOptimizers: Mapping[
         moasha,
         async_hb,
         priorband,
+        priormoasha,
     )
 }
 
@@ -1048,6 +1092,7 @@ OptimizerChoice: TypeAlias = Literal[
     "mo_hyperband",
     "asha",
     "moasha",
+    "priormoasha",
     "async_hb",
     "priorband",
     "random_search",
