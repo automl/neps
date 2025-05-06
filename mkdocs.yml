@@ -144,6 +144,7 @@ nav:
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
+    - Seeding: 'reference/seeding.md'
   - Examples: "examples/"  # auto-generated
   - Algorithms:
     - Algorithms: 'reference/search_algorithms/landing_page_algo.md'
