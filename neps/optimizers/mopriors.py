@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from neps.sampling.priors import Prior
-from neps.space import ConfigEncoder
 
 if TYPE_CHECKING:
+    from neps.space import ConfigEncoder
     from neps.space.parameters import Parameter
 
 
@@ -25,21 +25,20 @@ class MOPriorSampler:
     encoder: ConfigEncoder
 
     @classmethod
-    def from_mapping(
+    def dists_from_centers_and_confidences(
         cls,
         parameters: Mapping[str, Parameter],
         prior_centers: Mapping[str, Mapping[str, float]],
         confidence_values: Mapping[str, Mapping[str, float]],
-    ) -> MOPriorSampler:
-        """Creates a MOPriorSampler instance.
-
+    ) -> Mapping[str, Prior]:
+        """Creates a mapping of prior distributions from the given centers and
+        confidence values.
         Args:
             parameters: The parameters to sample from.
             prior_centers: The priors to use for sampling.
             confidence_values: The confidence values for the priors.
-
         Returns:
-            The MOPriorSampler instance.
+            A mapping of prior distributions.
         """
         _priors = {}
 
@@ -56,11 +55,38 @@ class MOPriorSampler:
                 center_values=_prior_center,
                 confidence_values=confidence_values[key],
             )
+        return _priors
+
+    @classmethod
+    def create_sampler(
+        cls,
+        parameters: Mapping[str, Parameter],
+        prior_centers: Mapping[str, Mapping[str, float]],
+        confidence_values: Mapping[str, Mapping[str, float]],
+        encoder: ConfigEncoder,
+    ) -> MOPriorSampler:
+        """Creates a MOPriorSampler instance.
+
+        Args:
+            parameters: The parameters to sample from.
+            prior_centers: The priors to use for sampling.
+            confidence_values: The confidence values for the priors.
+            encoder: The encoder to use for encoding and decoding configurations
+                into tensors.
+
+        Returns:
+            The MOPriorSampler instance.
+        """
+        _priors = cls.dists_from_centers_and_confidences(
+            parameters=parameters,
+            prior_centers=prior_centers,
+            confidence_values=confidence_values,
+        )
 
         return MOPriorSampler(
             prior_dists=_priors,
             parameters=parameters,
-            encoder=ConfigEncoder.from_parameters(parameters),
+            encoder=encoder,
         )
 
     def sample_config(self) -> dict[str, Any]:

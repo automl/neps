@@ -17,6 +17,7 @@ from neps.optimizers.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
+from neps.optimizers.mopriorband import MOPriorBandSampler
 from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.priorband import PriorBandSampler
@@ -233,7 +234,7 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandSampler | MOPriorSampler
+    sampler: Sampler | PriorBandSampler | MOPriorSampler | MOPriorBandSampler
     """The sampler used to generate new trials."""
 
     gp_sampler: GPSampler | None
@@ -384,7 +385,14 @@ class BracketOptimizer:
                             self.fid_name: self.rung_to_fid[rung],
                         }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
-
+                    case MOPriorBandSampler():
+                        config = self.sampler.sample_config(table, rung=rung)
+                        config = {
+                            **config,
+                            **space.constants,
+                            self.fid_name: self.rung_to_fid[rung],
+                        }
+                        return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
                     case _:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")
             case _:
