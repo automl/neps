@@ -205,11 +205,11 @@ def _calculate_new_domain_bounds(
 class Categorical(Domain[int], Generic[T]):
     def __init__(
         self,
-        choices: tuple[T | Domain[T] | Resolvable, ...] | Domain[T],
+        choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T],
         prior_index: int | Domain[int] | _Unset = _UNSET,
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
-        self._choices: tuple[T | Domain[T] | Resolvable, ...] | Domain[T]
+        self._choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T]
         if isinstance(choices, Sequence):
             self._choices = tuple(choice for choice in choices)
         else:
@@ -422,12 +422,22 @@ class Operation(Resolvable):
     def __init__(
         self,
         operator: Callable | str,
-        args: Sequence[Any] | None = None,
-        kwargs: Mapping[str, Any] | None = None,
+        args: Sequence[Any] | Resolvable | None = None,
+        kwargs: Mapping[str, Any] | Resolvable | None = None,
     ):
         self._operator = operator
-        self._args = tuple(args) if args else tuple()
-        self._kwargs = kwargs if kwargs else {}
+
+        self._args: tuple[Any, ...] | Resolvable
+        if not isinstance(args, Resolvable):
+            self._args = tuple(args) if args else tuple()
+        else:
+            self._args = args
+
+        self._kwargs: Mapping[str, Any] | Resolvable
+        if not isinstance(kwargs, Resolvable):
+            self._kwargs = kwargs if kwargs else {}
+        else:
+            self._kwargs = kwargs
 
     @property
     def operator(self) -> Callable | str:
@@ -435,14 +445,14 @@ class Operation(Resolvable):
 
     @property
     def args(self) -> tuple[Any, ...]:
-        return self._args
+        return cast(tuple[Any, ...], self._args)
 
     @property
     def kwargs(self) -> Mapping[str, Any]:
-        return self._kwargs
+        return cast(Mapping[str, Any], self._kwargs)
 
     def get_attrs(self) -> Mapping[str, Any]:
-        # TODO: simplify this. We know the fields. Maybe other places too.
+        # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         result: dict[str, Any] = {}
         for name, value in vars(self).items():
             name = name.lstrip("_")
@@ -458,7 +468,7 @@ class Operation(Resolvable):
         return result
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Operation:
-        # TODO: simplify this. We know the fields. Maybe other places too.
+        # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         final_attrs: dict[str, Any] = {}
         for name, value in attrs.items():
             if "{" in name and "}" in name:
@@ -1025,6 +1035,13 @@ class SamplingResolver:
         if context.was_already_resolved(operation_obj):
             return context.get_resolved(operation_obj)
 
+        # It is possible that the `operation_obj` will require two runs to be fully resolved.
+        # For example if `operation_obj.args` is not defined as a tuple of args,
+        # but is a Resolvable that needs to be resolved first itself,
+        # for us to have the actual tuple of args.
+
+        # First run.
+
         initial_attrs = operation_obj.get_attrs()
         final_attrs = {}
         needed_resolving = False
@@ -1034,9 +1051,28 @@ class SamplingResolver:
             final_attrs[attr_name] = resolved_attr_value
             needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
 
-        result = operation_obj
+        operation_obj_first_run = operation_obj
         if needed_resolving:
-            result = operation_obj.from_attrs(final_attrs)
+            operation_obj_first_run = operation_obj.from_attrs(final_attrs)
+
+        # Second run.
+        # It is possible the first run was enough,
+        # in this case what we do below won't lead to any changes.
+
+        initial_attrs = operation_obj_first_run.get_attrs()
+        final_attrs = {}
+        needed_resolving = False
+
+        for attr_name, initial_attr_value in initial_attrs.items():
+            resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
+            final_attrs[attr_name] = resolved_attr_value
+            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+
+        operation_obj_second_run = operation_obj_first_run
+        if needed_resolving:
+            operation_obj_second_run = operation_obj_first_run.from_attrs(final_attrs)
+
+        result = operation_obj_second_run
 
         context.add_resolved(operation_obj, result)
         return result
