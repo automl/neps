@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import itertools
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.multi_objective.logei import (
+    qLogNoisyExpectedHypervolumeImprovement,
+)
+from botorch.models.transforms.outcome import Standardize
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -67,6 +72,9 @@ class BayesianOptimization:
     prior: Prior | None
     """The prior to use for sampling configurations and inferring their likelihood."""
 
+    mo_priors: Mapping[str, Prior] | None
+    """The multi-objective priors to use for sampling configurations. """
+
     sample_prior_first: bool
     """Whether to sample the prior configuration first."""
 
@@ -79,7 +87,10 @@ class BayesianOptimization:
     device: torch.device | None
     """The device to use for the optimization."""
 
-    def __call__(
+    reference_point: tuple[float, ...] | None
+    """The reference point to use for the multi-objective optimization."""
+
+    def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,
@@ -100,6 +111,11 @@ class BayesianOptimization:
             if trial.report is not None and trial.report.objective_to_minimize is not None
         )
         sampled_configs: list[SampledConfig] = []
+
+        if self.mo_priors is not None:
+            self.prior = np.random.choice(
+                list(self.mo_priors.values()),
+            )
 
         if n_evaluated < self.n_initial_design:
             # For reproducibility, we need to ensure we do the same sample of all
@@ -165,13 +181,70 @@ class BayesianOptimization:
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
-        gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
         n_to_acquire = n_to_sample - len(sampled_configs)
-        candidates = fit_and_acquire_from_gp(
-            gp=gp,
-            x_train=data.x,
-            encoder=encoder,
-            acquisition=qLogNoisyExpectedImprovement(
+
+        num_objectives = None
+        for trial in trials.values():
+            if trial.report is not None:
+                match trial.report.objective_to_minimize:
+                    case None:
+                        continue
+                    case Sequence():
+                        if num_objectives is None:
+                            num_objectives = len(trial.report.objective_to_minimize)
+                        assert (
+                            len(trial.report.objective_to_minimize) == num_objectives
+                        ), "All trials must have the same number of objectives."
+                    case float():
+                        if num_objectives is None:
+                            num_objectives = 1
+                        assert num_objectives == 1, (
+                            "All trials must have the same number of objectives."
+                        )
+                    case _:
+                        raise TypeError(
+                            "Objective to minimize must be a float or a sequence "
+                            "of floats."
+                        )
+
+        assert num_objectives is not None, (
+            "Either no trials have been completed or"
+            " No trials reports have objective values."
+        )
+
+        if num_objectives > 1:
+            gp = make_default_single_obj_gp(
+                x=data.x,
+                y=data.y,
+                encoder=encoder,
+                y_transform=Standardize(m=data.y.shape[-1]),
+            )
+            if self.reference_point is not None:
+                assert len(self.reference_point) == num_objectives, (
+                    "Reference point must have the same number of objectives as the"
+                    " trials."
+                )
+                ref_point = torch.tensor(
+                    self.reference_point,
+                    dtype=data.x.dtype,
+                    device=data.x.device,
+                )
+            else:
+                ref_point = torch.tensor(
+                    _get_reference_point(data.y.numpy()),
+                    dtype=data.x.dtype,
+                    device=data.x.device,
+                )
+            acquisition = qLogNoisyExpectedHypervolumeImprovement(
+                model=gp,
+                ref_point=ref_point,
+                X_baseline=data.x,
+                X_pending=data.x_pending,
+                prune_baseline=True,
+            )
+        else:
+            gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+            acquisition = qLogNoisyExpectedImprovement(
                 model=gp,
                 X_baseline=data.x,
                 # Unfortunatly, there's no option to indicate that we minimize
@@ -180,7 +253,12 @@ class BayesianOptimization:
                 objective=LinearMCObjective(weights=torch.tensor([-1.0])),
                 X_pending=data.x_pending,
                 prune_baseline=True,
-            ),
+            )
+        candidates = fit_and_acquire_from_gp(
+            gp=gp,
+            x_train=data.x,
+            encoder=encoder,
+            acquisition=acquisition,
             prior=prior,
             n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
@@ -206,3 +284,14 @@ class BayesianOptimization:
             ]
         )
         return sampled_configs[0] if n is None else sampled_configs
+
+
+def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
+    """Get the reference point from the completed Trials.
+    Source:
+    https://github.com/optuna/optuna/blob/master/optuna/samplers/_tpe/sampler.py#L609 .
+    """
+    worst_point = np.max(loss_vals, axis=0)
+    reference_point = np.maximum(1.1 * worst_point, 0.9 * worst_point)
+    reference_point[reference_point == 0] = 1e-12
+    return reference_point

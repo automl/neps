@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
@@ -271,10 +271,6 @@ def encode_trials_for_gp(
         train_configs.append(trial.config)
 
         objective_to_minimize = trial.report.objective_to_minimize
-        assert not isinstance(objective_to_minimize, Sequence), (
-            "The objective to minimize should be a single value, "
-            " multiple objectives are not supported yet."
-        )
         train_losses.append(
             torch.nan if objective_to_minimize is None else objective_to_minimize
         )

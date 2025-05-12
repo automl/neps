@@ -29,6 +29,7 @@ from neps.optimizers.bayesian_optimization import BayesianOptimization
 from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
+from neps.optimizers.moashabo import MOASHABO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.mopriorband import MOPriorBandSampler
 from neps.optimizers.mopriors import MOPriorSampler
@@ -37,6 +38,7 @@ from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
+from neps.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -50,9 +52,12 @@ def _bo(
     *,
     initial_design_size: int | Literal["ndim"] = "ndim",
     use_priors: bool,
+    mo_priors_centers: Mapping[str, Mapping[str, float]] | None = None,
+    mo_priors_confidences: Mapping[str, Mapping[str, float]] | None = None,
     cost_aware: bool | Literal["log"],
     sample_prior_first: bool,
     device: torch.device | str | None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -109,6 +114,14 @@ def _bo(
         case _:
             raise ValueError("device should be a string, torch.device or None")
 
+    mo_priors: Mapping[str, Prior] | None = None
+    if mo_priors_centers is not None and mo_priors_confidences is not None:
+        mo_priors = MOPriorSampler.dists_from_centers_and_confidences(
+            parameters=parameters,
+            prior_centers=mo_priors_centers,
+            confidence_values=mo_priors_confidences,
+        )
+
     return BayesianOptimization(
         space=pipeline_space,
         encoder=ConfigEncoder.from_parameters(parameters),
@@ -117,6 +130,8 @@ def _bo(
         prior=Prior.from_parameters(parameters) if use_priors is True else None,
         sample_prior_first=sample_prior_first,
         device=device,
+        mo_priors=mo_priors,
+        reference_point=reference_point,
     )
 
 
@@ -967,6 +982,76 @@ def mopriorband(
     )
 
 
+def moashabo(
+    space: SearchSpace,
+    *,
+    sampler: Literal["uniform", "mopriorsampler", "mopriorband"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
+    eta: int = 3,
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+    initial_design_size: int | Literal["ndim"] = "ndim",
+    cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
+    device: torch.device | str | None = None,
+    bo_scalar_weights: dict[str, float] | None = None,
+) -> MOASHABO:
+    """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
+    BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
+    _moasha = _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        sampler=sampler,
+        multi_objective=True,
+        mo_selector=mo_selector,
+        prior_centers=prior_centers,
+        prior_confidences=prior_confidences,
+        bayesian_optimization_kick_in_point=None,
+        sample_prior_first=False,
+        early_stopping_rate=0,
+        device=device,
+    )
+
+    parameters = space.searchables
+
+    assert space.fidelity is not None
+    fidelity_name, fidelity = space.fidelity
+
+    match initial_design_size:
+        case "ndim":
+            n_initial_design_size = len(parameters)
+        case int():
+            if initial_design_size < 1:
+                raise ValueError("initial_design_size should be greater than 0")
+
+            n_initial_design_size = initial_design_size
+        case _:
+            raise ValueError(
+                "initial_design_size should be either 'ndim' or a positive integer"
+            )
+
+    _priors = None
+    if prior_confidences and prior_centers:
+        _priors = MOPriorSampler.dists_from_centers_and_confidences(
+            parameters=parameters,
+            prior_centers=prior_centers,
+            confidence_values=prior_confidences,
+        )
+
+    return MOASHABO(
+        space=convert_mapping({**space.elements}),
+        encoder=ConfigEncoder.from_parameters(parameters),
+        bracket_optimizer=_moasha,
+        initial_design_size=n_initial_design_size,
+        fid_max=fidelity.upper,
+        fid_name=fidelity_name,
+        scalarization_weights=bo_scalar_weights,
+        device=device,
+        priors=_priors,
+    )
+
+
 def bayesian_optimization(
     space: SearchSpace,
     *,
@@ -981,7 +1066,7 @@ def bayesian_optimization(
 
     !!! tip "When to use this?"
 
-        Bayesion optimization is a good general purpose choice, especially
+        Bayesian optimization is a good general purpose choice, especially
         if the size of your search space is not too large. It is also the best
         option to use if you do not have or want to use a _fidelity_ parameter.
 
@@ -1031,6 +1116,9 @@ def pibo(
     cost_aware: bool | Literal["log"] = False,
     device: torch.device | str | None = None,
     sample_prior_first: bool = False,
+    mo_prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    mo_prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -1060,6 +1148,13 @@ def pibo(
                 If using `cost`, cost must be provided in the reports of the trials.
 
         device: Device to use for the optimization.
+        sample_prior_first: Whether to sample from the prior configuration first.
+        mo_prior_centers: The means of the prior distributions to sample from.
+        mo_prior_confidences: The confidence values of the prior distributions to sample
+            from.
+        reference_point: The reference point to use for the multi-objective
+            optimization. If None, the reference point will be calculated
+            dynamically based on the current objective values.
     """
     return _bo(
         pipeline_space=space,
@@ -1068,6 +1163,9 @@ def pibo(
         device=device,
         use_priors=True,
         sample_prior_first=sample_prior_first,
+        mo_priors_centers=mo_prior_centers,
+        mo_priors_confidences=mo_prior_confidences,
+        reference_point=reference_point,
     )
 
 
@@ -1129,6 +1227,7 @@ PredefinedOptimizers: Mapping[
         asha,
         moasha,
         priormoasha,
+        moashabo,
         async_hb,
         priorband,
         mopriorband,
@@ -1144,6 +1243,7 @@ OptimizerChoice: TypeAlias = Literal[
     "asha",
     "moasha",
     "priormoasha",
+    "moashabo",
     "async_hb",
     "priorband",
     "mopriorband",

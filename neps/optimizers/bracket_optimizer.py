@@ -152,7 +152,9 @@ class GPSampler:
                 # Unfortunatly, there's no option to indicate that we minimize
                 # the AcqFunction so we need to do some kind of transformation.
                 # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                objective=LinearMCObjective(
+                    weights=torch.tensor([-1.0], device=self.device)
+                ),
                 X_pending=data.x_pending,
                 prune_baseline=True,
             )
