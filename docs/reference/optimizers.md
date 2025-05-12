@@ -40,20 +40,20 @@ For a more detailed explanation of Priors and a list of NePS-optimizers using Pr
 
 NePS provides a multitude of optimizers from the literature, the [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on each of them. This chapter focusses on how to select them when using NePS.
 
-✅ = supported/necessary, ❌ = not supported, ✔️* = optional/ignorable, see [api](../api/neps/api.md) for details
+✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | Asynchronous |
-| :- | :------------: | :----: | :---------: | :-: |
-| `Grid Search`|[✔️*][neps.optimizers.algorithms.grid_search]|❌|❌|✅|
-| `Random Search`|[✔️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
-| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[✔️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|✅|
-| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
-| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|
-| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
-| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|
-| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
-| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[✔️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
-| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|❌|
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based |
+| :- | :------------: | :----: | :---------: |
+| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|
+| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|
+| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|
+| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|
+| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|
+| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|
+| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|
+| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|
+| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|
 
 If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
 for the neps optimizer. This provides a hassle-free way to get started quickly, as NePS will automatically choose the best optimizer based on the characteristics of your search

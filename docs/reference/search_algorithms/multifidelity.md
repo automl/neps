@@ -16,7 +16,7 @@ See the algorithm's implementation details in the [api][neps.optimizers.algorith
     - For the same total compute, `SH` outperforms uninformed search algorithms like random search or grid search.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, `SH` underperforms.
     - `SH` has two parameters: $\eta$ and $n$, where $\eta$ is the promotion factor and $n$ is the number of configurations at the lowest fidelity.
-    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels.
+    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels. For more details, see the [api][neps.optimizers.algorithms.successive_halving].
 
 ### _Asynchronous_ Successive Halving
 
@@ -42,7 +42,7 @@ See the algorithm's implementation details in the [api][neps.optimizers.algorith
 
     - ``HyperBand`` is a good choice when you have a limited budget and want to parallelize your search.
     - It is more efficient than ``SH`` when the correlation between lower and higher fidelities is low.
-    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds.
+    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds. For more details, see the [api][neps.optimizers.algorithms.hyperband].
 
 !!! info
     ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
