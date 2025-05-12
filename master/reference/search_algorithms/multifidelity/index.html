@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.12">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.13">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.2afb09e1.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -3510,7 +3510,7 @@ The process allows for broad exploration in the beginning and focus on the most 
 <li>For the same total compute, <code>SH</code> outperforms uninformed search algorithms like random search or grid search.</li>
 <li>It highly depends on the correlation between lower and higher fidelities. If the correlation is low, <code>SH</code> underperforms.</li>
 <li><code>SH</code> has two parameters: <span class="arithmatex">\(\eta\)</span> and <span class="arithmatex">\(n\)</span>, where <span class="arithmatex">\(\eta\)</span> is the promotion factor and <span class="arithmatex">\(n\)</span> is the number of configurations at the lowest fidelity.
-This results in a total of <span class="arithmatex">\(\frac{n*r}{\eta^r}\)</span> steps (from one fidelity level to the next), where <span class="arithmatex">\(r\)</span> is the number of fidelity levels.</li>
+This results in a total of <span class="arithmatex">\(\frac{n*r}{\eta^r}\)</span> steps (from one fidelity level to the next), where <span class="arithmatex">\(r\)</span> is the number of fidelity levels. For more details, see the <a class="autorefs autorefs-internal" title="            successive_halving" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.successive_halving">api</a>.</li>
 </ul>
 </details>
 <h3 id="asynchronous-successive-halving"><em>Asynchronous</em> Successive Halving<a class="headerlink" href="#asynchronous-successive-halving" title="Permanent link">#</a></h3>
@@ -3528,7 +3528,7 @@ This results in a total of <span class="arithmatex">\(\frac{n*r}{\eta^r}\)</span
 <ul>
 <li><code>HyperBand</code> is a good choice when you have a limited budget and want to parallelize your search.</li>
 <li>It is more efficient than <code>SH</code> when the correlation between lower and higher fidelities is low.</li>
-<li><code>Hyperband</code> has two parameters: <span class="arithmatex">\(\eta\)</span> (typically 3 or 4) and <span class="arithmatex">\(R\)</span>, where <span class="arithmatex">\(\eta\)</span> is the promotion factor and <span class="arithmatex">\(R\)</span> is the maximum budget any single configuration will be trained on. A larger <span class="arithmatex">\(R\)</span> will result in better, but slower results, while a larger <span class="arithmatex">\(\eta\)</span> will result in faster, but more noisy, potentially worse results. HB then spawns <span class="arithmatex">\(\lfloor \log_\eta(R)\rfloor\)</span> <code>Successive Halfing</code>-rounds.</li>
+<li><code>Hyperband</code> has two parameters: <span class="arithmatex">\(\eta\)</span> (typically 3 or 4) and <span class="arithmatex">\(R\)</span>, where <span class="arithmatex">\(\eta\)</span> is the promotion factor and <span class="arithmatex">\(R\)</span> is the maximum budget any single configuration will be trained on. A larger <span class="arithmatex">\(R\)</span> will result in better, but slower results, while a larger <span class="arithmatex">\(\eta\)</span> will result in faster, but more noisy, potentially worse results. HB then spawns <span class="arithmatex">\(\lfloor \log_\eta(R)\rfloor\)</span> <code>Successive Halfing</code>-rounds. For more details, see the <a class="autorefs autorefs-internal" title="            hyperband" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.hyperband">api</a>.</li>
 </ul>
 </details>
 <div class="admonition info">
@@ -3700,10 +3700,10 @@ where <span class="arithmatex">\(H\)</span> is the entropy, <span class="arithma
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       
