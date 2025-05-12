@@ -303,9 +303,11 @@ def check_if_valid_config(
     Returns:
         True if the config is valid, False otherwise.
     """
-    completed_copy = completed.copy(deep=True)
-    for idx, row in completed_copy.iterrows():
-        _config = row["config"]
+    import copy
+
+    copied_table = completed.copy(deep=True)
+    for idx, row in copied_table.iterrows():
+        _config = copy.deepcopy(row["config"])
         if fidelity_name in _config:
             _config.pop(fidelity_name)
         if config == _config and idx[1] >= rung:
