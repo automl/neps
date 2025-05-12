@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.13">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -592,29 +592,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../reference/declarative_usage/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Declarative Usage
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../reference/evaluate_pipeline/" class="md-nav__link">
         
   
@@ -667,6 +644,29 @@
   
   <span class="md-ellipsis">
     Analysing Runs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/seeding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Seeding
     
   </span>
   
@@ -3595,14 +3595,14 @@
 <a id="__codelineno-0-167" name="__codelineno-0-167" href="#__codelineno-0-167"></a>        <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">training_pipeline</span><span class="p">,</span>
 <a id="__codelineno-0-168" name="__codelineno-0-168" href="#__codelineno-0-168"></a>        <span class="n">optimizer</span><span class="o">=</span><span class="s2">&quot;ifbo&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-169" name="__codelineno-0-169" href="#__codelineno-0-169"></a>        <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170" href="#__codelineno-0-170"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;./debug/ifbo-mnist/&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-170" name="__codelineno-0-170" href="#__codelineno-0-170"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;./results/ifbo-mnist/&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-171" name="__codelineno-0-171" href="#__codelineno-0-171"></a>        <span class="n">overwrite_working_directory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>  <span class="c1"># set to False for a multi-worker run</span>
 <a id="__codelineno-0-172" name="__codelineno-0-172" href="#__codelineno-0-172"></a>    <span class="p">)</span>
 <a id="__codelineno-0-173" name="__codelineno-0-173" href="#__codelineno-0-173"></a>
 <a id="__codelineno-0-174" name="__codelineno-0-174" href="#__codelineno-0-174"></a>    <span class="c1"># NOTE: this is `experimental` and may not work as expected</span>
 <a id="__codelineno-0-175" name="__codelineno-0-175" href="#__codelineno-0-175"></a>    <span class="c1">## plotting a 3D plot for learning curves explored by ifbo</span>
 <a id="__codelineno-0-176" name="__codelineno-0-176" href="#__codelineno-0-176"></a>    <span class="n">plotter</span> <span class="o">=</span> <span class="n">Plotter3D</span><span class="p">(</span>
-<a id="__codelineno-0-177" name="__codelineno-0-177" href="#__codelineno-0-177"></a>        <span class="n">run_path</span><span class="o">=</span><span class="s2">&quot;./debug/ifbo-mnist/&quot;</span><span class="p">,</span>  <span class="c1"># same as `root_directory` above</span>
+<a id="__codelineno-0-177" name="__codelineno-0-177" href="#__codelineno-0-177"></a>        <span class="n">run_path</span><span class="o">=</span><span class="s2">&quot;./results/ifbo-mnist/&quot;</span><span class="p">,</span>  <span class="c1"># same as `root_directory` above</span>
 <a id="__codelineno-0-178" name="__codelineno-0-178" href="#__codelineno-0-178"></a>        <span class="n">fidelity_key</span><span class="o">=</span><span class="s2">&quot;epochs&quot;</span><span class="p">,</span>  <span class="c1"># same as `pipeline_space`</span>
 <a id="__codelineno-0-179" name="__codelineno-0-179" href="#__codelineno-0-179"></a>    <span class="p">)</span>
 <a id="__codelineno-0-180" name="__codelineno-0-180" href="#__codelineno-0-180"></a>    <span class="n">plotter</span><span class="o">.</span><span class="n">plot3D</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;ifbo&quot;</span><span class="p">)</span>
@@ -3695,10 +3695,10 @@
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       

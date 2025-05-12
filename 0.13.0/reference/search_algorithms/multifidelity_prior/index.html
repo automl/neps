@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.11">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.13">
     
     
       
@@ -24,7 +24,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../assets/stylesheets/main.4af4bdda.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
         <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
@@ -597,29 +597,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../declarative_usage/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Declarative Usage
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../evaluate_pipeline/" class="md-nav__link">
         
   
@@ -672,6 +649,29 @@
   
   <span class="md-ellipsis">
     Analysing Runs
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../seeding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Seeding
     
   </span>
   
@@ -3490,7 +3490,7 @@
 For a detailed explanation of Multi-Fidelity and Priors, please refer <a href="../landing_page_algo/">here</a>.</p>
 <h2 id="optimizers-using-multi-fidelity-and-priors">Optimizers using Multi-Fidelity and Priors<a class="headerlink" href="#optimizers-using-multi-fidelity-and-priors" title="Permanent link">#</a></h2>
 <h3 id="1-priorband">1 <code>PriorBand</code><a class="headerlink" href="#1-priorband" title="Permanent link">#</a></h3>
-<p><code>PriorBand</code> is an extension of <a href="../multifidelity/#2-hyperband"><code>HyperBand</code></a> that utilizes expert Priors to choose the next configuration.</p>
+<p><code>PriorBand</code> (see <a href="https://openreview.net/pdf?id=uoiwugtpCH">paper</a>) is an extension of <a href="../multifidelity/#2-hyperband"><code>HyperBand</code></a> that utilizes expert Priors to choose the next configuration.</p>
 <p><code>PriorBand</code>'s sampling module <span class="arithmatex">\(\mathcal{E}_\pi\)</span> balances the influence of the Prior, the incumbent configurations and randomness to select configurations.</p>
 <table>
 <thead>
@@ -3504,20 +3504,29 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer <a href=".
 </tr>
 </tbody>
 </table>
-<p>The Prior sampling <span class="arithmatex">\(p_\pi\)</span> is most meaningful at full fidelity and when not much data is available yet, while the incumbent sampling <span class="arithmatex">\(p_{\hat{\lambda}}\)</span>, coming from actual data, is most significant but sparse, and random sampling <span class="arithmatex">\(p_{\mathcal{U}}\)</span> is needed for exploration, especially at lower fidelities. This results in these inital sampling probabilities when there is no incument yet:</p>
+<p>The Prior sampling <span class="arithmatex">\(p_\pi\)</span> is most meaningful at full fidelity and when not much data is available yet, while the incumbent sampling <span class="arithmatex">\(p_{\hat{\lambda}}\)</span>, coming from actual data, is most significant but sparse, and random sampling <span class="arithmatex">\(p_{\mathcal{U}}\)</span> is needed for exploration, especially at lower fidelities. This results in these inital sampling probabilities when there is no incumbent yet:</p>
 <div class="arithmatex">\[
-p_{\mathcal{U}}=1/(1+\eta^r)\\
-p_\pi=1-p_{\mathcal{U}}\\
+p_{\mathcal{U}}=1/(1+\eta^r)
+\]</div>
+<div class="arithmatex">\[
+p_\pi=1-p_{\mathcal{U}}
+\]</div>
+<div class="arithmatex">\[
 p_{\hat{\lambda}}=0
 \]</div>
 <p>where <span class="arithmatex">\(\eta\)</span> is the promotion-hyperparameter from <a href="../multifidelity/#2-hyperband"><code>HyperBand</code></a> and <span class="arithmatex">\(r\)</span> is the current fidelity level (<em>rung</em>), showing the decay of the random sampling probability with increasing fidelity.</p>
 <p>When there is an incumbent, the probabilities are adjusted to:</p>
 <div class="arithmatex">\[
-p_{\mathcal{U}}=1/(1+\eta^r)\\
-p_\pi=p_\pi\cdot\mathcal{S}_{\hat{\lambda}}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})\\
+p_{\mathcal{U}}=1/(1+\eta^r)
+\]</div>
+<div class="arithmatex">\[
+p_\pi=p_\pi\cdot\mathcal{S}_{\hat{\lambda}}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})
+\]</div>
+<div class="arithmatex">\[
 p_{\hat{\lambda}}=p_{\hat{\lambda}}\cdot\mathcal{S}_{\pi}/(\mathcal{S}_\pi+\mathcal{S}_{\hat{\lambda}})
 \]</div>
 <p>where <span class="arithmatex">\(\mathcal{S}_\pi\)</span> and <span class="arithmatex">\(\mathcal{S}_{\hat{\lambda}}\)</span> are the summed probabilities of the top <span class="arithmatex">\(1/\eta\)</span> configurations under Prior and incumbent sampling, respectively. This way, the balance is shifted towards the distribution that would have yielded the best configurations so far. Crucially, this compensates for potentially bad Priors, as the incumbent sampling will take over when it has proven to be better.</p>
+<p>See the algorithm's implementation details in the <a class="autorefs autorefs-internal" title="            priorband" href="../../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.priorband">api</a>.</p>
 <details class="example">
 <summary>Practical Tips</summary>
 <ul>
@@ -3618,10 +3627,10 @@ p_{\hat{\lambda}}=p_{\hat{\lambda}}\cdot\mathcal{S}_{\pi}/(\mathcal{S}_\pi+\math
     
     
       
-      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.f8cc74c7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../assets/javascripts/bundle.c8b220af.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.13a4f30d.min.js"></script>
       
         <script src="../../../javascripts/mathjax.js"></script>
       
