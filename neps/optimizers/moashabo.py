@@ -151,6 +151,11 @@ class MOASHABO:
 
             nxt_id = max(nxt_id, int(config_id_str) + 1)
 
+        assert len(_trials) > 0, (
+            "No trials found with the maximum fidelity. "
+            "Consider increasing the initial design size to run MOASHA longer."
+        )
+
         # Sample new configurations using the Bayesian optimization
         sampled_config = self.sample_using_bo(
             trials=_trials,
