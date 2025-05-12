@@ -79,7 +79,7 @@ class BayesianOptimization:
     device: torch.device | None
     """The device to use for the optimization."""
 
-    def __call__(
+    def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,

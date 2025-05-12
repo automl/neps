@@ -439,7 +439,7 @@ def random_search(
 
 def grid_search(
     pipeline_space: SearchSpace,
-    ignore_fidelity: bool = False,
+    ignore_fidelity: bool = False,  # noqa: FBT001, FBT002
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
