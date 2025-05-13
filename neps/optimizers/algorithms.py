@@ -236,8 +236,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     if any(fid.lower == 0 for fid in pipeline_space.fidelities.values()):
         raise ValueError(
             "Fidelity lower bound should be greater than 0,"
-            "To avoid zero division errors in bracket optimizers."
-            f"\nGot: {pipeline_space.fidelities}"
+            "to avoid zero division errors in bracket optimizers."
+            f"\nGot fidelity: {pipeline_space.fidelities}"
         )
 
     from neps.optimizers.utils import brackets
