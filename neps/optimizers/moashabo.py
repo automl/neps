@@ -11,7 +11,6 @@ from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 from botorch.acquisition.objective import LinearMCObjective
 from gpytorch.utils.warnings import NumericalWarning
 
-from neps.optimizers.bayesian_optimization import _pibo_exp_term
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
     fit_and_acquire_from_gp,
@@ -104,9 +103,10 @@ class MOASHABO:
                             "of floats."
                         )
 
-        # Set scalarization weights
+        # Set scalarization weights if not set
         if self.scalarization_weights is None:
             self.scalarization_weights = np.random.uniform(size=num_objectives)
+            self.scalarization_weights /= np.sum(self.scalarization_weights)
 
         # Scalarize trials.report.objective_to_minimize and remove fidelity
         # from the trial configs
@@ -209,6 +209,11 @@ class MOASHABO:
                 list(self.priors.values()),
             )
 
+        selected_prior = np.random.choice(
+            [selected_prior, None],
+            p=[0.75, 0.25],
+        )
+
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
         pibo_exp_term = None
@@ -259,3 +264,35 @@ class MOASHABO:
         ]
         fidelity_units_used = sum(used_fidelity) / self.fid_max
         return fidelity_units_used >= threshold
+
+
+def _pibo_exp_term(
+    n_sampled_already: int,
+    ndims: int,
+    initial_design_size: int,
+) -> float:
+    # pibo paper
+    # https://arxiv.org/pdf/2204.11051
+    #
+    # they use some constant determined from max problem budget. seems impractical,
+    # given we might not know the final budget (i.e. imagine you iteratively increase
+    # the budget as you go along).
+    #
+    # instead, we base it on the fact that in lower dimensions, we don't to rely
+    # on the prior for too long as the amount of space you need to cover around the
+    # prior is fairly low. effectively, since the gp needs little samples to
+    # model pretty effectively in low dimension, we can derive the utility from
+    # the prior pretty quickly.
+    #
+    # however, for high dimensional settings, we want to rely longer on the prior
+    # for longer as the number of samples needed to model the area around the prior
+    # is much larger, and deriving the utility will take longer.
+    #
+    # in the end, we would like some curve going from 1->0 as n->inf, where `n` is
+    # the number of samples we have done so far.
+    # the easiest function that does this is `exp(-n)`, with some discounting of `n`
+    # dependant on the number of dimensions.
+    import math
+
+    n_bo_samples = n_sampled_already - initial_design_size
+    return math.exp(-(n_bo_samples**2) / ndims)
