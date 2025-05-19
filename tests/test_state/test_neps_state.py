@@ -100,6 +100,7 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "successive_halving",
     "successive_halving_prior",
     "asha",
+    "moasha",
     "asha_prior",
     "hyperband",
     "hyperband_prior",
