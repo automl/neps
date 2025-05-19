@@ -649,6 +649,32 @@ def hyperband(
     )
 
 
+def mo_hyperband(
+    space: SearchSpace,
+    *,
+    eta: int = 3,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+) -> BracketOptimizer:
+    """Multi-objective version of hyperband using the same
+    candidate selection method as MOASHA.
+    """
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+        multi_objective=True,
+        mo_selector=mo_selector,
+    )
+
+
 def asha(
     space: SearchSpace,
     *,
@@ -1012,6 +1038,7 @@ PredefinedOptimizers: Mapping[
         ifbo,
         successive_halving,
         hyperband,
+        mo_hyperband,
         asha,
         moasha,
         async_hb,
@@ -1024,6 +1051,7 @@ OptimizerChoice: TypeAlias = Literal[
     "pibo",
     "successive_halving",
     "hyperband",
+    "mo_hyperband",
     "asha",
     "moasha",
     "async_hb",

@@ -103,6 +103,7 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "moasha",
     "asha_prior",
     "hyperband",
+    "mo_hyperband",
     "hyperband_prior",
     "async_hb",
     "async_hb_prior",
