@@ -118,7 +118,7 @@ def _bo(
     )
 
 
-def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
+def _bracket_optimizer(  # noqa: C901, PLR0912
     pipeline_space: SearchSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
@@ -131,6 +131,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     # style ones.
     early_stopping_rate: int | None,
     device: torch.device | None,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    multi_objective: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -180,6 +182,14 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
         sample_prior_first: Whether to sample the prior configuration first.
         device: If using Bayesian Optimization, the device to use for the optimization.
+
+        mo_selector: The multi-objective selector to use for promoting configs.
+        Can be one of:
+            * "nsga2": Non-dominated Sorting Genetic Algorithm II
+            * "epsnet": Epsilon-Net Strategy used in the paper: https://arxiv.org/abs/2106.12639
+
+        multi_objective: Whether to use multi-objective promotion strategies.
+            Only used in case of multi-objective multi-fidelity algorithms.
     """
     assert pipeline_space.fidelity is not None
     fidelity_name, fidelity = pipeline_space.fidelity
@@ -211,6 +221,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "hyperband":
@@ -222,6 +234,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "asha":
@@ -235,6 +249,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.Async.create,
                 rungs=list(rung_to_fidelity),
                 eta=eta,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "async_hb":
@@ -249,6 +265,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.AsyncHyperband.create,
                 bracket_rungs=bracket_rungs,
                 eta=eta,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
@@ -273,8 +291,6 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
             )
-        case PriorBandSampler() | Sampler():
-            _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
 
@@ -697,6 +713,30 @@ def asha(
     )
 
 
+def moasha(
+    space: SearchSpace,
+    *,
+    eta: int = 3,
+    early_stopping_rate: int = 0,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+) -> BracketOptimizer:
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        early_stopping_rate=early_stopping_rate,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+        multi_objective=True,
+        mo_selector=mo_selector,
+    )
+
+
 def async_hb(
     space: SearchSpace,
     *,
@@ -973,6 +1013,7 @@ PredefinedOptimizers: Mapping[
         successive_halving,
         hyperband,
         asha,
+        moasha,
         async_hb,
         priorband,
     )
@@ -984,6 +1025,7 @@ OptimizerChoice: TypeAlias = Literal[
     "successive_halving",
     "hyperband",
     "asha",
+    "moasha",
     "async_hb",
     "priorband",
     "random_search",
