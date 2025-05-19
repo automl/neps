@@ -55,8 +55,16 @@ class MOPriorBandSampler:
     prior_dists: Mapping[str, Prior]
     """The prior distributions to use for Multi-objective sampling."""
 
+    prior_trust_values: Mapping[str, float] = field(init=False)
+
     incumbent_type: Literal["hypervolume", "scalarized"] = field(default="scalarized")
     """The incumbent selection strategy to use."""
+
+    def __post_init__(self) -> None:
+        """Post init function to set the prior trust values to equal probabilities."""
+        self.prior_trust_values = {
+            obj: 1 / len(self.prior_dists) for obj in self.prior_dists
+        }
 
     @classmethod
     def create_sampler(
@@ -130,8 +138,10 @@ class MOPriorBandSampler:
         )
         max_rung = max(rung_sizes)
 
+        # Randomly select a prior distribution to sample from
         prior_dist: Prior = np.random.choice(
             list(self.prior_dists.values()),
+            p=list(self.prior_trust_values.values()),
         )
 
         # Below we will follow the "geomtric" spacing
@@ -163,6 +173,37 @@ class MOPriorBandSampler:
         # Check that there is at least rung with `eta` evaluations
         rung_counts = completed.groupby("rung").size()
         any_rung_with_eta_evals = (rung_counts == self.eta).any()
+
+        # 4. We now calculate the likelihood of the top K configs under each of the priors
+
+        if len(completed) > self.eta:
+            K = len(completed) // self.eta
+            all_rungs_topk_configs = scalarized_incumbents(
+                rung_table=completed,
+                k=K,
+            )
+            tau = 2
+
+            all_priors_top_k_pdf = torch.tensor(
+                [
+                    prior_dist.pdf_configs(all_rungs_topk_configs, frm=self.encoder).sum()  # type: ignore
+                    for prior_dist in self.prior_dists.values()
+                ]
+            )
+
+            # 5. Use softmax to get the prior probabilities from the average
+            # log likelihood of the top K configs under each prior
+
+            prior_probs = torch.softmax(
+                torch.log(all_priors_top_k_pdf) / tau, dim=0
+            ).numpy()
+
+            # 6. Now we use the prior probabilities to calculate the weights
+            # of each of the priors
+
+            self.prior_trust_values = {
+                obj: prior_probs[i] for i, (obj, _) in enumerate(self.prior_dists.items())
+            }
 
         # If the conditions are not met, we sample from the prior or randomly depending on
         # the geometrically distributed prior and uniform weights
@@ -217,7 +258,7 @@ class MOPriorBandSampler:
         inc_ratio = float(unnormalized_inc_score / total_score)
         prior_ratio = float(unnormalized_prior_score / total_score)
 
-        # 4. And finally, we distribute the original w_prior according to this ratio
+        # 7. And finally, we distribute the original w_prior according to this ratio
         w_inc = w_prior * inc_ratio
         w_prior = w_prior * prior_ratio
         assert np.isclose(w_prior + w_inc + w_random, 1.0)
