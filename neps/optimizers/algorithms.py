@@ -29,6 +29,7 @@ from neps.optimizers.bayesian_optimization import BayesianOptimization
 from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
+from neps.optimizers.mfbo import MFBO
 from neps.optimizers.moashabo import MOASHABO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.mopriorband import MOPriorBandSampler
@@ -1052,6 +1053,60 @@ def moashabo(
     )
 
 
+def mfbo(
+    space: SearchSpace,
+    *,
+    sampler: Literal["uniform", "prior", "priorband"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
+    eta: int = 3,
+    initial_design_size: int | Literal["ndim"] = "ndim",
+    cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
+    device: torch.device | str | None = None,
+    use_priors: bool = False,
+) -> MFBO:
+    """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
+    BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
+    _asha = _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        sampler=sampler,
+        bayesian_optimization_kick_in_point=None,
+        sample_prior_first=False,
+        early_stopping_rate=0,
+        device=device,
+    )
+
+    parameters = space.searchables
+
+    assert space.fidelity is not None
+    fidelity_name, fidelity = space.fidelity
+
+    match initial_design_size:
+        case "ndim":
+            n_initial_design_size = len(parameters)
+        case int():
+            if initial_design_size < 1:
+                raise ValueError("initial_design_size should be greater than 0")
+
+            n_initial_design_size = initial_design_size
+        case _:
+            raise ValueError(
+                "initial_design_size should be either 'ndim' or a positive integer"
+            )
+
+    return MFBO(
+        space=convert_mapping({**space.elements}),
+        encoder=ConfigEncoder.from_parameters(parameters),
+        bracket_optimizer=_asha,
+        initial_design_size=n_initial_design_size,
+        fid_max=fidelity.upper,
+        fid_name=fidelity_name,
+        device=device,
+        prior=Prior.from_parameters(parameters) if use_priors else None,
+    )
+
+
 def bayesian_optimization(
     space: SearchSpace,
     *,
@@ -1228,6 +1283,7 @@ PredefinedOptimizers: Mapping[
         moasha,
         priormoasha,
         moashabo,
+        mfbo,
         async_hb,
         priorband,
         mopriorband,
@@ -1244,6 +1300,7 @@ OptimizerChoice: TypeAlias = Literal[
     "moasha",
     "priormoasha",
     "moashabo",
+    "mfbo",
     "async_hb",
     "priorband",
     "mopriorband",
