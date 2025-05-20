@@ -75,15 +75,10 @@ neps.run(
 )
 ```
 
-!!! warning "Must set `prior=` for all parameters, if any"
-
-    If you specify `prior=` for one parameter, you must do so for all your variables.
-    This will be improved in future versions.
-
 !!! warning "Interaction with `is_fidelity`"
 
-    If you specify `is_fidelity=True` for one parameter, the `prior=` and `prior_confidence=` are ignored.
-    This will be dissallowed in future versions.
+    If you specify `is_fidelity=True` and `prior=` for one parameter, this will raise an error.
+
 Currently the two major algorithms that exploit this in NePS are `PriorBand`
 (prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors. For more information on priors and algorithms using them, please refer to the [prior documentation](../reference/search_algorithms/prior.md).
 
