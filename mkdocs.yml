@@ -94,7 +94,7 @@ plugins:
         python:
           paths: [neps]
           # Extra objects which allow for linking to external docs
-          import:
+          inventories:
             - 'https://docs.python.org/3/objects.inv'
             - 'https://numpy.org/doc/stable/objects.inv'
             - 'https://pandas.pydata.org/docs/objects.inv'
@@ -141,10 +141,10 @@ nav:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
     - Optimizer: 'reference/optimizers.md'
-    - Declarative Usage: 'reference/declarative_usage.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
+    - Seeding: 'reference/seeding.md'
   - Examples: "examples/"  # auto-generated
   - Algorithms:
     - Algorithms: 'reference/search_algorithms/landing_page_algo.md'

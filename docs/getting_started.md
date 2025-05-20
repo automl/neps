@@ -51,23 +51,22 @@ neps.run(evaluate_pipeline, pipeline_space)
 
 The [reference](reference/neps_run.md) section provides detailed information on the individual components of NePS.
 
-1. How to use the **[`neps.run()` function](reference/neps_run.md)** to start the optimization process.
+1. How to use the [**`neps.run()`** function](reference/neps_run.md) to start the optimization process.
 2. The different [search space](reference/pipeline_space.md) options available.
 3. How to choose and configure the [optimizer](reference/optimizers.md) used.
-4. [Declarative usage](reference/declarative_usage.md) of NePS via YAML configuration files.
-5. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
-6. How to use the [CLI](reference/cli.md) to run NePS from the command line.
-7. How to [analyze](reference/analyse.md) the optimization runs.
+4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
+5. How to use the [CLI](reference/cli.md) to run NePS from the command line.
+6. How to [analyze](reference/analyse.md) the optimization runs.
 
 Or discover the features of NePS through these practical examples:
 
-* **[Hyperparameter Optimization (HPO)](examples/template/basic.md)**:
+* **[Hyperparameter Optimization (HPO)](examples/basic_usage/hyperparameters.md)**:
 Learn the essentials of hyperparameter optimization with NePS.
 
 * **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**:
 Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
-* **[Utilizing Expert Priors for Hyperparameters](examples/template/priorband.md)**:
+* **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**:
 Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
 * **[Additional NePS Examples](examples/index.md)**:

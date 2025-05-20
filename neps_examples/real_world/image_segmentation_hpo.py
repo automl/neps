@@ -1,11 +1,11 @@
 # Example pipeline used from; https://lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning
 
+import os
+
 import torch
 from torchvision import transforms, datasets, models
 import lightning as L
 from lightning.pytorch.strategies import DDPStrategy
-import os
-from lightning.pytorch.utilities.rank_zero import rank_zero_only
 from torch.optim.lr_scheduler import PolynomialLR
 
 
@@ -18,14 +18,14 @@ class LitSegmentation(L.LightningModule):
         self.lr = lr
         self.momentum = momentum
         self.weight_decay = weight_decay
-        
+
     def training_step(self, batch):
         images, targets = batch
         outputs = self.model(images)['out']
         loss = self.loss_fn(outputs, targets.long().squeeze(1))
         self.log("train_loss", loss, sync_dist=True)
         return loss
-    
+
     def validation_step(self, batch):
         images, targets = batch
         outputs = self.model(images)['out']
@@ -39,19 +39,19 @@ class LitSegmentation(L.LightningModule):
             optimizer, total_iters=self.iters_per_epoch * self.trainer.max_epochs, power=0.9
         )
         return [optimizer], [scheduler]
-    
-    
-    
+
+
+
 class SegmentationData(L.LightningDataModule):
     def __init__(self, batch_size=4):
         super().__init__()
         self.batch_size = batch_size
-        
+
     def prepare_data(self):
-        dataset_path = "data/VOCtrainval_11-May-2012.tar"
+        dataset_path = ".data/VOC/VOCtrainval_11-May-2012.tar"
         if not os.path.exists(dataset_path):
-            datasets.VOCSegmentation(root="data", download=True)
-    
+            datasets.VOCSegmentation(root=".data/VOC", download=True)
+
     def train_dataloader(self):
         transform = transforms.Compose([
             transforms.ToTensor(),
@@ -59,9 +59,9 @@ class SegmentationData(L.LightningDataModule):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         target_transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((256, 256), antialias=True)])
-        train_dataset = datasets.VOCSegmentation(root="data", transform=transform, target_transform=target_transform)
-        return torch.utils.data.DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=63)
-    
+        train_dataset = datasets.VOCSegmentation(root=".data/VOC", transform=transform, target_transform=target_transform)
+        return torch.utils.data.DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=16, persistent_workers=True)
+
     def val_dataloader(self):
         transform = transforms.Compose([
             transforms.ToTensor(),
@@ -69,15 +69,15 @@ class SegmentationData(L.LightningDataModule):
             transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ])
         target_transform = transforms.Compose([transforms.ToTensor(), transforms.Resize((256, 256), antialias=True)])
-        val_dataset = datasets.VOCSegmentation(root="data", year='2012', image_set='val', transform=transform, target_transform=target_transform)
-        return torch.utils.data.DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=63)
+        val_dataset = datasets.VOCSegmentation(root=".data/VOC", year='2012', image_set='val', transform=transform, target_transform=target_transform)
+        return torch.utils.data.DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=16, persistent_workers=True)
 
-    
 
-def main(**kwargs):
+def evaluate_pipeline(**kwargs):
     data = SegmentationData(kwargs.get("batch_size", 4))
+    data.prepare_data()
     iters_per_epoch = len(data.train_dataloader())
-    model = LitSegmentation(iters_per_epoch, kwargs.get("lr", 0.02), kwargs.get("momentum", 0.9), kwargs.get("weight_decay", 1e-4)) 
+    model = LitSegmentation(iters_per_epoch, kwargs.get("lr", 0.02), kwargs.get("momentum", 0.9), kwargs.get("weight_decay", 1e-4))
     trainer = L.Trainer(max_epochs=kwargs.get("epoch", 30), strategy=DDPStrategy(find_unused_parameters=True), enable_checkpointing=False)
     trainer.fit(model, data)
     val_loss = trainer.logged_metrics["val_loss"].detach().item()
@@ -87,26 +87,26 @@ def main(**kwargs):
 if __name__ == "__main__":
     import neps
     import logging
-    
+
     logging.basicConfig(level=logging.INFO)
-    
+
     # Search space for hyperparameters
     pipeline_space = dict(
         lr=neps.Float(
-            lower=0.0001, 
-            upper=0.1, 
-            log=True, 
+            lower=0.0001,
+            upper=0.1,
+            log=True,
             prior=0.02
             ),
         momentum=neps.Float(
-            lower=0.1, 
-            upper=0.9, 
+            lower=0.1,
+            upper=0.9,
             prior=0.5
             ),
         weight_decay=neps.Float(
-            lower=1e-5, 
-            upper=1e-3, 
-            log=True, 
+            lower=1e-5,
+            upper=1e-3,
+            log=True,
             prior=1e-4
             ),
         epoch=neps.Integer(
@@ -122,8 +122,8 @@ if __name__ == "__main__":
     )
 
     neps.run(
-        evaluate_pipeline=main, 
-        pipeline_space=pipeline_space, 
-        root_directory="hpo_image_segmentation", 
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=pipeline_space,
+        root_directory="results/hpo_image_segmentation",
         max_evaluations_total=500
     )
