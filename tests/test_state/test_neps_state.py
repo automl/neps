@@ -115,6 +115,7 @@ OPTIMIZER_REQUIRES_FIDELITY = [
     "ifbo",
 ]
 REQUIRES_PRIOR = {
+    "pibo",
     "priorband",
     "priorband_bo",
     "priorband_asha",

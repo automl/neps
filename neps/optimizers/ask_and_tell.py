@@ -305,7 +305,7 @@ class AskAndTell:
         )
 
         _trial = self.trials[_trial.id]
-        _trial.report = _trial.set_complete(    # All tests fail
+        _trial.report = _trial.set_complete(
             report_as=report_as,
             objective_to_minimize=parsed_result.objective_to_minimize,
             cost=parsed_result.cost,
