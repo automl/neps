@@ -287,11 +287,7 @@ class BayesianOptimization:
 
 
 def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
-    """Get the reference point from the completed Trials.
-    Source:
-    https://github.com/optuna/optuna/blob/master/optuna/samplers/_tpe/sampler.py#L609 .
-    """
+    """Get the reference point from the completed Trials."""
+    eps = 1e-4
     worst_point = np.max(loss_vals, axis=0)
-    reference_point = np.maximum(1.1 * worst_point, 0.9 * worst_point)
-    reference_point[reference_point == 0] = 1e-12
-    return reference_point
+    return worst_point * (1 + eps)
