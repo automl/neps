@@ -51,6 +51,7 @@ def _bo(
     cost_aware: bool | Literal["log"],
     sample_prior_first: bool,
     device: torch.device | str | None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -71,6 +72,7 @@ def _bo(
 
         sample_prior_first: Whether to sample the default configuration first.
         device: Device to use for the optimization.
+        reference_point: The reference point to use for multi-objective optimization.
 
     Raises:
         ValueError: if initial_design_size < 1
@@ -115,6 +117,7 @@ def _bo(
         prior=Prior.from_parameters(parameters) if use_priors is True else None,
         sample_prior_first=sample_prior_first,
         device=device,
+        reference_point=reference_point,
     )
 
 
@@ -886,6 +889,7 @@ def bayesian_optimization(
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,
     device: torch.device | str | None = None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -911,6 +915,10 @@ def bayesian_optimization(
     If you have _priors_, we recommend looking at
     [`pibo`][neps.optimizers.algorithms.pibo].
 
+    For Multi-objective optimization (i.e., no. of objectives in trials > 1),
+    the algorithm automatically switches to the qLogNoisyExpectedHypervolumeImprovement
+    acquisition function.
+
     Args:
         space: The search space to sample from.
         initial_design_size: Number of samples used before using the surrogate model.
@@ -926,6 +934,10 @@ def bayesian_optimization(
                 If using `cost`, cost must be provided in the reports of the trials.
 
         device: Device to use for the optimization.
+
+        reference_point: The reference point to use got multi-objective bayesian
+            optimization. If `None`, the reference point will be calculated
+            automatically.
     """
     return _bo(
         pipeline_space=space,
@@ -934,6 +946,7 @@ def bayesian_optimization(
         device=device,
         use_priors=False,
         sample_prior_first=False,
+        reference_point=reference_point,
     )
 
 
