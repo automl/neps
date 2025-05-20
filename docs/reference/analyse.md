@@ -51,13 +51,12 @@ NePS will also generate a summary CSV file for you.
     │  └── config_1
     │      ├── config.yaml
     │      ├── metadata.yaml
-    │      └── result.yaml
-    ├── summary_csv
-    │  ├── config_data.csv
-    │  └── run_status.csv
-    ├── all_losses_and_configs.txt
-    ├── best_loss_trajectory.txt
-    └── best_loss_with_config_trajectory.txt
+    │      └── report.yaml
+    ├── summary
+    │  ├── full.csv
+    │  └── short.csv
+    ├── optimizer_info.yaml
+    └── optimizer_state.pkl
     ```
 
 
@@ -69,17 +68,17 @@ NePS will also generate a summary CSV file for you.
     │  └── config_1
     │      ├── config.yaml
     │      ├── metadata.yaml
-    │      └── result.yaml
-    ├── all_losses_and_configs.txt
-    ├── best_loss_trajectory.txt
-    └── best_loss_with_config_trajectory.txt
+    │      └── report.yaml
+    ├── optimizer_info.yaml
+    └── optimizer_state.pkl
     ```
 
 
-The `config_data.csv` contains all configuration details in CSV format, ordered by ascending `loss`.
-Details include configuration hyperparameters, any returned result from the `evalute_pipeline` function, and metadata information.
+The `full.csv` contains all configuration details in CSV format.
+Details include configuration hyperparameters and any returned result and cost from the `evaluate_pipeline` function.
 
-The `run_status.csv` provides general run details, such as the number of sampled configs, best configs, number of failed configs, best loss, etc.
+The `run_status.csv` provides general run details, such as the number of failed and successful configurations,
+and the best configuration with its corresponding objective value.
 
 # TensorBoard Integration
 

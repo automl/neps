@@ -1,9 +1,9 @@
 # Initializing the Pipeline Space
 
 In NePS, we need to define a `pipeline_space`.
-This space can be structured through various approaches, including a Python dictionary, a YAML file, or ConfigSpace.
+This space can be structured through various approaches, including a Python dictionary, or ConfigSpace.
 Each of these methods allows you to specify a set of parameter types, ranging from Float and Categorical to specialized architecture parameters.
-Whether you choose a dictionary, YAML file, or ConfigSpace, your selected method serves as a container or framework
+Whether you choose a dictionary, or ConfigSpace, your selected method serves as a container or framework
 within which these parameters are defined and organized. This section not only guides you through the process of
 setting up your `pipeline_space` using these methods but also provides detailed instructions and examples on how to
 effectively incorporate various parameter types, ensuring that NePS can utilize them in the optimization process.
@@ -61,9 +61,6 @@ By indicating a `prior=` we take this to be your user prior,
 You can also specify a `prior_confidence=` to indicate how strongly you want NePS,
 to focus on these, one of either `"low"`, `"medium"`, or `"high"`.
 
-Currently the two major algorithms that exploit this in NePS are `PriorBand`
-(prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors.
-
 ```python
 import neps
 
@@ -77,6 +74,7 @@ neps.run(
     }
 )
 ```
+
 !!! warning "Must set `prior=` for all parameters, if any"
 
     If you specify `prior=` for one parameter, you must do so for all your variables.
@@ -86,48 +84,8 @@ neps.run(
 
     If you specify `is_fidelity=True` for one parameter, the `prior=` and `prior_confidence=` are ignored.
     This will be dissallowed in future versions.
-
-## Defining a pipeline space using YAML
-Create a YAML file (e.g., `./pipeline_space.yaml`) with the parameter definitions following this structure.
-
-=== "`./pipeline_space.yaml`"
-
-    ```yaml
-    learning_rate:
-      type: float
-      lower: 2e-3
-      upper: 0.1
-      log: true
-
-    num_epochs:
-      type: int
-      lower: 3
-      upper: 30
-      is_fidelity: true
-
-    optimizer:
-      type: categorical
-      choices: ["adam", "sgd", "rmsprop"]
-
-    dropout_rate: 0.5
-    ```
-
-=== "`run.py`"
-
-    ```python
-    neps.run(.., pipeline_space="./pipeline_space.yaml")
-    ```
-
-When defining the `pipeline_space` using a YAML file, if the `type` argument is not specified,
-the NePS will automatically infer the data type based on the value provided.
-
-* If `lower` and `upper` are provided, then if they are both integers, the type will be inferred as `int`,
-    otherwise as `float`. You can provide scientific notation for floating-point numbers as well.
-* If `choices` are provided, the type will be inferred as `categorical`.
-* If just a numeric or string is provided, the type will be inferred as `constant`.
-
-If none of these hold, an error will be raised.
-
+Currently the two major algorithms that exploit this in NePS are `PriorBand`
+(prior-based `HyperBand`) and `PiBO`, a version of Bayesian Optimization which uses Priors. For more information on priors and algorithms using them, please refer to the [prior documentation](../reference/search_algorithms/prior.md).
 
 ## Using ConfigSpace
 
@@ -153,18 +111,3 @@ configspace = ConfigurationSpace(
 
 For additional information on ConfigSpace and its features, please visit the following
 [link](https://github.com/automl/ConfigSpace).
-
-## Supported Architecture parameter Types
-A comprehensive documentation for the Architecture parameter is not available at this point.
-
-If you are interested in exploring architecture parameters, you can find detailed
-examples and usage in the following resources:
-
-- [Basic Usage Examples](https://github.com/automl/neps/tree/master/neps_examples/basic_usage) - Basic usage
-    examples that can help you understand the fundamentals of Architecture parameters.
-- [Experimental Examples](https://github.com/automl/neps/tree/master/neps_examples/experimental) - For more advanced
-    and experimental use cases, including Hierarchical parameters, check out this collection of examples.
-
-!!! warning
-
-    The configuration of `pipeline_space` from a YAML file does not currently support architecture parameter types.

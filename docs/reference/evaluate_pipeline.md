@@ -1,4 +1,4 @@
-# The run function
+# The evaluate function
 
 ## Introduction
 
@@ -108,7 +108,7 @@ Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimiz
 
 NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `evaluate_pipeline=` function for user convenience.
 
-Regard an example to be run with a multi-fidelity optimizer, some checkpointing would be advantageos such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
+Regard an example to be run with a multi-fidelity optimizer, some checkpointing would be advantageous such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
 
 ```python
 def evaluate_pipeline(
@@ -116,31 +116,31 @@ def evaluate_pipeline(
     previous_pipeline_directory,  # The directory of the immediate lower fidelity config
     **config,                     # The hyperparameters to be used in the pipeline
 ):
-    # Assume element3 is our fidelity element
+    # Assume the third element is our fidelity element
     element_1 = config["element_1"]
     element_2 = config["element_2"]
-    element_3 = config["element_3"]
+    fidelity = config["fidelity"]
 
     # Load any saved checkpoints
     checkpoint_name = "checkpoint.pth"
-    start_element_3 = 0
+    start_fidelity = 0
 
     if previous_pipeline_directory is not None:
         # Read in state of the model after the previous fidelity rung
         checkpoint = torch.load(previous_pipeline_directory / checkpoint_name)
-        prev_element_3 = checkpoint["element_3"]
+        prev_fidelity = checkpoint["fidelity"]
     else:
-        prev_element_3 = 0
+        prev_fidelity = 0
 
-    start_element_3 += prev_element_3
+    start_fidelity += prev_fidelity
 
     loss = 0
-    for i in range(start_element_3, element_3):
+    for i in range(start_fidelity, fidelity):
         loss += element_1 - element_2
 
     torch.save(
         {
-            "element_3": element_3,
+            "fidelity": fidelity,
         },
         pipeline_directory / checkpoint_name,
     )

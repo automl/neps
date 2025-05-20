@@ -46,10 +46,10 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `evalute_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
+1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
 1. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
-1. Call `neps.run` to optimize `evalute_pipeline` over `pipeline_space`
+1. Call `neps.run` to optimize `evaluate_pipeline` over `pipeline_space`
 
 In code, the usage pattern can look like this:
 
@@ -59,7 +59,7 @@ import logging
 
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def evalute_pipeline(
+def evaluate_pipeline(
         hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
 ) -> dict:
     # Create your model
@@ -72,7 +72,7 @@ def evalute_pipeline(
     return validation_error
 
 
-# 2. Define a search space of parameters; use the same parameter names as in evalute_pipeline
+# 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
 pipeline_space = dict(
     hyperparameter_a=neps.Float(
         lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
@@ -84,7 +84,7 @@ pipeline_space = dict(
 # 3. Run the NePS optimization
 logging.basicConfig(level=logging.INFO)
 neps.run(
-    evalute_pipeline=evalute_pipeline,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="path/to/save/results",  # Replace with the actual path.
     max_evaluations_total=100,
