@@ -116,9 +116,6 @@ NO_DEFAULT_PRIOR_SUPPORT = [
 REQUIRES_PRIOR = [
     "pibo",
     "priorband",
-    "priorband_bo",
-    "priorband_asha",
-    "priorband_asha_hyperband",
 ]
 
 
@@ -141,6 +138,11 @@ def optimizer_and_key_and_search_space(
 
     if key in REQUIRES_FIDELITY and search_space.fidelity is None:
         pytest.xfail(f"{key} requires a fidelity parameter")
+
+    if key in REQUIRES_PRIOR and any(
+        parameter.prior is None for parameter in search_space.searchables.values()
+    ):
+        pytest.xfail(f"{key} requires a prior")
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
