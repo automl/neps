@@ -239,7 +239,7 @@ class AskAndTell:
             time_started=time_started,
             worker_id=worker_id,
         )
-        trial.set_complete(
+        trial.report = trial.set_complete(
             report_as=report_as,
             objective_to_minimize=parsed_result.objective_to_minimize,
             cost=parsed_result.cost,
@@ -305,7 +305,7 @@ class AskAndTell:
         )
 
         _trial = self.trials[_trial.id]
-        _trial.set_complete(
+        _trial.report = _trial.set_complete(
             report_as=report_as,
             objective_to_minimize=parsed_result.objective_to_minimize,
             cost=parsed_result.cost,

@@ -1,10 +1,10 @@
 import logging
-from warnings import warn
 
 import numpy as np
-
 import neps
 
+# This example demonstrates NePS uses both fidelity and expert priors to
+# optimize hyperparameters of a pipeline.
 
 def evaluate_pipeline(float1, float2, integer1, fidelity):
     objective_to_minimize = -float(np.sum([float1, float2, integer1])) / fidelity

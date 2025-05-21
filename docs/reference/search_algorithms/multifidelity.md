@@ -9,12 +9,14 @@ This section concerns optimizers that utilize Multi-Fidelity information to guid
 It starts with a large number of random configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.successive_halving].
+
 ??? example "Practical Tips"
 
     - For the same total compute, `SH` outperforms uninformed search algorithms like random search or grid search.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, `SH` underperforms.
     - `SH` has two parameters: $\eta$ and $n$, where $\eta$ is the promotion factor and $n$ is the number of configurations at the lowest fidelity.
-    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels.
+    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels. For more details, see the [api][neps.optimizers.algorithms.successive_halving].
 
 ### _Asynchronous_ Successive Halving
 
@@ -26,21 +28,26 @@ Instead of waiting for all $n$ configurations to finish on one fidelity, `ASHA` 
 
 Although not inherently a Prior-optimizer, ``SH`` (and ``ASHA``) can make use of [Priors](../search_algorithms/prior.md). Instead of sampling configurations uniformly, the optimizer can directly sample from the Prior, which results in a more focused search - highly beneficial _if_ the Prior is reliable. Alternatively, the ``SH`` can bias the promotion of configurations towards the Prior, keeping worse-performing, but recommended configurations longer in the optimization process.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.asha].
+
 ## 2 `HyperBand`
 
 `HyperBand`/`HB` (see [paper](https://arxiv.org/pdf/1603.06560)) is an extension of [``Successive Halfing``](../search_algorithms/multifidelity.md#1-successive-halfing) that employs multiple ``Successive Halfing``-rounds in parallel.
 
 Each of these runs has a different resource budget and different number of configurations. This makes ``HyperBand`` more flexible and parallelizable than ``SH``.
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.hyperband].
+
 ??? example "Practical Tips"
 
     - ``HyperBand`` is a good choice when you have a limited budget and want to parallelize your search.
     - It is more efficient than ``SH`` when the correlation between lower and higher fidelities is low.
-    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds.
+    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds. For more details, see the [api][neps.optimizers.algorithms.hyperband].
 
 !!! info
     ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
 
+<!---
 ## 3 `BOHB`
 
 `BOHB` (see [paper](https://arxiv.org/pdf/1807.01774)) is a combination of [``Bayesian Optimization``](../search_algorithms/bayesian_optimization.md) and [``HyperBand``](../search_algorithms/multifidelity.md#2-hyperband).
@@ -73,11 +80,13 @@ where $a(\boldsymbol{x}, y_j)$ is the acquisition function and $p(y_j|x_j)$ is t
     - ``A-BOHB`` is more efficient than ``BOHB`` when the correlation between lower and higher fidelities is low.
     - The algorithm itself is more computationally expensive than ``BOHB``, as it has to model the objective function across all fidelities.
 
-## 5 `In-Context Freeze-Thaw Bayesian Optimization`
+-->
+
+## 3 `In-Context Freeze-Thaw Bayesian Optimization`
 
 `In-Context Freeze-Thaw Bayesian Optimization`/``IfBO`` (see [paper](https://arxiv.org/pdf/2204.11051)) expands on the idea of [Freeze-Thaw Bayesian Optimization](https://arxiv.org/pdf/1406.3896) (``FT-BO``) by using a `Prior-data fitted network` (PFN) as a surrogate for the ``FT-BO``.
 
-Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), it uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
+Standard ``FT-BO`` models the performance of a configuration with a Gaussian Process, assuming exponential loss decay. <!--Similar to [A-BOHB](../search_algorithms/multifidelity.md#4-a-bohb), i-->It uses this joint GP to fantasize results and decides for the most informative configurations. The ``Entropy Search``-acquisition function (see [paper](https://jmlr.csail.mit.edu/papers/volume13/hennig12a/hennig12a.pdf)) quantifies this information gain:
 $$
 a(\boldsymbol{x}) = \int\left(H\left(P^y_{\min}\right)\right) - \left(H\left(P_{\min}\right)\right)P(y| { \lbrace (\boldsymbol{x}_n,y_n) \rbrace }^N)dy
 $$
@@ -95,9 +104,11 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
 
+See the algorithm's implementation details in the [api][neps.optimizers.algorithms.ifbo].
+
 ??? example "Practical Tips"
 
-    TODO Do we even use it?
+    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing neps's [checkpointing](../evaluate_pipeline.md#arguments-for-convenience) feature.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).

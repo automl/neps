@@ -1,6 +1,5 @@
 import logging
 import time
-from warnings import warn
 
 import neps
 
