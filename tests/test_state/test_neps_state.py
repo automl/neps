@@ -96,6 +96,8 @@ REQUIRES_FIDELITY = [
     "async_hb",
     "ifbo",
     "priorband",
+    "moasha",
+    "mo_hyperband",
 ]
 NO_DEFAULT_FIDELITY_SUPPORT = [
     "random_search",
@@ -112,6 +114,8 @@ NO_DEFAULT_PRIOR_SUPPORT = [
     "hyperband",
     "async_hb",
     "random_search",
+    "moasha",
+    "mo_hyperband",
 ]
 REQUIRES_PRIOR = [
     "pibo",
