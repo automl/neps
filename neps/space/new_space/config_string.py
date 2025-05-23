@@ -216,10 +216,15 @@ class ConfigString:
         return self._at_hierarchy_level_cache[level]
 
     def pretty_format(self) -> str:
-        format_str = "{indent}{item.level:0>2d} :: {item.operator} {item.hyperparameters}"
+        format_str_with_kwargs = "{indent}{item.level:0>2d} :: {item.operator} {item.hyperparameters}"
+        format_str_no_kwargs = "{indent}{item.level:0>2d} :: {item.operator}"
         lines = [self.config_string]
         for item in self.unwrapped:
-            lines.append(format_str.format(item=item, indent="\t" * item.level))
+            if item.hyperparameters not in {"{}", ""}:
+                line = format_str_with_kwargs.format(item=item, indent="\t" * item.level)
+            else:
+                line = format_str_no_kwargs.format(item=item, indent="\t" * item.level)
+            lines.append(line)
         return "\n".join(lines)
 
     def __eq__(self, other: object) -> bool:
