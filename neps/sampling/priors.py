@@ -393,7 +393,13 @@ class CenteredPrior(Prior):
         # respective distributions.
         # NOTE: There's no gaurantee these are actually probabilities and so we
         # treat them as unnormalized log pdfs
-        itr = iter(zip(self._meaningful_ixs, self._meaningful_dists, strict=False))
+        itr = iter(
+            zip(
+                range(len(self._meaningful_dists)),
+                self._meaningful_dists,
+                strict=False,
+            )
+        )
         first_i, first_dist = next(itr)
         log_pdfs = first_dist.log_prob(translated_x[..., first_i])
 
