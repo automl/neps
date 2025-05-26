@@ -969,7 +969,7 @@ def priorband(
             `N` * `maximum_fidelity` worth of fidelity has been evaluated,
             proceed with bayesian optimization when sampling a new configuration.
     """
-    if not any(parameter.prior is not None for parameter in space.searchables.values()):
+    if all(parameter.prior is None for parameter in space.searchables.values()):
         logger.warning(
             "Warning: No priors are defined in the search space, priorband will sample"
             " uniformly. Consider using hyperband instead."
@@ -1120,7 +1120,7 @@ def pibo(
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             In this case, the max fidelity is always used.
     """
-    if not any(parameter.prior is not None for parameter in space.searchables.values()):
+    if all(parameter.prior is None for parameter in space.searchables.values()):
         logger.warning(
             "Warning: PiBO was called without any priors - using uniform priors on all"
             " parameters.\nConsider using Bayesian Optimization instead."
