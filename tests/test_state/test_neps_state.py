@@ -143,7 +143,7 @@ def optimizer_and_key_and_search_space(
     if key in REQUIRES_FIDELITY and search_space.fidelity is None:
         pytest.xfail(f"{key} requires a fidelity parameter")
 
-    if key in REQUIRES_PRIOR and any(
+    if key in REQUIRES_PRIOR and all(
         parameter.prior is None for parameter in search_space.searchables.values()
     ):
         pytest.xfail(f"{key} requires a prior")
