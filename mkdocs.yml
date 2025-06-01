@@ -153,7 +153,5 @@ nav:
     - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
     - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
   - API: 'api/' # auto-generated
-  - Contributing:
-    - Dev Guide: 'dev_docs/contributing.md'
-    - Roadmap: "dev_docs/roadmap.md"
+  - Contributing: 'dev_docs/contributing.md'
   - Cite: 'citations.md'
