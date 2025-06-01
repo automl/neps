@@ -55,8 +55,7 @@ The [reference](reference/neps_run.md) section provides detailed information on 
 2. The different [search space](reference/pipeline_space.md) options available.
 3. How to choose and configure the [optimizer](reference/optimizers.md) used.
 4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
-5. How to use the [CLI](reference/cli.md) to run NePS from the command line.
-6. How to [analyze](reference/analyse.md) the optimization runs.
+5. How to [analyze](reference/analyse.md) the optimization runs.
 
 Or discover the features of NePS through these practical examples:
 

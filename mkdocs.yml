@@ -140,10 +140,9 @@ nav:
   - Reference:
     - Run: 'reference/neps_run.md'
     - Search Space: 'reference/pipeline_space.md'
-    - Optimizer: 'reference/optimizers.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
-    - CLI Usage: 'reference/cli.md'
     - Analysing Runs: 'reference/analyse.md'
+    - Optimizer: 'reference/optimizers.md'
     - Seeding: 'reference/seeding.md'
   - Examples: "examples/"  # auto-generated
   - Algorithms:
