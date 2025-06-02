@@ -106,6 +106,7 @@ class MOASHABO:
         # Set scalarization weights if not set
         if self.scalarization_weights is None:
             self.scalarization_weights = np.random.uniform(size=num_objectives)
+            self.scalarization_weights /= np.sum(self.scalarization_weights)
 
         # Scalarize trials.report.objective_to_minimize and remove fidelity
         # from the trial configs
