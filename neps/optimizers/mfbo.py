@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -57,6 +57,12 @@ class MFBO:
     prior: Prior | None = None
     """The prior to use for this optimizer."""
 
+    n_init_used: int = field(default=0, init=False)
+    """The effective number of initial seed configurations used
+    for the Bayesian optimization. This refers to the number of
+    configurations that were evaluated at the maximum fidelity.
+    """
+
     def __call__(
         self,
         trials: Mapping[str, Trial],
@@ -110,6 +116,9 @@ class MFBO:
             "No trials found with the maximum fidelity. "
             "Consider increasing the initial design size to run MOASHA longer."
         )
+
+        if self.n_init_used == 0:
+            self.n_init_used = len(_trials)
 
         # Sample new configurations using the Bayesian optimization
         sampled_config = self.sample_using_bo(
@@ -170,9 +179,7 @@ class MFBO:
         # the probability of it being sampled from the prior.
         pibo_exp_term = None
         if prior:
-            pibo_exp_term = _pibo_exp_term(
-                n_sampled, encoder.ndim, self.initial_design_size
-            )
+            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_init_used)
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else prior
 
