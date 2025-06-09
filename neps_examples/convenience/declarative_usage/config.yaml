@@ -1,7 +1,7 @@
 experiment:
   root_directory: "results/example_run"
   max_evaluations_total: 20
-  overwrite_working_directory: true
+  overwrite_root_directory: true
   post_run_summary: true
 
 pipeline_space:

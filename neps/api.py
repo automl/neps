@@ -33,7 +33,7 @@ def run(  # noqa: PLR0913
     ),
     *,
     root_directory: str | Path = "neps_results",
-    overwrite_working_directory: bool = False,
+    overwrite_root_directory: bool = False,
     post_run_summary: bool = True,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
@@ -189,7 +189,7 @@ def run(  # noqa: PLR0913
 
         root_directory: The directory to save progress to.
 
-        overwrite_working_directory: If true, delete the working directory at the start of
+        overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
         post_run_summary: If True, creates a csv file after each worker is done,
@@ -443,7 +443,7 @@ def run(  # noqa: PLR0913
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,
         ignore_errors=ignore_errors,
-        overwrite_optimization_dir=overwrite_working_directory,
+        overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
     )
 

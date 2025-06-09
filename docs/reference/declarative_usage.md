@@ -111,7 +111,7 @@ but also advanced settings for more complex setups.
     max_cost_total:
 
     # Debug and Monitoring
-    overwrite_working_directory: true
+    overwrite_root_directory: true
     post_run_summary: false
 
     # Parallelization Setup

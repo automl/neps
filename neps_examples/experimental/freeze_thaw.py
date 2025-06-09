@@ -168,7 +168,7 @@ if __name__ == "__main__":
         optimizer="ifbo",
         max_evaluations_total=50,
         root_directory="./debug/ifbo-mnist/",
-        overwrite_working_directory=False,  # set to False for a multi-worker run
+        overwrite_root_directory=False,  # set to False for a multi-worker run
     )
 
     # NOTE: this is `experimental` and may not work as expected

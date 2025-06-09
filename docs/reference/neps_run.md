@@ -108,13 +108,13 @@ If the run previously stopped due to reaching a budget and you specify the same 
 
 ## Overwriting a Run
 
-To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_working_directory=True` argument.
+To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_root_directory=True` argument.
 
 ```python
 neps.run(
     ...,
     root_directory="path/to/previous_result_dir",
-    overwrite_working_directory=True,
+    overwrite_root_directory=True,
 )
 ```
 
@@ -176,7 +176,7 @@ Any new workers that come online will automatically pick up work and work togeth
         max_evaluations_total=100,
         max_evaluations_per_run=10, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
-        overwrite_working_directory=False, #!!!
+        overwrite_root_directory=False, #!!!
     )
     ```
 
@@ -186,7 +186,7 @@ Any new workers that come online will automatically pick up work and work togeth
 
     !!! warning
 
-        Ensure `overwrite_working_directory=False` to prevent newly spawned workers from deleting the shared directory!
+        Ensure `overwrite_root_directory=False` to prevent newly spawned workers from deleting the shared directory!
 
 
 === "Shell"

@@ -166,7 +166,7 @@ pipeline_space:
 
 root_directory: "set/path/for/root_directory"
 max_evaluations_total:
-overwrite_working_directory:
+overwrite_root_directory:
 """
                 )
             elif template == "complete":
@@ -195,7 +195,7 @@ max_evaluations_total: 20             # Budget
 max_cost_total:
 
 # Debug and Monitoring
-overwrite_working_directory: false
+overwrite_root_directory: false
 post_run_summary: true
 
 # Parallelization Setup
