@@ -989,6 +989,7 @@ def moashabo(
     sampler: Literal["uniform", "mopriorsampler", "mopriorband"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
     eta: int = 3,
+    epsilon: float = 0.25,
     prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
@@ -1050,6 +1051,7 @@ def moashabo(
         scalarization_weights=bo_scalar_weights,
         device=device,
         priors=_priors,
+        epsilon=epsilon,
     )
 
 
@@ -1059,6 +1061,7 @@ def mfbo(
     sampler: Literal["uniform", "prior", "priorband"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
     eta: int = 3,
+    epsilon: float = 0.25,
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
     device: torch.device | str | None = None,
@@ -1104,6 +1107,7 @@ def mfbo(
         fid_name=fidelity_name,
         device=device,
         prior=Prior.from_parameters(parameters) if use_priors else None,
+        epsilon=epsilon,
     )
 
 

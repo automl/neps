@@ -63,6 +63,12 @@ class MFBO:
     configurations that were evaluated at the maximum fidelity.
     """
 
+    epsilon: float = 0.25
+    """The epsilon value to use for the epsilon-greedy decaying prior-weighted
+    acquisition function. This is the probability of not using the prior
+    acquisition function.
+    """
+
     def __call__(
         self,
         trials: Mapping[str, Trial],
@@ -172,7 +178,7 @@ class MFBO:
         if self.prior is not None:
             prior = np.random.choice(
                 [self.prior, None],
-                p=[0.75, 0.25],
+                p=[1 - self.epsilon, self.epsilon],
             )
 
         # If we should use the prior, weight the acquisition function by
