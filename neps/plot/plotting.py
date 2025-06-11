@@ -148,7 +148,7 @@ def _interpolate_time(
         _df.index = [max_b]
         df = pd.concat((df, _df)).sort_index()
 
-    df = df.fillna(method="backfill", axis=0).fillna(method="ffill", axis=0)
+    df = df.bfill(axis=0).ffill(axis=0)
     if x_range is not None:
         df = df.query(f"{x_range[0]} <= index <= {x_range[1]}")
 
@@ -161,7 +161,7 @@ def _df_to_x_range(df: pd.DataFrame, x_range: tuple | None = None) -> pd.DataFra
     _df = pd.DataFrame.from_dict(new_entry, orient="index").T
     _df.index = [x_max]
     df = pd.concat((df, _df)).sort_index()
-    return df.fillna(method="backfill", axis=0).fillna(method="ffill", axis=0)
+    return df.bfill(axis=0).ffill(axis=0)
 
 
 def _set_legend(
