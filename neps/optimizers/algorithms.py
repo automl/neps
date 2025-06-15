@@ -30,11 +30,11 @@ from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.mfbo import MFBO
-from neps.optimizers.moashabo import MOASHABO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.mopriorband import MOPriorBandSampler
 from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
@@ -983,7 +983,7 @@ def mopriorband(
     )
 
 
-def moashabo(
+def primo(
     space: SearchSpace,
     *,
     sampler: Literal["uniform", "mopriorsampler", "mopriorband"] = "uniform",
@@ -997,7 +997,7 @@ def moashabo(
     cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
     device: torch.device | str | None = None,
     bo_scalar_weights: dict[str, float] | None = None,
-) -> MOASHABO:
+) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
     _moasha = _bracket_optimizer(
@@ -1041,7 +1041,7 @@ def moashabo(
             confidence_values=prior_confidences,
         )
 
-    return MOASHABO(
+    return PriMO(
         space=convert_mapping({**space.elements}),
         encoder=ConfigEncoder.from_parameters(parameters),
         bracket_optimizer=_moasha,
@@ -1286,7 +1286,7 @@ PredefinedOptimizers: Mapping[
         asha,
         moasha,
         priormoasha,
-        moashabo,
+        primo,
         mfbo,
         async_hb,
         priorband,
@@ -1303,7 +1303,7 @@ OptimizerChoice: TypeAlias = Literal[
     "asha",
     "moasha",
     "priormoasha",
-    "moashabo",
+    "primo",
     "mfbo",
     "async_hb",
     "priorband",

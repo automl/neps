@@ -28,10 +28,8 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class MOASHABO:
-    """Replaces random sampling initial design in Bayesian Optimization with
-    MOASHA MOMF optimization.
-    """
+class PriMO:
+    """The PriMO algorithm for integrating MO priors in Bayesian Optimization."""
 
     space: SearchSpace
     """The search space to use, without the fidelity."""
@@ -136,7 +134,7 @@ class MOASHABO:
                 f"Trial {trial_id} has no objective to minimize."
             )
             assert isinstance(_trial.report.objective_to_minimize, Sequence), (
-                "Trial objectives must be a sequence for MOASHABO, "
+                "Trial objectives must be a sequence for PriMO, "
                 f"got {type(_trial.report.objective_to_minimize)}"
             )
 
