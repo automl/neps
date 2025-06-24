@@ -353,14 +353,11 @@ class DefaultWorker:
                 )
 
         if self.settings.max_cost_total is not None:
-            # for _, trial in trials.items():
-            #     print("TRIAL: ", trial)
             cost = sum(
                 trial.report.cost
                 for _, trial in trials.items()
                 if trial.report is not None and trial.report.cost is not None
             )
-            # print("COST ", cost)
             if cost >= self.settings.max_cost_total:
                 return (
                     f"The maximum cost `{self.settings.max_cost_total=}` has been"
