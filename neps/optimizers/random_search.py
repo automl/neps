@@ -33,6 +33,14 @@ class RandomSearch:
         config_dicts = self.encoder.decode(configs)
         for config in config_dicts:
             config.update(self.space.constants)
+            if self.space.fidelity is not None:
+                config.update(
+                    {
+                        key: value.upper
+                        for key, value in self.space.fidelities.items()
+                        if key not in config
+                    }
+                )
 
         if n is None:
             config = config_dicts[0]

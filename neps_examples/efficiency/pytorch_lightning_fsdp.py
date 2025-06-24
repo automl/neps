@@ -1,7 +1,8 @@
-# Based on: https://lightning.ai/docs/pytorch/stable/advanced/model_parallel/fsdp.html
+"""Based on: https://lightning.ai/docs/pytorch/stable/advanced/model_parallel/fsdp.html
+
+Mind that this example does not run on Windows at the moment."""
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
@@ -54,12 +55,12 @@ if __name__ == "__main__":
     import logging
 
     logging.basicConfig(level=logging.INFO)
-    
+
     pipeline_space = dict(
         lr=neps.Float(
-            lower=0.0001, 
-            upper=0.1, 
-            log=True, 
+            lower=0.0001,
+            upper=0.1,
+            log=True,
             prior=0.01
             ),
         epoch=neps.Integer(
@@ -70,8 +71,8 @@ if __name__ == "__main__":
         )
 
     neps.run(
-        evaluate_pipeline=evaluate_pipeline, 
-        pipeline_space=pipeline_space, 
-        root_directory="results/pytorch_lightning_fsdp", 
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=pipeline_space,
+        root_directory="results/pytorch_lightning_fsdp",
         max_evaluations_total=5
         )

@@ -11,8 +11,8 @@ def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
     # When adding pipeline_directory to evaluate_pipeline, neps detects its presence and
     # passes a directory unique for each pipeline configuration. You can then use this
     # pipeline_directory to create / save files pertaining to a specific pipeline, e.g.:
-    weight_file = pipeline_directory / "weight_file.txt"
-    weight_file.write_text("0")
+    pipeline_info = pipeline_directory / "info_file.txt"
+    pipeline_info.write_text(f"{float1} - {categorical} - {integer1}")
 
     objective_to_minimize = -float(np.sum([float1, int(categorical), integer1]))
     return objective_to_minimize

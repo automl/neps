@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
     id_index = np.empty(len(trials), dtype=int)
     rungs_index = np.empty(len(trials), dtype=int)
-    perfs = np.empty(len(trials), dtype=np.float64)
+    perfs = [np.nan] * len(trials)
     configs = np.empty(len(trials), dtype=object)
 
     for i, (trial_id, trial) in enumerate(trials.items()):
@@ -53,8 +53,8 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
             perf = np.inf  # Error? Either way, we wont promote it
         elif isinstance(trial.report.objective_to_minimize, float):
             perf = trial.report.objective_to_minimize
-        elif isinstance(trial.report.objective_to_minimize, float):
-            raise NotImplementedError("Multiobjective support not implemented yet.")
+        elif isinstance(trial.report.objective_to_minimize, Sequence):
+            perf = np.array(trial.report.objective_to_minimize, dtype=np.float64)
         else:
             raise ValueError("Unknown type of objective_to_minimize")
 
@@ -150,7 +150,9 @@ class GPSampler:
                 # Unfortunatly, there's no option to indicate that we minimize
                 # the AcqFunction so we need to do some kind of transformation.
                 # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                objective=LinearMCObjective(
+                    weights=torch.tensor([-1.0], device=self.device)
+                ),
                 X_pending=data.x_pending,
                 prune_baseline=True,
             )
@@ -374,7 +376,6 @@ class BracketOptimizer:
                             self.fid_name: self.rung_to_fid[rung],
                         }
                         return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
-
                     case _:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")
             case _:

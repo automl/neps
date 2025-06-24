@@ -84,43 +84,43 @@ JUST_SKIP = [
     "multifidelity_tpe",
 ]
 
-OPTIMIZER_FAILS_WITH_FIDELITY = [
-    "random_search",
-    "bayesian_optimization_cost_aware",
-    "bayesian_optimization",
-    "bayesian_optimization_prior",
-    "pibo",
-    "cost_cooling_bayesian_optimization",
-    "cost_cooling",
-]
-
-# There's no programattic way to check if a class requires a fidelity.
+# There's no programattic way to check if a class requires or
+# doesnt support a fidelity/prior.
 # See issue #118, #119, #120
-OPTIMIZER_REQUIRES_FIDELITY = [
+# For now, keep these lists up to date manually and xfail the tests
+# that require a fidelity/prior.
+REQUIRES_FIDELITY = [
     "successive_halving",
-    "successive_halving_prior",
     "asha",
-    "asha_prior",
     "hyperband",
-    "hyperband_prior",
     "async_hb",
-    "async_hb_prior",
-    "priorband",
-    "priorband_sh",
-    "priorband_asha",
-    "priorband_async",
-    "priorband_bo",
-    "bayesian_optimization_cost_aware",
-    "mobster",
     "ifbo",
-]
-REQUIRES_PRIOR = {
     "priorband",
-    "priorband_bo",
-    "priorband_asha",
-    "priorband_asha_hyperband",
-}
-REQUIRES_COST = ["cost_cooling_bayesian_optimization", "cost_cooling"]
+    "moasha",
+    "mo_hyperband",
+]
+NO_DEFAULT_FIDELITY_SUPPORT = [
+    "random_search",
+    "grid_search",
+    "bayesian_optimization",
+    "pibo",
+]
+NO_DEFAULT_PRIOR_SUPPORT = [
+    "grid_search",
+    "bayesian_optimization",
+    "ifbo",
+    "successive_halving",
+    "asha",
+    "hyperband",
+    "async_hb",
+    "random_search",
+    "moasha",
+    "mo_hyperband",
+]
+REQUIRES_PRIOR = [
+    "pibo",
+    "priorband",
+]
 
 
 @fixture
@@ -132,14 +132,21 @@ def optimizer_and_key_and_search_space(
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in REQUIRES_PRIOR and search_space.searchables["a"].prior is None:
-        pytest.xfail(f"{key} requires a prior")
+    if key in NO_DEFAULT_PRIOR_SUPPORT and any(
+        parameter.prior is not None for parameter in search_space.searchables.values()
+    ):
+        pytest.xfail(f"{key} crashed with a prior")
 
-    if len(search_space.fidelities) > 0 and key in OPTIMIZER_FAILS_WITH_FIDELITY:
+    if search_space.fidelity is not None and key in NO_DEFAULT_FIDELITY_SUPPORT:
         pytest.xfail(f"{key} crashed with a fidelity")
 
-    if key in OPTIMIZER_REQUIRES_FIDELITY and not len(search_space.fidelities) > 0:
+    if key in REQUIRES_FIDELITY and search_space.fidelity is None:
         pytest.xfail(f"{key} requires a fidelity parameter")
+
+    if key in REQUIRES_PRIOR and all(
+        parameter.prior is None for parameter in search_space.searchables.values()
+    ):
+        pytest.xfail(f"{key} requires a prior")
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
@@ -171,10 +178,9 @@ def case_neps_state_filebased(
 def test_sample_trial(
     neps_state: NePSState,
     optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
+    capsys,
 ) -> None:
     optimizer, key, search_space = optimizer_and_key_and_search_space
-    if key in REQUIRES_COST and neps_state.lock_and_get_optimizer_state().budget is None:
-        pytest.xfail(f"{key} requires a cost budget")
 
     assert neps_state.lock_and_read_trials() == {}
     assert neps_state.lock_and_get_next_pending_trial() is None

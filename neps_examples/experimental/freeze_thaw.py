@@ -167,14 +167,14 @@ if __name__ == "__main__":
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
         max_evaluations_total=50,
-        root_directory="./debug/ifbo-mnist/",
-        overwrite_root_directory=False,  # set to False for a multi-worker run
+        root_directory="./results/ifbo-mnist/",
+        overwrite_working_directory=False,  # set to False for a multi-worker run
     )
 
     # NOTE: this is `experimental` and may not work as expected
     ## plotting a 3D plot for learning curves explored by ifbo
     plotter = Plotter3D(
-        run_path="./debug/ifbo-mnist/",  # same as `root_directory` above
+        run_path="./results/ifbo-mnist/",  # same as `root_directory` above
         fidelity_key="epochs",  # same as `pipeline_space`
     )
     plotter.plot3D(filename="ifbo")
