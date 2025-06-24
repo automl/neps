@@ -166,7 +166,7 @@ if __name__ == "__main__":
         pipeline_space=pipeline_space,
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
-        max_evaluations_total=50,
+        evaluations_to_spend=50,
         root_directory="./results/ifbo-mnist/",
         overwrite_working_directory=False,  # set to False for a multi-worker run
     )

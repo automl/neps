@@ -319,7 +319,7 @@ class DefaultWorker:
         self,
         trials: Mapping[str, Trial],
     ) -> str | Literal[False]:
-        if self.settings.max_evaluations_total is not None:
+        if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
                 count = sum(
                     1
@@ -331,10 +331,10 @@ class DefaultWorker:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
 
-            if count >= self.settings.max_evaluations_total:
+            if count >= self.settings.evaluations_to_spend:
                 return (
                     "The total number of evaluations has reached the maximum allowed of"
-                    f" `{self.settings.max_evaluations_total=}`."
+                    f" `{self.settings.evaluations_to_spend=}`."
                     " To allow more evaluations, increase this value or use a different"
                     " stopping criterion."
                 )
@@ -372,7 +372,7 @@ class DefaultWorker:
     @property
     def _requires_global_stopping_criterion(self) -> bool:
         return (
-            self.settings.max_evaluations_total is not None
+            self.settings.evaluations_to_spend is not None
             or self.settings.max_cost_total is not None
             or self.settings.max_evaluation_time_total_seconds is not None
         )
@@ -697,7 +697,7 @@ def _launch_runtime(  # noqa: PLR0913
     cost_value_on_error: float | None,
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
-    max_evaluations_total: int | None,
+    evaluations_to_spend: int | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
 ) -> None:
@@ -738,7 +738,7 @@ def _launch_runtime(  # noqa: PLR0913
                         BudgetInfo(
                             max_cost_total=max_cost_total,
                             used_cost_budget=0,
-                            max_evaluations=max_evaluations_total,
+                            max_evaluations=evaluations_to_spend,
                             used_evaluations=0,
                         )
                     ),
@@ -767,7 +767,7 @@ def _launch_runtime(  # noqa: PLR0913
         ),
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
-        max_evaluations_total=max_evaluations_total,
+        evaluations_to_spend=evaluations_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
         ),

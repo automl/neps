@@ -78,7 +78,7 @@ class WorkerSettings:
     """The number of configurations to sample in a single batch."""
 
     # --------- Global Stopping Criterion ---------
-    max_evaluations_total: int | None
+    evaluations_to_spend: int | None
     """The maximum number of evaluations to run in total.
 
     Once this evaluation total is reached, **all** workers will stop evaluating
@@ -95,7 +95,7 @@ class WorkerSettings:
     include_in_progress_evaluations_towards_maximum: bool
     """Whether to include currently evaluating configurations towards the
     stopping criterion
-    [`max_evaluations_total`][neps.state.settings.WorkerSettings.max_evaluations_total]
+    [`evaluations_to_spend`][neps.state.settings.WorkerSettings.evaluations_to_spend]
     """
 
     max_cost_total: float | None

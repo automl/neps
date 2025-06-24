@@ -72,7 +72,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     # no optimizer specified
 )
 ```
@@ -87,7 +87,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     # optimizer specified, along with an argument
     optimizer=neps.algorithms.bayesian_optimization, # or as string: "bayesian_optimization"
 )
@@ -104,7 +104,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     optimizer=("bayesian_optimization", {"initial_design_size": 5})
 )
 ```
@@ -137,7 +137,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     optimizer=MyOptimizer,
 )
 ```

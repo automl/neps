@@ -48,7 +48,7 @@ def test_worker_raises_when_error_in_self(
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,
         max_evaluations_for_worker=1,
@@ -88,7 +88,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,
         max_evaluations_for_worker=1,
@@ -148,7 +148,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
         max_cost_total=None,
         max_evaluations_for_worker=1,

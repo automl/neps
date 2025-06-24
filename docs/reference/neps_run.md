@@ -45,7 +45,7 @@ See the following for more:
 * What goes in and what goes out of [`evaluate_pipeline()`](../reference/evaluate_pipeline.md)?
 
 ## Budget, how long to run?
-To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
+To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
 to specify the total number of evaluations to conduct before halting the optimization process,
 or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
 
@@ -60,7 +60,7 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     return {"objective_function_to_minimize": loss, "cost": duration}
 
 neps.run(
-    max_evaluations_total=10, # (1)!
+    evaluations_to_spend=10, # (1)!
     max_cost_total=1000, # (2)!
 )
 ```
@@ -87,7 +87,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-with an increased `max_evaluations_total=` or `max_cost_total=`.
+with an increased `evaluations_to_spend=` or `max_cost_total=`.
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -100,7 +100,7 @@ def run(learning_rate: float, epochs: int) -> float:
 
 neps.run(
     # Increase the total number of trials from 10 as set previously to 50
-    max_evaluations_total=50,
+    evaluations_to_spend=50,
 )
 ```
 
@@ -174,7 +174,7 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        max_evaluations_total=100,
+        evaluations_to_spend=100,
         max_evaluations_per_run=10, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
         overwrite_working_directory=False, #!!!
@@ -182,8 +182,8 @@ Any new workers that come online will automatically pick up work and work togeth
     ```
 
     1.  Limits the number of evaluations for this specific call of [`neps.run()`][neps.api.run].
-    2.  Evaluations in-progress count towards max_evaluations_total, halting new ones when this limit is reached.
-        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets max_evaluations_total, optimizing resource use in time-sensitive scenarios.
+    2.  Evaluations in-progress count towards evaluations_to_spend, halting new ones when this limit is reached.
+        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets evaluations_to_spend, optimizing resource use in time-sensitive scenarios.
 
     !!! warning
 
@@ -227,7 +227,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
+    Any runs that error will still count towards the total `evaluations_to_spend` or `max_evaluations_per_run`.
 
 ### Re-running Failed Configurations
 
