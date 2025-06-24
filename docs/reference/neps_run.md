@@ -47,7 +47,7 @@ See the following for more:
 ## Budget, how long to run?
 To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
 to specify the total number of evaluations to conduct before halting the optimization process,
-or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
+or `cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
 
 
 ```python
@@ -61,7 +61,7 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
 
 neps.run(
     evaluations_to_spend=10, # (1)!
-    max_cost_total=1000, # (2)!
+    cost_to_spend=1000, # (2)!
 )
 ```
 
@@ -87,7 +87,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-with an increased `evaluations_to_spend=` or `max_cost_total=`.
+with an increased `evaluations_to_spend=` or `cost_to_spend=`.
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:

@@ -38,7 +38,7 @@ def run(  # noqa: PLR0913
     evaluations_to_spend: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    max_cost_total: int | float | None = None,
+    cost_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -204,7 +204,7 @@ def run(  # noqa: PLR0913
             If true, only stop after evaluations_to_spend have been completed.
             This is only relevant in the parallel setting.
 
-        max_cost_total: No new evaluations will start when this cost is exceeded. Requires
+        cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
@@ -398,14 +398,14 @@ def run(  # noqa: PLR0913
     if (
         evaluations_to_spend is None
         and max_evaluations_per_run is None
-        and max_cost_total is None
+        and cost_to_spend is None
     ):
         warnings.warn(
             "None of the following were set, this will run idefinitely until the worker"
             " process is stopped."
             f"\n * {evaluations_to_spend=}"
             f"\n * {max_evaluations_per_run=}"
-            f"\n * {max_cost_total=}",
+            f"\n * {cost_to_spend=}",
             UserWarning,
             stacklevel=2,
         )
@@ -435,7 +435,7 @@ def run(  # noqa: PLR0913
         evaluation_fn=_eval,  # type: ignore
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
-        max_cost_total=max_cost_total,
+        cost_to_spend=cost_to_spend,
         optimization_dir=Path(root_directory),
         evaluations_to_spend=evaluations_to_spend,
         max_evaluations_for_worker=max_evaluations_per_run,

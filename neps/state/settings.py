@@ -98,7 +98,7 @@ class WorkerSettings:
     [`evaluations_to_spend`][neps.state.settings.WorkerSettings.evaluations_to_spend]
     """
 
-    max_cost_total: float | None
+    cost_to_spend: float | None
     """The maximum cost to run in total.
 
     Once this cost total is reached, **all** workers will stop evaluating new

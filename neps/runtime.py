@@ -339,15 +339,15 @@ class DefaultWorker:
                     " stopping criterion."
                 )
 
-        if self.settings.max_cost_total is not None:
+        if self.settings.cost_to_spend is not None:
             cost = sum(
                 trial.report.cost
                 for _, trial in trials.items()
                 if trial.report is not None and trial.report.cost is not None
             )
-            if cost >= self.settings.max_cost_total:
+            if cost >= self.settings.cost_to_spend:
                 return (
-                    f"The maximum cost `{self.settings.max_cost_total=}` has been"
+                    f"The maximum cost `{self.settings.cost_to_spend=}` has been"
                     " reached by all of the evaluated trials. To allow more evaluations,"
                     " increase this value or use a different stopping criterion."
                 )
@@ -373,7 +373,7 @@ class DefaultWorker:
     def _requires_global_stopping_criterion(self) -> bool:
         return (
             self.settings.evaluations_to_spend is not None
-            or self.settings.max_cost_total is not None
+            or self.settings.cost_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
@@ -691,7 +691,7 @@ def _launch_runtime(  # noqa: PLR0913
     optimizer: AskFunction,
     optimizer_info: OptimizerInfo,
     optimization_dir: Path,
-    max_cost_total: float | None,
+    cost_to_spend: float | None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None,
     cost_value_on_error: float | None,
@@ -736,7 +736,7 @@ def _launch_runtime(  # noqa: PLR0913
                     seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(
                         BudgetInfo(
-                            max_cost_total=max_cost_total,
+                            cost_to_spend=cost_to_spend,
                             used_cost_budget=0,
                             max_evaluations=evaluations_to_spend,
                             used_evaluations=0,
@@ -771,7 +771,7 @@ def _launch_runtime(  # noqa: PLR0913
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
         ),
-        max_cost_total=max_cost_total,
+        cost_to_spend=cost_to_spend,
         max_evaluations_for_worker=max_evaluations_for_worker,
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
         max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
