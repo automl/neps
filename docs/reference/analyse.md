@@ -55,6 +55,8 @@ NePS will also generate a summary CSV file for you.
     ├── summary
     │  ├── full.csv
     │  └── short.csv
+    ├── best_objective_trajectory.txt
+    ├── best_objective.txt
     ├── optimizer_info.yaml
     └── optimizer_state.pkl
     ```
@@ -69,6 +71,8 @@ NePS will also generate a summary CSV file for you.
     │      ├── config.yaml
     │      ├── metadata.yaml
     │      └── report.yaml
+    ├── best_objective_trajectory.txt
+    ├── best_objective.txt
     ├── optimizer_info.yaml
     └── optimizer_state.pkl
     ```
@@ -77,8 +81,8 @@ NePS will also generate a summary CSV file for you.
 The `full.csv` contains all configuration details in CSV format.
 Details include configuration hyperparameters and any returned result and cost from the `evaluate_pipeline` function.
 
-The `run_status.csv` provides general run details, such as the number of failed and successful configurations,
-and the best configuration with its corresponding objective value.
+The `best_objective_trajectory.txt` contains logging of the incumbent trajectory.
+The `best_objective.txt` records current incumbent.
 
 # TensorBoard Integration
 

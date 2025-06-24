@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import time
+import math
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from portalocker import portalocker
+from pathlib import Path
+from filelock import FileLock
 
 from neps.env import (
     FS_SYNC_GRACE_BASE,
@@ -321,12 +324,22 @@ class DefaultWorker:
     ) -> str | Literal[False]:
         if self.settings.max_evaluations_total is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                count = sum(
-                    1
-                    for _, trial in trials.items()
-                    if trial.metadata.state
-                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
-                )
+                if self.optimizer.space.fidelities:
+                    count = sum(
+                        trial.report.cost
+                        for _, trial in trials.items()
+                        if trial.report is not None and trial.report.cost is not None
+                    )
+                    for name, fidelity_param in self.optimizer.space.fidelities.items():
+                        count = math.ceil(count / fidelity_param.upper)
+                else:
+                    count = sum(
+                        1
+                        for _, trial in trials.items()
+                        if trial.metadata.state
+                        not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                    )
+                    
             else:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
@@ -340,11 +353,14 @@ class DefaultWorker:
                 )
 
         if self.settings.max_cost_total is not None:
+            # for _, trial in trials.items():
+            #     print("TRIAL: ", trial)
             cost = sum(
                 trial.report.cost
                 for _, trial in trials.items()
                 if trial.report is not None and trial.report.cost is not None
             )
+            # print("COST ", cost)
             if cost >= self.settings.max_cost_total:
                 return (
                     f"The maximum cost `{self.settings.max_cost_total=}` has been"
@@ -493,7 +509,23 @@ class DefaultWorker:
         """
         _set_workers_neps_state(self.state)
 
+        main_dir = Path(self.state.path)
+        improvement_trace_path = main_dir / "best_objective_trajectory.txt"
+        _trace_lock = FileLock(".trace.lock")
+        best_config_path = main_dir / "best_objective.txt"
+
+        if not improvement_trace_path.exists():
+            with _trace_lock:
+                with open(improvement_trace_path, mode='w') as f:
+                    f.write("Best configs and their objectives across evaluations:\n")
+                    f.write("-" * 80 + "\n")
+
+        _best_score_so_far = float("inf")
+
         logger.info("Launching NePS")
+
+        optimizer_name = self.state._optimizer_info["name"]
+        logger.info("Using optimizer: %s", optimizer_name)
 
         _time_monotonic_start = time.monotonic()
         _error_from_evaluation: Exception | None = None
@@ -598,6 +630,40 @@ class DefaultWorker:
                 evaluated_trial.id,
                 evaluated_trial.metadata.state,
             )
+
+            if report.objective_to_minimize is not None and report.err is None:
+                new_score = report.objective_to_minimize
+                if new_score < _best_score_so_far:
+                    _best_score_so_far = new_score
+                    logger.info(
+                        "Evaluated trial: %s with objective %s is the new best trial.",
+                        evaluated_trial.id,
+                        new_score,
+                    )
+                    logger.info("Trajectory of best objectives can be found in %s", improvement_trace_path)
+                    logger.info("New best incumbent can be found in %s", best_config_path)
+                    config_text = (
+                        f"Objective to minimize: {new_score}\n"
+                        f"Config ID: {evaluated_trial.id}\n"
+                        f"Config: {evaluated_trial.config}\n"
+                        + "-" * 80 + "\n"
+                    )
+                    
+                    # Log improvement to trace
+                    with _trace_lock:
+                        with open(improvement_trace_path, mode='a') as f:
+                            f.write(config_text)
+
+                        # Write best config to file (overwrite mode)
+                        best_summary = (
+                            f"# Best incumbent:"
+                            "\n"
+                            f"\n    Config ID: {evaluated_trial.id}"
+                            f"\n    Objective to minimize: {new_score}"
+                            f"\n    Config: {evaluated_trial.config}"
+                        )
+                        with open(best_config_path, "w") as f:
+                            f.write(best_summary)
 
             if report.cost is not None:
                 self.worker_cumulative_eval_cost += report.cost
