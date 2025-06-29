@@ -338,6 +338,20 @@ class DefaultWorker:
                     " To allow more evaluations, increase this value or use a different"
                     " stopping criterion."
                 )
+            
+        if self.settings.fidelities_to_spend is not None:
+            count = sum(
+                trial.report.cost
+                for _, trial in trials.items()
+                if trial.report is not None and trial.report.cost is not None
+            )
+            if count >= self.settings.fidelities_to_spend:
+                return (
+                    "The total number of fidelity evaluations has reached the maximum allowed of"
+                    f" `{self.settings.fidelities_to_spend=}`."
+                    " To allow more evaluations, increase this value or use a different"
+                    " stopping criterion."
+                )
 
         if self.settings.cost_to_spend is not None:
             cost = sum(
@@ -374,6 +388,7 @@ class DefaultWorker:
         return (
             self.settings.evaluations_to_spend is not None
             or self.settings.cost_to_spend is not None
+            or self.settings.fidelities_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
@@ -698,6 +713,7 @@ def _launch_runtime(  # noqa: PLR0913
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
     evaluations_to_spend: int | None,
+    fidelities_to_spend: int | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
 ) -> None:
@@ -739,6 +755,7 @@ def _launch_runtime(  # noqa: PLR0913
                             cost_to_spend=cost_to_spend,
                             used_cost_budget=0,
                             max_evaluations=evaluations_to_spend,
+                            fidelities_to_spend=fidelities_to_spend,
                             used_evaluations=0,
                         )
                     ),
@@ -768,6 +785,7 @@ def _launch_runtime(  # noqa: PLR0913
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
         evaluations_to_spend=evaluations_to_spend,
+        fidelities_to_spend=fidelities_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
         ),

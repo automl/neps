@@ -36,9 +36,12 @@ def run(  # noqa: PLR0913
     overwrite_working_directory: bool = False,
     post_run_summary: bool = True,
     evaluations_to_spend: int | None = None,
+    max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
     cost_to_spend: int | float | None = None,
+    max_cost_total: int | float | None = None,
+    fidelities_to_spend: int | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -207,6 +210,9 @@ def run(  # noqa: PLR0913
         cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
+
+        fidelities_to_spend: Number of evaluations in case of multi-fidelity after which to terminate.
+
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards evaluations_to_spend.
         objective_value_on_error: Setting this and cost_value_on_error to any float will
@@ -397,22 +403,76 @@ def run(  # noqa: PLR0913
     """  # noqa: E501
     if (
         evaluations_to_spend is None
+        and max_evaluations_total is None
         and max_evaluations_per_run is None
         and cost_to_spend is None
+        and max_cost_total is None
+        and fidelities_to_spend is None
     ):
         warnings.warn(
             "None of the following were set, this will run idefinitely until the worker"
             " process is stopped."
             f"\n * {evaluations_to_spend=}"
             f"\n * {max_evaluations_per_run=}"
-            f"\n * {cost_to_spend=}",
+            f"\n * {cost_to_spend=}"
+            f"\n * {fidelities_to_spend}",
             UserWarning,
             stacklevel=2,
+        )
+
+    if max_evaluations_total is not None:
+        warnings.warn(
+            "`max_evaluations_total` is deprecated and will be removed in a future release. "
+            "Please use `evaluations_to_spend` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        evaluations_to_spend = max_evaluations_total
+
+    if max_cost_total is not None:
+        warnings.warn(
+            "`max_cost_total` is deprecated and will be removed in a future release. "
+            "Please use `cost_to_spend` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        cost_to_spend = max_cost_total
+
+    criteria = {
+        "evaluations_to_spend": evaluations_to_spend,
+        "max_evaluations_per_run": max_evaluations_per_run,
+        "cost_to_spend": cost_to_spend,
+        "fidelities_to_spend": fidelities_to_spend,
+    }
+    set_criteria = [k for k, v in criteria.items() if v is not None]
+    if len(set_criteria) > 1:
+        raise ValueError(
+            f"Multiple stopping criteria specified: {', '.join(set_criteria)}. "
+            "Only one is allowed."
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+
+    multi_fidelity_optimizers = {
+        "successive_halving",
+        "asha",
+        "hyperband",
+        "async_hb",
+        "ifbo",
+        "priorband",
+    }
+
+    is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
+
+    if is_multi_fidelity:
+        if evaluations_to_spend is not None:
+            raise ValueError("`evaluations_to_spend` is not allowed for multi-fidelity optimizers. Only `fidelities_to_spend` or `cost_to_spend`")
+    else:
+        if fidelities_to_spend is not None:
+            raise ValueError("`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers.")
+
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
@@ -436,6 +496,7 @@ def run(  # noqa: PLR0913
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
         cost_to_spend=cost_to_spend,
+        fidelities_to_spend=fidelities_to_spend,
         optimization_dir=Path(root_directory),
         evaluations_to_spend=evaluations_to_spend,
         max_evaluations_for_worker=max_evaluations_per_run,

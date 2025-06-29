@@ -111,6 +111,20 @@ class WorkerSettings:
     indefinitely or until another stopping criterion is met.
     """
 
+    fidelities_to_spend: int | None
+    """The maximum number of evaluations to run in case of multi-fidelity.
+
+    Once this evaluation total is reached, **all** workers will stop evaluating
+    new configurations.
+
+    To control whether currently evaluating configurations are included in this
+    total, see
+    [`include_in_progress_evaluations_towards_maximum`][neps.state.settings.WorkerSettings.include_in_progress_evaluations_towards_maximum].
+
+    If `None`, there is no limit and workers will continue to evaluate
+    indefinitely.
+    """
+
     max_evaluation_time_total_seconds: float | None
     """The maximum wallclock time allowed for evaluation in total.
 
