@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from neps.space.new_space import space
@@ -149,7 +151,11 @@ def test_nested_complex():
     resolved_pipeline, _resolution_context = space.resolve(pipeline)
 
     assert resolved_pipeline is not None
-    assert tuple(resolved_pipeline.get_attrs().keys()) == ("prelu_init_value", "prelu", "act")
+    assert tuple(resolved_pipeline.get_attrs().keys()) == (
+        "prelu_init_value",
+        "prelu",
+        "act",
+    )
 
     prelu_init_value = resolved_pipeline.prelu_init_value
     assert 0.1 <= prelu_init_value <= 0.9
@@ -180,7 +186,11 @@ def test_nested_complex_string():
     expected_ending = "})"
     assert act_config_string.startswith(expected_prefix)
     assert act_config_string.endswith(expected_ending)
-    assert 0.1 <= float(act_config_string[len(expected_prefix) : -len(expected_ending)]) <= 0.9
+    assert (
+        0.1
+        <= float(act_config_string[len(expected_prefix) : -len(expected_ending)])
+        <= 0.9
+    )
 
 
 def test_fixed_pipeline():
@@ -189,7 +199,9 @@ def test_fixed_pipeline():
     resolved_pipeline, _resolution_context = space.resolve(pipeline)
 
     assert resolved_pipeline is not None
-    assert tuple(resolved_pipeline.get_attrs().keys()) == tuple(pipeline.get_attrs().keys())
+    assert tuple(resolved_pipeline.get_attrs().keys()) == tuple(
+        pipeline.get_attrs().keys()
+    )
 
     assert resolved_pipeline.prelu_init_value == pipeline.prelu_init_value
     assert resolved_pipeline.prelu is pipeline.prelu
@@ -223,13 +235,13 @@ def test_simple_reuse():
     )
 
     conv_choices_prior_index = resolved_pipeline.conv_choices_prior_index
-    assert conv_choices_prior_index == 0 or conv_choices_prior_index == 1
+    assert conv_choices_prior_index in (0, 1)
 
     conv_choices_prior_confidence = resolved_pipeline.conv_choices_prior_confidence
     assert conv_choices_prior_confidence in _conv_choices_prior_confidence_choices
 
     conv_choices = resolved_pipeline.conv_choices
-    assert conv_choices == _conv_choices_low or conv_choices == _conv_choices_high
+    assert conv_choices in (_conv_choices_low, _conv_choices_high)
 
     conv_block = resolved_pipeline.conv_block
     assert conv_block.operator == "sequential3"
@@ -378,10 +390,14 @@ def test_shared_complex_context():
     # the second resolution should give us a new object
     assert resolved_pipeline_second is not resolved_pipeline_first
 
-    expected_config_string: str = (
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero) (avg_pool) (zero))"
-    )
+    expected_config_string: str = "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero) (avg_pool) (zero))"
 
     # however, their final results should be the same thing
-    assert space.convert_operation_to_string(resolved_pipeline_first.cell) == expected_config_string
-    assert space.convert_operation_to_string(resolved_pipeline_second.cell) == expected_config_string
+    assert (
+        space.convert_operation_to_string(resolved_pipeline_first.cell)
+        == expected_config_string
+    )
+    assert (
+        space.convert_operation_to_string(resolved_pipeline_second.cell)
+        == expected_config_string
+    )

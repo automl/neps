@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from neps.space.new_space import space
@@ -162,7 +164,9 @@ def test_resampled_float():
     assert prelu_init_value == prelu_shared2
 
     assert len(set(resampled_values)) == len(resampled_values)
-    assert all(resampled_value != prelu_init_value for resampled_value in resampled_values)
+    assert all(
+        resampled_value != prelu_init_value for resampled_value in resampled_values
+    )
 
 
 @pytest.mark.repeat(200)
@@ -202,14 +206,16 @@ def test_resampled_integer():
     assert prelu_init_value == prelu_shared2
 
     assert len(set(resampled_values)) == len(resampled_values)
-    assert all(resampled_value != prelu_init_value for resampled_value in resampled_values)
+    assert all(
+        resampled_value != prelu_init_value for resampled_value in resampled_values
+    )
 
     act = resolved_pipeline.act
 
     act_args = tuple(op.kwargs["init"] for op in act.args)
     sampled_values = (prelu_shared1, prelu_shared2, *resampled_values)
     assert len(act_args) == len(sampled_values)
-    for act_arg, sampled_value in zip(act_args, sampled_values):
+    for act_arg, sampled_value in zip(act_args, sampled_values, strict=False):
         assert act_arg is sampled_value
 
     act_resampled_prelu_shared = act.kwargs["prelu_shared"].kwargs["init"]
@@ -228,7 +234,9 @@ def test_resampled_integer():
     act_resampled_hp_value = act.kwargs["resampled_hp_value"]
     assert isinstance(act_resampled_hp_value, int)
     assert act_resampled_hp_value != prelu_init_value
-    assert all(resampled_value != act_resampled_hp_value for resampled_value in resampled_values)
+    assert all(
+        resampled_value != act_resampled_hp_value for resampled_value in resampled_values
+    )
 
 
 @pytest.mark.repeat(200)
@@ -257,17 +265,17 @@ def test_resampled_categorical():
     assert isinstance(op2, space.Operation)
 
     assert (op1 is conv_block) or (op1.operator == "op1")
-    assert op2.operator == "conv1" or op2.operator == "conv2" or op2.operator == "op2"
+    assert op2.operator in ("conv1", "conv2", "op2")
 
     cell = resolved_pipeline.cell
     assert cell is not pipeline.cell
 
     cell_args1 = cell.args[0]
     cell_args2 = cell.args[1]
-    cell_args3 = cell.args[2]
-    cell_args4 = cell.args[3]
-    cell_args5 = cell.args[4]
-    cell_args6 = cell.args[5]
+    cell.args[2]
+    cell.args[3]
+    cell.args[4]
+    cell.args[5]
 
     assert cell_args1 is op1
     assert cell_args2 is op2

@@ -1,14 +1,21 @@
-from typing import Callable, Sequence
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
 
 from neps.space.new_space import space
 
 
 class Model:
+    """An inner function that sums the values and multiplies the result by a factor.
+    This class can be recursively used in a search space to create nested models.
+    """
+
     def __init__(
         self,
         inner_function: Callable[[Sequence[float]], float],
         factor: float,
     ):
+        """Initialize the model with an inner function and a factor."""
         self.inner_function = inner_function
         self.factor = factor
 
@@ -17,6 +24,8 @@ class Model:
 
 
 class Sum:
+    """A simple inner function that sums the values."""
+
     def __call__(self, values: Sequence[float]) -> float:
         return sum(values)
 

@@ -1,14 +1,11 @@
-# import nosbench
-# from nosbench.program import Program, Instruction, Pointer
-# from nosbench.function import Function
+from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import space
-from neps.space.new_space import config_string
+from neps.space.new_space import config_string, space
 
 
-class nosBench(space.Pipeline):
+class NosBench(space.Pipeline):
     _UNARY_FUN = space.Categorical(
         choices=(
             space.Operation(operator="Square"),
@@ -111,7 +108,7 @@ class nosBench(space.Pipeline):
 
 @pytest.mark.repeat(500)
 def test_resolve():
-    pipeline = nosBench()
+    pipeline = NosBench()
 
     try:
         resolved_pipeline, resolution_context = space.resolve(pipeline)
@@ -124,13 +121,3 @@ def test_resolve():
     assert p_config_string
     pretty_config = config_string.ConfigString(p_config_string).pretty_format()
     assert pretty_config
-
-    print()
-    print("Config string:")
-    print(pretty_config)
-
-    # print()
-    # print("Samplings made:")
-    # import pprint
-    #
-    # pprint.pp(resolution_context.samplings_made, indent=2)

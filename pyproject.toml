@@ -239,6 +239,10 @@ ignore = [
     "PT011", # Catch value error to broad
     "ARG001", # unused param
 ]
+"tests/test_neps_space/*.py" = [
+    "E501", # Line length for architecture strings
+]
+
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
     "INP001",

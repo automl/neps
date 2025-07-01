@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import re
 
 import pytest
 
-import neps.space.new_space.space as space
+from neps.space.new_space import space
 
 
 class DemoHyperparametersWithFidelitySpace(space.Pipeline):

@@ -1,9 +1,11 @@
-from typing import Sequence, Callable
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
 
 import pytest
 
 import neps
-import neps.space.new_space.space as space
+from neps.space.new_space import space
 
 
 def hyperparameter_pipeline_to_optimize(
@@ -13,9 +15,6 @@ def hyperparameter_pipeline_to_optimize(
     integer1: int,
     integer2: int,
 ):
-    # print()
-    # print(f"Evaluating trial: {float1}, {float2}, {categorical}, {integer1}, {integer2}")
-
     assert isinstance(float1, float)
     assert isinstance(float2, float)
     assert isinstance(categorical, int)
@@ -25,7 +24,6 @@ def hyperparameter_pipeline_to_optimize(
     objective_to_minimize = -float(float1 + float2 + categorical + integer1 + integer2)
     assert isinstance(objective_to_minimize, float)
 
-    # print(f"Score: {objective_to_minimize}")
     return objective_to_minimize
 
 
@@ -163,8 +161,6 @@ def test_hyperparameter_demo(optimizer):
         max_evaluations_total=10,
         overwrite_working_directory=True,
     )
-    print()
-    print(f"\nRoot directory: {root_directory}")
     neps.status(root_directory, print_summary=True)
 
 
@@ -188,8 +184,6 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
         max_evaluations_total=10,
         overwrite_working_directory=True,
     )
-    print()
-    print(f"\nRoot directory: {root_directory}")
     neps.status(root_directory, print_summary=True)
 
 
@@ -213,8 +207,6 @@ def test_hyperparameter_complex_demo(optimizer):
         max_evaluations_total=10,
         overwrite_working_directory=True,
     )
-    print()
-    print(f"\nRoot directory: {root_directory}")
     neps.status(root_directory, print_summary=True)
 
 
@@ -222,11 +214,16 @@ def test_hyperparameter_complex_demo(optimizer):
 
 
 class Model:
+    """A simple model that takes an inner function and a factor,
+    multiplies the result of the inner function by the factor.
+    """
+
     def __init__(
         self,
         inner_function: Callable[[Sequence[float]], float],
         factor: float,
     ):
+        """Initialize the model with an inner function and a factor."""
         self.inner_function = inner_function
         self.factor = factor
 
@@ -235,12 +232,17 @@ class Model:
 
 
 class Sum:
+    """A simple inner function that sums the values."""
+
     def __call__(self, values: Sequence[float]) -> float:
         return sum(values)
 
 
 class MultipliedSum:
+    """An inner function that sums the values and multiplies the result by a factor."""
+
     def __init__(self, factor: float):
+        """Initialize the multiplied sum with a factor."""
         self.factor = factor
 
     def __call__(self, values: Sequence[float]) -> float:
@@ -248,12 +250,9 @@ class MultipliedSum:
 
 
 def operation_pipeline_to_optimize(model: Model, some_hp: str):
-    # print()
-    # print(f"Evaluating trial: {model}")
-
     assert isinstance(model, Model)
     assert isinstance(model.factor, float)
-    assert isinstance(model.inner_function, (Sum, MultipliedSum))
+    assert isinstance(model.inner_function, Sum | MultipliedSum)
     if isinstance(model.inner_function, MultipliedSum):
         assert isinstance(model.inner_function.factor, float)
     assert some_hp in {"hp1", "hp2"}
@@ -262,11 +261,15 @@ def operation_pipeline_to_optimize(model: Model, some_hp: str):
     objective_to_minimize = model(values)
     assert isinstance(objective_to_minimize, float)
 
-    # print(f"Score: {objective_to_minimize}")
     return objective_to_minimize
 
 
 class DemoOperationSpace(space.Pipeline):
+    """A demonstration of how to use operations in a search space.
+    This space defines a model that can be optimized using different inner functions
+    and a factor. The model can be used to evaluate a set of values and return an objective to minimize.
+    """
+
     # The way to sample `factor` values
     _factor = space.Float(
         min_value=0,
@@ -329,6 +332,4 @@ def test_operation_demo(optimizer):
         max_evaluations_total=10,
         overwrite_working_directory=True,
     )
-    print()
-    print(f"\nRoot directory: {root_directory}")
     neps.status(root_directory, print_summary=True)

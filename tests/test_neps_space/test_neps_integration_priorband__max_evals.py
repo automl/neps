@@ -1,45 +1,46 @@
+from __future__ import annotations
+
 from functools import partial
 
 import numpy as np
 import pytest
 
 import neps
-import neps.space.new_space.space as space
-import neps.space.new_space.bracket_optimizer as new_bracket_optimizer
 import neps.optimizers.algorithms as old_algorithms
+import neps.space.new_space.bracket_optimizer as new_bracket_optimizer
+from neps.space.new_space import space
 
 
 def evaluate_pipeline(float1, float2, integer1, fidelity):
-    objective_to_minimize = -float(np.sum([float1, float2, integer1])) * fidelity
-    return objective_to_minimize
+    return -float(np.sum([float1, float2, integer1])) * fidelity
 
 
-old_pipeline_space = dict(
-    float1=neps.Float(
+old_pipeline_space = {
+    "float1": neps.Float(
         lower=1,
         upper=1000,
         log=False,
         prior=600,
         prior_confidence="medium",
     ),
-    float2=neps.Float(
+    "float2": neps.Float(
         lower=-100,
         upper=100,
         prior=0,
         prior_confidence="medium",
     ),
-    integer1=neps.Integer(
+    "integer1": neps.Integer(
         lower=0,
         upper=500,
         prior=35,
         prior_confidence="low",
     ),
-    fidelity=neps.Integer(
+    "fidelity": neps.Integer(
         lower=1,
         upper=100,
         is_fidelity=True,
     ),
-)
+}
 
 
 class DemoHyperparameterWithFidelitySpace(space.Pipeline):
@@ -71,7 +72,7 @@ class DemoHyperparameterWithFidelitySpace(space.Pipeline):
 
 
 @pytest.mark.parametrize(
-    ["optimizer", "optimizer_name"],
+    ("optimizer", "optimizer_name"),
     [
         (
             space.RandomSearch,
@@ -104,9 +105,6 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     pipeline_space = DemoHyperparameterWithFidelitySpace()
     root_directory = f"results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
 
-    print()
-    print(f"\nRunning for root directory: {root_directory}")
-
     neps.run(
         evaluate_pipeline=space.adjust_evaluation_pipeline_for_new_space(
             evaluate_pipeline,
@@ -123,7 +121,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
 
 
 @pytest.mark.parametrize(
-    ["optimizer", "optimizer_name"],
+    ("optimizer", "optimizer_name"),
     [
         (
             partial(old_algorithms.priorband, base="successive_halving"),
@@ -147,9 +145,6 @@ def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
     pipeline_space = old_pipeline_space
     root_directory = f"results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
-
-    print()
-    print(f"\nRunning for root directory: {root_directory}")
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
