@@ -43,6 +43,7 @@ if TYPE_CHECKING:
 
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
+    from neps.space.neps_spaces.neps_space import Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -1162,7 +1163,7 @@ class CustomOptimizer:
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     initialized: bool = False
 
-    def create(self, space: SearchSpace) -> AskFunction:
+    def create(self, space: SearchSpace | Pipeline) -> AskFunction:
         assert not self.initialized, "Custom optimizer already initialized."
         return self.optimizer(space, **self.kwargs)  # type: ignore
 

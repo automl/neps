@@ -7,8 +7,8 @@ import pytest
 
 import neps
 import neps.optimizers.algorithms as old_algorithms
-import neps.space.new_space.bracket_optimizer as new_bracket_optimizer
-from neps.space.new_space import space
+import neps.space.neps_spaces.bracket_optimizer as new_bracket_optimizer
+from neps.space.neps_spaces import neps_space
 
 _COSTS = {}
 
@@ -56,28 +56,28 @@ old_pipeline_space = {
 }
 
 
-class DemoHyperparameterWithFidelitySpace(space.Pipeline):
-    float1 = space.Float(
+class DemoHyperparameterWithFidelitySpace(neps_space.Pipeline):
+    float1 = neps_space.Float(
         min_value=1,
         max_value=1000,
         log=False,
         prior=600,
-        prior_confidence=space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
     )
-    float2 = space.Float(
+    float2 = neps_space.Float(
         min_value=-100,
         max_value=100,
         prior=0,
-        prior_confidence=space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
     )
-    integer1 = space.Integer(
+    integer1 = neps_space.Integer(
         min_value=0,
         max_value=500,
         prior=35,
-        prior_confidence=space.ConfidenceLevel.LOW,
+        prior_confidence=neps_space.ConfidenceLevel.LOW,
     )
-    fidelity = space.Fidelity(
-        domain=space.Integer(
+    fidelity = neps_space.Fidelity(
+        domain=neps_space.Integer(
             min_value=1,
             max_value=100,
         ),
@@ -88,11 +88,11 @@ class DemoHyperparameterWithFidelitySpace(space.Pipeline):
     ("optimizer", "optimizer_name"),
     [
         (
-            space.RandomSearch,
+            neps_space.RandomSearch,
             "new__RandomSearch",
         ),
         (
-            space.ComplexRandomSearch,
+            neps_space.ComplexRandomSearch,
             "new__ComplexRandomSearch",
         ),
         (
@@ -122,7 +122,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     _COSTS.clear()
 
     neps.run(
-        evaluate_pipeline=space.adjust_evaluation_pipeline_for_new_space(
+        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
             evaluate_pipeline,
             pipeline_space,
         ),

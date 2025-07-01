@@ -1,32 +1,37 @@
+"""This module defines various classes and protocols for representing and manipulating
+search spaces in NePS (Neural Parameter Search). It includes definitions for domains,
+pipelines, operations, and fidelity, as well as utilities for sampling and resolving
+search spaces.
+"""
+
 from __future__ import annotations
 
 import abc
+import contextlib
 import dataclasses
+import enum
 import functools
 import heapq
-import random
 import math
-import enum
-import contextlib
+import random
+from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import (
-    TypeVar,
-    Generic,
-    Sequence,
+    TYPE_CHECKING,
     Any,
+    Generic,
     Protocol,
-    runtime_checkable,
+    TypeVar,
     cast,
-    Callable,
-    Mapping,
-    Generator,
-    Type,
+    runtime_checkable,
 )
 
-import neps.space.new_space.config_string as config_string
-import neps.optimizers.optimizer as optimizer
-import neps.state.trial as trial_state
-import neps.state.optimizer as optimizer_state
+from neps.optimizers import optimizer
+from neps.space.neps_spaces import config_string
 
+if TYPE_CHECKING:
+    import neps.state.optimizer as optimizer_state
+    import neps.state.trial as trial_state
+    from neps.state.trial import Trial
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Pipeline")
@@ -47,26 +52,45 @@ _UNSET = _Unset()
 
 @runtime_checkable
 class Resolvable(Protocol):
+    """A protocol for objects that can be resolved into attributes."""
+
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the resolvable object as a mapping."""
         raise NotImplementedError()
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
+        """Create a new resolvable object from the given attributes."""
         raise NotImplementedError()
 
 
 def resolvable_is_fully_resolved(resolvable: Resolvable) -> bool:
+    """Check if a resolvable object is fully resolved.
+    A resolvable object is considered fully resolved if all its attributes are either
+    not instances of Resolvable or are themselves fully resolved.
+    """
     attr_objects = resolvable.get_attrs().values()
-    return all(not isinstance(obj, Resolvable) or resolvable_is_fully_resolved(obj) for obj in attr_objects)
+    return all(
+        not isinstance(obj, Resolvable) or resolvable_is_fully_resolved(obj)
+        for obj in attr_objects
+    )
 
 
 @runtime_checkable
 class DomainSampler(Protocol):
+    """A protocol for domain samplers that can sample from a given domain."""
+
     def __call__(
         self,
         *,
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the given domain.
+        :param domain_obj: The domain object to sample from.
+        :param current_path: The current path in the resolution context.
+        :return: A sampled value of type T from the domain.
+        :raises NotImplementedError: If the method is not implemented.
+        """
         raise NotImplementedError()
 
 
@@ -74,11 +98,25 @@ class DomainSampler(Protocol):
 
 
 class Pipeline(Resolvable):
+    """A class representing a pipeline in NePS spaces.
+    It contains attributes that can be resolved into a configuration string,
+    and it can be used to sample configurations based on defined domains.
+    """
+
     @property
     def fidelity_attrs(self) -> Mapping[str, Fidelity]:
+        """Get the fidelity attributes of the pipeline. Fidelity attributes are special
+        attributes that represent the fidelity of the pipeline.
+        :return: A mapping of fidelity attribute names to Fidelity objects.
+        """
         return {k: v for k, v in self.get_attrs().items() if isinstance(v, Fidelity)}
 
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the pipeline as a mapping.
+        This method collects all attributes of the pipeline class and instance,
+        excluding private attributes and methods, and returns them as a dictionary.
+        :return: A mapping of attribute names to their values.
+        """
         attrs = {}
 
         for attr_name, attr_value in vars(self.__class__).items():
@@ -98,6 +136,12 @@ class Pipeline(Resolvable):
         return attrs
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Pipeline:
+        """Create a new Pipeline instance from the given attributes.
+        :param attrs: A mapping of attribute names to their values.
+        :return: A new Pipeline instance with the specified attributes.
+        :raises ValueError: If the attributes do not match the pipeline's expected
+        structure.
+        """
         new_pipeline = Pipeline()
         for name, value in attrs.items():
             setattr(new_pipeline, name, value)
@@ -105,44 +149,67 @@ class Pipeline(Resolvable):
 
 
 class ConfidenceLevel(enum.Enum):
+    """Enum representing confidence levels for sampling."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
 class Domain(Resolvable, abc.ABC, Generic[T]):
+    """An abstract base class representing a domain in NePS spaces.
+    It defines the properties and methods that all domains must implement,
+    such as min and max values, sampling, and centered domains.
+    """
+
     @property
     @abc.abstractmethod
     def min_value(self) -> T:
+        """Get the minimum value of the domain."""
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
     def max_value(self) -> T:
+        """Get the maximum value of the domain."""
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
     def has_prior(self) -> bool:
+        """Check if the domain has a prior defined."""
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
     def prior(self) -> T:
+        """Get the prior value of the domain.
+        Raises ValueError if the domain has no prior defined.
+        """
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
     def prior_confidence(self) -> ConfidenceLevel:
+        """Get the confidence level of the prior.
+        Raises ValueError if the domain has no prior defined.
+        """
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
     def range_compatibility_identifier(self) -> str:
+        """Get a string identifier for the range compatibility of the domain.
+        This identifier is used to check if two domains are compatible based on their
+        ranges.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
     def sample(self) -> T:
+        """Sample a value from the domain.
+        Returns a value of type T that is within the domain's range.
+        """
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -151,24 +218,45 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
         center: T,
         confidence: ConfidenceLevel,
     ) -> Domain[T]:
+        """Create a new domain centered around a given value with a specified confidence
+        level.
+        :param center: The value around which to center the new domain.
+        :param confidence: The confidence level for the new domain.
+        :return: A new Domain instance that is centered around the specified value.
+        :raises ValueError: If the center value is not within the domain's range.
+        """
         raise NotImplementedError()
 
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the domain as a mapping.
+        This method collects all attributes of the domain class and instance,
+        excluding private attributes and methods, and returns them as a dictionary.
+        :return: A mapping of attribute names to their values.
+        """
         return {k.lstrip("_"): v for k, v in vars(self).items()}
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Domain[T]:
+        """Create a new Domain instance from the given attributes.
+        :param attrs: A mapping of attribute names to their values.
+        :return: A new Domain instance with the specified attributes.
+        :raises ValueError: If the attributes do not match the domain's expected
+        structure.
+        """
         return type(self)(**attrs)
 
 
 def _calculate_new_domain_bounds(
-    number_type: Type[int] | Type[float],
+    number_type: type[int] | type[float],
     min_value: int | float,
     max_value: int | float,
     center: int | float,
     confidence: ConfidenceLevel,
 ) -> tuple[int, int] | tuple[float, float]:
     if center < min_value or center > max_value:
-        raise ValueError(f"Center value {center!r} must be within domain range [{min_value!r}, {max_value!r}]")
+        raise ValueError(
+            f"Center value {center!r} must be within domain range [{min_value!r},"
+            f" {max_value!r}]"
+        )
 
     # Determine a chunk size by splitting the domain range into a fixed number of chunks.
     # Then use the confidence level to decide how many chunks to include
@@ -178,8 +266,8 @@ def _calculate_new_domain_bounds(
     chunk_size = (max_value - min_value) / number_of_chunks
 
     # The numbers refer to how many segments to have on each side of the center.
-    # TODO: [lum] we need to make sure that in the end the range does not just have the center,
-    #  but at least a little bit more around it too.
+    # TODO: [lum] we need to make sure that in the end the range does not just have the
+    # center, but at least a little bit more around it too.
     confidence_to_number_of_chunks_on_each_side = {
         ConfidenceLevel.HIGH: 1.0,
         ConfidenceLevel.MEDIUM: 2.5,
@@ -203,12 +291,26 @@ def _calculate_new_domain_bounds(
 
 
 class Categorical(Domain[int], Generic[T]):
+    """A domain representing a categorical choice from a set of options.
+    It allows for sampling from a predefined set of choices and can be centered around
+    a specific choice with a given confidence level.
+    :param choices: A tuple of choices or a Domain of choices.
+    :param prior_index: The index of the prior choice in the choices tuple.
+    :param prior_confidence: The confidence level of the prior choice.
+    """
+
     def __init__(
         self,
         choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T],
         prior_index: int | Domain[int] | _Unset = _UNSET,
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
+        """Initialize the Categorical domain with choices and optional prior.
+        :param choices: A tuple of choices or a Domain of choices.
+        :param prior_index: The index of the prior choice in the choices tuple.
+        :param prior_confidence: The confidence level of the prior choice.
+        :raises ValueError: If the choices are empty or prior_index is out of bounds.
+        """
         self._choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T]
         if isinstance(choices, Sequence):
             self._choices = tuple(choice for choice in choices)
@@ -219,37 +321,64 @@ class Categorical(Domain[int], Generic[T]):
 
     @property
     def min_value(self) -> int:
+        """Get the minimum value of the categorical domain.
+        :return: The minimum index of the choices, which is always 0.
+        """
         return 0
 
     @property
     def max_value(self) -> int:
+        """Get the maximum value of the categorical domain.
+        :return: The maximum index of the choices, which is the length of choices minus 1.
+        """
         return max(len(cast(tuple, self._choices)) - 1, 0)
 
     @property
     def choices(self) -> tuple[T | Domain[T] | Resolvable, ...] | Domain[T]:
+        """Get the choices available in the categorical domain.
+        :return: A tuple of choices or a Domain of choices.
+        """
         return self._choices
 
     @property
     def has_prior(self) -> bool:
+        """Check if the categorical domain has a prior defined.
+        :return: True if the prior index and confidence are set, False otherwise.
+        """
         return self._prior_index is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> int:
+        """Get the prior index of the categorical domain.
+        :return: The index of the prior choice in the choices tuple.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return int(cast(int, self._prior_index))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
+        """Get the confidence level of the prior choice.
+        :return: The confidence level of the prior choice.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
+        """Get a string identifier for the range compatibility of the categorical domain.
+        :return: A string representation of the number of choices in the domain.
+        """
         return f"{len(cast(tuple, self._choices))}"
 
     def sample(self) -> int:
+        """Sample a random index from the categorical choices.
+        :return: A randomly selected index from the choices tuple.
+        :raises ValueError: If the choices are empty.
+        """
         return int(random.randint(0, len(cast(tuple[T], self._choices)) - 1))
 
     def centered_around(
@@ -257,6 +386,13 @@ class Categorical(Domain[int], Generic[T]):
         center: int,
         confidence: ConfidenceLevel,
     ) -> Categorical:
+        """Create a new categorical domain centered around a specific choice index.
+        :param center: The index of the choice around which to center the new domain.
+        :param confidence: The confidence level for the new domain.
+        :return: A new Categorical instance with a range centered around the specified
+        choice index.
+        :raises ValueError: If the center index is out of bounds of the choices.
+        """
         new_min, new_max = cast(
             tuple[int, int],
             _calculate_new_domain_bounds(
@@ -276,14 +412,32 @@ class Categorical(Domain[int], Generic[T]):
 
 
 class Float(Domain[float]):
+    """A domain representing a continuous range of floating-point values.
+    It allows for sampling from a range defined by minimum and maximum values,
+    and can be centered around a specific value with a given confidence level.
+    :param min_value: The minimum value of the domain.
+    :param max_value: The maximum value of the domain.
+    :param log: Whether to sample values on a logarithmic scale.
+    :param prior: The prior value for the domain, if any.
+    :param prior_confidence: The confidence level of the prior value.
+    """
+
     def __init__(
         self,
         min_value: float,
         max_value: float,
-        log: bool = False,
+        log: bool = False,  # noqa: FBT001, FBT002
         prior: float | _Unset = _UNSET,
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
+        """Initialize the Float domain with min and max values, and optional prior.
+        :param min_value: The minimum value of the domain.
+        :param max_value: The maximum value of the domain.
+        :param log: Whether to sample values on a logarithmic scale.
+        :param prior: The prior value for the domain, if any.
+        :param prior_confidence: The confidence level of the prior value.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         self._min_value = min_value
         self._max_value = max_value
         self._log = log
@@ -292,33 +446,61 @@ class Float(Domain[float]):
 
     @property
     def min_value(self) -> float:
+        """Get the minimum value of the floating-point domain.
+        :return: The minimum value of the domain.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         return self._min_value
 
     @property
     def max_value(self) -> float:
+        """Get the maximum value of the floating-point domain.
+        :return: The maximum value of the domain.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         return self._max_value
 
     @property
     def has_prior(self) -> bool:
+        """Check if the floating-point domain has a prior defined.
+        :return: True if the prior and prior confidence are set, False otherwise.
+        """
         return self._prior is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> float:
+        """Get the prior value of the floating-point domain.
+        :return: The prior value of the domain.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return float(cast(float, self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
+        """Get the confidence level of the prior value.
+        :return: The confidence level of the prior value.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
+        """Get a string identifier for the range compatibility of the floating-point
+        domain.
+        :return: A string representation of the minimum and maximum values, and whether
+        the domain is logarithmic.
+        """
         return f"{self._min_value}_{self._max_value}_{self._log}"
 
     def sample(self) -> float:
+        """Sample a random floating-point value from the domain.
+        :return: A randomly selected floating-point value within the domain's range.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         if self._log:
             log_min = math.log(self._min_value)
             log_max = math.log(self._max_value)
@@ -330,6 +512,12 @@ class Float(Domain[float]):
         center: float,
         confidence: ConfidenceLevel,
     ) -> Float:
+        """Create a new floating-point domain centered around a specific value.
+        :param center: The value around which to center the new domain.
+        :param confidence: The confidence level for the new domain.
+        :return: A new Float instance that is centered around the specified value.
+        :raises ValueError: If the center value is not within the domain's range.
+        """
         new_min, new_max = _calculate_new_domain_bounds(
             number_type=float,
             min_value=self.min_value,
@@ -347,14 +535,32 @@ class Float(Domain[float]):
 
 
 class Integer(Domain[int]):
+    """A domain representing a range of integer values.
+    It allows for sampling from a range defined by minimum and maximum values,
+    and can be centered around a specific value with a given confidence level.
+    :param min_value: The minimum value of the domain.
+    :param max_value: The maximum value of the domain.
+    :param log: Whether to sample values on a logarithmic scale.
+    :param prior: The prior value for the domain, if any.
+    :param prior_confidence: The confidence level of the prior value.
+    """
+
     def __init__(
         self,
         min_value: int,
         max_value: int,
-        log: bool = False,
+        log: bool = False,  # noqa: FBT001, FBT002
         prior: int | _Unset = _UNSET,
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
+        """Initialize the Integer domain with min and max values, and optional prior.
+        :param min_value: The minimum value of the domain.
+        :param max_value: The maximum value of the domain.
+        :param log: Whether to sample values on a logarithmic scale.
+        :param prior: The prior value for the domain, if any.
+        :param prior_confidence: The confidence level of the prior value.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         self._min_value = min_value
         self._max_value = max_value
         self._log = log
@@ -363,33 +569,61 @@ class Integer(Domain[int]):
 
     @property
     def min_value(self) -> int:
+        """Get the minimum value of the integer domain.
+        :return: The minimum value of the domain.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         return self._min_value
 
     @property
     def max_value(self) -> int:
+        """Get the maximum value of the integer domain.
+        :return: The maximum value of the domain.
+        :raises ValueError: If min_value is greater than max_value.
+        """
         return self._max_value
 
     @property
     def has_prior(self) -> bool:
+        """Check if the integer domain has a prior defined.
+        :return: True if the prior and prior confidence are set, False otherwise.
+        """
         return self._prior is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> int:
+        """Get the prior value of the integer domain.
+        :return: The prior value of the domain.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return int(cast(int, self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
+        """Get the confidence level of the prior value.
+        :return: The confidence level of the prior value.
+        :raises ValueError: If the domain has no prior defined.
+        """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
+        """Get a string identifier for the range compatibility of the integer domain.
+        :return: A string representation of the minimum and maximum values, and whether
+        the domain is logarithmic.
+        """
         return f"{self._min_value}_{self._max_value}_{self._log}"
 
     def sample(self) -> int:
+        """Sample a random integer value from the domain.
+        :return: A randomly selected integer value within the domain's range.
+        :raises NotImplementedError: If the domain is set to sample on a logarithmic
+        scale, as this is not implemented yet.
+        """
         if self._log:
             raise NotImplementedError("TODO.")
         return int(random.randint(self._min_value, self._max_value))
@@ -399,6 +633,12 @@ class Integer(Domain[int]):
         center: int,
         confidence: ConfidenceLevel,
     ) -> Integer:
+        """Create a new integer domain centered around a specific value.
+        :param center: The value around which to center the new domain.
+        :param confidence: The confidence level for the new domain.
+        :return: A new Integer instance that is centered around the specified value.
+        :raises ValueError: If the center value is not within the domain's range.
+        """
         new_min, new_max = cast(
             tuple[int, int],
             _calculate_new_domain_bounds(
@@ -419,17 +659,34 @@ class Integer(Domain[int]):
 
 
 class Operation(Resolvable):
+    """A class representing an operation in a NePS space.
+    It encapsulates an operator (a callable or a string), arguments, and keyword
+    arguments.
+    The operator can be a function or a string representing a function name.
+    :param operator: The operator to be used in the operation, can be a callable or a
+    string.
+    :param args: A sequence of arguments to be passed to the operator.
+    :param kwargs: A mapping of keyword arguments to be passed to the operator.
+    """
+
     def __init__(
         self,
         operator: Callable | str,
         args: Sequence[Any] | Resolvable | None = None,
         kwargs: Mapping[str, Any] | Resolvable | None = None,
     ):
+        """Initialize the Operation with an operator, arguments, and keyword arguments.
+        :param operator: The operator to be used in the operation, can be a callable or a
+        string.
+        :param args: A sequence of arguments to be passed to the operator.
+        :param kwargs: A mapping of keyword arguments to be passed to the operator.
+        :raises ValueError: If the operator is not callable or a string.
+        """
         self._operator = operator
 
         self._args: tuple[Any, ...] | Resolvable
         if not isinstance(args, Resolvable):
-            self._args = tuple(args) if args else tuple()
+            self._args = tuple(args) if args else ()
         else:
             self._args = args
 
@@ -441,33 +698,56 @@ class Operation(Resolvable):
 
     @property
     def operator(self) -> Callable | str:
+        """Get the operator of the operation.
+        :return: The operator, which can be a callable or a string.
+        :raises ValueError: If the operator is not callable or a string.
+        """
         return self._operator
 
     @property
     def args(self) -> tuple[Any, ...]:
+        """Get the arguments of the operation.
+        :return: A tuple of arguments to be passed to the operator.
+        :raises ValueError: If the args are not a tuple or Resolvable.
+        """
         return cast(tuple[Any, ...], self._args)
 
     @property
     def kwargs(self) -> Mapping[str, Any]:
+        """Get the keyword arguments of the operation.
+        :return: A mapping of keyword arguments to be passed to the operator.
+        :raises ValueError: If the kwargs are not a mapping or Resolvable.
+        """
         return cast(Mapping[str, Any], self._kwargs)
 
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the operation as a mapping.
+        This method collects all attributes of the operation class and instance,
+        excluding private attributes and methods, and returns them as a dictionary.
+        :return: A mapping of attribute names to their values.
+        """
         # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         result: dict[str, Any] = {}
         for name, value in vars(self).items():
-            name = name.lstrip("_")
+            stripped_name = name.lstrip("_")
             if isinstance(value, dict):
                 for k, v in value.items():
                     # Multiple {{}} needed to escape surrounding '{' and '}'.
-                    result[f"{name}{{{k}}}"] = v
+                    result[f"{stripped_name}{{{k}}}"] = v
             elif isinstance(value, tuple):
                 for i, v in enumerate(value):
-                    result[f"{name}[{i}]"] = v
+                    result[f"{stripped_name}[{i}]"] = v
             else:
-                result[name] = value
+                result[stripped_name] = value
         return result
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Operation:
+        """Create a new Operation instance from the given attributes.
+        :param attrs: A mapping of attribute names to their values.
+        :return: A new Operation instance with the specified attributes.
+        :raises ValueError: If the attributes do not match the operation's expected
+        structure.
+        """
         # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         final_attrs: dict[str, Any] = {}
         for name, value in attrs.items():
@@ -485,50 +765,115 @@ class Operation(Resolvable):
 
 
 class Resampled(Resolvable):
+    """A class representing a resampling operation in a NePS space.
+    It can either be a resolvable object or a string representing a resampling by name.
+    :param source: The source of the resampling, can be a resolvable object or a string.
+    """
+
     def __init__(self, source: Resolvable | str):
+        """Initialize the Resampled object with a source.
+        :param source: The source of the resampling, which can be a resolvable object or
+        a string.
+        :raises ValueError: If the source is not a resolvable object or a string.
+        """
         self._source = source
 
     @property
     def source(self) -> Resolvable | str:
+        """Get the source of the resampling.
+        :return: The source of the resampling, which can be a resolvable object or a
+        string.
+        """
         return self._source
 
     @property
     def is_resampling_by_name(self) -> bool:
+        """Check if the resampling is by name.
+        :return: True if the source is a string, False otherwise.
+        """
         return isinstance(self._source, str)
 
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the resampling source as a mapping.
+        :return: A mapping of attribute names to their values.
+        :raises ValueError: If the resampling is by name or the source is not resolvable.
+        """
         if self.is_resampling_by_name:
-            raise ValueError(f"This is a resampling by name, can't get attrs from it: {self.source!r}.")
+            raise ValueError(
+                f"This is a resampling by name, can't get attrs from it: {self.source!r}."
+            )
         if not isinstance(self._source, Resolvable):
-            raise ValueError(f"Source should be a resolvable object. Is: {self._source!r}.")
+            raise ValueError(
+                f"Source should be a resolvable object. Is: {self._source!r}."
+            )
         return self._source.get_attrs()
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
+        """Create a new resolvable object from the given attributes.
+        :param attrs: A mapping of attribute names to their values.
+        :return: A new resolvable object created from the specified attributes.
+        :raises ValueError: If the resampling is by name or the source is not resolvable.
+        """
         if self.is_resampling_by_name:
-            raise ValueError(f"This is a resampling by name, can't create object for it: {self.source!r}.")
+            raise ValueError(
+                "This is a resampling by name, can't create object for it:"
+                f" {self.source!r}."
+            )
         if not isinstance(self._source, Resolvable):
-            raise ValueError(f"Source should be a resolvable object. Is: {self._source!r}.")
+            raise ValueError(
+                f"Source should be a resolvable object. Is: {self._source!r}."
+            )
         return self._source.from_attrs(attrs)
 
 
 class Fidelity(Resolvable, Generic[T]):
+    """A class representing a fidelity in a NePS space.
+    It encapsulates a domain that defines the range of values for the fidelity.
+    :param domain: The domain of the fidelity, which can be an Integer or Float domain.
+    :raises ValueError: If the domain has a prior defined, as fidelity domains should not
+    have priors.
+    """
+
     def __init__(self, domain: Integer | Float):
+        """Initialize the Fidelity with a domain.
+        :param domain: The domain of the fidelity, which can be an Integer or Float
+        domain.
+        :raises ValueError: If the domain has a prior defined, as fidelity domains should
+        not have priors.
+        """
         if domain.has_prior:
             raise ValueError(f"The domain of a Fidelity can not have priors: {domain!r}.")
         self._domain = domain
 
     @property
     def min_value(self) -> int | float:
+        """Get the minimum value of the fidelity domain.
+        :return: The minimum value of the fidelity domain.
+        """
         return self._domain.min_value
 
     @property
     def max_value(self) -> int | float:
+        """Get the maximum value of the fidelity domain.
+        :return: The maximum value of the fidelity domain.
+        """
         return self._domain.max_value
 
     def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the fidelity as a mapping.
+        This method collects all attributes of the fidelity class and instance,
+        excluding private attributes and methods, and returns them as a dictionary.
+        :return: A mapping of attribute names to their values.
+        :raises ValueError: If the fidelity has no domain defined.
+        """
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
-    def from_attrs(self, attrs: Mapping[str, Any]) -> Fidelity:
+    def from_attrs(self, attrs: Mapping[str, Any]) -> Fidelity:  # noqa: ARG002
+        """Create a new Fidelity instance from the given attributes.
+        :param attrs: A mapping of attribute names to their values.
+        :return: A new Fidelity instance with the specified attributes.
+        :raises ValueError: If the fidelity has no domain defined.
+        """
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
 
@@ -536,28 +881,55 @@ class Fidelity(Resolvable, Generic[T]):
 
 
 class OnlyPredefinedValuesSampler(DomainSampler):
+    """A sampler that only returns predefined values for a given path.
+    If the path is not found in the predefined values, it raises a ValueError.
+    :param predefined_samplings: A mapping of paths to predefined values.
+    """
+
     def __init__(
         self,
         predefined_samplings: Mapping[str, Any],
     ):
+        """Initialize the sampler with predefined samplings.
+        :param predefined_samplings: A mapping of paths to predefined values.
+        :raises ValueError: If predefined_samplings is empty.
+        """
         self._predefined_samplings = predefined_samplings
 
     def __call__(
         self,
         *,
-        domain_obj: Domain[T],
+        domain_obj: Domain[T],  # noqa: ARG002
         current_path: str,
     ) -> T:
+        """Sample a value from the predefined samplings for the given path.
+        :param domain_obj: The domain object, not used in this sampler.
+        :param current_path: The path for which to sample a value.
+        :return: The predefined value for the given path.
+        :raises ValueError: If the current path is not in the predefined samplings.
+        """
         if current_path not in self._predefined_samplings:
             raise ValueError(f"No predefined value for path: {current_path!r}.")
         return cast(T, self._predefined_samplings[current_path])
 
 
 class RandomSampler(DomainSampler):
+    """A sampler that randomly samples from a predefined set of values.
+    If the current path is not in the predefined values, it samples from the domain.
+    :param predefined_samplings: A mapping of paths to predefined values.
+    This sampler will use these values if available, otherwise it will sample from the
+    domain.
+    """
+
     def __init__(
         self,
         predefined_samplings: Mapping[str, Any],
     ):
+        """Initialize the sampler with predefined samplings.
+        :param predefined_samplings: A mapping of paths to predefined values.
+        :raises
+            ValueError: If predefined_samplings is empty.
+        """
         self._predefined_samplings = predefined_samplings
 
     def __call__(
@@ -566,6 +938,14 @@ class RandomSampler(DomainSampler):
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the predefined samplings or the domain.
+        :param domain_obj: The domain object from which to sample.
+        :param current_path: The path for which to sample a value.
+        :return: A sampled value, either from the predefined samplings or from the
+        domain.
+        :raises ValueError: If the current path is not in the predefined samplings and
+        the domain does not have a prior defined.
+        """
         if current_path not in self._predefined_samplings:
             sampled_value = domain_obj.sample()
         else:
@@ -574,13 +954,34 @@ class RandomSampler(DomainSampler):
 
 
 class PriorOrFallbackSampler(DomainSampler):
+    """A sampler that uses a prior value if available, otherwise falls back to another
+    sampler.
+    :param fallback_sampler: A DomainSampler to use if the prior is not available.
+    :param prior_use_probability: The probability of using the prior value when
+    available.
+    This should be a float between 0 and 1, where 0 means never use the prior and 1 means
+    always use it.
+    :raises ValueError: If the prior_use_probability is not between 0 and 1.
+    """
+
     def __init__(
         self,
         fallback_sampler: DomainSampler,
         prior_use_probability: float,
     ):
+        """Initialize the sampler with a fallback sampler and a prior use probability.
+        :param fallback_sampler: A DomainSampler to use if the prior is not available.
+        :param prior_use_probability: The probability of using the prior value when
+        available.
+        This should be a float between 0 and 1, where 0 means never use the prior and 1
+        means always use it.
+        :raises ValueError: If the prior_use_probability is not between 0 and 1.
+        """
         if not 0 <= prior_use_probability <= 1:
-            raise ValueError(f"The given `prior_use_probability` value is out of range: {prior_use_probability!r}.")
+            raise ValueError(
+                "The given `prior_use_probability` value is out of range:"
+                f" {prior_use_probability!r}."
+            )
 
         self._fallback_sampler = fallback_sampler
         self._prior_use_probability = prior_use_probability
@@ -591,6 +992,14 @@ class PriorOrFallbackSampler(DomainSampler):
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the domain, using the prior if available and according to
+        the prior use probability.
+        :param domain_obj: The domain object from which to sample.
+        :param current_path: The path for which to sample a value.
+        :return: A sampled value, either from the prior or from the fallback sampler.
+        :raises ValueError: If the domain does not have a prior defined and the fallback
+        sampler is not provided.
+        """
         use_prior = random.choices(
             (True, False),
             weights=(self._prior_use_probability, 1 - self._prior_use_probability),
@@ -605,12 +1014,35 @@ class PriorOrFallbackSampler(DomainSampler):
 
 
 class MutateByForgettingSampler(DomainSampler):
+    """A sampler that mutates predefined samplings by forgetting a certain number of
+    them. It randomly selects a number of predefined samplings to forget and returns a
+    new sampler that only uses the remaining samplings.
+    :param predefined_samplings: A mapping of paths to predefined values.
+    :param n_forgets: The number of predefined samplings to forget.
+    This should be an integer greater than 0 and less than or equal to the number of
+    predefined samplings.
+    :raises ValueError: If n_forgets is not a valid integer or if it exceeds the number
+    of predefined samplings.
+    """
+
     def __init__(
         self,
         predefined_samplings: Mapping[str, Any],
         n_forgets: int,
     ):
-        if not isinstance(n_forgets, int) or n_forgets <= 0 or n_forgets > len(predefined_samplings):
+        """Initialize the sampler with predefined samplings and a number of forgets.
+        :param predefined_samplings: A mapping of paths to predefined values.
+        :param n_forgets: The number of predefined samplings to forget.
+        This should be an integer greater than 0 and less than or equal to the number of
+        predefined samplings.
+        :raises ValueError: If n_forgets is not a valid integer or if it exceeds the
+        number of predefined samplings.
+        """
+        if (
+            not isinstance(n_forgets, int)
+            or n_forgets <= 0
+            or n_forgets > len(predefined_samplings)
+        ):
             raise ValueError(f"Invalid value for `n_forgets`: {n_forgets!r}.")
 
         mutated_samplings_to_make = _mutate_samplings_to_make_by_forgetting(
@@ -628,16 +1060,46 @@ class MutateByForgettingSampler(DomainSampler):
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the mutated predefined samplings or the domain.
+        :param domain_obj: The domain object from which to sample.
+        :param current_path: The path for which to sample a value.
+        :return: A sampled value, either from the mutated predefined samplings or from
+        the domain.
+        :raises ValueError: If the current path is not in the mutated predefined
+        samplings and the domain does not have a prior defined.
+        """
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
 
 
 class MutatateUsingCentersSampler(DomainSampler):
+    """A sampler that mutates predefined samplings by forgetting a certain number of them,
+    but still uses the original values as centers for sampling.
+    :param predefined_samplings: A mapping of paths to predefined values.
+    :param n_mutations: The number of predefined samplings to mutate.
+    This should be an integer greater than 0 and less than or equal to the number of
+    predefined samplings.
+    :raises ValueError: If n_mutations is not a valid integer or if it exceeds the number
+    of predefined samplings.
+    """
+
     def __init__(
         self,
         predefined_samplings: Mapping[str, Any],
         n_mutations: int,
     ):
-        if not isinstance(n_mutations, int) or n_mutations <= 0 or n_mutations > len(predefined_samplings):
+        """Initialize the sampler with predefined samplings and a number of mutations.
+        :param predefined_samplings: A mapping of paths to predefined values.
+        :param n_mutations: The number of predefined samplings to mutate.
+        This should be an integer greater than 0 and less than or equal to the number of
+        predefined samplings.
+        :raises ValueError: If n_mutations is not a valid integer or if it exceeds
+        the number of predefined samplings.
+        """
+        if (
+            not isinstance(n_mutations, int)
+            or n_mutations <= 0
+            or n_mutations > len(predefined_samplings)
+        ):
             raise ValueError(f"Invalid value for `n_mutations`: {n_mutations!r}.")
 
         self._kept_samplings_to_make = _mutate_samplings_to_make_by_forgetting(
@@ -654,6 +1116,15 @@ class MutatateUsingCentersSampler(DomainSampler):
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the predefined samplings or the domain, using original
+        values as centers if the current path is not in the kept samplings.
+        :param domain_obj: The domain object from which to sample.
+        :param current_path: The path for which to sample a value.
+        :return: A sampled value, either from the kept samplings or from the domain,
+        using the original values as centers if necessary.
+        :raises ValueError: If the current path is not in the kept samplings and the
+        domain does not have a prior defined.
+        """
         if current_path not in self._kept_samplings_to_make:
             # For this path we either have forgotten the value or we never had it.
             if current_path in self._original_samplings_to_make:
@@ -674,18 +1145,48 @@ class MutatateUsingCentersSampler(DomainSampler):
 
 
 class CrossoverNotPossibleError(Exception):
-    pass
+    """Exception raised when a crossover operation is not possible."""
 
 
 class CrossoverByMixingSampler(DomainSampler):
+    """A sampler that performs a crossover operation by mixing two sets of predefined
+    samplings. It combines the predefined samplings from two sources, allowing for a
+    probability-based
+    selection of values from either source.
+    :param predefined_samplings_1: The first set of predefined samplings.
+    :param predefined_samplings_2: The second set of predefined samplings.
+    :param prefer_first_probability: The probability of preferring values from the first
+    set over the second set when both have values for the same path.
+    This should be a float between 0 and 1, where 0 means always prefer the second set
+    and 1 means always prefer the first set.
+    :raises ValueError: If prefer_first_probability is not between 0 and 1.
+    :raises CrossoverNotPossibleError: If no crossovers were made between the two sets
+    of predefined samplings.
+    """
+
     def __init__(
         self,
         predefined_samplings_1: Mapping[str, Any],
         predefined_samplings_2: Mapping[str, Any],
         prefer_first_probability: float,
     ):
-        if not isinstance(prefer_first_probability, float) or not (0 <= prefer_first_probability <= 1):
-            raise ValueError(f"Invalid value for `prefer_first_probability`: {prefer_first_probability!r}.")
+        """Initialize the sampler with two sets of predefined samplings and a preference
+        probability for the first set.
+        :param predefined_samplings_1: The first set of predefined samplings.
+        :param predefined_samplings_2: The second set of predefined samplings.
+        :param prefer_first_probability: The probability of preferring values from the
+        first set over the second set when both have values for the same path.
+        This should be a float between 0 and 1, where 0 means always prefer the second
+        set and 1 means always prefer the first set.
+        :raises ValueError: If prefer_first_probability is not between 0 and 1.
+        """
+        if not isinstance(prefer_first_probability, float) or not (
+            0 <= prefer_first_probability <= 1
+        ):
+            raise ValueError(
+                "Invalid value for `prefer_first_probability`:"
+                f" {prefer_first_probability!r}."
+            )
 
         (
             made_any_crossovers,
@@ -709,6 +1210,14 @@ class CrossoverByMixingSampler(DomainSampler):
         domain_obj: Domain[T],
         current_path: str,
     ) -> T:
+        """Sample a value from the crossed-over predefined samplings or the domain.
+        :param domain_obj: The domain object from which to sample.
+        :param current_path: The path for which to sample a value.
+        :return: A sampled value, either from the crossed-over predefined samplings or
+        from the domain.
+        :raises ValueError: If the current path is not in the crossed-over predefined
+        samplings and the domain does not have a prior defined.
+        """
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
 
 
@@ -757,6 +1266,19 @@ def _crossover_samplings_to_make_by_mixing(
 
 
 class SamplingResolutionContext:
+    """A context for resolving samplings in a NePS space.
+    It manages the resolution root, domain sampler, environment values,
+    and keeps track of samplings made and resolved objects.
+    :param resolution_root: The root of the resolution, which should be a Resolvable
+    object.
+    :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
+    :param environment_values: A mapping of environment values that are fixed and not
+    related
+    to samplings. These values can be used in the resolution process.
+    :raises ValueError: If the resolution_root is not a Resolvable, or if the
+    domain_sampler is not a DomainSampler, or if the environment_values is not a Mapping.
+    """
+
     def __init__(
         self,
         *,
@@ -764,19 +1286,40 @@ class SamplingResolutionContext:
         domain_sampler: DomainSampler,
         environment_values: Mapping[str, Any],
     ):
+        """Initialize the SamplingResolutionContext with a resolution root, domain
+        sampler, and environment values.
+        :param resolution_root: The root of the resolution, which should be a Resolvable
+        object.
+        :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
+        :param environment_values: A mapping of environment values that are fixed and not
+        related to samplings. These values can be used in the resolution process.
+        :raises ValueError: If the resolution_root is not a Resolvable, or if the
+        domain_sampler is not a DomainSampler, or if the environment_values is not a
+        Mapping.
+        """
         if not isinstance(resolution_root, Resolvable):
-            raise ValueError(f"The received `resolution_root` is not a Resolvable: {resolution_root!r}.")
+            raise ValueError(
+                "The received `resolution_root` is not a Resolvable:"
+                f" {resolution_root!r}."
+            )
 
         if not isinstance(domain_sampler, DomainSampler):
-            raise ValueError(f"The received `domain_sampler` is not a DomainSampler: {domain_sampler!r}.")
+            raise ValueError(
+                "The received `domain_sampler` is not a DomainSampler:"
+                f" {domain_sampler!r}."
+            )
 
         if not isinstance(environment_values, Mapping):
-            raise ValueError(f"The received `environment_values` is not a Mapping: {environment_values!r}.")
+            raise ValueError(
+                "The received `environment_values` is not a Mapping:"
+                f" {environment_values!r}."
+            )
 
         # `_resolution_root` stores the root of the resolution.
         self._resolution_root: Resolvable = resolution_root
 
-        # `_domain_sampler` stores the object responsible for sampling from Domain objects.
+        # `_domain_sampler` stores the object responsible for sampling from Domain
+        # objects.
         self._domain_sampler = domain_sampler
 
         # # `_environment_values` stores fixed values from outside.
@@ -795,20 +1338,36 @@ class SamplingResolutionContext:
 
     @property
     def resolution_root(self) -> Resolvable:
+        """Get the root of the resolution.
+        :return: The root of the resolution, which should be a Resolvable object.
+        """
         return self._resolution_root
 
     @property
     def samplings_made(self) -> Mapping[str, Any]:
+        """Get the samplings made during the resolution process.
+        :return: A mapping of paths to sampled values.
+        """
         return self._samplings_made
 
     @property
     def environment_values(self) -> Mapping[str, Any]:
+        """Get the environment values that are fixed and not related to samplings.
+        :return: A mapping of environment variable names to their values.
+        """
         return self._environment_values
 
     @contextlib.contextmanager
     def resolving(self, _obj: Any, name: str) -> Generator[None]:
+        """Context manager for resolving an object in the current resolution context.
+        :param _obj: The object being resolved, can be any type.
+        :param name: The name of the object being resolved, used for debugging.
+        :raises ValueError: If the name is not a valid string.
+        """
         if not name or not isinstance(name, str):
-            raise ValueError(f"Given name for what we are resolving is invalid: {name!r}.")
+            raise ValueError(
+                f"Given name for what we are resolving is invalid: {name!r}."
+            )
 
         # It is possible that the received object has already been resolved.
         # That is expected and is okay, so no check is made for it.
@@ -821,27 +1380,52 @@ class SamplingResolutionContext:
             self._current_path_parts.pop()
 
     def was_already_resolved(self, obj: Any) -> bool:
+        """Check if the given object was already resolved in the current context.
+        :param obj: The object to check if it was already resolved.
+        :return: True if the object was already resolved, False otherwise.
+        """
         return obj in self._resolved_objects
 
     def add_resolved(self, original: Any, resolved: Any) -> None:
+        """Add a resolved object to the context.
+        :param original: The original object that was resolved.
+        :param resolved: The resolved value of the original object.
+        :raises ValueError: If the original object was already resolved or if it is a
+        Resampled.
+        """
         if self.was_already_resolved(original):
             raise ValueError(
                 f"Original object has already been resolved: {original!r}. "
                 + "\nIf you are doing resampling by name, "
-                + "make sure you are not forgetting to request resampling also for related objects."
-                + "\nOtherwise it could lead to infinite recursion."
+                + "make sure you are not forgetting to request resampling also for"
+                " related objects." + "\nOtherwise it could lead to infinite recursion."
             )
         if isinstance(original, Resampled):
-            raise ValueError(f"Attempting to add a Resampled object to resolved values: {original!r}.")
+            raise ValueError(
+                f"Attempting to add a Resampled object to resolved values: {original!r}."
+            )
         self._resolved_objects[original] = resolved
 
     def get_resolved(self, obj: Any) -> Any:
+        """Get the resolved value for the given object.
+        :param obj: The object for which to get the resolved value.
+        :return: The resolved value of the object.
+        :raises ValueError: If the object was not already resolved in the context.
+        """
         try:
             return self._resolved_objects[obj]
-        except KeyError:
-            raise ValueError(f"Given object was not already resolved. Please check first: {obj!r}")
+        except KeyError as err:
+            raise ValueError(
+                f"Given object was not already resolved. Please check first: {obj!r}"
+            ) from err
 
     def sample_from(self, domain_obj: Domain) -> Any:
+        """Sample a value from the given domain object.
+        :param domain_obj: The domain object from which to sample a value.
+        :return: The sampled value from the domain object.
+        :raises ValueError: If the domain object was already resolved or if the path
+        has already been sampled from.
+        """
         # Each `domain_obj` is only ever sampled from once.
         # This is okay and the expected behavior.
         # For each `domain_obj`, its sampled value is either directly stored itself,
@@ -850,15 +1434,17 @@ class SamplingResolutionContext:
         # and so the `domain_obj` will not be re-sampled from again.
         if self.was_already_resolved(domain_obj):
             raise ValueError(
-                f"We have already sampled a value for the given domain object: {domain_obj!r}."
-                + "\nThis should not be happening."
+                "We have already sampled a value for the given domain object:"
+                f" {domain_obj!r}." + "\nThis should not be happening."
             )
 
         # The range compatibility identifier is there to make sure when we say
         # the path matches, that the range for the value we are looking up also matches.
         domain_obj_type_name = type(domain_obj).__name__.lower()
         range_compatibility_identifier = domain_obj.range_compatibility_identifier
-        domain_obj_identifier = f"{domain_obj_type_name}__{range_compatibility_identifier}"
+        domain_obj_identifier = (
+            f"{domain_obj_type_name}__{range_compatibility_identifier}"
+        )
 
         current_path = ".".join(self._current_path_parts)
         current_path += "::" + domain_obj_identifier
@@ -880,19 +1466,47 @@ class SamplingResolutionContext:
         return self._samplings_made[current_path]
 
     def get_value_from_environment(self, var_name: str) -> Any:
+        """Get a value from the environment variables.
+        :param var_name: The name of the environment variable to get the value from.
+        :return: The value of the environment variable.
+        :raises ValueError: If the environment variable is not found in the context.
+        """
         try:
             return self._environment_values[var_name]
-        except KeyError:
-            raise ValueError(f"No value is available for the environment variable {var_name!r}.")
+        except KeyError as err:
+            raise ValueError(
+                f"No value is available for the environment variable {var_name!r}."
+            ) from err
 
 
 class SamplingResolver:
+    """A class responsible for resolving samplings in a NePS space.
+    It uses a SamplingResolutionContext to manage the resolution process,
+    and a DomainSampler to sample values from Domain objects.
+    :param resolver: The resolver to use for resolving objects.
+    This should be a callable that takes an object and a context and returns the resolved
+    object.
+    :raises ValueError: If the resolver is not a callable or if it is not a
+    DomainSampler or a SamplingResolutionContext.
+    """
+
     def __call__(
         self,
         obj: Resolvable,
         domain_sampler: DomainSampler,
         environment_values: Mapping[str, Any],
     ) -> tuple[Resolvable, SamplingResolutionContext]:
+        """Resolve the given object in the context of the provided domain sampler and
+        environment values.
+        :param obj: The Resolvable object to resolve.
+        :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
+        :param environment_values: A mapping of environment values that are fixed and not
+        related to samplings.
+        :return: A tuple containing the resolved object and the
+        SamplingResolutionContext.
+        :raises ValueError: If the object is not a Resolvable, or if the domain_sampler
+        is not a DomainSampler, or if the environment_values is not a Mapping.
+        """
         context = SamplingResolutionContext(
             resolution_root=obj,
             domain_sampler=domain_sampler,
@@ -914,7 +1528,8 @@ class SamplingResolver:
         # No need to store or lookup from context, directly return the given object.
         if isinstance(any_obj, Resolvable):
             raise ValueError(
-                f"The default resolver is not supposed to be called for resolvable objects. Received: {any_obj!r}."
+                "The default resolver is not supposed to be called for resolvable"
+                f" objects. Received: {any_obj!r}."
             )
         return any_obj
 
@@ -934,7 +1549,9 @@ class SamplingResolver:
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
             final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+            needed_resolving = needed_resolving or (
+                initial_attr_value is not resolved_attr_value
+            )
 
         result = pipeline_obj
         if needed_resolving:
@@ -959,7 +1576,9 @@ class SamplingResolver:
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
             final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+            needed_resolving = needed_resolving or (
+                initial_attr_value is not resolved_attr_value
+            )
 
         resolved_domain_obj = domain_obj
         if needed_resolving:
@@ -1004,22 +1623,32 @@ class SamplingResolver:
                     # If we add a `_resolve_tuple` functionality to go into tuples
                     # and resolve their contents, the call below will likely
                     # lead to too much work being done or issues.
-                    resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
+                    resolved_attr_value = self._resolve(
+                        initial_attr_value, attr_name, context
+                    )
                 else:
                     resolved_attr_value = initial_attr_value
             else:
-                resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
+                resolved_attr_value = self._resolve(
+                    initial_attr_value, attr_name, context
+                )
             final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+            needed_resolving = needed_resolving or (
+                initial_attr_value is not resolved_attr_value
+            )
 
         resolved_categorical_obj = categorical_obj
         if needed_resolving:
-            resolved_categorical_obj = cast(Categorical, categorical_obj.from_attrs(final_attrs))
+            resolved_categorical_obj = cast(
+                Categorical, categorical_obj.from_attrs(final_attrs)
+            )
 
         try:
             sampled_index = context.sample_from(resolved_categorical_obj)
         except Exception as e:
-            raise ValueError(f"Failed to sample from {resolved_categorical_obj!r}.") from e
+            raise ValueError(
+                f"Failed to sample from {resolved_categorical_obj!r}."
+            ) from e
         sampled_value = cast(tuple, resolved_categorical_obj.choices)[sampled_index]
         result = self._resolve(sampled_value, "sampled_value", context)
 
@@ -1035,9 +1664,9 @@ class SamplingResolver:
         if context.was_already_resolved(operation_obj):
             return context.get_resolved(operation_obj)
 
-        # It is possible that the `operation_obj` will require two runs to be fully resolved.
-        # For example if `operation_obj.args` is not defined as a tuple of args,
-        # but is a Resolvable that needs to be resolved first itself,
+        # It is possible that the `operation_obj` will require two runs to be fully
+        # resolved. For example if `operation_obj.args` is not defined as a tuple of
+        # args, but is a Resolvable that needs to be resolved first itself,
         # for us to have the actual tuple of args.
 
         # First run.
@@ -1049,7 +1678,9 @@ class SamplingResolver:
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
             final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+            needed_resolving = needed_resolving or (
+                initial_attr_value is not resolved_attr_value
+            )
 
         operation_obj_first_run = operation_obj
         if needed_resolving:
@@ -1066,7 +1697,9 @@ class SamplingResolver:
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
             final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (initial_attr_value is not resolved_attr_value)
+            needed_resolving = needed_resolving or (
+                initial_attr_value is not resolved_attr_value
+            )
 
         operation_obj_second_run = operation_obj_first_run
         if needed_resolving:
@@ -1101,9 +1734,9 @@ class SamplingResolver:
         resolvable_to_resample_obj = resampled_obj.from_attrs(initial_attrs)
 
         type_name = type(resolvable_to_resample_obj).__name__.lower()
-        result = self._resolve(resolvable_to_resample_obj, f"resampled_{type_name}", context)
-
-        return result
+        return self._resolve(
+            resolvable_to_resample_obj, f"resampled_{type_name}", context
+        )
 
     @_resolver_dispatch.register
     def _(
@@ -1123,27 +1756,35 @@ class SamplingResolver:
         # environment value, which we look up by the attribute name of the
         # received fidelity object inside the resolution root.
 
-        names_for_this_fidelity_obj = list(
+        names_for_this_fidelity_obj = [
             attr_name
             for attr_name, attr_value in context.resolution_root.get_attrs().items()
             if attr_value is fidelity_obj
-        )
+        ]
 
         if len(names_for_this_fidelity_obj) == 0:
-            raise ValueError("A fidelity object should be a direct attribute of the pipeline.")
-        elif len(names_for_this_fidelity_obj) > 1:
-            raise ValueError("A fidelity object should only be referenced once in the pipeline.")
+            raise ValueError(
+                "A fidelity object should be a direct attribute of the pipeline."
+            )
+        if len(names_for_this_fidelity_obj) > 1:
+            raise ValueError(
+                "A fidelity object should only be referenced once in the pipeline."
+            )
 
         fidelity_name = names_for_this_fidelity_obj[0]
 
         try:
             result = context.get_value_from_environment(fidelity_name)
-        except ValueError:
-            raise ValueError(f"No value is available in the environment for fidelity {fidelity_name!r}.")
+        except ValueError as err:
+            raise ValueError(
+                "No value is available in the environment for fidelity"
+                f" {fidelity_name!r}."
+            ) from err
 
         if not fidelity_obj.min_value <= result <= fidelity_obj.max_value:
             raise ValueError(
-                f"Value for fidelity with name {fidelity_name!r} is outside its allowed range "
+                f"Value for fidelity with name {fidelity_name!r} is outside its allowed"
+                " range "
                 + f"[{fidelity_obj.min_value!r}, {fidelity_obj.max_value!r}]. "
                 + f"Received: {result!r}."
             )
@@ -1155,11 +1796,14 @@ class SamplingResolver:
     def _(
         self,
         resolvable_obj: Resolvable,
-        context: SamplingResolutionContext,
+        context: SamplingResolutionContext,  # noqa: ARG002
     ) -> Any:
-        # Called when no specialized resolver was available for the specific resolvable type.
-        # That is not something that is normally expected.
-        raise ValueError(f"No specialized resolver was registered for object of type {type(resolvable_obj)!r}.")
+        # Called when no specialized resolver was available for the specific resolvable
+        # type. That is not something that is normally expected.
+        raise ValueError(
+            "No specialized resolver was registered for object of type"
+            f" {type(resolvable_obj)!r}."
+        )
 
 
 def resolve(
@@ -1167,6 +1811,16 @@ def resolve(
     domain_sampler: DomainSampler | None = None,
     environment_values: Mapping[str, Any] | None = None,
 ) -> tuple[P, SamplingResolutionContext]:
+    """Resolve a NePS pipeline with the given domain sampler and environment values.
+    :param pipeline: The pipeline to resolve, which should be a Pipeline object.
+    :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
+    If None, a RandomSampler with no predefined values will be used.
+    :param environment_values: A mapping of environment variable names to their values.
+    If None, an empty mapping will be used.
+    :return: A tuple containing the resolved pipeline and the SamplingResolutionContext.
+    :raises ValueError: If the pipeline is not a Pipeline object or if the domain_sampler
+    is not a DomainSampler or if the environment_values is not a Mapping.
+    """
     if domain_sampler is None:
         # By default, use a random sampler with no predefined values.
         domain_sampler = RandomSampler(predefined_samplings={})
@@ -1188,19 +1842,26 @@ def resolve(
 
 
 def convert_operation_to_callable(operation: Operation) -> Callable:
+    """Convert an Operation to a callable that can be executed.
+    :param operation: The Operation to convert.
+    :return: A callable that represents the operation.
+    :raises ValueError: If the operation is not a valid Operation object.
+    """
     operator = cast(Callable, operation.operator)
 
     operation_args = []
     for arg in operation.args:
-        if isinstance(arg, Operation):
-            arg = convert_operation_to_callable(arg)
-        operation_args.append(arg)
+        operation_args.append(
+            convert_operation_to_callable(arg) if isinstance(arg, Operation) else arg
+        )
 
     operation_kwargs = {}
     for kwarg_name, kwarg_value in operation.kwargs.items():
-        if isinstance(kwarg_value, Operation):
-            kwarg_value = convert_operation_to_callable(kwarg_value)
-        operation_kwargs[kwarg_name] = kwarg_value
+        operation_kwargs[kwarg_name] = (
+            convert_operation_to_callable(kwarg_value)
+            if isinstance(kwarg_value, Operation)
+            else kwarg_value
+        )
 
     return cast(Callable, operator(*operation_args, **operation_kwargs))
 
@@ -1237,15 +1898,30 @@ def _operation_to_unwrapped_config(
 
 
 def convert_operation_to_string(operation: Operation) -> str:
+    """Convert an Operation to a string representation.
+    :param operation: The Operation to convert.
+    :return: A string representation of the operation.
+    :raises ValueError: If the operation is not a valid Operation object.
+    """
     unwrapped_config = tuple(_operation_to_unwrapped_config(operation))
-    return cast(str, config_string.wrap_config_into_string(unwrapped_config))
+    return config_string.wrap_config_into_string(unwrapped_config)
 
 
 # -------------------------------------------------
 
 
 class RandomSearch:
+    """A simple random search optimizer for a NePS pipeline.
+    It samples configurations randomly from the pipeline's domain and environment values.
+    :param pipeline: The pipeline to optimize, which should be a Pipeline object.
+    :raises ValueError: If the pipeline is not a Pipeline object.
+    """
+
     def __init__(self, pipeline: Pipeline):
+        """Initialize the RandomSearch optimizer with a pipeline.
+        :param pipeline: The pipeline to optimize, which should be a Pipeline object.
+        :raises ValueError: If the pipeline is not a Pipeline object.
+        """
         self._pipeline = pipeline
 
         self._environment_values = {}
@@ -1258,9 +1934,21 @@ class RandomSearch:
     def __call__(
         self,
         trials: Mapping[str, trial_state.Trial],
-        budget_info: optimizer_state.BudgetInfo | None,
+        budget_info: optimizer_state.BudgetInfo | None,  # noqa: ARG002
         n: int | None = None,
     ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
+        """Sample configurations randomly from the pipeline's domain and environment
+        values.
+        :param trials: A mapping of trial IDs to Trial objects, representing previous
+        trials.
+        :param budget_info: The budget information for the optimization process.
+        :param n: The number of configurations to sample. If None, a single configuration
+        will be sampled.
+        :return: A SampledConfig object or a list of SampledConfig objects, depending
+        on the value of n.
+        :raises ValueError: If the pipeline is not a Pipeline object or if the trials are
+        not a valid mapping of trial IDs to Trial objects.
+        """
         n_prev_trials = len(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
@@ -1278,7 +1966,18 @@ class RandomSearch:
 
 
 class ComplexRandomSearch:
+    """A complex random search optimizer for a NePS pipeline.
+    It samples configurations randomly from the pipeline's domain and environment values,
+    and also performs mutations and crossovers based on previous successful trials.
+    :param pipeline: The pipeline to optimize, which should be a Pipeline object.
+    :raises ValueError: If the pipeline is not a Pipeline object.
+    """
+
     def __init__(self, pipeline: Pipeline):
+        """Initialize the ComplexRandomSearch optimizer with a pipeline.
+        :param pipeline: The pipeline to optimize, which should be a Pipeline object.
+        :raises ValueError: If the pipeline is not a Pipeline object.
+        """
         self._pipeline = pipeline
 
         self._environment_values = {}
@@ -1301,9 +2000,22 @@ class ComplexRandomSearch:
     def __call__(
         self,
         trials: Mapping[str, trial_state.Trial],
-        budget_info: optimizer_state.BudgetInfo | None,
+        budget_info: optimizer_state.BudgetInfo | None,  # noqa: ARG002
         n: int | None = None,
     ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
+        """Sample configurations randomly from the pipeline's domain and environment
+        values, and also perform mutations and crossovers based on previous successful
+        trials.
+        :param trials: A mapping of trial IDs to Trial objects, representing previous
+        trials.
+        :param budget_info: The budget information for the optimization process.
+        :param n: The number of configurations to sample. If None, a single configuration
+        will be sampled.
+        :return: A SampledConfig object or a list of SampledConfig objects, depending
+        on the value of n.
+        :raises ValueError: If the pipeline is not a Pipeline object or if the trials are
+        not a valid mapping of trial IDs to Trial objects.
+        """
         n_prev_trials = len(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
@@ -1328,9 +2040,11 @@ class ComplexRandomSearch:
         mutated_incumbents = []
         crossed_over_incumbents = []
 
-        successful_trials = list(
+        successful_trials: list[Trial] = list(
             filter(
-                lambda trial: trial.report.reported_as == trial.State.SUCCESS,
+                lambda trial: trial.report.reported_as == trial.State.SUCCESS
+                if trial.report is not None
+                else False,
                 trials.values(),
             )
         )
@@ -1339,7 +2053,9 @@ class ComplexRandomSearch:
             top_trials = heapq.nsmallest(
                 n_top_trials,
                 successful_trials,
-                key=lambda trial: trial.report.objective_to_minimize,
+                key=lambda trial: float(trial.report.objective_to_minimize)
+                if trial.report and isinstance(trial.report.objective_to_minimize, float)
+                else float("inf"),
             )  # Will have up to `n_top_trials` items.
 
             # Do some mutations.
@@ -1363,7 +2079,9 @@ class ComplexRandomSearch:
                         pipeline=self._pipeline,
                         domain_sampler=MutatateUsingCentersSampler(
                             predefined_samplings=top_trial_config,
-                            n_mutations=max(1, random.randint(1, int(len(top_trial_config) / 2))),
+                            n_mutations=max(
+                                1, random.randint(1, int(len(top_trial_config) / 2))
+                            ),
                         ),
                         environment_values=self._environment_values,
                     )
@@ -1387,7 +2105,9 @@ class ComplexRandomSearch:
                         pipeline=self._pipeline,
                         domain_sampler=MutateByForgettingSampler(
                             predefined_samplings=top_trial_config,
-                            n_forgets=max(1, random.randint(1, int(len(top_trial_config) / 2))),
+                            n_forgets=max(
+                                1, random.randint(1, int(len(top_trial_config) / 2))
+                            ),
                         ),
                         environment_values=self._environment_values,
                     )
@@ -1462,6 +2182,13 @@ class ComplexRandomSearch:
 
 
 class NepsCompatConverter:
+    """A class to convert between NePS configurations and NEPS-compatible configurations.
+    It provides methods to convert a SamplingResolutionContext to a NEPS-compatible config
+    and to convert a NEPS-compatible config back to a SamplingResolutionContext.
+    :param resolution_context: The SamplingResolutionContext to convert.
+    :raises ValueError: If the resolution_context is not a SamplingResolutionContext.
+    """
+
     _SAMPLING_PREFIX = "SAMPLING__"
     _ENVIRONMENT_PREFIX = "ENVIRONMENT__"
     _SAMPLING_PREFIX_LEN = len(_SAMPLING_PREFIX)
@@ -1478,6 +2205,11 @@ class NepsCompatConverter:
         cls,
         resolution_context: SamplingResolutionContext,
     ) -> Mapping[str, Any]:
+        """Convert a SamplingResolutionContext to a NEPS-compatible config.
+        :param resolution_context: The SamplingResolutionContext to convert.
+        :return: A mapping of NEPS-compatible configuration keys to their values.
+        :raises ValueError: If the resolution_context is not a SamplingResolutionContext.
+        """
         config: dict[str, Any] = {}
 
         samplings_made = resolution_context.samplings_made
@@ -1495,6 +2227,12 @@ class NepsCompatConverter:
         cls,
         config: Mapping[str, Any],
     ) -> _FromNepsConfigResult:
+        """Convert a NEPS-compatible config to a SamplingResolutionContext.
+        :param config: A mapping of NEPS-compatible configuration keys to their values.
+        :return: A _FromNepsConfigResult containing predefined samplings,
+        environment values, and extra kwargs.
+        :raises ValueError: If the config is not a valid NEPS-compatible config.
+        """
         predefined_samplings = {}
         environment_values = {}
         extra_kwargs = {}
@@ -1519,7 +2257,7 @@ class NepsCompatConverter:
 def _prepare_sampled_configs(
     chosen_pipelines: list[tuple[Pipeline, SamplingResolutionContext]],
     n_prev_trials: int,
-    return_single: bool,
+    return_single: bool,  # noqa: FBT001
 ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
     configs = []
     for i, (_resolved_pipeline, resolution_context) in enumerate(chosen_pipelines):
@@ -1540,11 +2278,23 @@ def _prepare_sampled_configs(
     return configs
 
 
-def adjust_evaluation_pipeline_for_new_space(
+def adjust_evaluation_pipeline_for_neps_space(
     evaluation_pipeline: Callable,
     pipeline_space: P,
     operation_converter: Callable[[Operation], Any] = convert_operation_to_callable,
 ) -> Callable | str:
+    """Adjust the evaluation pipeline to work with a NePS space.
+    This function wraps the evaluation pipeline to sample from the NePS space
+    and convert the sampled pipeline to a format compatible with the evaluation pipeline.
+    :param evaluation_pipeline: The evaluation pipeline to adjust.
+    :param pipeline_space: The NePS pipeline space to sample from.
+    :param operation_converter: A callable to convert Operation objects to a format
+    compatible with the evaluation pipeline.
+    :return: A wrapped evaluation pipeline that samples from the NePS space.
+    :raises ValueError: If the evaluation_pipeline is not callable or if the
+    pipeline_space is not a Pipeline object.
+    """
+
     @functools.wraps(evaluation_pipeline)
     def inner(*args: Any, **kwargs: Any) -> Any:
         # `kwargs` can contain other things not related to

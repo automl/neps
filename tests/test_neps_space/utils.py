@@ -2,20 +2,20 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
 def generate_possible_config_strings(
-    pipeline: space.Pipeline,
-    resolved_pipeline_attr_getter: Callable[[space.Pipeline], space.Operation],
+    pipeline: neps_space.Pipeline,
+    resolved_pipeline_attr_getter: Callable[[neps_space.Pipeline], neps_space.Operation],
     num_resolutions: int = 50_000,
 ):
     result = set()
 
     for _ in range(num_resolutions):
-        resolved_pipeline, _resolution_context = space.resolve(pipeline)
+        resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
         attr = resolved_pipeline_attr_getter(resolved_pipeline)
-        config_string = space.convert_operation_to_string(attr)
+        config_string = neps_space.convert_operation_to_string(attr)
         result.add(config_string)
 
     return result

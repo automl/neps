@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max"),
     [
-        (space.ConfidenceLevel.LOW, (50, 10, 90)),
-        (space.ConfidenceLevel.MEDIUM, (50, 25, 75)),
-        (space.ConfidenceLevel.HIGH, (50, 40, 60)),
+        (neps_space.ConfidenceLevel.LOW, (50, 10, 90)),
+        (neps_space.ConfidenceLevel.MEDIUM, (50, 25, 75)),
+        (neps_space.ConfidenceLevel.HIGH, (50, 40, 60)),
     ],
 )
 def test_centering_integer(
@@ -23,11 +23,11 @@ def test_centering_integer(
 
     int_prior = 50
 
-    int1 = space.Integer(
+    int1 = neps_space.Integer(
         min_value=1,
         max_value=100,
     )
-    int2 = space.Integer(
+    int2 = neps_space.Integer(
         min_value=1,
         max_value=100,
         prior=int_prior,
@@ -59,9 +59,9 @@ def test_centering_integer(
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max"),
     [
-        (space.ConfidenceLevel.LOW, (50.0, 10.399999999999999, 89.6)),
-        (space.ConfidenceLevel.MEDIUM, (50.0, 25.25, 74.75)),
-        (space.ConfidenceLevel.HIGH, (50.0, 40.1, 59.9)),
+        (neps_space.ConfidenceLevel.LOW, (50.0, 10.399999999999999, 89.6)),
+        (neps_space.ConfidenceLevel.MEDIUM, (50.0, 25.25, 74.75)),
+        (neps_space.ConfidenceLevel.HIGH, (50.0, 40.1, 59.9)),
     ],
 )
 def test_centering_float(
@@ -74,11 +74,11 @@ def test_centering_float(
 
     float_prior = 50.0
 
-    float1 = space.Float(
+    float1 = neps_space.Float(
         min_value=1.0,
         max_value=100.0,
     )
-    float2 = space.Float(
+    float2 = neps_space.Float(
         min_value=1.0,
         max_value=100.0,
         prior=float_prior,
@@ -110,9 +110,9 @@ def test_centering_float(
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max_value"),
     [
-        (space.ConfidenceLevel.LOW, (40, 0, 80, 50)),
-        (space.ConfidenceLevel.MEDIUM, (25, 0, 50, 50)),
-        (space.ConfidenceLevel.HIGH, (10, 0, 20, 50)),
+        (neps_space.ConfidenceLevel.LOW, (40, 0, 80, 50)),
+        (neps_space.ConfidenceLevel.MEDIUM, (25, 0, 50, 50)),
+        (neps_space.ConfidenceLevel.HIGH, (10, 0, 20, 50)),
     ],
 )
 def test_centering_categorical(
@@ -125,10 +125,10 @@ def test_centering_categorical(
 
     categorical_prior_index_original = 49
 
-    categorical1 = space.Categorical(
+    categorical1 = neps_space.Categorical(
         choices=tuple(range(1, 101)),
     )
-    categorical2 = space.Categorical(
+    categorical2 = neps_space.Categorical(
         choices=tuple(range(1, 101)),
         prior_index=categorical_prior_index_original,
         prior_confidence=confidence_level,
@@ -167,22 +167,22 @@ def test_centering_categorical(
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max"),
     [
-        (space.ConfidenceLevel.LOW, (10, 5, 13)),
-        (space.ConfidenceLevel.MEDIUM, (10, 7, 13)),
-        (space.ConfidenceLevel.HIGH, (10, 8, 12)),
+        (neps_space.ConfidenceLevel.LOW, (10, 5, 13)),
+        (neps_space.ConfidenceLevel.MEDIUM, (10, 7, 13)),
+        (neps_space.ConfidenceLevel.HIGH, (10, 8, 12)),
     ],
 )
 def test_centering_stranger_ranges_integer(
     confidence_level,
     expected_prior_min_max,
 ):
-    int1 = space.Integer(
+    int1 = neps_space.Integer(
         min_value=1,
         max_value=13,
     )
     int1_centered = int1.centered_around(10, confidence_level)
 
-    int2 = space.Integer(
+    int2 = neps_space.Integer(
         min_value=1,
         max_value=13,
         prior=10,
@@ -208,22 +208,22 @@ def test_centering_stranger_ranges_integer(
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max"),
     [
-        (space.ConfidenceLevel.LOW, (0.5, 0.09999999999999998, 0.9)),
-        (space.ConfidenceLevel.MEDIUM, (0.5, 0.25, 0.75)),
-        (space.ConfidenceLevel.HIGH, (0.5, 0.4, 0.6)),
+        (neps_space.ConfidenceLevel.LOW, (0.5, 0.09999999999999998, 0.9)),
+        (neps_space.ConfidenceLevel.MEDIUM, (0.5, 0.25, 0.75)),
+        (neps_space.ConfidenceLevel.HIGH, (0.5, 0.4, 0.6)),
     ],
 )
 def test_centering_stranger_ranges_float(
     confidence_level,
     expected_prior_min_max,
 ):
-    float1 = space.Float(
+    float1 = neps_space.Float(
         min_value=0.0,
         max_value=1.0,
     )
     float1_centered = float1.centered_around(0.5, confidence_level)
 
-    float2 = space.Float(
+    float2 = neps_space.Float(
         min_value=0.0,
         max_value=1.0,
         prior=0.5,
@@ -249,21 +249,21 @@ def test_centering_stranger_ranges_float(
 @pytest.mark.parametrize(
     ("confidence_level", "expected_prior_min_max_value"),
     [
-        (space.ConfidenceLevel.LOW, (2, 0, 5, 2)),
-        (space.ConfidenceLevel.MEDIUM, (2, 0, 4, 2)),
-        (space.ConfidenceLevel.HIGH, (1, 0, 2, 2)),
+        (neps_space.ConfidenceLevel.LOW, (2, 0, 5, 2)),
+        (neps_space.ConfidenceLevel.MEDIUM, (2, 0, 4, 2)),
+        (neps_space.ConfidenceLevel.HIGH, (1, 0, 2, 2)),
     ],
 )
 def test_centering_stranger_ranges_categorical(
     confidence_level,
     expected_prior_min_max_value,
 ):
-    categorical1 = space.Categorical(
+    categorical1 = neps_space.Categorical(
         choices=tuple(range(7)),
     )
     categorical1_centered = categorical1.centered_around(2, confidence_level)
 
-    categorical2 = space.Categorical(
+    categorical2 = neps_space.Categorical(
         choices=tuple(range(7)),
         prior_index=2,
         prior_confidence=confidence_level,

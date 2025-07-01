@@ -4,19 +4,19 @@ import re
 
 import pytest
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
-class DemoHyperparametersWithFidelitySpace(space.Pipeline):
+class DemoHyperparametersWithFidelitySpace(neps_space.Pipeline):
     constant1: int = 42
-    float1: float = space.Float(
+    float1: float = neps_space.Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
     )
-    fidelity_integer1: int = space.Fidelity(
-        domain=space.Integer(
+    fidelity_integer1: int = neps_space.Fidelity(
+        domain=neps_space.Integer(
             min_value=1,
             max_value=1000,
         ),
@@ -29,12 +29,12 @@ def test_fidelity_creation_raises_when_domain_has_prior():
         ValueError,
         match=re.escape("The domain of a Fidelity can not have priors: "),
     ):
-        space.Fidelity(
-            domain=space.Integer(
+        neps_space.Fidelity(
+            domain=neps_space.Integer(
                 min_value=1,
                 max_value=1000,
                 prior=10,
-                prior_confidence=space.ConfidenceLevel.MEDIUM,
+                prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
             ),
         )
 
@@ -49,7 +49,7 @@ def test_fidelity_resolution_raises_when_resolved_with_no_environment_value():
             "No value is available in the environment for fidelity 'fidelity_integer1'.",
         ),
     ):
-        space.resolve(pipeline=pipeline)
+        neps_space.resolve(pipeline=pipeline)
 
 
 def test_fidelity_resolution_raises_when_resolved_with_invalid_value():
@@ -63,7 +63,7 @@ def test_fidelity_resolution_raises_when_resolved_with_invalid_value():
             "Value for fidelity with name 'fidelity_integer1' is outside its allowed range [1, 1000]. Received: -10."
         ),
     ):
-        space.resolve(
+        neps_space.resolve(
             pipeline=pipeline,
             environment_values={"fidelity_integer1": -10},
         )
@@ -74,7 +74,7 @@ def test_fidelity_resolution_works():
 
     # Resolve a pipeline which contains a fidelity,
     # with a valid value for it in the environment.
-    resolved_pipeline, resolution_context = space.resolve(
+    resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline=pipeline,
         environment_values={"fidelity_integer1": 10},
     )
@@ -96,9 +96,9 @@ def test_fidelity_resolution_with_context_works():
 
     # Resolve a pipeline which contains a fidelity,
     # with a valid value for it in the environment.
-    resolved_pipeline, resolution_context = space.resolve(
+    resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
         environment_values=environment_values,

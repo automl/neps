@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import config_string, space
+from neps.space.neps_spaces import config_string, neps_space
 
 
-class HNASLikePipeline(space.Pipeline):
+class HNASLikePipeline(neps_space.Pipeline):
     """Based on the `hierarchical+shared` variant (cell block is shared everywhere).
     Across _CONVBLOCK items, _ACT and _CONV also shared. Only the _NORM changes.
 
@@ -17,186 +17,188 @@ class HNASLikePipeline(space.Pipeline):
     # Adding `PReLU` with a float hyperparameter `init`
     # Note that the sampled `_prelu_init_value` will be shared across all `_PRELU` uses,
     #  since no `Resampled` was requested for it
-    _prelu_init_value = space.Float(min_value=0.1, max_value=0.9)
-    _PRELU = space.Operation(
+    _prelu_init_value = neps_space.Float(min_value=0.1, max_value=0.9)
+    _PRELU = neps_space.Operation(
         operator="ACT prelu",
         kwargs={"init": _prelu_init_value},
     )
     # ------------------------------------------------------
 
     # Added `_PRELU` to the possible `_ACT` choices
-    _ACT = space.Categorical(
+    _ACT = neps_space.Categorical(
         choices=(
-            space.Operation(operator="ACT relu"),
-            space.Operation(operator="ACT hardswish"),
-            space.Operation(operator="ACT mish"),
+            neps_space.Operation(operator="ACT relu"),
+            neps_space.Operation(operator="ACT hardswish"),
+            neps_space.Operation(operator="ACT mish"),
             _PRELU,
         ),
     )
-    _CONV = space.Categorical(
+    _CONV = neps_space.Categorical(
         choices=(
-            space.Operation(operator="CONV conv1x1"),
-            space.Operation(operator="CONV conv3x3"),
-            space.Operation(operator="CONV dconv3x3"),
+            neps_space.Operation(operator="CONV conv1x1"),
+            neps_space.Operation(operator="CONV conv3x3"),
+            neps_space.Operation(operator="CONV dconv3x3"),
         ),
     )
-    _NORM = space.Categorical(
+    _NORM = neps_space.Categorical(
         choices=(
-            space.Operation(operator="NORM batch"),
-            space.Operation(operator="NORM instance"),
-            space.Operation(operator="NORM layer"),
+            neps_space.Operation(operator="NORM batch"),
+            neps_space.Operation(operator="NORM instance"),
+            neps_space.Operation(operator="NORM layer"),
         ),
     )
 
-    _CONVBLOCK = space.Operation(
+    _CONVBLOCK = neps_space.Operation(
         operator="CONVBLOCK Sequential3",
         args=(
             _ACT,
             _CONV,
-            space.Resampled(_NORM),
+            neps_space.Resampled(_NORM),
         ),
     )
-    _CONVBLOCK_FULL = space.Operation(
+    _CONVBLOCK_FULL = neps_space.Operation(
         operator="OPS Sequential1",
-        args=(space.Resampled(_CONVBLOCK),),
+        args=(neps_space.Resampled(_CONVBLOCK),),
     )
-    _OP = space.Categorical(
+    _OP = neps_space.Categorical(
         choices=(
-            space.Operation(operator="OPS zero"),
-            space.Operation(operator="OPS id"),
-            space.Operation(operator="OPS avg_pool"),
-            space.Resampled(_CONVBLOCK_FULL),
+            neps_space.Operation(operator="OPS zero"),
+            neps_space.Operation(operator="OPS id"),
+            neps_space.Operation(operator="OPS avg_pool"),
+            neps_space.Resampled(_CONVBLOCK_FULL),
         ),
     )
 
-    CL = space.Operation(
+    CL = neps_space.Operation(
         operator="CELL Cell",
         args=(
-            space.Resampled(_OP),
-            space.Resampled(_OP),
-            space.Resampled(_OP),
-            space.Resampled(_OP),
-            space.Resampled(_OP),
-            space.Resampled(_OP),
+            neps_space.Resampled(_OP),
+            neps_space.Resampled(_OP),
+            neps_space.Resampled(_OP),
+            neps_space.Resampled(_OP),
+            neps_space.Resampled(_OP),
+            neps_space.Resampled(_OP),
         ),
     )
 
-    _C = space.Categorical(
+    _C = neps_space.Categorical(
         choices=(
-            space.Operation(operator="C Sequential2", args=(CL, CL)),
-            space.Operation(operator="C Sequential3", args=(CL, CL, CL)),
-            space.Operation(operator="C Residual2", args=(CL, CL, CL)),
+            neps_space.Operation(operator="C Sequential2", args=(CL, CL)),
+            neps_space.Operation(operator="C Sequential3", args=(CL, CL, CL)),
+            neps_space.Operation(operator="C Residual2", args=(CL, CL, CL)),
         ),
     )
 
-    _RESBLOCK = space.Operation(operator="resBlock")
-    _DOWN = space.Categorical(
+    _RESBLOCK = neps_space.Operation(operator="resBlock")
+    _DOWN = neps_space.Categorical(
         choices=(
-            space.Operation(operator="DOWN Sequential2", args=(CL, _RESBLOCK)),
-            space.Operation(operator="DOWN Sequential3", args=(CL, CL, _RESBLOCK)),
-            space.Operation(operator="DOWN Residual2", args=(CL, _RESBLOCK, _RESBLOCK)),
+            neps_space.Operation(operator="DOWN Sequential2", args=(CL, _RESBLOCK)),
+            neps_space.Operation(operator="DOWN Sequential3", args=(CL, CL, _RESBLOCK)),
+            neps_space.Operation(
+                operator="DOWN Residual2", args=(CL, _RESBLOCK, _RESBLOCK)
+            ),
         ),
     )
 
-    _D0 = space.Categorical(
+    _D0 = neps_space.Categorical(
         choices=(
-            space.Operation(
+            neps_space.Operation(
                 operator="D0 Sequential3",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
                     CL,
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D0 Sequential4",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
-                    space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
                     CL,
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D0 Residual3",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
                     CL,
                     CL,
                 ),
             ),
         ),
     )
-    _D1 = space.Categorical(
+    _D1 = neps_space.Categorical(
         choices=(
-            space.Operation(
+            neps_space.Operation(
                 operator="D1 Sequential3",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
-                    space.Resampled(_DOWN),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_DOWN),
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D1 Sequential4",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
-                    space.Resampled(_C),
-                    space.Resampled(_DOWN),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_DOWN),
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D1 Residual3",
                 args=(
-                    space.Resampled(_C),
-                    space.Resampled(_C),
-                    space.Resampled(_DOWN),
-                    space.Resampled(_DOWN),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_C),
+                    neps_space.Resampled(_DOWN),
+                    neps_space.Resampled(_DOWN),
                 ),
             ),
         ),
     )
 
-    _D2 = space.Categorical(
+    _D2 = neps_space.Categorical(
         choices=(
-            space.Operation(
+            neps_space.Operation(
                 operator="D2 Sequential3",
                 args=(
-                    space.Resampled(_D1),
-                    space.Resampled(_D1),
-                    space.Resampled(_D0),
+                    neps_space.Resampled(_D1),
+                    neps_space.Resampled(_D1),
+                    neps_space.Resampled(_D0),
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D2 Sequential3",
                 args=(
-                    space.Resampled(_D0),
-                    space.Resampled(_D1),
-                    space.Resampled(_D1),
+                    neps_space.Resampled(_D0),
+                    neps_space.Resampled(_D1),
+                    neps_space.Resampled(_D1),
                 ),
             ),
-            space.Operation(
+            neps_space.Operation(
                 operator="D2 Sequential4",
                 args=(
-                    space.Resampled(_D1),
-                    space.Resampled(_D1),
-                    space.Resampled(_D0),
-                    space.Resampled(_D0),
+                    neps_space.Resampled(_D1),
+                    neps_space.Resampled(_D1),
+                    neps_space.Resampled(_D0),
+                    neps_space.Resampled(_D0),
                 ),
             ),
         ),
     )
 
-    ARCH: space.Operation = _D2
+    ARCH: neps_space.Operation = _D2
 
 
 @pytest.mark.repeat(500)
 def test_hnas_like():
     pipeline = HNASLikePipeline()
 
-    resolved_pipeline, resolution_context = space.resolve(pipeline)
+    resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
     assert resolved_pipeline is not None
     assert resolution_context.samplings_made is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == ("CL", "ARCH")
@@ -206,16 +208,16 @@ def test_hnas_like():
 def test_hnas_like_string():
     pipeline = HNASLikePipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     arch = resolved_pipeline.ARCH
-    arch_config_string = space.convert_operation_to_string(arch)
+    arch_config_string = neps_space.convert_operation_to_string(arch)
     assert arch_config_string
     pretty_config = config_string.ConfigString(arch_config_string).pretty_format()
     assert pretty_config
 
     cl = resolved_pipeline.CL
-    cl_config_string = space.convert_operation_to_string(cl)
+    cl_config_string = neps_space.convert_operation_to_string(cl)
     assert cl_config_string
     pretty_config = config_string.ConfigString(cl_config_string).pretty_format()
     assert pretty_config
@@ -340,9 +342,9 @@ def test_hnas_like_context():
 
     pipeline = HNASLikePipeline()
 
-    resolved_pipeline, resolution_context = space.resolve(
+    resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -358,14 +360,14 @@ def test_hnas_like_context():
     assert sampled_values == samplings_to_make
 
     cl = resolved_pipeline.CL
-    cl_config_string = space.convert_operation_to_string(cl)
+    cl_config_string = neps_space.convert_operation_to_string(cl)
     assert cl_config_string
     assert cl_config_string == expected_cl_config_string
     assert "NORM batch" in cl_config_string
     assert "NORM layer" in cl_config_string
 
     arch = resolved_pipeline.ARCH
-    arch_config_string = space.convert_operation_to_string(arch)
+    arch_config_string = neps_space.convert_operation_to_string(arch)
     assert arch_config_string
     assert arch_config_string == expected_arch_config_string
     assert cl_config_string in arch_config_string

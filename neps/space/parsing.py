@@ -9,8 +9,8 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
+from neps.space.neps_spaces.neps_space import Pipeline
 from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
-from neps.space.new_space.space import Pipeline
 from neps.space.search_space import SearchSpace
 
 if TYPE_CHECKING:

@@ -2,107 +2,107 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import config_string, space
+from neps.space.neps_spaces import config_string, neps_space
 
 
-class NosBench(space.Pipeline):
-    _UNARY_FUN = space.Categorical(
+class NosBench(neps_space.Pipeline):
+    _UNARY_FUN = neps_space.Categorical(
         choices=(
-            space.Operation(operator="Square"),
-            space.Operation(operator="Exp"),
-            space.Operation(operator="Log"),
+            neps_space.Operation(operator="Square"),
+            neps_space.Operation(operator="Exp"),
+            neps_space.Operation(operator="Log"),
         )
     )
 
-    _BINARY_FUN = space.Categorical(
+    _BINARY_FUN = neps_space.Categorical(
         choices=(
-            space.Operation(operator="Add"),
-            space.Operation(operator="Sub"),
-            space.Operation(operator="Mul"),
+            neps_space.Operation(operator="Add"),
+            neps_space.Operation(operator="Sub"),
+            neps_space.Operation(operator="Mul"),
         )
     )
 
-    _TERNARY_FUN = space.Categorical(
+    _TERNARY_FUN = neps_space.Categorical(
         choices=(
-            space.Operation(operator="Interpolate"),
-            space.Operation(operator="Bias_Correct"),
+            neps_space.Operation(operator="Interpolate"),
+            neps_space.Operation(operator="Bias_Correct"),
         )
     )
 
-    _PARAMS = space.Categorical(
+    _PARAMS = neps_space.Categorical(
         choices=(
-            space.Operation(operator="Params"),
-            space.Operation(operator="Gradient"),
-            space.Operation(operator="Opt_Step"),
+            neps_space.Operation(operator="Params"),
+            neps_space.Operation(operator="Gradient"),
+            neps_space.Operation(operator="Opt_Step"),
         )
     )
-    _CONST = space.Integer(3, 8)
-    _VAR = space.Integer(9, 19)
+    _CONST = neps_space.Integer(3, 8)
+    _VAR = neps_space.Integer(9, 19)
 
-    _POINTER = space.Categorical(
+    _POINTER = neps_space.Categorical(
         choices=(
-            space.Resampled(_PARAMS),
-            space.Resampled(_CONST),
-            space.Resampled(_VAR),
+            neps_space.Resampled(_PARAMS),
+            neps_space.Resampled(_CONST),
+            neps_space.Resampled(_VAR),
         ),
     )
 
-    _UNARY = space.Operation(
+    _UNARY = neps_space.Operation(
         operator="Unary",
         args=(
-            space.Resampled(_UNARY_FUN),
-            space.Resampled(_POINTER),
+            neps_space.Resampled(_UNARY_FUN),
+            neps_space.Resampled(_POINTER),
         ),
     )
 
-    _BINARY = space.Operation(
+    _BINARY = neps_space.Operation(
         operator="Binary",
         args=(
-            space.Resampled(_BINARY_FUN),
-            space.Resampled(_POINTER),
-            space.Resampled(_POINTER),
+            neps_space.Resampled(_BINARY_FUN),
+            neps_space.Resampled(_POINTER),
+            neps_space.Resampled(_POINTER),
         ),
     )
 
-    _TERNARY = space.Operation(
+    _TERNARY = neps_space.Operation(
         operator="Ternary",
         args=(
-            space.Resampled(_TERNARY_FUN),
-            space.Resampled(_POINTER),
-            space.Resampled(_POINTER),
-            space.Resampled(_POINTER),
+            neps_space.Resampled(_TERNARY_FUN),
+            neps_space.Resampled(_POINTER),
+            neps_space.Resampled(_POINTER),
+            neps_space.Resampled(_POINTER),
         ),
     )
 
-    _F_ARGS = space.Categorical(
+    _F_ARGS = neps_space.Categorical(
         choices=(
-            space.Resampled(_UNARY),
-            space.Resampled(_BINARY),
-            space.Resampled(_TERNARY),
+            neps_space.Resampled(_UNARY),
+            neps_space.Resampled(_BINARY),
+            neps_space.Resampled(_TERNARY),
         ),
     )
 
-    _F = space.Operation(
+    _F = neps_space.Operation(
         operator="Function",
-        args=(space.Resampled(_F_ARGS),),
-        kwargs={"var": space.Resampled(_VAR)},
+        args=(neps_space.Resampled(_F_ARGS),),
+        kwargs={"var": neps_space.Resampled(_VAR)},
     )
 
-    _L_ARGS = space.Categorical(
+    _L_ARGS = neps_space.Categorical(
         choices=(
-            (space.Resampled(_F),),
-            (space.Resampled(_F), space.Resampled("_L")),
+            (neps_space.Resampled(_F),),
+            (neps_space.Resampled(_F), neps_space.Resampled("_L")),
         ),
     )
 
-    _L = space.Operation(
+    _L = neps_space.Operation(
         operator="Line_operator",
-        args=space.Resampled(_L_ARGS),
+        args=neps_space.Resampled(_L_ARGS),
     )
 
-    P = space.Operation(
+    P = neps_space.Operation(
         operator="Program",
-        args=(space.Resampled(_L),),
+        args=(neps_space.Resampled(_L),),
     )
 
 
@@ -111,13 +111,13 @@ def test_resolve():
     pipeline = NosBench()
 
     try:
-        resolved_pipeline, resolution_context = space.resolve(pipeline)
+        resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
     except RecursionError:
         pytest.xfail("XFAIL due to too much recursion.")
         raise
 
     p = resolved_pipeline.P
-    p_config_string = space.convert_operation_to_string(p)
+    p_config_string = neps_space.convert_operation_to_string(p)
     assert p_config_string
     pretty_config = config_string.ConfigString(p_config_string).pretty_format()
     assert pretty_config

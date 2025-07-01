@@ -2,79 +2,79 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
-class ActPipelineSimpleFloat(space.Pipeline):
-    prelu_init_value = space.Float(
+class ActPipelineSimpleFloat(neps_space.Pipeline):
+    prelu_init_value = neps_space.Float(
         min_value=0,
         max_value=1000000,
         log=False,
         prior=0.25,
-        prior_confidence=space.ConfidenceLevel.LOW,
+        prior_confidence=neps_space.ConfidenceLevel.LOW,
     )
 
-    prelu_shared1 = space.Operation(
+    prelu_shared1 = neps_space.Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
-    prelu_shared2 = space.Operation(
-        operator="prelu",
-        kwargs={"init": prelu_init_value},
-    )
-
-    prelu_own_clone1 = space.Operation(
-        operator="prelu",
-        kwargs={"init": space.Resampled(prelu_init_value)},
-    )
-    prelu_own_clone2 = space.Operation(
-        operator="prelu",
-        kwargs={"init": space.Resampled(prelu_init_value)},
-    )
-
-    _prelu_init_resampled = space.Resampled(prelu_init_value)
-    prelu_common_clone1 = space.Operation(
-        operator="prelu",
-        kwargs={"init": _prelu_init_resampled},
-    )
-    prelu_common_clone2 = space.Operation(
-        operator="prelu",
-        kwargs={"init": _prelu_init_resampled},
-    )
-
-
-class ActPipelineComplexInteger(space.Pipeline):
-    prelu_init_value = space.Integer(min_value=0, max_value=1000000)
-
-    prelu_shared1 = space.Operation(
-        operator="prelu",
-        kwargs={"init": prelu_init_value},
-    )
-    prelu_shared2 = space.Operation(
+    prelu_shared2 = neps_space.Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
 
-    prelu_own_clone1 = space.Operation(
+    prelu_own_clone1 = neps_space.Operation(
         operator="prelu",
-        kwargs={"init": space.Resampled(prelu_init_value)},
+        kwargs={"init": neps_space.Resampled(prelu_init_value)},
     )
-    prelu_own_clone2 = space.Operation(
+    prelu_own_clone2 = neps_space.Operation(
         operator="prelu",
-        kwargs={"init": space.Resampled(prelu_init_value)},
+        kwargs={"init": neps_space.Resampled(prelu_init_value)},
     )
 
-    _prelu_init_resampled = space.Resampled(prelu_init_value)
-    prelu_common_clone1 = space.Operation(
+    _prelu_init_resampled = neps_space.Resampled(prelu_init_value)
+    prelu_common_clone1 = neps_space.Operation(
         operator="prelu",
         kwargs={"init": _prelu_init_resampled},
     )
-    prelu_common_clone2 = space.Operation(
+    prelu_common_clone2 = neps_space.Operation(
         operator="prelu",
         kwargs={"init": _prelu_init_resampled},
     )
 
-    act: space.Operation = space.Operation(
+
+class ActPipelineComplexInteger(neps_space.Pipeline):
+    prelu_init_value = neps_space.Integer(min_value=0, max_value=1000000)
+
+    prelu_shared1 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": prelu_init_value},
+    )
+    prelu_shared2 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": prelu_init_value},
+    )
+
+    prelu_own_clone1 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": neps_space.Resampled(prelu_init_value)},
+    )
+    prelu_own_clone2 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": neps_space.Resampled(prelu_init_value)},
+    )
+
+    _prelu_init_resampled = neps_space.Resampled(prelu_init_value)
+    prelu_common_clone1 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": _prelu_init_resampled},
+    )
+    prelu_common_clone2 = neps_space.Operation(
+        operator="prelu",
+        kwargs={"init": _prelu_init_resampled},
+    )
+
+    act: neps_space.Operation = neps_space.Operation(
         operator="sequential6",
         args=(
             prelu_shared1,
@@ -88,42 +88,42 @@ class ActPipelineComplexInteger(space.Pipeline):
             "prelu_shared": prelu_shared1,
             "prelu_own_clone": prelu_own_clone1,
             "prelu_common_clone": prelu_common_clone1,
-            "resampled_hp_value": space.Resampled(prelu_init_value),
+            "resampled_hp_value": neps_space.Resampled(prelu_init_value),
         },
     )
 
 
-class CellPipelineCategorical(space.Pipeline):
-    conv_block = space.Categorical(
+class CellPipelineCategorical(neps_space.Pipeline):
+    conv_block = neps_space.Categorical(
         choices=(
-            space.Operation(operator="conv1"),
-            space.Operation(operator="conv2"),
+            neps_space.Operation(operator="conv1"),
+            neps_space.Operation(operator="conv2"),
         ),
     )
 
-    op1 = space.Categorical(
+    op1 = neps_space.Categorical(
         choices=(
             conv_block,
-            space.Operation("op1"),
+            neps_space.Operation("op1"),
         ),
     )
-    op2 = space.Categorical(
+    op2 = neps_space.Categorical(
         choices=(
-            space.Resampled(conv_block),
-            space.Operation("op2"),
+            neps_space.Resampled(conv_block),
+            neps_space.Operation("op2"),
         ),
     )
 
-    _resampled_op1 = space.Resampled(op1)
-    cell = space.Operation(
+    _resampled_op1 = neps_space.Resampled(op1)
+    cell = neps_space.Operation(
         operator="cell",
         args=(
             op1,
             op2,
             _resampled_op1,
-            space.Resampled(op2),
+            neps_space.Resampled(op2),
             _resampled_op1,
-            space.Resampled(op2),
+            neps_space.Resampled(op2),
         ),
     )
 
@@ -132,7 +132,7 @@ class CellPipelineCategorical(space.Pipeline):
 def test_resampled_float():
     pipeline = ActPipelineSimpleFloat()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == (
@@ -173,7 +173,7 @@ def test_resampled_float():
 def test_resampled_integer():
     pipeline = ActPipelineComplexInteger()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == (
@@ -243,7 +243,7 @@ def test_resampled_integer():
 def test_resampled_categorical():
     pipeline = CellPipelineCategorical()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == (
@@ -261,8 +261,8 @@ def test_resampled_categorical():
     assert op1 is not pipeline.op1
     assert op2 is not pipeline.op2
 
-    assert isinstance(op1, space.Operation)
-    assert isinstance(op2, space.Operation)
+    assert isinstance(op1, neps_space.Operation)
+    assert isinstance(op2, neps_space.Operation)
 
     assert (op1 is conv_block) or (op1.operator == "op1")
     assert op2.operator in ("conv1", "conv2", "op2")

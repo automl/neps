@@ -2,35 +2,35 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
-class ActPipelineSimple(space.Pipeline):
-    prelu = space.Operation(
+class ActPipelineSimple(neps_space.Pipeline):
+    prelu = neps_space.Operation(
         operator="prelu",
         kwargs={"init": 0.1},
     )
-    relu = space.Operation(operator="relu")
+    relu = neps_space.Operation(operator="relu")
 
-    act: space.Operation = space.Categorical(
+    act: neps_space.Operation = neps_space.Categorical(
         choices=(prelu, relu),
     )
 
 
-class ActPipelineComplex(space.Pipeline):
-    prelu_init_value: float = space.Float(min_value=0.1, max_value=0.9)
-    prelu = space.Operation(
+class ActPipelineComplex(neps_space.Pipeline):
+    prelu_init_value: float = neps_space.Float(min_value=0.1, max_value=0.9)
+    prelu = neps_space.Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
-    act: space.Operation = space.Categorical(
+    act: neps_space.Operation = neps_space.Categorical(
         choices=(prelu,),
     )
 
 
-class FixedPipeline(space.Pipeline):
+class FixedPipeline(neps_space.Pipeline):
     prelu_init_value: float = 0.5
-    prelu = space.Operation(
+    prelu = neps_space.Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
@@ -40,41 +40,41 @@ class FixedPipeline(space.Pipeline):
 _conv_choices_low = ("conv1x1", "conv3x3")
 _conv_choices_high = ("conv5x5", "conv9x9")
 _conv_choices_prior_confidence_choices = (
-    space.ConfidenceLevel.LOW,
-    space.ConfidenceLevel.MEDIUM,
-    space.ConfidenceLevel.HIGH,
+    neps_space.ConfidenceLevel.LOW,
+    neps_space.ConfidenceLevel.MEDIUM,
+    neps_space.ConfidenceLevel.HIGH,
 )
 
 
-class ConvPipeline(space.Pipeline):
-    conv_choices_prior_index: int = space.Integer(
+class ConvPipeline(neps_space.Pipeline):
+    conv_choices_prior_index: int = neps_space.Integer(
         min_value=0,
         max_value=1,
         log=False,
         prior=0,
-        prior_confidence=space.ConfidenceLevel.LOW,
+        prior_confidence=neps_space.ConfidenceLevel.LOW,
     )
-    conv_choices_prior_confidence: space.ConfidenceLevel = space.Categorical(
+    conv_choices_prior_confidence: neps_space.ConfidenceLevel = neps_space.Categorical(
         choices=_conv_choices_prior_confidence_choices,
         prior_index=1,
-        prior_confidence=space.ConfidenceLevel.LOW,
+        prior_confidence=neps_space.ConfidenceLevel.LOW,
     )
-    conv_choices: tuple[str, ...] = space.Categorical(
+    conv_choices: tuple[str, ...] = neps_space.Categorical(
         choices=(_conv_choices_low, _conv_choices_high),
         prior_index=conv_choices_prior_index,
         prior_confidence=conv_choices_prior_confidence,
     )
 
-    _conv1: str = space.Categorical(
+    _conv1: str = neps_space.Categorical(
         choices=conv_choices,
     )
-    _conv2: str = space.Categorical(
+    _conv2: str = neps_space.Categorical(
         choices=conv_choices,
     )
 
-    conv_block: space.Operation = space.Categorical(
+    conv_block: neps_space.Operation = neps_space.Categorical(
         choices=(
-            space.Operation(
+            neps_space.Operation(
                 operator="sequential3",
                 args=[_conv1, _conv2, _conv1],
             ),
@@ -82,32 +82,32 @@ class ConvPipeline(space.Pipeline):
     )
 
 
-class CellPipeline(space.Pipeline):
-    _act = space.Operation(operator="relu")
-    _conv = space.Operation(operator="conv3x3")
-    _norm = space.Operation(operator="batch")
+class CellPipeline(neps_space.Pipeline):
+    _act = neps_space.Operation(operator="relu")
+    _conv = neps_space.Operation(operator="conv3x3")
+    _norm = neps_space.Operation(operator="batch")
 
-    conv_block = space.Operation(operator="sequential3", args=(_act, _conv, _norm))
+    conv_block = neps_space.Operation(operator="sequential3", args=(_act, _conv, _norm))
 
-    op1 = space.Categorical(
+    op1 = neps_space.Categorical(
         choices=(
             conv_block,
-            space.Operation(operator="zero"),
-            space.Operation(operator="avg_pool"),
+            neps_space.Operation(operator="zero"),
+            neps_space.Operation(operator="avg_pool"),
         ),
     )
-    op2 = space.Categorical(
+    op2 = neps_space.Categorical(
         choices=(
             conv_block,
-            space.Operation(operator="zero"),
-            space.Operation(operator="avg_pool"),
+            neps_space.Operation(operator="zero"),
+            neps_space.Operation(operator="avg_pool"),
         ),
     )
 
     _some_int = 2
-    _some_float = space.Float(min_value=0.5, max_value=0.5)
+    _some_float = neps_space.Float(min_value=0.5, max_value=0.5)
 
-    cell = space.Operation(
+    cell = neps_space.Operation(
         operator="cell",
         args=(op1, op2, op1, op2, op1, op2),
         kwargs={"float_hp": _some_float, "int_hp": _some_int},
@@ -118,7 +118,7 @@ class CellPipeline(space.Pipeline):
 def test_nested_simple():
     pipeline = ActPipelineSimple()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == ("prelu", "relu", "act")
@@ -136,10 +136,10 @@ def test_nested_simple_string():
 
     pipeline = ActPipelineSimple()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = space.convert_operation_to_string(act)
+    act_config_string = neps_space.convert_operation_to_string(act)
     assert act_config_string
     assert act_config_string in possible_cell_config_strings
 
@@ -148,7 +148,7 @@ def test_nested_simple_string():
 def test_nested_complex():
     pipeline = ActPipelineComplex()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == (
@@ -175,10 +175,10 @@ def test_nested_complex():
 def test_nested_complex_string():
     pipeline = ActPipelineComplex()
 
-    resolved_pipeline, sampled_values = space.resolve(pipeline)
+    resolved_pipeline, sampled_values = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = space.convert_operation_to_string(act)
+    act_config_string = neps_space.convert_operation_to_string(act)
     assert act_config_string
 
     # expected to look like: "(prelu {'init': 0.1087727907176638})"
@@ -196,7 +196,7 @@ def test_nested_complex_string():
 def test_fixed_pipeline():
     pipeline = FixedPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == tuple(
@@ -212,10 +212,10 @@ def test_fixed_pipeline():
 def test_fixed_pipeline_string():
     pipeline = FixedPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = space.convert_operation_to_string(act)
+    act_config_string = neps_space.convert_operation_to_string(act)
     assert act_config_string
     assert act_config_string == "(prelu {'init': 0.5})"
 
@@ -224,7 +224,7 @@ def test_fixed_pipeline_string():
 def test_simple_reuse():
     pipeline = ConvPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
     assert tuple(resolved_pipeline.get_attrs().keys()) == (
@@ -265,10 +265,10 @@ def test_simple_reuse_string():
 
     pipeline = ConvPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     conv_block = resolved_pipeline.conv_block
-    conv_block_config_string = space.convert_operation_to_string(conv_block)
+    conv_block_config_string = neps_space.convert_operation_to_string(conv_block)
     assert conv_block_config_string
     assert conv_block_config_string in possible_conv_block_config_strings
 
@@ -277,7 +277,7 @@ def test_simple_reuse_string():
 def test_shared_complex():
     pipeline = CellPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not pipeline
     assert resolved_pipeline is not None
@@ -295,8 +295,8 @@ def test_shared_complex():
     op2 = resolved_pipeline.op2
     assert op1 is not pipeline.op1
     assert op2 is not pipeline.op2
-    assert isinstance(op1, space.Operation)
-    assert isinstance(op2, space.Operation)
+    assert isinstance(op1, neps_space.Operation)
+    assert isinstance(op2, neps_space.Operation)
 
     if op1 is op2:
         assert op1 is conv_block
@@ -336,10 +336,10 @@ def test_shared_complex_string():
 
     pipeline = CellPipeline()
 
-    resolved_pipeline, _resolution_context = space.resolve(pipeline)
+    resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     cell = resolved_pipeline.cell
-    cell_config_string = space.convert_operation_to_string(cell)
+    cell_config_string = neps_space.convert_operation_to_string(cell)
     assert cell_config_string
     assert cell_config_string in possible_cell_config_strings
 
@@ -359,9 +359,9 @@ def test_shared_complex_context():
 
     pipeline = CellPipeline()
 
-    resolved_pipeline_first, _resolution_context_first = space.resolve(
+    resolved_pipeline_first, _resolution_context_first = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -373,9 +373,9 @@ def test_shared_complex_context():
     assert sampled_values_first == samplings_to_make
     assert list(sampled_values_first.items()) == list(samplings_to_make.items())
 
-    resolved_pipeline_second, _resolution_context_second = space.resolve(
+    resolved_pipeline_second, _resolution_context_second = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -394,10 +394,10 @@ def test_shared_complex_context():
 
     # however, their final results should be the same thing
     assert (
-        space.convert_operation_to_string(resolved_pipeline_first.cell)
+        neps_space.convert_operation_to_string(resolved_pipeline_first.cell)
         == expected_config_string
     )
     assert (
-        space.convert_operation_to_string(resolved_pipeline_second.cell)
+        neps_space.convert_operation_to_string(resolved_pipeline_second.cell)
         == expected_config_string
     )

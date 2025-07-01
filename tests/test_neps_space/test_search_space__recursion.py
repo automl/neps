@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
-from neps.space.new_space import space
+from neps.space.neps_spaces import neps_space
 
 
 class Model:
@@ -30,12 +30,12 @@ class Sum:
         return sum(values)
 
 
-class DemoRecursiveOperationSpace(space.Pipeline):
+class DemoRecursiveOperationSpace(neps_space.Pipeline):
     # The way to sample `factor` values
-    _factor = space.Float(min_value=0, max_value=1)
+    _factor = neps_space.Float(min_value=0, max_value=1)
 
     # Sum
-    _sum = space.Operation(operator=Sum)
+    _sum = neps_space.Operation(operator=Sum)
 
     # Model
     # Can recursively request itself as an arg.
@@ -46,12 +46,12 @@ class DemoRecursiveOperationSpace(space.Pipeline):
     #   ...
     # If we want the `factor` values to be different,
     # we just request a resample for them
-    _inner_function = space.Categorical(
-        choices=(_sum, space.Resampled("model")),
+    _inner_function = neps_space.Categorical(
+        choices=(_sum, neps_space.Resampled("model")),
     )
-    model = space.Operation(
+    model = neps_space.Operation(
         operator=Model,
-        args=(space.Resampled(_inner_function),),
+        args=(neps_space.Resampled(_inner_function),),
         kwargs={"factor": _factor},
     )
 
@@ -65,7 +65,7 @@ def test_recursion():
     seen_inner_model_counts = []
 
     for _ in range(200):
-        resolved_pipeline, _resolution_context = space.resolve(pipeline)
+        resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
         model = resolved_pipeline.model
         assert model.operator is Model

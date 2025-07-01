@@ -10,10 +10,10 @@ from neps.optimizers.algorithms import (
     determine_optimizer_automatically,
 )
 from neps.optimizers.optimizer import AskFunction, OptimizerInfo
+from neps.space.neps_spaces.neps_space import Pipeline
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
-    from neps.space.new_space.space import Pipeline
     from neps.space import SearchSpace
 
 
@@ -48,7 +48,7 @@ def load_optimizer(
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]
         | CustomOptimizer
         | Literal["auto"]
     ),
@@ -57,6 +57,11 @@ def load_optimizer(
     match optimizer:
         # Predefined string (including "auto")
         case str():
+            if isinstance(space, Pipeline):
+                raise ValueError(
+                    "String optimizers are not yet available for NePS spaces."
+                )
+
             return _load_optimizer_from_string(optimizer, space)
 
         # Predefined string with kwargs

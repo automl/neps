@@ -1,18 +1,25 @@
+"""This module provides multi-fidelity optimizers for NePS spaces.
+It implements a bracket-based optimization strategy that samples configurations
+from a prior band, allowing for efficient exploration of the search space.
+It supports different bracket types such as successive halving, hyperband, ASHA,
+and async hyperband, and can sample configurations at different fidelity levels.
+"""
+
 from __future__ import annotations
 
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Literal, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
-from neps.optimizers.optimizer import SampledConfig
-from neps.space.new_space.priorband import PriorBandSampler
-from neps.optimizers.utils.brackets import PromoteAction, SampleAction
-import neps.space.new_space.space as new_space
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.utils.brackets import PromoteAction, SampleAction
+from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.optimizers.priorband import PriorBandSampler
 
 if TYPE_CHECKING:
     from neps.optimizers.utils.brackets import Bracket
@@ -27,7 +34,7 @@ logger = logging.getLogger(__name__)
 class _BracketOptimizer:
     """The pipeline space to optimize over."""
 
-    space: new_space.Pipeline
+    space: neps_space.Pipeline
 
     """Whether or not to sample the prior first.
 
@@ -48,10 +55,10 @@ class _BracketOptimizer:
     """The sampler used to generate new trials."""
     sampler: PriorBandSampler
 
-    def __call__(  # noqa: C901, PLR0912
+    def __call__(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None,
+        budget_info: BudgetInfo | None,  # noqa: ARG002
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
@@ -92,7 +99,11 @@ class _BracketOptimizer:
             brackets = [brackets]
 
         next_action = next(
-            (action for bracket in brackets if (action := bracket.next()) not in ("done", "pending")),
+            (
+                action
+                for bracket in brackets
+                if (action := bracket.next()) not in ("done", "pending")
+            ),
             None,
         )
 
@@ -132,8 +143,8 @@ class _BracketOptimizer:
         fidelity_level: Literal["min"] | Literal["max"],
     ) -> dict[str, Any]:
         # TODO: [lum] have a CenterSampler as fallback, not Random
-        _try_always_priors_sampler = new_space.PriorOrFallbackSampler(
-            fallback_sampler=new_space.RandomSampler(predefined_samplings={}),
+        _try_always_priors_sampler = neps_space.PriorOrFallbackSampler(
+            fallback_sampler=neps_space.RandomSampler(predefined_samplings={}),
             prior_use_probability=1,
         )
 
@@ -147,47 +158,63 @@ class _BracketOptimizer:
             else:
                 raise ValueError(f"Invalid fidelity level {fidelity_level}")
 
-        _resolved_pipeline, resolution_context = new_space.resolve(
+        _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
             domain_sampler=_try_always_priors_sampler,
             environment_values=_environment_values,
         )
 
-        config = new_space.NepsCompatConverter.to_neps_config(resolution_context)
+        config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
         return dict(**config)
 
     def _convert_to_another_rung(
         self,
-        config: dict[str, Any],
+        config: Mapping[str, Any],
         rung: int,
     ) -> dict[str, Any]:
-        data = new_space.NepsCompatConverter.from_neps_config(config=config)
+        data = neps_space.NepsCompatConverter.from_neps_config(config=config)
 
         _environment_values = {}
         _fidelity_attrs = self.space.fidelity_attrs
         assert len(_fidelity_attrs) == 1, "TODO: [lum]"
-        for fidelity_name, fidelity_obj in _fidelity_attrs.items():
+        for fidelity_name, _fidelity_obj in _fidelity_attrs.items():
             _environment_values[fidelity_name] = self.rung_to_fid[rung]
 
-        _resolved_pipeline, resolution_context = new_space.resolve(
+        _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
-            domain_sampler=new_space.OnlyPredefinedValuesSampler(
+            domain_sampler=neps_space.OnlyPredefinedValuesSampler(
                 predefined_samplings=data.predefined_samplings,
             ),
             environment_values=_environment_values,
         )
 
-        config = new_space.NepsCompatConverter.to_neps_config(resolution_context)
+        config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
         return dict(**config)
 
 
 def priorband(
-    space: new_space.Pipeline,
+    space: neps_space.Pipeline,
     *,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
 ) -> _BracketOptimizer:
+    """Create a PriorBand optimizer for the given pipeline space.
+
+    Args:
+        space: The pipeline space to optimize over.
+        eta: The eta parameter for the algorithm.
+        sample_prior_first: Whether to sample the prior first.
+            If set to `"highest_fidelity"`, the prior will be sampled at the
+            highest fidelity, otherwise at the lowest fidelity.
+        base: The type of bracket optimizer to use. One of:
+            - "successive_halving"
+            - "hyperband"
+            - "asha"
+            - "async_hb"
+    Returns:
+        An instance of _BracketOptimizer configured for PriorBand sampling.
+    """
     return _bracket_optimizer(
         pipeline_space=space,
         bracket_type=base,
@@ -198,8 +225,8 @@ def priorband(
     )
 
 
-def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
-    pipeline_space: new_space.Pipeline,
+def _bracket_optimizer(
+    pipeline_space: neps_space.Pipeline,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
@@ -207,16 +234,20 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
 ) -> _BracketOptimizer:
-
     fidelity_attrs = pipeline_space.fidelity_attrs
 
     if len(fidelity_attrs) != 1:
-        raise ValueError("Only one fidelity should be defined in the pipeline space." f"\nGot: {fidelity_attrs!r}")
+        raise ValueError(
+            "Only one fidelity should be defined in the pipeline space."
+            f"\nGot: {fidelity_attrs!r}"
+        )
 
-    fidelity_name, fidelity_obj = list(fidelity_attrs.items())[0]
+    fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
-        raise ValueError("sample_prior_first should be either True, False or 'highest_fidelity'")
+        raise ValueError(
+            "sample_prior_first should be either True, False or 'highest_fidelity'"
+        )
 
     from neps.optimizers.utils import brackets
 
@@ -281,7 +312,9 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             _sampler = PriorBandSampler(
                 space=pipeline_space,
                 eta=eta,
-                early_stopping_rate=(early_stopping_rate if early_stopping_rate is not None else 0),
+                early_stopping_rate=(
+                    early_stopping_rate if early_stopping_rate is not None else 0
+                ),
                 fid_bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
             )
         case _:

@@ -2,130 +2,138 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.new_space import config_string, space
+from neps.space.neps_spaces import config_string, neps_space
 
 
-class GrammarLike(space.Pipeline):
-    _id = space.Operation(operator="Identity")
-    _three = space.Operation(operator="Conv2D-3")
-    _one = space.Operation(operator="Conv2D-1")
-    _reluconvbn = space.Operation(operator="ReLUConvBN")
+class GrammarLike(neps_space.Pipeline):
+    _id = neps_space.Operation(operator="Identity")
+    _three = neps_space.Operation(operator="Conv2D-3")
+    _one = neps_space.Operation(operator="Conv2D-1")
+    _reluconvbn = neps_space.Operation(operator="ReLUConvBN")
 
-    _O = space.Categorical(choices=(_three, _one, _id))
+    _O = neps_space.Categorical(choices=(_three, _one, _id))
 
-    _C0 = space.Operation(
+    _C0 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled(_O),),
+        args=(neps_space.Resampled(_O),),
     )
-    _C1 = space.Operation(
+    _C1 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled(_O), space.Resampled("S"), _reluconvbn),
+        args=(neps_space.Resampled(_O), neps_space.Resampled("S"), _reluconvbn),
     )
-    _C2 = space.Operation(
+    _C2 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled(_O), space.Resampled("S")),
+        args=(neps_space.Resampled(_O), neps_space.Resampled("S")),
     )
-    _C3 = space.Operation(
+    _C3 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled("S"),),
+        args=(neps_space.Resampled("S"),),
     )
-    _C = space.Categorical(
+    _C = neps_space.Categorical(
         choices=(
-            space.Resampled(_C0),
-            space.Resampled(_C1),
-            space.Resampled(_C2),
-            space.Resampled(_C3),
+            neps_space.Resampled(_C0),
+            neps_space.Resampled(_C1),
+            neps_space.Resampled(_C2),
+            neps_space.Resampled(_C3),
         ),
     )
 
-    _S0 = space.Operation(
+    _S0 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled(_C),),
+        args=(neps_space.Resampled(_C),),
     )
-    _S1 = space.Operation(
+    _S1 = neps_space.Operation(
         operator="Sequential",
         args=(_reluconvbn,),
     )
-    _S2 = space.Operation(
+    _S2 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled("S"),),
+        args=(neps_space.Resampled("S"),),
     )
-    _S3 = space.Operation(
+    _S3 = neps_space.Operation(
         operator="Sequential",
-        args=(space.Resampled("S"), space.Resampled(_C)),
+        args=(neps_space.Resampled("S"), neps_space.Resampled(_C)),
     )
-    _S4 = space.Operation(
-        operator="Sequential",
-        args=(space.Resampled(_O), space.Resampled(_O), space.Resampled(_O)),
-    )
-    _S5 = space.Operation(
+    _S4 = neps_space.Operation(
         operator="Sequential",
         args=(
-            space.Resampled("S"),
-            space.Resampled("S"),
-            space.Resampled(_O),
-            space.Resampled(_O),
-            space.Resampled(_O),
-            space.Resampled(_O),
-            space.Resampled(_O),
-            space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
         ),
     )
-    S = space.Categorical(
-        choices=(
-            space.Resampled(_S0),
-            space.Resampled(_S1),
-            space.Resampled(_S2),
-            space.Resampled(_S3),
-            space.Resampled(_S4),
-            space.Resampled(_S5),
-        ),
-    )
-
-
-class GrammarLikeAlt(space.Pipeline):
-    _id = space.Operation(operator="Identity")
-    _three = space.Operation(operator="Conv2D-3")
-    _one = space.Operation(operator="Conv2D-1")
-    _reluconvbn = space.Operation(operator="ReLUConvBN")
-
-    _O = space.Categorical(choices=(_three, _one, _id))
-
-    _C_ARGS = space.Categorical(
-        choices=(
-            (space.Resampled(_O),),
-            (space.Resampled(_O), space.Resampled("S"), _reluconvbn),
-            (space.Resampled(_O), space.Resampled("S")),
-            (space.Resampled("S"),),
-        ),
-    )
-    _C = space.Operation(
+    _S5 = neps_space.Operation(
         operator="Sequential",
-        args=space.Resampled(_C_ARGS),
+        args=(
+            neps_space.Resampled("S"),
+            neps_space.Resampled("S"),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+            neps_space.Resampled(_O),
+        ),
+    )
+    S = neps_space.Categorical(
+        choices=(
+            neps_space.Resampled(_S0),
+            neps_space.Resampled(_S1),
+            neps_space.Resampled(_S2),
+            neps_space.Resampled(_S3),
+            neps_space.Resampled(_S4),
+            neps_space.Resampled(_S5),
+        ),
     )
 
-    _S_ARGS = space.Categorical(
+
+class GrammarLikeAlt(neps_space.Pipeline):
+    _id = neps_space.Operation(operator="Identity")
+    _three = neps_space.Operation(operator="Conv2D-3")
+    _one = neps_space.Operation(operator="Conv2D-1")
+    _reluconvbn = neps_space.Operation(operator="ReLUConvBN")
+
+    _O = neps_space.Categorical(choices=(_three, _one, _id))
+
+    _C_ARGS = neps_space.Categorical(
         choices=(
-            (space.Resampled(_C),),
+            (neps_space.Resampled(_O),),
+            (neps_space.Resampled(_O), neps_space.Resampled("S"), _reluconvbn),
+            (neps_space.Resampled(_O), neps_space.Resampled("S")),
+            (neps_space.Resampled("S"),),
+        ),
+    )
+    _C = neps_space.Operation(
+        operator="Sequential",
+        args=neps_space.Resampled(_C_ARGS),
+    )
+
+    _S_ARGS = neps_space.Categorical(
+        choices=(
+            (neps_space.Resampled(_C),),
             (_reluconvbn,),
-            (space.Resampled("S"),),
-            (space.Resampled("S"), space.Resampled(_C)),
-            (space.Resampled(_O), space.Resampled(_O), space.Resampled(_O)),
+            (neps_space.Resampled("S"),),
+            (neps_space.Resampled("S"), neps_space.Resampled(_C)),
             (
-                space.Resampled("S"),
-                space.Resampled("S"),
-                space.Resampled(_O),
-                space.Resampled(_O),
-                space.Resampled(_O),
-                space.Resampled(_O),
-                space.Resampled(_O),
-                space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+            ),
+            (
+                neps_space.Resampled("S"),
+                neps_space.Resampled("S"),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
+                neps_space.Resampled(_O),
             ),
         ),
     )
-    S = space.Operation(
+    S = neps_space.Operation(
         operator="Sequential",
-        args=space.Resampled(_S_ARGS),
+        args=neps_space.Resampled(_S_ARGS),
     )
 
 
@@ -134,13 +142,13 @@ def test_resolve():
     pipeline = GrammarLike()
 
     try:
-        resolved_pipeline, resolution_context = space.resolve(pipeline)
+        resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
     except RecursionError:
         pytest.xfail("XFAIL due to too much recursion.")
         raise
 
     s = resolved_pipeline.S
-    s_config_string = space.convert_operation_to_string(s)
+    s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
     pretty_config = config_string.ConfigString(s_config_string).pretty_format()
     assert pretty_config
@@ -151,13 +159,13 @@ def test_resolve_alt():
     pipeline = GrammarLikeAlt()
 
     try:
-        resolved_pipeline, resolution_context = space.resolve(pipeline)
+        resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
     except RecursionError:
         pytest.xfail("XFAIL due to too much recursion.")
         raise
 
     s = resolved_pipeline.S
-    s_config_string = space.convert_operation_to_string(s)
+    s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
     pretty_config = config_string.ConfigString(s_config_string).pretty_format()
     assert pretty_config
@@ -268,9 +276,9 @@ def test_resolve_context():
 
     pipeline = GrammarLike()
 
-    resolved_pipeline, resolution_context = space.resolve(
+    resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -286,7 +294,7 @@ def test_resolve_context():
     assert sampled_values == samplings_to_make
 
     s = resolved_pipeline.S
-    s_config_string = space.convert_operation_to_string(s)
+    s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
     assert s_config_string == expected_s_config_string
 
@@ -355,9 +363,9 @@ def test_resolve_context_alt():
 
     pipeline = GrammarLikeAlt()
 
-    resolved_pipeline, resolution_context = space.resolve(
+    resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline,
-        domain_sampler=space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -373,6 +381,6 @@ def test_resolve_context_alt():
     assert sampled_values == samplings_to_make
 
     s = resolved_pipeline.S
-    s_config_string = space.convert_operation_to_string(s)
+    s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
     assert s_config_string == expected_s_config_string
