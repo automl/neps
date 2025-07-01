@@ -12,6 +12,7 @@ def make_grid(
     space: SearchSpace,
     *,
     size_per_numerical_hp: int = 10,
+    ignore_fidelity: bool = True,
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
 
@@ -38,7 +39,7 @@ def make_grid(
             case Constant():
                 param_ranges[name] = [hp.value]
             case Integer() | Float():
-                if hp.is_fidelity:
+                if hp.is_fidelity and ignore_fidelity:
                     param_ranges[name] = [hp.upper]
                     continue
 
@@ -53,7 +54,6 @@ def make_grid(
                 param_ranges[name] = uniq_values
             case _:
                 raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
-
     values = product(*param_ranges.values())
     keys = list(space.keys())
 

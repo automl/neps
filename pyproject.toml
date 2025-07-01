@@ -39,13 +39,14 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Distributed Computing",
 ]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 
 dependencies = [
-    "numpy>=1.0,<2.0",
+    "numpy>=2.0",
     "pandas>=2.0,<3.0",
     "networkx>=2.6.3,<3.0",
     "scipy>=1.13.1",
@@ -58,9 +59,9 @@ dependencies = [
     "tensorboard>=2.0,<3.0",
     "typing-extensions",
     "torchvision>=0.8.0",
-    "ifbo>=0.3.10",
     "botorch>=0.12",
     "gpytorch==1.13.0",
+    "ifbo",
 ]
 
 [project.urls]
@@ -327,3 +328,6 @@ replace = "version = \"v{new_version}\""
 filename = "CITATION.cff"
 search = "version: {current_version}"
 replace = "version: {new_version}"
+
+[tool.uv.sources]
+ifbo = { git = "https://github.com/automl/ifBO", rev = "53f1207" }

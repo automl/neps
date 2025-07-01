@@ -281,6 +281,17 @@ class Domain(Generic[V]):
         if self.round:
             x = torch.round(x)
 
+        if (x > upper).any():
+            import warnings
+
+            warnings.warn(  # noqa: B028
+                "Decoded value is above the upper bound of the domain. "
+                "Clipping to the upper bound. "
+                "This is likely due floating point precision in `torch.exp(x)` "
+                "with torch.float64."
+            )
+            x = torch.clip(x, max=self.upper)
+
         return x.type(dtype)
 
     def cast(self, x: Tensor, frm: Domain, *, dtype: torch.dtype | None = None) -> Tensor:

@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import itertools
 import math
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.multi_objective.logei import (
+    qLogNoisyExpectedHypervolumeImprovement,
+)
+from botorch.models.transforms.outcome import Standardize
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -79,14 +84,23 @@ class BayesianOptimization:
     device: torch.device | None
     """The device to use for the optimization."""
 
-    def __call__(
+    reference_point: tuple[float, ...] | None = None
+    """The reference point to use for the multi-objective optimization."""
+
+    def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        assert self.space.fidelity is None, "Fidelity not supported yet."
-        parameters = self.space.searchables
+        # If fidelities exist, sample from them as normal
+        # This is a bit of a hack, as we set them to max fidelity
+        # afterwards, but we need the complete space to sample
+
+        if self.space.fidelity is not None:
+            parameters = {**self.space.searchables, **self.space.fidelities}
+        else:
+            parameters = {**self.space.searchables}
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
@@ -117,6 +131,10 @@ class BayesianOptimization:
             design_samples = design_samples[n_evaluated:]
             for sample in design_samples:
                 sample.update(self.space.constants)
+                if self.space.fidelity is not None:
+                    sample.update(
+                        {key: value.upper for key, value in self.space.fidelities.items()}
+                    )
 
             sampled_configs.extend(
                 [
@@ -165,13 +183,72 @@ class BayesianOptimization:
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
-        gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
         n_to_acquire = n_to_sample - len(sampled_configs)
-        candidates = fit_and_acquire_from_gp(
-            gp=gp,
-            x_train=data.x,
-            encoder=encoder,
-            acquisition=qLogNoisyExpectedImprovement(
+
+        num_objectives = None
+        for trial in trials.values():
+            if trial.report is not None:
+                match trial.report.objective_to_minimize:
+                    case None:
+                        continue
+                    case Sequence():
+                        if num_objectives is None:
+                            num_objectives = len(trial.report.objective_to_minimize)
+                        assert (
+                            len(trial.report.objective_to_minimize) == num_objectives
+                        ), "All trials must have the same number of objectives."
+                    case float():
+                        if num_objectives is None:
+                            num_objectives = 1
+                        assert num_objectives == 1, (
+                            "All trials must have the same number of objectives."
+                        )
+                    case _:
+                        raise TypeError(
+                            "Objective to minimize must be a float or a sequence "
+                            "of floats."
+                        )
+
+        # Sanity check, but this shouldn't happen in the first place since we
+        # check `n_evaluated < self.n_initial_design` above.
+        assert num_objectives is not None, (
+            "Either no trials have been completed or"
+            " No trials reports have objective values."
+        )
+
+        if num_objectives > 1:
+            gp = make_default_single_obj_gp(
+                x=data.x,
+                y=data.y,
+                encoder=encoder,
+                y_transform=Standardize(m=data.y.shape[-1]),
+            )
+            if self.reference_point is not None:
+                assert len(self.reference_point) == num_objectives, (
+                    "Reference point must have the same number of objectives as the"
+                    " trials."
+                )
+                ref_point = torch.tensor(
+                    self.reference_point,
+                    dtype=data.x.dtype,
+                    device=data.x.device,
+                )
+            else:
+                ref_point = torch.tensor(
+                    _get_reference_point(data.y.numpy()),
+                    dtype=data.x.dtype,
+                    device=data.x.device,
+                )
+            acquisition = qLogNoisyExpectedHypervolumeImprovement(
+                model=gp,
+                ref_point=ref_point,
+                X_baseline=data.x,
+                X_pending=data.x_pending,
+                prune_baseline=True,
+            )
+        else:
+            gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+            acquisition = qLogNoisyExpectedImprovement(
                 model=gp,
                 X_baseline=data.x,
                 # Unfortunatly, there's no option to indicate that we minimize
@@ -180,7 +257,12 @@ class BayesianOptimization:
                 objective=LinearMCObjective(weights=torch.tensor([-1.0])),
                 X_pending=data.x_pending,
                 prune_baseline=True,
-            ),
+            )
+        candidates = fit_and_acquire_from_gp(
+            gp=gp,
+            x_train=data.x,
+            encoder=encoder,
+            acquisition=acquisition,
             prior=prior,
             n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
@@ -193,6 +275,10 @@ class BayesianOptimization:
         configs = encoder.decode(candidates)
         for config in configs:
             config.update(self.space.constants)
+            if self.space.fidelity is not None:
+                config.update(
+                    {key: value.upper for key, value in self.space.fidelities.items()}
+                )
 
         sampled_configs.extend(
             [
@@ -206,3 +292,10 @@ class BayesianOptimization:
             ]
         )
         return sampled_configs[0] if n is None else sampled_configs
+
+
+def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
+    """Get the reference point from the completed Trials."""
+    eps = 1e-4
+    worst_point = np.max(loss_vals, axis=0)
+    return worst_point * (1 + eps)

@@ -137,8 +137,91 @@ class Rung(Sized):
         perf = row["perf"]
         return best_ix, config, perf
 
+    def pareto_promotion_sync(
+        self,
+        *,
+        k: int,
+        exclude: Sequence[Hashable] = [],
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    ) -> tuple[int, dict[str, Any], float] | None:
+        """Selects the best configurations based on Pareto front for
+        sync bracket optimizers.
+        """
+        if exclude:
+            contenders = self.table.drop(exclude)
+            if contenders.empty:
+                return None
+        else:
+            contenders = self.table
+        _df = self.mo_selector(
+            selector=mo_selector,
+            contenders=contenders,
+            k=k,
+        )
+        _idx, _rung = _df.index[0]
+        row = _df.loc[(_idx, _rung)]
+        config = dict(row["config"])
+        perf = row["perf"]
+        return _idx, config, perf
+
     def top_k(self, k: int) -> pd.DataFrame:
         return self.table.nsmallest(k, "perf")
+
+    def mo_selector(
+        self,
+        *,
+        selector: Literal["nsga2", "epsnet"] = "epsnet",
+        contenders: pd.DataFrame | None = None,
+        k: int,
+    ) -> pd.DataFrame:
+        """Replaces top_k in single objective Bracket Optimizers
+        with a multi-objective selector, which selects the best
+        configurations based on the Pareto front.
+        Page 4, Algorithm 2, Line 11: `mo_selector` in the MO-ASHA paper:
+        https://arxiv.org/pdf/2106.12639
+        """
+        if contenders is None:
+            contenders = self.table
+        match selector:
+            case "nsga2":
+                raise NotImplementedError(
+                    "NSGA2 selector is not implemented yet. Please use epsnet."
+                )
+            case "epsnet":
+                return self.epsnet_selector(
+                    k=k,
+                    contenders=contenders,
+                )
+            case _:
+                raise ValueError(
+                    f"Unknown selector {selector}, please use either nsga2 or epsnet"
+                )
+
+    def nsga2_selector(
+        self,
+        k: int,
+    ) -> pd.DataFrame:
+        """Selects the best configurations based on NSGA2 algorithm.
+        Uses Non-dominated sorting and Crowding distance from Pymoo.
+        """
+
+    def epsnet_selector(
+        self,
+        *,
+        k: int,
+        contenders: pd.DataFrame,
+    ) -> pd.DataFrame:
+        """Selects the best configurations based on epsilon-net sorting strategy.
+        Uses Epsilon-net based sorting from SyneTune.
+        """
+        from neps.optimizers.utils.multiobjective.epsnet import nondominated_sort
+
+        mo_costs = np.vstack(contenders["perf"].values)
+        indices = nondominated_sort(
+            X=mo_costs,
+            max_items=k,
+        )
+        return contenders.iloc[indices]
 
 
 @dataclass
@@ -149,6 +232,12 @@ class Sync:
     """A list of unique rungs, ordered from lowest to highest. The must have
     a capacity set.
     """
+
+    is_multi_objective: bool = field(default=False)
+    """Whether the BracketOptimizer is multi-objective or not."""
+
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
+    """The selector to use for multi-objective optimization."""
 
     def __post_init__(self) -> None:
         if not all_unique(rung.value for rung in self.rungs):
@@ -188,7 +277,14 @@ class Sync:
         if lower.has_pending():
             return "pending"  # We need to wait before promoting
 
-        promote_config = lower.best_to_promote(exclude=upper.config_ids)
+        if self.is_multi_objective:
+            promote_config = lower.pareto_promotion_sync(
+                mo_selector=self.mo_selector,
+                k=1,
+                exclude=upper.config_ids,
+            )
+        else:
+            promote_config = lower.best_to_promote(exclude=upper.config_ids)
 
         # If we have no promotable config, somehow the upper rung has more
         # capacity then lower. We check for this in the `__post_init__`
@@ -207,6 +303,8 @@ class Sync:
         table: pd.DataFrame,
         *,
         rung_sizes: dict[int, int],
+        is_multi_objective: bool = False,
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> list[Sync]:
         """Create a list of brackets from the table.
 
@@ -283,6 +381,8 @@ class Sync:
                     Rung(rung, bracket_data.get(rung, empty_slice), capacity)
                     for rung, capacity in rung_sizes.items()
                 ],
+                is_multi_objective=is_multi_objective,
+                mo_selector=mo_selector,
             )
             for bracket_data in all_N_bracket_datas
         ]
@@ -304,6 +404,12 @@ class Async:
     Here `k = len(rung) // eta`.
     """
 
+    is_multi_objective: bool = field(default=False)
+    """Whether the BracketOptimizer is multi-objective or not."""
+
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
+    """The selector to use for multi-objective optimization."""
+
     def __post_init__(self) -> None:
         self.rungs = sorted(self.rungs, key=lambda rung: rung.value)
         if any(rung.capacity is not None for rung in self.rungs):
@@ -320,7 +426,10 @@ class Async:
             if k == 0:
                 continue  # Not enough configs to promote yet
 
-            best_k = lower.top_k(k)
+            if self.is_multi_objective:
+                best_k = lower.mo_selector(selector=self.mo_selector, k=k)
+            else:
+                best_k = lower.top_k(k)
             candidates = best_k.drop(
                 upper.config_ids,
                 axis="index",
@@ -345,6 +454,8 @@ class Async:
         *,
         rungs: list[int],
         eta: int,
+        is_multi_objective: bool = False,
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> Async:
         return cls(
             rungs=[
@@ -356,6 +467,8 @@ class Async:
                 for rung in rungs
             ],
             eta=eta,
+            is_multi_objective=is_multi_objective,
+            mo_selector=mo_selector,
         )
 
 
@@ -365,6 +478,9 @@ class Hyperband:
 
     _min_rung: int = field(init=False, repr=False)
     _max_rung: int = field(init=False, repr=False)
+
+    is_multi_objective: bool = field(default=False)
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
 
     def __post_init__(self) -> None:
         if not self.sh_brackets:
@@ -383,6 +499,8 @@ class Hyperband:
         table: pd.DataFrame,
         *,
         bracket_layouts: list[dict[int, int]],
+        is_multi_objective: bool = False,
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> list[Hyperband]:
         """Create a list of brackets from the table.
 
@@ -471,7 +589,9 @@ class Hyperband:
                             table=rung_data.get(rung, empty_slice),
                         )
                         for rung, capacity in layout.items()
-                    ]
+                    ],
+                    is_multi_objective=is_multi_objective,
+                    mo_selector=mo_selector,
                 )
                 sh_brackets.append(bracket)
 
@@ -520,6 +640,12 @@ class AsyncHyperband:
     _min_rung: int = field(init=False, repr=False)
     _max_rung: int = field(init=False, repr=False)
 
+    is_multi_objective: bool = field(default=False)
+    """Whether the BracketOptimizer is multi-objective or not."""
+
+    mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
+    """The selector to use for multi-objective optimization."""
+
     def __post_init__(self) -> None:
         if not self.asha_brackets:
             raise ValueError("HyperbandBrackets must have at least one ASHA bracket")
@@ -538,6 +664,8 @@ class AsyncHyperband:
         *,
         bracket_rungs: list[list[int]],
         eta: int,
+        is_multi_objective: bool = False,
+        mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     ) -> AsyncHyperband:
         """Create an AsyncHyperbandBrackets from the table.
 
@@ -566,7 +694,13 @@ class AsyncHyperband:
         """
         return AsyncHyperband(
             asha_brackets=[
-                Async.create(table=table, rungs=layout, eta=eta)
+                Async.create(
+                    table=table,
+                    rungs=layout,
+                    eta=eta,
+                    is_multi_objective=is_multi_objective,
+                    mo_selector=mo_selector,
+                )
                 for layout in bracket_rungs
             ],
             eta=eta,

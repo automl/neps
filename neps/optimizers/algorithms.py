@@ -7,6 +7,7 @@ Below you will find some functions with some sane defaults documenting
 the parameters available. You can pass these functoins to `neps.run()`
 if you like, otherwise you may also refer to them by their string name.
 """
+
 # NOTE: If updating this file with new optimizers, please be aware that
 # the documentation here is what is shown in the `neps.run()` documentation.
 # Heres a checklist:
@@ -16,6 +17,7 @@ if you like, otherwise you may also refer to them by their string name.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
@@ -42,6 +44,8 @@ if TYPE_CHECKING:
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
 
+logger = logging.getLogger(__name__)
+
 
 def _bo(
     pipeline_space: SearchSpace,
@@ -50,7 +54,9 @@ def _bo(
     use_priors: bool,
     cost_aware: bool | Literal["log"],
     sample_prior_first: bool,
+    ignore_fidelity: bool = False,
     device: torch.device | str | None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -70,19 +76,26 @@ def _bo(
                 If using `cost`, cost must be provided in the reports of the trials.
 
         sample_prior_first: Whether to sample the default configuration first.
+        ignore_fidelity: Whether to ignore fidelity when sampling.
+            In this case, the max fidelity is always used.
         device: Device to use for the optimization.
+        reference_point: The reference point to use for multi-objective optimization.
 
     Raises:
         ValueError: if initial_design_size < 1
+        ValueError: if fidelity is not None and ignore_fidelity is False
     """
-    if any(pipeline_space.fidelities):
+    if not ignore_fidelity and pipeline_space.fidelity is not None:
         raise ValueError(
-            "Fidelities are not supported for BayesianOptimization."
-            " Please consider setting the fidelity to a constant value."
-            f" Got: {pipeline_space.fidelities}"
+            "Fidelities are not supported for BayesianOptimization. Consider setting the"
+            " fidelity to a constant value or ignoring it using ignore_fidelity to"
+            f" always sample at max fidelity. Got fidelity: {pipeline_space.fidelities} "
         )
 
-    parameters = pipeline_space.searchables
+    if ignore_fidelity:
+        parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
+    else:
+        parameters = {**pipeline_space.searchables}
 
     match initial_design_size:
         case "ndim":
@@ -115,6 +128,7 @@ def _bo(
         prior=Prior.from_parameters(parameters) if use_priors is True else None,
         sample_prior_first=sample_prior_first,
         device=device,
+        reference_point=reference_point,
     )
 
 
@@ -131,6 +145,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     # style ones.
     early_stopping_rate: int | None,
     device: torch.device | None,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    multi_objective: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -180,12 +196,25 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
         sample_prior_first: Whether to sample the prior configuration first.
         device: If using Bayesian Optimization, the device to use for the optimization.
+
+        mo_selector: The multi-objective selector to use for promoting configs.
+        Can be one of:
+            * "nsga2": Non-dominated Sorting Genetic Algorithm II
+            * "epsnet": Epsilon-Net Strategy used in the paper: https://arxiv.org/abs/2106.12639
+
+        multi_objective: Whether to use multi-objective promotion strategies.
+            Only used in case of multi-objective multi-fidelity algorithms.
     """
-    assert pipeline_space.fidelity is not None
-    fidelity_name, fidelity = pipeline_space.fidelity
+    if pipeline_space.fidelity is not None:
+        fidelity_name, fidelity = pipeline_space.fidelity
+    else:
+        raise ValueError(
+            "Fidelity is required for bracket optimizers like"
+            f" {bracket_type if sampler != 'priorband' else 'priorband'}."
+        )
     parameters = pipeline_space.searchables
 
-    if len(pipeline_space.fidelities) != 1:
+    if len(pipeline_space.fidelities) > 1:
         raise ValueError(
             "Only one fidelity should be defined in the pipeline space."
             f"\nGot: {pipeline_space.fidelities}"
@@ -194,6 +223,21 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     if sample_prior_first not in (True, False, "highest_fidelity"):
         raise ValueError(
             "sample_prior_first should be either True, False or 'highest_fidelity'"
+        )
+
+    if (
+        sample_prior_first in (True, "highest_fidelity") or sampler == "prior"
+    ) and not any(parameter.prior is not None for parameter in parameters.values()):
+        raise ValueError(
+            "No priors given to sample from. Consider setting sample_prior_first=False"
+            " and sampler='uniform'."
+        )
+
+    if any(fid.lower == 0 for fid in pipeline_space.fidelities.values()):
+        raise ValueError(
+            "Fidelity lower bound should be greater than 0,"
+            "to avoid zero division errors in bracket optimizers."
+            f"\nGot fidelity: {pipeline_space.fidelities}"
         )
 
     from neps.optimizers.utils import brackets
@@ -211,6 +255,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "hyperband":
@@ -222,6 +268,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
             create_brackets = partial(
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "asha":
@@ -235,6 +283,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.Async.create,
                 rungs=list(rung_to_fidelity),
                 eta=eta,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
 
         case "async_hb":
@@ -249,6 +299,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 brackets.AsyncHyperband.create,
                 bracket_rungs=bracket_rungs,
                 eta=eta,
+                is_multi_objective=multi_objective,
+                mo_selector=mo_selector,
             )
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
@@ -273,8 +325,6 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
             )
-        case PriorBandSampler() | Sampler():
-            _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
 
@@ -346,7 +396,7 @@ def random_search(
     pipeline_space: SearchSpace,
     *,
     use_priors: bool = False,
-    ignore_fidelity: bool = True,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
 ) -> RandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -359,10 +409,48 @@ def random_search(
         ignore_fidelity: Whether to ignore fidelity when sampling.
             In this case, the max fidelity is always used.
     """
-    if ignore_fidelity:
-        parameters = pipeline_space.searchables
-    else:
-        parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
+    assert ignore_fidelity in (
+        True,
+        False,
+        "highest fidelity",
+    ), "ignore_fidelity should be either True, False or 'highest fidelity'"
+    if not ignore_fidelity and pipeline_space.fidelity is not None:
+        raise ValueError(
+            "Fidelities are not supported for RandomSearch. Consider setting the"
+            " fidelity to a constant value, or setting ignore_fidelity to True to sample"
+            " from it like any other parameter or 'highest fidelity' to always sample at"
+            f" max fidelity. Got fidelity: {pipeline_space.fidelities} "
+        )
+    if ignore_fidelity in (True, "highest fidelity") and pipeline_space.fidelity is None:
+        logger.warning(
+            "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+    match ignore_fidelity:
+        case True:
+            parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
+        case False:
+            parameters = {**pipeline_space.searchables}
+        case "highest fidelity":
+            parameters = {**pipeline_space.searchables}
+
+    if use_priors and not any(
+        parameter.prior is not None for parameter in parameters.values()
+    ):
+        logger.warning(
+            "Warning: You are using priors, but no priors are defined in the search"
+            " space. Consider setting use_priors to False."
+        )
+
+    if not use_priors and any(
+        parameter.prior is not None for parameter in parameters.values()
+    ):
+        priors = [
+            parameter for parameter in parameters.values() if parameter.prior is not None
+        ]
+        raise ValueError(
+            f"To use priors, you must set use_priors=True. Got priors: {priors}"
+        )
 
     return RandomSearch(
         space=pipeline_space,
@@ -375,16 +463,33 @@ def random_search(
     )
 
 
-def grid_search(pipeline_space: SearchSpace) -> GridSearch:
+def grid_search(
+    pipeline_space: SearchSpace,
+    ignore_fidelity: bool = False,  # noqa: FBT001, FBT002
+) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
 
     Args:
         pipeline_space: The search space to sample from.
+        ignore_fidelity: Whether to ignore fidelity when sampling.
+            In this case, the max fidelity is always used.
     """
     from neps.optimizers.utils.grid import make_grid
 
-    return GridSearch(configs_list=make_grid(pipeline_space))
+    if any(
+        parameter.prior is not None for parameter in pipeline_space.searchables.values()
+    ):
+        raise ValueError("Grid search does not support priors.")
+    if ignore_fidelity and pipeline_space.fidelity is None:
+        logger.warning(
+            "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+
+    return GridSearch(
+        configs_list=make_grid(pipeline_space, ignore_fidelity=ignore_fidelity)
+    )
 
 
 def ifbo(
@@ -440,12 +545,31 @@ def ifbo(
     """
     from neps.optimizers.ifbo import _adjust_space_to_match_stepsize
 
+    if pipeline_space.fidelity is None:
+        raise ValueError("Fidelity is required for IFBO.")
+
     # TODO: I'm not sure how this might effect tables, whose lowest fidelity
     # might be below to possibly increased lower bound.
     space, fid_bins = _adjust_space_to_match_stepsize(pipeline_space, step_size)
-    assert space.fidelity is not None
-    fidelity_name, fidelity = space.fidelity
     parameters = space.searchables
+
+    if use_priors and not any(
+        parameter.prior is not None for parameter in parameters.values()
+    ):
+        logger.warning(
+            "Warning: You are using priors, but no priors are defined in the search"
+            " space. Consider setting use_priors to False."
+        )
+
+    if not use_priors and any(
+        parameter.prior is not None for parameter in parameters.values()
+    ):
+        priors = [
+            parameter for parameter in parameters.values() if parameter.prior is not None
+        ]
+        raise ValueError(
+            f"To use priors, you must set use_priors=True. Got priors: {priors}"
+        )
 
     match initial_design_size:
         case "ndim":
@@ -633,6 +757,32 @@ def hyperband(
     )
 
 
+def mo_hyperband(
+    space: SearchSpace,
+    *,
+    eta: int = 3,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+) -> BracketOptimizer:
+    """Multi-objective version of hyperband using the same
+    candidate selection method as MOASHA.
+    """
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+        multi_objective=True,
+        mo_selector=mo_selector,
+    )
+
+
 def asha(
     space: SearchSpace,
     *,
@@ -694,6 +844,30 @@ def asha(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+    )
+
+
+def moasha(
+    space: SearchSpace,
+    *,
+    eta: int = 3,
+    early_stopping_rate: int = 0,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+) -> BracketOptimizer:
+    return _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        early_stopping_rate=early_stopping_rate,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        # TODO: Implement this
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+        multi_objective=True,
+        mo_selector=mo_selector,
     )
 
 
@@ -802,6 +976,11 @@ def priorband(
             `N` * `maximum_fidelity` worth of fidelity has been evaluated,
             proceed with bayesian optimization when sampling a new configuration.
     """
+    if all(parameter.prior is None for parameter in space.searchables.values()):
+        logger.warning(
+            "Warning: No priors are defined in the search space, priorband will sample"
+            " uniformly. Consider using hyperband instead."
+        )
     return _bracket_optimizer(
         pipeline_space=space,
         bracket_type=base,
@@ -819,7 +998,9 @@ def bayesian_optimization(
     *,
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,
+    ignore_fidelity: bool = False,
     device: torch.device | str | None = None,
+    reference_point: tuple[float, ...] | None = None,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -845,6 +1026,10 @@ def bayesian_optimization(
     If you have _priors_, we recommend looking at
     [`pibo`][neps.optimizers.algorithms.pibo].
 
+    For Multi-objective optimization (i.e., no. of objectives in trials > 1),
+    the algorithm automatically switches to the qLogNoisyExpectedHypervolumeImprovement
+    acquisition function.
+
     Args:
         space: The search space to sample from.
         initial_design_size: Number of samples used before using the surrogate model.
@@ -859,8 +1044,38 @@ def bayesian_optimization(
 
                 If using `cost`, cost must be provided in the reports of the trials.
 
+        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
+            In this case, the max fidelity is always used.
         device: Device to use for the optimization.
+
+        reference_point: The reference point to use got multi-objective bayesian
+            optimization. If `None`, the reference point will be calculated
+            automatically.
     """
+
+    if not ignore_fidelity and space.fidelity is not None:
+        raise ValueError(
+            "Fidelities are not supported for BayesianOptimization. Consider setting the"
+            " fidelity to a constant value or ignoring it using ignore_fidelity to"
+            f" always sample at max fidelity. Got fidelity: {space.fidelities} "
+        )
+    if ignore_fidelity and space.fidelity is None:
+        logger.warning(
+            "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+
+    if any(parameter.prior is not None for parameter in space.searchables.values()):
+        priors = [
+            parameter
+            for parameter in space.searchables.values()
+            if parameter.prior is not None
+        ]
+        raise ValueError(
+            "Bayesian optimization does not support priors. Consider using pibo instead."
+            f" Got priors: {priors}"
+        )
+
     return _bo(
         pipeline_space=space,
         initial_design_size=initial_design_size,
@@ -868,6 +1083,8 @@ def bayesian_optimization(
         device=device,
         use_priors=False,
         sample_prior_first=False,
+        ignore_fidelity=ignore_fidelity,
+        reference_point=reference_point,
     )
 
 
@@ -878,6 +1095,7 @@ def pibo(
     cost_aware: bool | Literal["log"] = False,
     device: torch.device | str | None = None,
     sample_prior_first: bool = False,
+    ignore_fidelity: bool = False,
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -899,15 +1117,27 @@ def pibo(
         cost_aware: Whether to consider reported "cost" from configurations in decision
             making. If True, the optimizer will weigh potential candidates by how much
             they cost, incentivising the optimizer to explore cheap, good performing
-            configurations. This amount is modified over time. If "log", the cost
-            will be log-transformed before being used.
+            configurations. This amount is modified over time. If "log", the cost will be
+            log-transformed before being used.
+        !!! warning
 
-            !!! warning
-
-                If using `cost`, cost must be provided in the reports of the trials.
-
+            If using `cost`, cost must be provided in the reports of the trials.
         device: Device to use for the optimization.
+        sample_prior_first: Whether to sample the prior configuration first.
+        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
+            In this case, the max fidelity is always used.
     """
+    if all(parameter.prior is None for parameter in space.searchables.values()):
+        logger.warning(
+            "Warning: PiBO was called without any priors - using uniform priors on all"
+            " parameters.\nConsider using Bayesian Optimization instead."
+        )
+    if ignore_fidelity and space.fidelity is None:
+        logger.warning(
+            "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+
     return _bo(
         pipeline_space=space,
         initial_design_size=initial_design_size,
@@ -915,6 +1145,7 @@ def pibo(
         device=device,
         use_priors=True,
         sample_prior_first=sample_prior_first,
+        ignore_fidelity=ignore_fidelity,
     )
 
 
@@ -972,7 +1203,9 @@ PredefinedOptimizers: Mapping[
         ifbo,
         successive_halving,
         hyperband,
+        mo_hyperband,
         asha,
+        moasha,
         async_hb,
         priorband,
     )
@@ -983,7 +1216,9 @@ OptimizerChoice: TypeAlias = Literal[
     "pibo",
     "successive_halving",
     "hyperband",
+    "mo_hyperband",
     "asha",
+    "moasha",
     "async_hb",
     "priorband",
     "random_search",
