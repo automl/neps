@@ -22,7 +22,7 @@ There are three required steps and one optional:
 
 For instructions see below.
 
-## 1. Install uv
+### 1. Install uv
 
 First, install uv, e.g., via
 
@@ -36,14 +36,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-## 2. Clone the neps repository
+### 2. Clone the neps repository
 
 ```bash
 git clone https://github.com/automl/neps.git
 cd neps
 ```
 
-## 3. Create a virtual environment and install the neps package
+### 3. Create a virtual environment and install the neps package
 
 ```bash
 uv venv --python 3.11

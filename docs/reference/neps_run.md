@@ -15,13 +15,13 @@ To operate, NePS requires at minimum the following two arguments
 ```python
 import neps
 
-def run(learning_rate: float, epochs: int) -> float:
+def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     # Your code here
 
     return loss
 
 neps.run(
-    evaluate_pipeline=run, # (1)!
+    evaluate_pipeline=evaluate_pipeline, # (1)!
     pipeline_space={, # (2)!
         "learning_rate": neps.Float(1e-3, 1e-1, log=True),
         "epochs": neps.Integer(10, 100)
@@ -47,11 +47,11 @@ See the following for more:
 ## Budget, how long to run?
 To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
 to specify the total number of evaluations to conduct before halting the optimization process,
-or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary.
+or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
 
 
 ```python
-def run(learning_rate: float, epochs: int) -> float:
+def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     start = time.time()
 
     # Your code here
@@ -68,7 +68,7 @@ neps.run(
 1.  Specifies the total number of evaluations to conduct before halting the optimization process.
 2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
-    This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'loss': loss, 'cost': cost}`.
+    This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
     For more details, please refer [here](../reference/evaluate_pipeline.md)
 
 ## Getting some feedback, logging
@@ -138,14 +138,14 @@ while will generate a summary csv after the run has finished.
     ├── configs
     │   ├── config_1
     │   │   ├── config.yaml     # The configuration
-    │   │   ├── report.yaml    # The results of this run, if any
+    │   │   ├── report.yaml     # The results of this run, if any
     │   │   └── metadata.json   # Metadata about this run, such as state and times
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary_csv             # Only if post_run_summary=True
-    │  ├── config_data.csv
-    │  └── run_status.csv
+    ├── summary                 # Only if post_run_summary=True
+    │  ├── full.csv
+    │  └── short.csv
     ├── optimizer_info.yaml     # The optimizer's configuration
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
@@ -160,6 +160,7 @@ To capture the results of the optimization process, you can use tensorbaord logg
 closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
 
 ## Parallelization
+
 NePS utilizes the file-system and locks as a means of communication for implementing parallelization and resuming runs.
 As a result, you can start multiple [`neps.run()`][neps.api.run] from different processes however you like
 and they will synchronize, **as long as they share the same `root_directory=`**.
@@ -198,55 +199,8 @@ Any new workers that come online will automatically pick up work and work togeth
     python worker.py &
     ```
 
-## YAML Configuration
-We support arguments to [`neps.run()`][neps.api.run] that have been seriliazed into a
-YAML file. This means you can manage your configurations in a more human-readable format
-if you prefer.
-
-For more on yaml usage, please visit the dedicated
-[page on usage of YAML with NePS](../reference/declarative_usage.md).
-
-
-=== "`config.yaml`"
-
-    ```yaml
-    # We allow specifying the evaluate_pipeline as a module path and function name
-    evaluate_pipeline: path/to/evaluate_pipeline.py:eval_func_name
-
-    pipeline_space:
-      batch_size: 64                # Constant
-      optimizer: [adam, sgd, adamw] # Categorical
-      alpha: [0.01, 1.0]            # Uniform Float
-      n_layers: [1, 10]             # Uniform Integer
-      learning_rate:                # Log scale Float with a prior
-        lower: 1e-5
-        upper: 1e-1
-        log: true
-        prior: 1e-3
-        prior_confidence: high
-      epochs:                       # Integer fidelity
-        lower: 5
-        upper: 20
-        is_fidelity: true
-
-    root_directory: "neps_results"  # Output directory for results
-    max_evaluations_total: 100
-    optimizer:
-      name: "bayesian_optimization"
-      initial_design_size: 5
-      cost_aware: true
-    ```
-
-=== "`run_neps.py`"
-
-    ```python
-    with open("config.yaml", "r") as file:
-        settings = yaml.safe_load(file)
-
-    neps.run(**settings)
-    ```
-
 ## Handling Errors
+
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
 By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`,
 providing a `loss_value_on_error=` and `cost_value_on_error=` to control what values should be
@@ -276,19 +230,20 @@ neps.run(
     Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
 
 ### Re-running Failed Configurations
+
 Sometimes things go wrong but not due to the configuration itself.
 Sometimes you'd also like to change the state so that you re-evaluate that configuration.
 
 If you need to go in there and change anything, **the entire optimization state** is editable on disk.
 You can follow these steps to modify the state of things.
 
-```
+``` python
 root_directory
 ├── configs
 │   ├── .trial_cache.pkl    # A cache of all trial information for optimizers
 │   ├── config_1
 │   │   ├── config.yaml     # The configuration
-│   │   ├── report.yaml    # The results of this run, if any
+│   │   ├── report.yaml     # The results of this run, if any
 │   │   ├── metadata.json   # Metadata about this run, such as state and times
 │   └── config_2
 │       ├── config.yaml
@@ -298,11 +253,11 @@ root_directory
 ```
 
 1. The first thing you should do is make sure no workers are running.
-2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share betwen the
+2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share between the
    workers.
 3. Lastly, you can go in and modify any of the following files:
 
-    * `config.yaml` - The configuration to be run. This was samled from your search space.
+    * `config.yaml` - The configuration to be run. This was sampled from your search space.
     * `report.yaml` - The results of the run. This is where you can change what was reported back.
     * `metadata.json` - Metadata about the run. Here you can change the `"state"` key to one
         of [`State`][neps.state.trial.State] to re-run the configuration, usually you'd want to set it
