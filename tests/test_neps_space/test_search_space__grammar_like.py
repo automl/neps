@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import config_string, neps_space
 
 
@@ -278,7 +279,7 @@ def test_resolve_context():
 
     resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline,
-        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -365,7 +366,7 @@ def test_resolve_context_alt():
 
     resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline,
-        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )

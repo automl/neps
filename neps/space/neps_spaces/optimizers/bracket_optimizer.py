@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+import neps.space.neps_spaces.sampling
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.space.neps_spaces import neps_space
@@ -143,9 +144,13 @@ class _BracketOptimizer:
         fidelity_level: Literal["min"] | Literal["max"],
     ) -> dict[str, Any]:
         # TODO: [lum] have a CenterSampler as fallback, not Random
-        _try_always_priors_sampler = neps_space.PriorOrFallbackSampler(
-            fallback_sampler=neps_space.RandomSampler(predefined_samplings={}),
-            prior_use_probability=1,
+        _try_always_priors_sampler = (
+            neps.space.neps_spaces.sampling.PriorOrFallbackSampler(
+                fallback_sampler=neps.space.neps_spaces.sampling.RandomSampler(
+                    predefined_samplings={}
+                ),
+                prior_use_probability=1,
+            )
         )
 
         _environment_values = {}
@@ -182,7 +187,7 @@ class _BracketOptimizer:
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
-            domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+            domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
                 predefined_samplings=data.predefined_samplings,
             ),
             environment_values=_environment_values,

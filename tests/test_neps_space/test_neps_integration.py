@@ -5,6 +5,7 @@ from collections.abc import Callable, Sequence
 import pytest
 
 import neps
+import neps.space.neps_spaces.optimizers.algorithms
 from neps.space.neps_spaces import neps_space
 
 
@@ -143,7 +144,10 @@ class DemoHyperparameterComplexSpace(neps_space.Pipeline):
 
 @pytest.mark.parametrize(
     "optimizer",
-    [neps_space.RandomSearch, neps_space.ComplexRandomSearch],
+    [
+        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
+        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+    ],
 )
 def test_hyperparameter_demo(optimizer):
     pipeline_space = DemoHyperparameterSpace()
@@ -166,7 +170,10 @@ def test_hyperparameter_demo(optimizer):
 
 @pytest.mark.parametrize(
     "optimizer",
-    [neps_space.RandomSearch, neps_space.ComplexRandomSearch],
+    [
+        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
+        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+    ],
 )
 def test_hyperparameter_with_fidelity_demo(optimizer):
     pipeline_space = DemoHyperparameterWithFidelitySpace()
@@ -189,7 +196,10 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
 
 @pytest.mark.parametrize(
     "optimizer",
-    [neps_space.RandomSearch, neps_space.ComplexRandomSearch],
+    [
+        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
+        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+    ],
 )
 def test_hyperparameter_complex_demo(optimizer):
     pipeline_space = DemoHyperparameterComplexSpace()
@@ -314,7 +324,10 @@ class DemoOperationSpace(neps_space.Pipeline):
 
 @pytest.mark.parametrize(
     "optimizer",
-    [neps_space.RandomSearch, neps_space.ComplexRandomSearch],
+    [
+        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
+        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+    ],
 )
 def test_operation_demo(optimizer):
     pipeline_space = DemoOperationSpace()

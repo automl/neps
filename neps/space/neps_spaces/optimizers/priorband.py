@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+import neps.space.neps_spaces.sampling
 from neps.optimizers.utils import brackets
 from neps.space.neps_spaces import neps_space
 
@@ -143,9 +144,13 @@ class PriorBandSampler:
 
     def _sample_prior(self) -> dict[str, Any]:
         # TODO: [lum] have a CenterSampler as fallback, not Random
-        _try_always_priors_sampler = neps_space.PriorOrFallbackSampler(
-            fallback_sampler=neps_space.RandomSampler(predefined_samplings={}),
-            prior_use_probability=1,
+        _try_always_priors_sampler = (
+            neps.space.neps_spaces.sampling.PriorOrFallbackSampler(
+                fallback_sampler=neps.space.neps_spaces.sampling.RandomSampler(
+                    predefined_samplings={}
+                ),
+                prior_use_probability=1,
+            )
         )
 
         _environment_values = {}
@@ -170,7 +175,9 @@ class PriorBandSampler:
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
-            domain_sampler=neps_space.RandomSampler(predefined_samplings={}),
+            domain_sampler=neps.space.neps_spaces.sampling.RandomSampler(
+                predefined_samplings={}
+            ),
             environment_values=_environment_values,
         )
 
@@ -182,7 +189,7 @@ class PriorBandSampler:
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
-            domain_sampler=neps_space.MutatateUsingCentersSampler(
+            domain_sampler=neps.space.neps_spaces.sampling.MutatateUsingCentersSampler(
                 predefined_samplings=data.predefined_samplings,
                 n_mutations=max(1, random.randint(1, int(len(inc_config) / 2))),
             ),

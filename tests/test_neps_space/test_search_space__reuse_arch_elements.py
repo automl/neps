@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space
 
 
@@ -323,15 +324,45 @@ def test_shared_complex():
 @pytest.mark.repeat(50)
 def test_shared_complex_string():
     possible_cell_config_strings = {
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (avg_pool) (avg_pool) (avg_pool) (avg_pool) (avg_pool))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool))",
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (avg_pool) (avg_pool)"
+            " (avg_pool) (avg_pool) (avg_pool))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (sequential3 (relu) (conv3x3)"
+            " (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3"
+            " (relu) (conv3x3) (batch)))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
+            " (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3"
+            " (relu) (conv3x3) (batch)) (avg_pool))"
+        ),
         "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (zero) (zero) (zero) (zero) (zero))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (avg_pool) (zero) (avg_pool) (zero) (avg_pool))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero) (avg_pool) (zero))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)) (zero))",
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch)))",
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (avg_pool) (zero) (avg_pool)"
+            " (zero) (avg_pool))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
+            " (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3)"
+            " (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu)"
+            " (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero)"
+            " (avg_pool) (zero))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
+            " (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu)"
+            " (conv3x3) (batch)) (zero))"
+        ),
+        (
+            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (sequential3 (relu)"
+            " (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch))"
+            " (avg_pool) (sequential3 (relu) (conv3x3) (batch)))"
+        ),
     }
 
     pipeline = CellPipeline()
@@ -361,7 +392,7 @@ def test_shared_complex_context():
 
     resolved_pipeline_first, _resolution_context_first = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -375,7 +406,7 @@ def test_shared_complex_context():
 
     resolved_pipeline_second, _resolution_context_second = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
     )
@@ -390,7 +421,10 @@ def test_shared_complex_context():
     # the second resolution should give us a new object
     assert resolved_pipeline_second is not resolved_pipeline_first
 
-    expected_config_string: str = "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero) (avg_pool) (zero))"
+    expected_config_string: str = (
+        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero)"
+        " (avg_pool) (zero))"
+    )
 
     # however, their final results should be the same thing
     assert (

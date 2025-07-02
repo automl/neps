@@ -4,6 +4,7 @@ import re
 
 import pytest
 
+import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space
 
 
@@ -60,7 +61,8 @@ def test_fidelity_resolution_raises_when_resolved_with_invalid_value():
     with pytest.raises(
         ValueError,
         match=re.escape(
-            "Value for fidelity with name 'fidelity_integer1' is outside its allowed range [1, 1000]. Received: -10."
+            "Value for fidelity with name 'fidelity_integer1' is outside its allowed"
+            " range [1, 1000]. Received: -10."
         ),
     ):
         neps_space.resolve(
@@ -98,7 +100,7 @@ def test_fidelity_resolution_with_context_works():
     # with a valid value for it in the environment.
     resolved_pipeline, resolution_context = neps_space.resolve(
         pipeline=pipeline,
-        domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
             predefined_samplings=samplings_to_make,
         ),
         environment_values=environment_values,
