@@ -2,43 +2,44 @@ from __future__ import annotations
 
 import pytest
 
-import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    ConfidenceLevel,
+    Float,
+    Integer,
+    Operation,
+    Pipeline,
+)
 
 
-class ActPipelineSimple(neps.space.neps_spaces.parameters.Pipeline):
-    prelu = neps.space.neps_spaces.parameters.Operation(
+class ActPipelineSimple(Pipeline):
+    prelu = Operation(
         operator="prelu",
         kwargs={"init": 0.1},
     )
-    relu = neps.space.neps_spaces.parameters.Operation(operator="relu")
+    relu = Operation(operator="relu")
 
-    act: neps.space.neps_spaces.parameters.Operation = (
-        neps.space.neps_spaces.parameters.Categorical(
-            choices=(prelu, relu),
-        )
+    act: Operation = Categorical(
+        choices=(prelu, relu),
     )
 
 
-class ActPipelineComplex(neps.space.neps_spaces.parameters.Pipeline):
-    prelu_init_value: float = neps.space.neps_spaces.parameters.Float(
-        min_value=0.1, max_value=0.9
-    )
-    prelu = neps.space.neps_spaces.parameters.Operation(
+class ActPipelineComplex(Pipeline):
+    prelu_init_value: float = Float(min_value=0.1, max_value=0.9)
+    prelu = Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
-    act: neps.space.neps_spaces.parameters.Operation = (
-        neps.space.neps_spaces.parameters.Categorical(
-            choices=(prelu,),
-        )
+    act: Operation = Categorical(
+        choices=(prelu,),
     )
 
 
-class FixedPipeline(neps.space.neps_spaces.parameters.Pipeline):
+class FixedPipeline(Pipeline):
     prelu_init_value: float = 0.5
-    prelu = neps.space.neps_spaces.parameters.Operation(
+    prelu = Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
@@ -48,80 +49,74 @@ class FixedPipeline(neps.space.neps_spaces.parameters.Pipeline):
 _conv_choices_low = ("conv1x1", "conv3x3")
 _conv_choices_high = ("conv5x5", "conv9x9")
 _conv_choices_prior_confidence_choices = (
-    neps.space.neps_spaces.parameters.ConfidenceLevel.LOW,
-    neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
-    neps.space.neps_spaces.parameters.ConfidenceLevel.HIGH,
+    ConfidenceLevel.LOW,
+    ConfidenceLevel.MEDIUM,
+    ConfidenceLevel.HIGH,
 )
 
 
-class ConvPipeline(neps.space.neps_spaces.parameters.Pipeline):
-    conv_choices_prior_index: int = neps.space.neps_spaces.parameters.Integer(
+class ConvPipeline(Pipeline):
+    conv_choices_prior_index: int = Integer(
         min_value=0,
         max_value=1,
         log=False,
         prior=0,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.LOW,
+        prior_confidence=ConfidenceLevel.LOW,
     )
-    conv_choices_prior_confidence: neps.space.neps_spaces.parameters.ConfidenceLevel = (
-        neps.space.neps_spaces.parameters.Categorical(
-            choices=_conv_choices_prior_confidence_choices,
-            prior_index=1,
-            prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.LOW,
-        )
+    conv_choices_prior_confidence: ConfidenceLevel = Categorical(
+        choices=_conv_choices_prior_confidence_choices,
+        prior_index=1,
+        prior_confidence=ConfidenceLevel.LOW,
     )
-    conv_choices: tuple[str, ...] = neps.space.neps_spaces.parameters.Categorical(
+    conv_choices: tuple[str, ...] = Categorical(
         choices=(_conv_choices_low, _conv_choices_high),
         prior_index=conv_choices_prior_index,
         prior_confidence=conv_choices_prior_confidence,
     )
 
-    _conv1: str = neps.space.neps_spaces.parameters.Categorical(
+    _conv1: str = Categorical(
         choices=conv_choices,
     )
-    _conv2: str = neps.space.neps_spaces.parameters.Categorical(
+    _conv2: str = Categorical(
         choices=conv_choices,
     )
 
-    conv_block: neps.space.neps_spaces.parameters.Operation = (
-        neps.space.neps_spaces.parameters.Categorical(
-            choices=(
-                neps.space.neps_spaces.parameters.Operation(
-                    operator="sequential3",
-                    args=[_conv1, _conv2, _conv1],
-                ),
-            ),
-        )
-    )
-
-
-class CellPipeline(neps.space.neps_spaces.parameters.Pipeline):
-    _act = neps.space.neps_spaces.parameters.Operation(operator="relu")
-    _conv = neps.space.neps_spaces.parameters.Operation(operator="conv3x3")
-    _norm = neps.space.neps_spaces.parameters.Operation(operator="batch")
-
-    conv_block = neps.space.neps_spaces.parameters.Operation(
-        operator="sequential3", args=(_act, _conv, _norm)
-    )
-
-    op1 = neps.space.neps_spaces.parameters.Categorical(
+    conv_block: Operation = Categorical(
         choices=(
-            conv_block,
-            neps.space.neps_spaces.parameters.Operation(operator="zero"),
-            neps.space.neps_spaces.parameters.Operation(operator="avg_pool"),
+            Operation(
+                operator="sequential3",
+                args=[_conv1, _conv2, _conv1],
+            ),
         ),
     )
-    op2 = neps.space.neps_spaces.parameters.Categorical(
+
+
+class CellPipeline(Pipeline):
+    _act = Operation(operator="relu")
+    _conv = Operation(operator="conv3x3")
+    _norm = Operation(operator="batch")
+
+    conv_block = Operation(operator="sequential3", args=(_act, _conv, _norm))
+
+    op1 = Categorical(
         choices=(
             conv_block,
-            neps.space.neps_spaces.parameters.Operation(operator="zero"),
-            neps.space.neps_spaces.parameters.Operation(operator="avg_pool"),
+            Operation(operator="zero"),
+            Operation(operator="avg_pool"),
+        ),
+    )
+    op2 = Categorical(
+        choices=(
+            conv_block,
+            Operation(operator="zero"),
+            Operation(operator="avg_pool"),
         ),
     )
 
     _some_int = 2
-    _some_float = neps.space.neps_spaces.parameters.Float(min_value=0.5, max_value=0.5)
+    _some_float = Float(min_value=0.5, max_value=0.5)
 
-    cell = neps.space.neps_spaces.parameters.Operation(
+    cell = Operation(
         operator="cell",
         args=(op1, op2, op1, op2, op1, op2),
         kwargs={"float_hp": _some_float, "int_hp": _some_int},
@@ -189,7 +184,7 @@ def test_nested_complex():
 def test_nested_complex_string():
     pipeline = ActPipelineComplex()
 
-    resolved_pipeline, sampled_values = neps_space.resolve(pipeline)
+    resolved_pipeline, _ = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
     act_config_string = neps_space.convert_operation_to_string(act)
@@ -309,8 +304,8 @@ def test_shared_complex():
     op2 = resolved_pipeline.op2
     assert op1 is not pipeline.op1
     assert op2 is not pipeline.op2
-    assert isinstance(op1, neps.space.neps_spaces.parameters.Operation)
-    assert isinstance(op2, neps.space.neps_spaces.parameters.Operation)
+    assert isinstance(op1, Operation)
+    assert isinstance(op2, Operation)
 
     if op1 is op2:
         assert op1 is conv_block

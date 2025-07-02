@@ -2,135 +2,137 @@ from __future__ import annotations
 
 import pytest
 
-import neps.space.neps_spaces.parameters
 from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    ConfidenceLevel,
+    Float,
+    Integer,
+    Operation,
+    Pipeline,
+    Resampled,
+)
 
 
-class ActPipelineSimpleFloat(neps.space.neps_spaces.parameters.Pipeline):
-    prelu_init_value = neps.space.neps_spaces.parameters.Float(
+class ActPipelineSimpleFloat(Pipeline):
+    prelu_init_value = Float(
         min_value=0,
         max_value=1000000,
         log=False,
         prior=0.25,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.LOW,
+        prior_confidence=ConfidenceLevel.LOW,
     )
 
-    prelu_shared1 = neps.space.neps_spaces.parameters.Operation(
+    prelu_shared1 = Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
-    prelu_shared2 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": prelu_init_value},
-    )
-
-    prelu_own_clone1 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": neps.space.neps_spaces.parameters.Resampled(prelu_init_value)},
-    )
-    prelu_own_clone2 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": neps.space.neps_spaces.parameters.Resampled(prelu_init_value)},
-    )
-
-    _prelu_init_resampled = neps.space.neps_spaces.parameters.Resampled(prelu_init_value)
-    prelu_common_clone1 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": _prelu_init_resampled},
-    )
-    prelu_common_clone2 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": _prelu_init_resampled},
-    )
-
-
-class ActPipelineComplexInteger(neps.space.neps_spaces.parameters.Pipeline):
-    prelu_init_value = neps.space.neps_spaces.parameters.Integer(
-        min_value=0, max_value=1000000
-    )
-
-    prelu_shared1 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": prelu_init_value},
-    )
-    prelu_shared2 = neps.space.neps_spaces.parameters.Operation(
+    prelu_shared2 = Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
     )
 
-    prelu_own_clone1 = neps.space.neps_spaces.parameters.Operation(
+    prelu_own_clone1 = Operation(
         operator="prelu",
-        kwargs={"init": neps.space.neps_spaces.parameters.Resampled(prelu_init_value)},
+        kwargs={"init": Resampled(prelu_init_value)},
     )
-    prelu_own_clone2 = neps.space.neps_spaces.parameters.Operation(
+    prelu_own_clone2 = Operation(
         operator="prelu",
-        kwargs={"init": neps.space.neps_spaces.parameters.Resampled(prelu_init_value)},
+        kwargs={"init": Resampled(prelu_init_value)},
     )
 
-    _prelu_init_resampled = neps.space.neps_spaces.parameters.Resampled(prelu_init_value)
-    prelu_common_clone1 = neps.space.neps_spaces.parameters.Operation(
-        operator="prelu",
-        kwargs={"init": _prelu_init_resampled},
-    )
-    prelu_common_clone2 = neps.space.neps_spaces.parameters.Operation(
+    _prelu_init_resampled = Resampled(prelu_init_value)
+    prelu_common_clone1 = Operation(
         operator="prelu",
         kwargs={"init": _prelu_init_resampled},
     )
-
-    act: neps.space.neps_spaces.parameters.Operation = (
-        neps.space.neps_spaces.parameters.Operation(
-            operator="sequential6",
-            args=(
-                prelu_shared1,
-                prelu_shared2,
-                prelu_own_clone1,
-                prelu_own_clone2,
-                prelu_common_clone1,
-                prelu_common_clone2,
-            ),
-            kwargs={
-                "prelu_shared": prelu_shared1,
-                "prelu_own_clone": prelu_own_clone1,
-                "prelu_common_clone": prelu_common_clone1,
-                "resampled_hp_value": neps.space.neps_spaces.parameters.Resampled(
-                    prelu_init_value
-                ),
-            },
-        )
+    prelu_common_clone2 = Operation(
+        operator="prelu",
+        kwargs={"init": _prelu_init_resampled},
     )
 
 
-class CellPipelineCategorical(neps.space.neps_spaces.parameters.Pipeline):
-    conv_block = neps.space.neps_spaces.parameters.Categorical(
+class ActPipelineComplexInteger(Pipeline):
+    prelu_init_value = Integer(min_value=0, max_value=1000000)
+
+    prelu_shared1 = Operation(
+        operator="prelu",
+        kwargs={"init": prelu_init_value},
+    )
+    prelu_shared2 = Operation(
+        operator="prelu",
+        kwargs={"init": prelu_init_value},
+    )
+
+    prelu_own_clone1 = Operation(
+        operator="prelu",
+        kwargs={"init": Resampled(prelu_init_value)},
+    )
+    prelu_own_clone2 = Operation(
+        operator="prelu",
+        kwargs={"init": Resampled(prelu_init_value)},
+    )
+
+    _prelu_init_resampled = Resampled(prelu_init_value)
+    prelu_common_clone1 = Operation(
+        operator="prelu",
+        kwargs={"init": _prelu_init_resampled},
+    )
+    prelu_common_clone2 = Operation(
+        operator="prelu",
+        kwargs={"init": _prelu_init_resampled},
+    )
+
+    act: Operation = Operation(
+        operator="sequential6",
+        args=(
+            prelu_shared1,
+            prelu_shared2,
+            prelu_own_clone1,
+            prelu_own_clone2,
+            prelu_common_clone1,
+            prelu_common_clone2,
+        ),
+        kwargs={
+            "prelu_shared": prelu_shared1,
+            "prelu_own_clone": prelu_own_clone1,
+            "prelu_common_clone": prelu_common_clone1,
+            "resampled_hp_value": Resampled(prelu_init_value),
+        },
+    )
+
+
+class CellPipelineCategorical(Pipeline):
+    conv_block = Categorical(
         choices=(
-            neps.space.neps_spaces.parameters.Operation(operator="conv1"),
-            neps.space.neps_spaces.parameters.Operation(operator="conv2"),
+            Operation(operator="conv1"),
+            Operation(operator="conv2"),
         ),
     )
 
-    op1 = neps.space.neps_spaces.parameters.Categorical(
+    op1 = Categorical(
         choices=(
             conv_block,
-            neps.space.neps_spaces.parameters.Operation("op1"),
+            Operation("op1"),
         ),
     )
-    op2 = neps.space.neps_spaces.parameters.Categorical(
+    op2 = Categorical(
         choices=(
-            neps.space.neps_spaces.parameters.Resampled(conv_block),
-            neps.space.neps_spaces.parameters.Operation("op2"),
+            Resampled(conv_block),
+            Operation("op2"),
         ),
     )
 
-    _resampled_op1 = neps.space.neps_spaces.parameters.Resampled(op1)
-    cell = neps.space.neps_spaces.parameters.Operation(
+    _resampled_op1 = Resampled(op1)
+    cell = Operation(
         operator="cell",
         args=(
             op1,
             op2,
             _resampled_op1,
-            neps.space.neps_spaces.parameters.Resampled(op2),
+            Resampled(op2),
             _resampled_op1,
-            neps.space.neps_spaces.parameters.Resampled(op2),
+            Resampled(op2),
         ),
     )
 
@@ -268,8 +270,8 @@ def test_resampled_categorical():
     assert op1 is not pipeline.op1
     assert op2 is not pipeline.op2
 
-    assert isinstance(op1, neps.space.neps_spaces.parameters.Operation)
-    assert isinstance(op2, neps.space.neps_spaces.parameters.Operation)
+    assert isinstance(op1, Operation)
+    assert isinstance(op2, Operation)
 
     assert (op1 is conv_block) or (op1.operator == "op1")
     assert op2.operator in ("conv1", "conv2", "op2")

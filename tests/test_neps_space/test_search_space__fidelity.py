@@ -4,21 +4,27 @@ import re
 
 import pytest
 
-import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.parameters import (
+    ConfidenceLevel,
+    Fidelity,
+    Float,
+    Integer,
+    Pipeline,
+)
 
 
-class DemoHyperparametersWithFidelitySpace(neps.space.neps_spaces.parameters.Pipeline):
+class DemoHyperparametersWithFidelitySpace(Pipeline):
     constant1: int = 42
-    float1: float = neps.space.neps_spaces.parameters.Float(
+    float1 = Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
+        prior_confidence=ConfidenceLevel.MEDIUM,
     )
-    fidelity_integer1: int = neps.space.neps_spaces.parameters.Fidelity(
-        domain=neps.space.neps_spaces.parameters.Integer(
+    fidelity_integer1 = Fidelity(
+        domain=Integer(
             min_value=1,
             max_value=1000,
         ),
@@ -31,12 +37,12 @@ def test_fidelity_creation_raises_when_domain_has_prior():
         ValueError,
         match=re.escape("The domain of a Fidelity can not have priors: "),
     ):
-        neps.space.neps_spaces.parameters.Fidelity(
-            domain=neps.space.neps_spaces.parameters.Integer(
+        Fidelity(
+            domain=Integer(
                 min_value=1,
                 max_value=1000,
                 prior=10,
-                prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
+                prior_confidence=ConfidenceLevel.MEDIUM,
             ),
         )
 
@@ -83,7 +89,9 @@ def test_fidelity_resolution_works():
     )
 
     assert resolved_pipeline.constant1 == 42
-    assert 0.0 <= resolved_pipeline.float1 <= 1.0
+    assert (
+        0.0 <= float(str(resolved_pipeline.float1)) <= 1.0
+    )  # 0.0 <= resolved_pipeline.float1 <= 1.0 also works, but gives a type warning
     assert resolved_pipeline.fidelity_integer1 == 10
 
 

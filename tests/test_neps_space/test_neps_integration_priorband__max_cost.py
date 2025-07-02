@@ -9,8 +9,14 @@ import neps
 import neps.optimizers.algorithms as old_algorithms
 import neps.space.neps_spaces.optimizers.algorithms
 import neps.space.neps_spaces.optimizers.bracket_optimizer as new_bracket_optimizer
-import neps.space.neps_spaces.parameters
 from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.parameters import (
+    ConfidenceLevel,
+    Fidelity,
+    Float,
+    Integer,
+    Pipeline,
+)
 
 _COSTS = {}
 
@@ -58,28 +64,28 @@ old_pipeline_space = {
 }
 
 
-class DemoHyperparameterWithFidelitySpace(neps.space.neps_spaces.parameters.Pipeline):
-    float1 = neps.space.neps_spaces.parameters.Float(
+class DemoHyperparameterWithFidelitySpace(Pipeline):
+    float1 = Float(
         min_value=1,
         max_value=1000,
         log=False,
         prior=600,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
+        prior_confidence=ConfidenceLevel.MEDIUM,
     )
-    float2 = neps.space.neps_spaces.parameters.Float(
+    float2 = Float(
         min_value=-100,
         max_value=100,
         prior=0,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
+        prior_confidence=ConfidenceLevel.MEDIUM,
     )
-    integer1 = neps.space.neps_spaces.parameters.Integer(
+    integer1 = Integer(
         min_value=0,
         max_value=500,
         prior=35,
-        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.LOW,
+        prior_confidence=ConfidenceLevel.LOW,
     )
-    fidelity = neps.space.neps_spaces.parameters.Fidelity(
-        domain=neps.space.neps_spaces.parameters.Integer(
+    fidelity = Fidelity(
+        domain=Integer(
             min_value=1,
             max_value=100,
         ),
