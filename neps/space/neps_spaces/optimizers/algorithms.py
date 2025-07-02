@@ -13,7 +13,6 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from neps.space.neps_spaces.neps_space import (
-    Pipeline,
     _prepare_sampled_configs,
     resolve,
 )
@@ -30,6 +29,7 @@ if TYPE_CHECKING:
     import neps.state.optimizer as optimizer_state
     import neps.state.trial as trial_state
     from neps.optimizers import optimizer
+    from neps.space.neps_spaces.parameters import Pipeline
     from neps.state.trial import Trial
 
 

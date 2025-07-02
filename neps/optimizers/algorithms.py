@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
-    from neps.space.neps_spaces.neps_space import Pipeline
+    from neps.space.neps_spaces.parameters import Pipeline
 
 logger = logging.getLogger(__name__)
 

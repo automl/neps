@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 class _BracketOptimizer:
     """The pipeline space to optimize over."""
 
-    space: neps_space.Pipeline
+    space: neps.space.neps_spaces.parameters.Pipeline
 
     """Whether or not to sample the prior first.
 
@@ -198,7 +199,7 @@ class _BracketOptimizer:
 
 
 def priorband(
-    space: neps_space.Pipeline,
+    space: neps.space.neps_spaces.parameters.Pipeline,
     *,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
@@ -231,7 +232,7 @@ def priorband(
 
 
 def _bracket_optimizer(
-    pipeline_space: neps_space.Pipeline,
+    pipeline_space: neps.space.neps_spaces.parameters.Pipeline,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,

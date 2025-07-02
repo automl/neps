@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import pytest
 
+import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import config_string, neps_space
 
 
-class HNASLikePipeline(neps_space.Pipeline):
+class HNASLikePipeline(neps.space.neps_spaces.parameters.Pipeline):
     """Based on the `hierarchical+shared` variant (cell block is shared everywhere).
     Across _CONVBLOCK items, _ACT and _CONV also shared. Only the _NORM changes.
 
@@ -18,181 +19,193 @@ class HNASLikePipeline(neps_space.Pipeline):
     # Adding `PReLU` with a float hyperparameter `init`
     # Note that the sampled `_prelu_init_value` will be shared across all `_PRELU` uses,
     #  since no `Resampled` was requested for it
-    _prelu_init_value = neps_space.Float(min_value=0.1, max_value=0.9)
-    _PRELU = neps_space.Operation(
+    _prelu_init_value = neps.space.neps_spaces.parameters.Float(
+        min_value=0.1, max_value=0.9
+    )
+    _PRELU = neps.space.neps_spaces.parameters.Operation(
         operator="ACT prelu",
         kwargs={"init": _prelu_init_value},
     )
     # ------------------------------------------------------
 
     # Added `_PRELU` to the possible `_ACT` choices
-    _ACT = neps_space.Categorical(
+    _ACT = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="ACT relu"),
-            neps_space.Operation(operator="ACT hardswish"),
-            neps_space.Operation(operator="ACT mish"),
+            neps.space.neps_spaces.parameters.Operation(operator="ACT relu"),
+            neps.space.neps_spaces.parameters.Operation(operator="ACT hardswish"),
+            neps.space.neps_spaces.parameters.Operation(operator="ACT mish"),
             _PRELU,
         ),
     )
-    _CONV = neps_space.Categorical(
+    _CONV = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="CONV conv1x1"),
-            neps_space.Operation(operator="CONV conv3x3"),
-            neps_space.Operation(operator="CONV dconv3x3"),
+            neps.space.neps_spaces.parameters.Operation(operator="CONV conv1x1"),
+            neps.space.neps_spaces.parameters.Operation(operator="CONV conv3x3"),
+            neps.space.neps_spaces.parameters.Operation(operator="CONV dconv3x3"),
         ),
     )
-    _NORM = neps_space.Categorical(
+    _NORM = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="NORM batch"),
-            neps_space.Operation(operator="NORM instance"),
-            neps_space.Operation(operator="NORM layer"),
+            neps.space.neps_spaces.parameters.Operation(operator="NORM batch"),
+            neps.space.neps_spaces.parameters.Operation(operator="NORM instance"),
+            neps.space.neps_spaces.parameters.Operation(operator="NORM layer"),
         ),
     )
 
-    _CONVBLOCK = neps_space.Operation(
+    _CONVBLOCK = neps.space.neps_spaces.parameters.Operation(
         operator="CONVBLOCK Sequential3",
         args=(
             _ACT,
             _CONV,
-            neps_space.Resampled(_NORM),
+            neps.space.neps_spaces.parameters.Resampled(_NORM),
         ),
     )
-    _CONVBLOCK_FULL = neps_space.Operation(
+    _CONVBLOCK_FULL = neps.space.neps_spaces.parameters.Operation(
         operator="OPS Sequential1",
-        args=(neps_space.Resampled(_CONVBLOCK),),
+        args=(neps.space.neps_spaces.parameters.Resampled(_CONVBLOCK),),
     )
-    _OP = neps_space.Categorical(
+    _OP = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="OPS zero"),
-            neps_space.Operation(operator="OPS id"),
-            neps_space.Operation(operator="OPS avg_pool"),
-            neps_space.Resampled(_CONVBLOCK_FULL),
+            neps.space.neps_spaces.parameters.Operation(operator="OPS zero"),
+            neps.space.neps_spaces.parameters.Operation(operator="OPS id"),
+            neps.space.neps_spaces.parameters.Operation(operator="OPS avg_pool"),
+            neps.space.neps_spaces.parameters.Resampled(_CONVBLOCK_FULL),
         ),
     )
 
-    CL = neps_space.Operation(
+    CL = neps.space.neps_spaces.parameters.Operation(
         operator="CELL Cell",
         args=(
-            neps_space.Resampled(_OP),
-            neps_space.Resampled(_OP),
-            neps_space.Resampled(_OP),
-            neps_space.Resampled(_OP),
-            neps_space.Resampled(_OP),
-            neps_space.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
+            neps.space.neps_spaces.parameters.Resampled(_OP),
         ),
     )
 
-    _C = neps_space.Categorical(
+    _C = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="C Sequential2", args=(CL, CL)),
-            neps_space.Operation(operator="C Sequential3", args=(CL, CL, CL)),
-            neps_space.Operation(operator="C Residual2", args=(CL, CL, CL)),
+            neps.space.neps_spaces.parameters.Operation(
+                operator="C Sequential2", args=(CL, CL)
+            ),
+            neps.space.neps_spaces.parameters.Operation(
+                operator="C Sequential3", args=(CL, CL, CL)
+            ),
+            neps.space.neps_spaces.parameters.Operation(
+                operator="C Residual2", args=(CL, CL, CL)
+            ),
         ),
     )
 
-    _RESBLOCK = neps_space.Operation(operator="resBlock")
-    _DOWN = neps_space.Categorical(
+    _RESBLOCK = neps.space.neps_spaces.parameters.Operation(operator="resBlock")
+    _DOWN = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="DOWN Sequential2", args=(CL, _RESBLOCK)),
-            neps_space.Operation(operator="DOWN Sequential3", args=(CL, CL, _RESBLOCK)),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
+                operator="DOWN Sequential2", args=(CL, _RESBLOCK)
+            ),
+            neps.space.neps_spaces.parameters.Operation(
+                operator="DOWN Sequential3", args=(CL, CL, _RESBLOCK)
+            ),
+            neps.space.neps_spaces.parameters.Operation(
                 operator="DOWN Residual2", args=(CL, _RESBLOCK, _RESBLOCK)
             ),
         ),
     )
 
-    _D0 = neps_space.Categorical(
+    _D0 = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D0 Sequential3",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
                     CL,
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D0 Sequential4",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
                     CL,
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D0 Residual3",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
                     CL,
                     CL,
                 ),
             ),
         ),
     )
-    _D1 = neps_space.Categorical(
+    _D1 = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D1 Sequential3",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_DOWN),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_DOWN),
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D1 Sequential4",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_DOWN),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_DOWN),
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D1 Residual3",
                 args=(
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_C),
-                    neps_space.Resampled(_DOWN),
-                    neps_space.Resampled(_DOWN),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_C),
+                    neps.space.neps_spaces.parameters.Resampled(_DOWN),
+                    neps.space.neps_spaces.parameters.Resampled(_DOWN),
                 ),
             ),
         ),
     )
 
-    _D2 = neps_space.Categorical(
+    _D2 = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D2 Sequential3",
                 args=(
-                    neps_space.Resampled(_D1),
-                    neps_space.Resampled(_D1),
-                    neps_space.Resampled(_D0),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D0),
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D2 Sequential3",
                 args=(
-                    neps_space.Resampled(_D0),
-                    neps_space.Resampled(_D1),
-                    neps_space.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D0),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
                 ),
             ),
-            neps_space.Operation(
+            neps.space.neps_spaces.parameters.Operation(
                 operator="D2 Sequential4",
                 args=(
-                    neps_space.Resampled(_D1),
-                    neps_space.Resampled(_D1),
-                    neps_space.Resampled(_D0),
-                    neps_space.Resampled(_D0),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D1),
+                    neps.space.neps_spaces.parameters.Resampled(_D0),
+                    neps.space.neps_spaces.parameters.Resampled(_D0),
                 ),
             ),
         ),
     )
 
-    ARCH: neps_space.Operation = _D2
+    ARCH: neps.space.neps_spaces.parameters.Operation = _D2
 
 
 @pytest.mark.repeat(500)

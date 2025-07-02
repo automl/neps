@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.optimizers.utils import brackets
 from neps.space.neps_spaces import neps_space
@@ -26,7 +27,7 @@ class PriorBandSampler:
     """Implement a sampler based on PriorBand."""
 
     """The pipeline space to optimize over."""
-    space: neps_space.Pipeline
+    space: neps.space.neps_spaces.parameters.Pipeline
 
     """The eta value to use for the SH bracket."""
     eta: int

@@ -2,107 +2,111 @@ from __future__ import annotations
 
 import pytest
 
+import neps.space.neps_spaces.parameters
 from neps.space.neps_spaces import config_string, neps_space
 
 
-class NosBench(neps_space.Pipeline):
-    _UNARY_FUN = neps_space.Categorical(
+class NosBench(neps.space.neps_spaces.parameters.Pipeline):
+    _UNARY_FUN = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="Square"),
-            neps_space.Operation(operator="Exp"),
-            neps_space.Operation(operator="Log"),
+            neps.space.neps_spaces.parameters.Operation(operator="Square"),
+            neps.space.neps_spaces.parameters.Operation(operator="Exp"),
+            neps.space.neps_spaces.parameters.Operation(operator="Log"),
         )
     )
 
-    _BINARY_FUN = neps_space.Categorical(
+    _BINARY_FUN = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="Add"),
-            neps_space.Operation(operator="Sub"),
-            neps_space.Operation(operator="Mul"),
+            neps.space.neps_spaces.parameters.Operation(operator="Add"),
+            neps.space.neps_spaces.parameters.Operation(operator="Sub"),
+            neps.space.neps_spaces.parameters.Operation(operator="Mul"),
         )
     )
 
-    _TERNARY_FUN = neps_space.Categorical(
+    _TERNARY_FUN = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="Interpolate"),
-            neps_space.Operation(operator="Bias_Correct"),
+            neps.space.neps_spaces.parameters.Operation(operator="Interpolate"),
+            neps.space.neps_spaces.parameters.Operation(operator="Bias_Correct"),
         )
     )
 
-    _PARAMS = neps_space.Categorical(
+    _PARAMS = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Operation(operator="Params"),
-            neps_space.Operation(operator="Gradient"),
-            neps_space.Operation(operator="Opt_Step"),
+            neps.space.neps_spaces.parameters.Operation(operator="Params"),
+            neps.space.neps_spaces.parameters.Operation(operator="Gradient"),
+            neps.space.neps_spaces.parameters.Operation(operator="Opt_Step"),
         )
     )
-    _CONST = neps_space.Integer(3, 8)
-    _VAR = neps_space.Integer(9, 19)
+    _CONST = neps.space.neps_spaces.parameters.Integer(3, 8)
+    _VAR = neps.space.neps_spaces.parameters.Integer(9, 19)
 
-    _POINTER = neps_space.Categorical(
+    _POINTER = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Resampled(_PARAMS),
-            neps_space.Resampled(_CONST),
-            neps_space.Resampled(_VAR),
+            neps.space.neps_spaces.parameters.Resampled(_PARAMS),
+            neps.space.neps_spaces.parameters.Resampled(_CONST),
+            neps.space.neps_spaces.parameters.Resampled(_VAR),
         ),
     )
 
-    _UNARY = neps_space.Operation(
+    _UNARY = neps.space.neps_spaces.parameters.Operation(
         operator="Unary",
         args=(
-            neps_space.Resampled(_UNARY_FUN),
-            neps_space.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_UNARY_FUN),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
         ),
     )
 
-    _BINARY = neps_space.Operation(
+    _BINARY = neps.space.neps_spaces.parameters.Operation(
         operator="Binary",
         args=(
-            neps_space.Resampled(_BINARY_FUN),
-            neps_space.Resampled(_POINTER),
-            neps_space.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_BINARY_FUN),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
         ),
     )
 
-    _TERNARY = neps_space.Operation(
+    _TERNARY = neps.space.neps_spaces.parameters.Operation(
         operator="Ternary",
         args=(
-            neps_space.Resampled(_TERNARY_FUN),
-            neps_space.Resampled(_POINTER),
-            neps_space.Resampled(_POINTER),
-            neps_space.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_TERNARY_FUN),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
+            neps.space.neps_spaces.parameters.Resampled(_POINTER),
         ),
     )
 
-    _F_ARGS = neps_space.Categorical(
+    _F_ARGS = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Resampled(_UNARY),
-            neps_space.Resampled(_BINARY),
-            neps_space.Resampled(_TERNARY),
+            neps.space.neps_spaces.parameters.Resampled(_UNARY),
+            neps.space.neps_spaces.parameters.Resampled(_BINARY),
+            neps.space.neps_spaces.parameters.Resampled(_TERNARY),
         ),
     )
 
-    _F = neps_space.Operation(
+    _F = neps.space.neps_spaces.parameters.Operation(
         operator="Function",
-        args=(neps_space.Resampled(_F_ARGS),),
-        kwargs={"var": neps_space.Resampled(_VAR)},
+        args=(neps.space.neps_spaces.parameters.Resampled(_F_ARGS),),
+        kwargs={"var": neps.space.neps_spaces.parameters.Resampled(_VAR)},
     )
 
-    _L_ARGS = neps_space.Categorical(
+    _L_ARGS = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            (neps_space.Resampled(_F),),
-            (neps_space.Resampled(_F), neps_space.Resampled("_L")),
+            (neps.space.neps_spaces.parameters.Resampled(_F),),
+            (
+                neps.space.neps_spaces.parameters.Resampled(_F),
+                neps.space.neps_spaces.parameters.Resampled("_L"),
+            ),
         ),
     )
 
-    _L = neps_space.Operation(
+    _L = neps.space.neps_spaces.parameters.Operation(
         operator="Line_operator",
-        args=neps_space.Resampled(_L_ARGS),
+        args=neps.space.neps_spaces.parameters.Resampled(_L_ARGS),
     )
 
-    P = neps_space.Operation(
+    P = neps.space.neps_spaces.parameters.Operation(
         operator="Program",
-        args=(neps_space.Resampled(_L),),
+        args=(neps.space.neps_spaces.parameters.Resampled(_L),),
     )
 
 

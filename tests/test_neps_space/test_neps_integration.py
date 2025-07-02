@@ -6,6 +6,7 @@ import pytest
 
 import neps
 import neps.space.neps_spaces.optimizers.algorithms
+import neps.space.neps_spaces.parameters
 from neps.space.neps_spaces import neps_space
 
 
@@ -28,117 +29,117 @@ def hyperparameter_pipeline_to_optimize(
     return objective_to_minimize
 
 
-class DemoHyperparameterSpace(neps_space.Pipeline):
-    float1 = neps_space.Float(
+class DemoHyperparameterSpace(neps.space.neps_spaces.parameters.Pipeline):
+    float1 = neps.space.neps_spaces.parameters.Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    float2 = neps_space.Float(
+    float2 = neps.space.neps_spaces.parameters.Float(
         min_value=-10,
         max_value=10,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    categorical = neps_space.Categorical(
+    categorical = neps.space.neps_spaces.parameters.Categorical(
         choices=(0, 1),
         prior_index=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer1 = neps_space.Integer(
+    integer1 = neps.space.neps_spaces.parameters.Integer(
         min_value=0,
         max_value=1,
         prior=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer2 = neps_space.Integer(
+    integer2 = neps.space.neps_spaces.parameters.Integer(
         min_value=1,
         max_value=1000,
         prior=10,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
 
 
-class DemoHyperparameterWithFidelitySpace(neps_space.Pipeline):
-    float1 = neps_space.Float(
+class DemoHyperparameterWithFidelitySpace(neps.space.neps_spaces.parameters.Pipeline):
+    float1 = neps.space.neps_spaces.parameters.Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    float2 = neps_space.Float(
+    float2 = neps.space.neps_spaces.parameters.Float(
         min_value=-10,
         max_value=10,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    categorical = neps_space.Categorical(
+    categorical = neps.space.neps_spaces.parameters.Categorical(
         choices=(0, 1),
         prior_index=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer1 = neps_space.Integer(
+    integer1 = neps.space.neps_spaces.parameters.Integer(
         min_value=0,
         max_value=1,
         prior=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer2 = neps_space.Fidelity(
-        neps_space.Integer(
+    integer2 = neps.space.neps_spaces.parameters.Fidelity(
+        neps.space.neps_spaces.parameters.Integer(
             min_value=1,
             max_value=1000,
         ),
     )
 
 
-class DemoHyperparameterComplexSpace(neps_space.Pipeline):
-    _small_float = neps_space.Float(
+class DemoHyperparameterComplexSpace(neps.space.neps_spaces.parameters.Pipeline):
+    _small_float = neps.space.neps_spaces.parameters.Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    _big_float = neps_space.Float(
+    _big_float = neps.space.neps_spaces.parameters.Float(
         min_value=10,
         max_value=100,
         prior=20,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
 
-    float1 = neps_space.Categorical(
+    float1 = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Resampled(_small_float),
-            neps_space.Resampled(_big_float),
+            neps.space.neps_spaces.parameters.Resampled(_small_float),
+            neps.space.neps_spaces.parameters.Resampled(_big_float),
         ),
         prior_index=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    float2 = neps_space.Categorical(
+    float2 = neps.space.neps_spaces.parameters.Categorical(
         choices=(
-            neps_space.Resampled(_small_float),
-            neps_space.Resampled(_big_float),
+            neps.space.neps_spaces.parameters.Resampled(_small_float),
+            neps.space.neps_spaces.parameters.Resampled(_big_float),
             float1,
         ),
         prior_index=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    categorical = neps_space.Categorical(
+    categorical = neps.space.neps_spaces.parameters.Categorical(
         choices=(0, 1),
         prior_index=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer1 = neps_space.Integer(
+    integer1 = neps.space.neps_spaces.parameters.Integer(
         min_value=0,
         max_value=1,
         prior=0,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
-    integer2 = neps_space.Integer(
+    integer2 = neps.space.neps_spaces.parameters.Integer(
         min_value=1,
         max_value=1000,
         prior=10,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
 
 
@@ -274,18 +275,18 @@ def operation_pipeline_to_optimize(model: Model, some_hp: str):
     return objective_to_minimize
 
 
-class DemoOperationSpace(neps_space.Pipeline):
+class DemoOperationSpace(neps.space.neps_spaces.parameters.Pipeline):
     """A demonstration of how to use operations in a search space.
     This space defines a model that can be optimized using different inner functions
     and a factor. The model can be used to evaluate a set of values and return an objective to minimize.
     """
 
     # The way to sample `factor` values
-    _factor = neps_space.Float(
+    _factor = neps.space.neps_spaces.parameters.Float(
         min_value=0,
         max_value=1,
         prior=0.1,
-        prior_confidence=neps_space.ConfidenceLevel.MEDIUM,
+        prior_confidence=neps.space.neps_spaces.parameters.ConfidenceLevel.MEDIUM,
     )
 
     # Sum
@@ -293,31 +294,31 @@ class DemoOperationSpace(neps_space.Pipeline):
     #   `Sum()`
     # Could have also been defined using the python `sum` function as
     #   `_sum = space.Operation(operator=lambda: sum)`
-    _sum = neps_space.Operation(operator=Sum)
+    _sum = neps.space.neps_spaces.parameters.Operation(operator=Sum)
 
     # MultipliedSum
     # Will be equivalent to something like
     #   `MultipliedSum(factor=0.2)`
-    _multiplied_sum = neps_space.Operation(
+    _multiplied_sum = neps.space.neps_spaces.parameters.Operation(
         operator=MultipliedSum,
-        kwargs={"factor": neps_space.Resampled(_factor)},
+        kwargs={"factor": neps.space.neps_spaces.parameters.Resampled(_factor)},
     )
 
     # Model
     # Will be equivalent to something like one of
     #   `Model(Sum(), factor=0.1)`
     #   `Model(MultipliedSum(factor=0.2), factor=0.1)`
-    _inner_function = neps_space.Categorical(
+    _inner_function = neps.space.neps_spaces.parameters.Categorical(
         choices=(_sum, _multiplied_sum),
     )
-    model = neps_space.Operation(
+    model = neps.space.neps_spaces.parameters.Operation(
         operator=Model,
         args=(_inner_function,),
-        kwargs={"factor": neps_space.Resampled(_factor)},
+        kwargs={"factor": neps.space.neps_spaces.parameters.Resampled(_factor)},
     )
 
     # An additional hyperparameter
-    some_hp = neps_space.Categorical(
+    some_hp = neps.space.neps_spaces.parameters.Categorical(
         choices=("hp1", "hp2"),
     )
 

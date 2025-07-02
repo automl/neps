@@ -9,7 +9,7 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
-from neps.space.neps_spaces.neps_space import Pipeline
+from neps.space.neps_spaces.parameters import Pipeline
 from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
 from neps.space.search_space import SearchSpace
 
@@ -56,7 +56,9 @@ SerializedParameter: TypeAlias = (
 )
 
 
-def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa: C901, PLR0911, PLR0912
+def as_parameter(  # noqa: C901, PLR0911, PLR0912
+    details: SerializedParameter,
+) -> Parameter | Constant:
     """Deduces the parameter type from details.
 
     Args:
@@ -172,7 +174,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
                             return Float(_x, _y, **rest)  # type: ignore
                         case _:
                             raise ValueError(
-                                f"Expected both 'int' or 'float' for bounds but"
+                                "Expected both 'int' or 'float' for bounds but"
                                 f" got {type(_x)=} and {type(_y)=}."
                             )
                 case _:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 
+import neps.space.neps_spaces.parameters
 from neps.space.neps_spaces import neps_space
 
 
@@ -30,12 +31,12 @@ class Sum:
         return sum(values)
 
 
-class DemoRecursiveOperationSpace(neps_space.Pipeline):
+class DemoRecursiveOperationSpace(neps.space.neps_spaces.parameters.Pipeline):
     # The way to sample `factor` values
-    _factor = neps_space.Float(min_value=0, max_value=1)
+    _factor = neps.space.neps_spaces.parameters.Float(min_value=0, max_value=1)
 
     # Sum
-    _sum = neps_space.Operation(operator=Sum)
+    _sum = neps.space.neps_spaces.parameters.Operation(operator=Sum)
 
     # Model
     # Can recursively request itself as an arg.
@@ -46,12 +47,12 @@ class DemoRecursiveOperationSpace(neps_space.Pipeline):
     #   ...
     # If we want the `factor` values to be different,
     # we just request a resample for them
-    _inner_function = neps_space.Categorical(
-        choices=(_sum, neps_space.Resampled("model")),
+    _inner_function = neps.space.neps_spaces.parameters.Categorical(
+        choices=(_sum, neps.space.neps_spaces.parameters.Resampled("model")),
     )
-    model = neps_space.Operation(
+    model = neps.space.neps_spaces.parameters.Operation(
         operator=Model,
-        args=(neps_space.Resampled(_inner_function),),
+        args=(neps.space.neps_spaces.parameters.Resampled(_inner_function),),
         kwargs={"factor": _factor},
     )
 

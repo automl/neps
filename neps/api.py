@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from neps.optimizers.algorithms import CustomOptimizer
     from neps.space import Parameter, SearchSpace
-    from neps.space.neps_spaces.neps_space import Pipeline
+    from neps.space.neps_spaces.parameters import Pipeline
     from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)

@@ -6,17 +6,35 @@ from __future__ import annotations
 
 import random
 from collections.abc import Mapping
-from typing import Any, TypeVar, cast
+from typing import Any, Protocol, TypeVar, cast, runtime_checkable
 
-from neps.space.neps_spaces.neps_space import (
+from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
     Domain,
-    DomainSampler,
     Pipeline,
 )
 
 T = TypeVar("T")
 P = TypeVar("P", bound="Pipeline")
+
+
+@runtime_checkable
+class DomainSampler(Protocol):
+    """A protocol for domain samplers that can sample from a given domain."""
+
+    def __call__(
+        self,
+        *,
+        domain_obj: Domain[T],
+        current_path: str,
+    ) -> T:
+        """Sample a value from the given domain.
+        :param domain_obj: The domain object to sample from.
+        :param current_path: The current path in the resolution context.
+        :return: A sampled value of type T from the domain.
+        :raises NotImplementedError: If the method is not implemented.
+        """
+        raise NotImplementedError()
 
 
 class OnlyPredefinedValuesSampler(DomainSampler):

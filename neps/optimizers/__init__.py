@@ -10,7 +10,7 @@ from neps.optimizers.algorithms import (
     determine_optimizer_automatically,
 )
 from neps.optimizers.optimizer import AskFunction, OptimizerInfo
-from neps.space.neps_spaces.neps_space import Pipeline
+from neps.space.neps_spaces.parameters import Pipeline
 from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
