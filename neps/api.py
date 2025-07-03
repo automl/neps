@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
+from neps.space.neps_spaces.neps_space import adjust_evaluation_pipeline_for_neps_space
+from neps.space.neps_spaces.parameters import Pipeline
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
@@ -19,7 +21,6 @@ if TYPE_CHECKING:
 
     from neps.optimizers.algorithms import CustomOptimizer
     from neps.space import Parameter, SearchSpace
-    from neps.space.neps_spaces.parameters import Pipeline
     from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,7 @@ def run(  # noqa: PLR0913
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
         | ConfigurationSpace
+        | Pipeline
     ),
     *,
     root_directory: str | Path = "neps_results",
@@ -412,6 +414,13 @@ def run(  # noqa: PLR0913
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
+
+    if isinstance(pipeline_space, Pipeline):
+        assert not isinstance(evaluate_pipeline, str)
+        evaluate_pipeline = adjust_evaluation_pipeline_for_neps_space(
+            evaluate_pipeline, pipeline_space
+        )
+
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 

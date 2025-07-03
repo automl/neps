@@ -6,7 +6,6 @@ import pytest
 
 import neps
 import neps.space.neps_spaces.optimizers.algorithms
-from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
@@ -164,10 +163,7 @@ def test_hyperparameter_demo(optimizer):
     root_directory = f"results/hyperparameter_demo__{optimizer.__name__}"
 
     neps.run(
-        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
-            hyperparameter_pipeline_to_optimize,
-            pipeline_space,
-        ),
+        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
@@ -190,10 +186,7 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
     root_directory = f"results/hyperparameter_with_fidelity_demo__{optimizer.__name__}"
 
     neps.run(
-        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
-            hyperparameter_pipeline_to_optimize,
-            pipeline_space,
-        ),
+        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
@@ -216,10 +209,7 @@ def test_hyperparameter_complex_demo(optimizer):
     root_directory = f"results/hyperparameter_complex_demo__{optimizer.__name__}"
 
     neps.run(
-        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
-            hyperparameter_pipeline_to_optimize,
-            pipeline_space,
-        ),
+        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
@@ -344,10 +334,7 @@ def test_operation_demo(optimizer):
     root_directory = f"results/operation_demo__{optimizer.__name__}"
 
     neps.run(
-        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
-            operation_pipeline_to_optimize,
-            pipeline_space,
-        ),
+        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,

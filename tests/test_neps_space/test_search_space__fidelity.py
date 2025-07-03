@@ -83,7 +83,7 @@ def test_fidelity_resolution_works():
 
     # Resolve a pipeline which contains a fidelity,
     # with a valid value for it in the environment.
-    resolved_pipeline, resolution_context = neps_space.resolve(
+    resolved_pipeline, _ = neps_space.resolve(
         pipeline=pipeline,
         environment_values={"fidelity_integer1": 10},
     )

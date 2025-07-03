@@ -9,7 +9,6 @@ import neps
 import neps.optimizers.algorithms as old_algorithms
 import neps.space.neps_spaces.optimizers.algorithms
 import neps.space.neps_spaces.optimizers.bracket_optimizer as new_bracket_optimizer
-from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
     Fidelity,
@@ -130,10 +129,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     _COSTS.clear()
 
     neps.run(
-        evaluate_pipeline=neps_space.adjust_evaluation_pipeline_for_neps_space(
-            evaluate_pipeline,
-            pipeline_space,
-        ),
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
