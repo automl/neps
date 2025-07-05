@@ -26,17 +26,17 @@ if TYPE_CHECKING:
 class NePSPriorBandSampler:
     """Implement a sampler based on PriorBand."""
 
-    """The pipeline space to optimize over."""
     space: neps.space.neps_spaces.parameters.Pipeline
+    """The pipeline space to optimize over."""
 
-    """The eta value to use for the SH bracket."""
     eta: int
+    """The eta value to use for the SH bracket."""
 
-    """The early stopping rate to use for the SH bracket."""
     early_stopping_rate: int
+    """The early stopping rate to use for the SH bracket."""
 
-    """The fidelity bounds."""
     fid_bounds: tuple[int, int] | tuple[float, float]
+    """The fidelity bounds."""
 
     def sample_config(self, table: pd.DataFrame, rung: int) -> dict[str, Any]:
         """Sample a configuration based on the PriorBand algorithm.

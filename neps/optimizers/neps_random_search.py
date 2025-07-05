@@ -7,6 +7,7 @@ from __future__ import annotations
 import heapq
 import random
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from neps.space.neps_spaces.neps_space import _prepare_sampled_configs, resolve
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     from neps.state.trial import Trial
 
 
+@dataclass
 class NePSRandomSearch:
     """A simple random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values.
@@ -82,6 +84,7 @@ class NePSRandomSearch:
         return _prepare_sampled_configs(chosen_pipelines, n_prev_trials, return_single)
 
 
+@dataclass
 class NePSComplexRandomSearch:
     """A complex random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values,

@@ -75,7 +75,6 @@ from neps.state import EvaluatePipelineReturn, Trial, UserResult
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
-    from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 
 def _default_worker_name() -> str:

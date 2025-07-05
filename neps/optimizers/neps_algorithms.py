@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from functools import partial
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
@@ -157,6 +157,8 @@ def neps_priorband(
 
 def neps_random_search(
     pipeline: Pipeline,
+    *_args: Any,
+    **_kwargs: Any,
 ) -> NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -171,6 +173,8 @@ def neps_random_search(
 
 def neps_complex_random_search(
     pipeline: Pipeline,
+    *_args: Any,
+    **_kwargs: Any,
 ) -> NePSComplexRandomSearch:
     """A complex random search algorithm that samples configurations uniformly at random,
     but allows for more complex sampling strategies.

@@ -50,7 +50,9 @@ def run(  # noqa: PLR0913
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",

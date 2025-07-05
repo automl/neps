@@ -309,7 +309,7 @@ def convert_to_space(
     Returns:
         The SearchSpace object representing the search space.
     """
-    # We quickly check ConfigSpace becuse it inherits from Mapping
+    # We quickly check ConfigSpace because it inherits from Mapping
     try:
         from ConfigSpace import ConfigurationSpace
 

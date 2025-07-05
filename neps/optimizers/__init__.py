@@ -48,7 +48,9 @@ def load_optimizer(
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ),
@@ -75,7 +77,16 @@ def load_optimizer(
         # Provided optimizer initializer
         case _ if callable(optimizer):
             keywords = extract_keyword_defaults(optimizer)
-            _optimizer = optimizer(space)
+
+            # Error catch and type ignore needed while we transition from SearchSpace to
+            # Pipeline
+            try:
+                _optimizer = optimizer(space)  # type: ignore
+            except TypeError as e:
+                raise TypeError(
+                    f"Optimizer {optimizer} does not accept a space of type"
+                    f" {type(space)}."
+                ) from e
             info = OptimizerInfo(name=optimizer.__name__, info=keywords)
             return _optimizer, info
 
