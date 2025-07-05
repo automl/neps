@@ -1,3 +1,10 @@
+"""NePS: A framework for Neural Architecture Search and Hyperparameter Optimization.
+This module provides a unified interface for defining search spaces, running optimizers,
+and visualizing results. It includes various optimizers, search space definitions,
+and plotting utilities, making it easy to experiment with different configurations
+and algorithms.
+"""
+
 from neps.api import run
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell

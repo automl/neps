@@ -24,6 +24,7 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 
+import pandas as pd
 import torch
 
 from neps.optimizers.ask_and_tell import AskAndTell  # noqa: F401

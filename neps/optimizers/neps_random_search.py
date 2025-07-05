@@ -1,8 +1,5 @@
-"""Optimizers for NePS pipelines.
-These optimizers implement various strategies for sampling configurations from a NePS
-pipeline. They include simple random search, complex random search with mutation and
-crossover, and more advanced sampling techniques that leverage prior knowledge and
-successful trials.
+"""This module implements a simple random search optimizer for a NePS pipeline.
+It samples configurations randomly from the pipeline's domain and environment values.
 """
 
 from __future__ import annotations
@@ -12,10 +9,7 @@ import random
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
-from neps.space.neps_spaces.neps_space import (
-    _prepare_sampled_configs,
-    resolve,
-)
+from neps.space.neps_spaces.neps_space import _prepare_sampled_configs, resolve
 from neps.space.neps_spaces.sampling import (
     CrossoverByMixingSampler,
     CrossoverNotPossibleError,
@@ -33,7 +27,7 @@ if TYPE_CHECKING:
     from neps.state.trial import Trial
 
 
-class RandomSearch:
+class NePSRandomSearch:
     """A simple random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values.
     :param pipeline: The pipeline to optimize, which should be a Pipeline object.
@@ -57,7 +51,7 @@ class RandomSearch:
     def __call__(
         self,
         trials: Mapping[str, trial_state.Trial],
-        budget_info: optimizer_state.BudgetInfo | None,  # noqa: ARG002
+        budget_info: optimizer_state.BudgetInfo | None,
         n: int | None = None,
     ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
         """Sample configurations randomly from the pipeline's domain and environment
@@ -88,7 +82,7 @@ class RandomSearch:
         return _prepare_sampled_configs(chosen_pipelines, n_prev_trials, return_single)
 
 
-class ComplexRandomSearch:
+class NePSComplexRandomSearch:
     """A complex random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values,
     and also performs mutations and crossovers based on previous successful trials.
@@ -123,7 +117,7 @@ class ComplexRandomSearch:
     def __call__(
         self,
         trials: Mapping[str, trial_state.Trial],
-        budget_info: optimizer_state.BudgetInfo | None,  # noqa: ARG002
+        budget_info: optimizer_state.BudgetInfo | None,
         n: int | None = None,
     ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
         """Sample configurations randomly from the pipeline's domain and environment

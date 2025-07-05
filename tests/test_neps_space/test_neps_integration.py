@@ -5,7 +5,8 @@ from collections.abc import Callable, Sequence
 import pytest
 
 import neps
-import neps.space.neps_spaces.optimizers.algorithms
+import neps.optimizers
+from neps.optimizers import neps_algorithms
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
@@ -154,8 +155,8 @@ class DemoHyperparameterComplexSpace(Pipeline):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
-        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+        neps_algorithms.neps_random_search,
+        neps_algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_demo(optimizer):
@@ -177,8 +178,8 @@ def test_hyperparameter_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
-        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+        neps_algorithms.neps_random_search,
+        neps_algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_with_fidelity_demo(optimizer):
@@ -200,8 +201,8 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
-        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+        neps_algorithms.neps_random_search,
+        neps_algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_complex_demo(optimizer):
@@ -325,8 +326,8 @@ class DemoOperationSpace(Pipeline):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
-        neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+        neps_algorithms.neps_random_search,
+        neps_algorithms.neps_complex_random_search,
     ],
 )
 def test_operation_demo(optimizer):
@@ -334,7 +335,7 @@ def test_operation_demo(optimizer):
     root_directory = f"results/operation_demo__{optimizer.__name__}"
 
     neps.run(
-        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
+        evaluate_pipeline=operation_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class PriorBandSampler:
+class NePSPriorBandSampler:
     """Implement a sampler based on PriorBand."""
 
     """The pipeline space to optimize over."""

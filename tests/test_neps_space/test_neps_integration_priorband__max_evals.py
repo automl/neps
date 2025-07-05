@@ -7,8 +7,7 @@ import pytest
 
 import neps
 import neps.optimizers.algorithms as old_algorithms
-import neps.space.neps_spaces.optimizers.algorithms
-import neps.space.neps_spaces.optimizers.bracket_optimizer as new_bracket_optimizer
+from neps.optimizers import neps_algorithms
 from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
     Fidelity,
@@ -82,27 +81,27 @@ class DemoHyperparameterWithFidelitySpace(Pipeline):
     ("optimizer", "optimizer_name"),
     [
         (
-            neps.space.neps_spaces.optimizers.algorithms.RandomSearch,
+            neps_algorithms.neps_random_search,
             "new__RandomSearch",
         ),
         (
-            neps.space.neps_spaces.optimizers.algorithms.ComplexRandomSearch,
+            neps_algorithms.neps_complex_random_search,
             "new__ComplexRandomSearch",
         ),
         (
-            partial(new_bracket_optimizer.priorband, base="successive_halving"),
+            partial(neps_algorithms.neps_priorband, base="successive_halving"),
             "new__priorband+successive_halving",
         ),
         (
-            partial(new_bracket_optimizer.priorband, base="asha"),
+            partial(neps_algorithms.neps_priorband, base="asha"),
             "new__priorband+asha",
         ),
         (
-            partial(new_bracket_optimizer.priorband, base="async_hb"),
+            partial(neps_algorithms.neps_priorband, base="async_hb"),
             "new__priorband+async_hb",
         ),
         (
-            new_bracket_optimizer.priorband,
+            neps_algorithms.neps_priorband,
             "new__priorband+hyperband",
         ),
     ],
