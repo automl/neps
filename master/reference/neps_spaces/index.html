@@ -4124,7 +4124,7 @@
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
 <li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
-<li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
+<li>[<code>Categorical</code>][api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values</li>
 <li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
 <details class="example">
@@ -5277,7 +5277,8 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
             </td>
             <td class="doc-raises-details">
               <div class="doc-md-description">
-                <p>If the domain is set to sample on a logarithmic</p>
+                <p>If the domain is set to sample on a logarithmic
+scale, as this is not implemented yet.</p>
               </div>
             </td>
           </tr>
@@ -5308,7 +5309,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 <a id="__codelineno-0-811" name="__codelineno-0-811"></a>
 <a id="__codelineno-0-812" name="__codelineno-0-812"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-813" name="__codelineno-0-813"></a><span class="sd">        NotImplementedError: If the domain is set to sample on a logarithmic</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a><span class="sd">        scale, as this is not implemented yet.</span>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a><span class="sd">            scale, as this is not implemented yet.</span>
 <a id="__codelineno-0-815" name="__codelineno-0-815"></a>
 <a id="__codelineno-0-816" name="__codelineno-0-816"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-817" name="__codelineno-0-817"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span>
