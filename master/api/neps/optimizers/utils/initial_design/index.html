@@ -3742,18 +3742,6 @@
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The search space to use.</p>
-              </div>
-              <p>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>encoder</code>
             </td>
             <td class="doc-param-details">
@@ -3926,8 +3914,7 @@ If None, no configurations will be sampled.</p>
 <span class="normal"><a href="#__codelineno-0-76">76</a></span>
 <span class="normal"><a href="#__codelineno-0-77">77</a></span>
 <span class="normal"><a href="#__codelineno-0-78">78</a></span>
-<span class="normal"><a href="#__codelineno-0-79">79</a></span>
-<span class="normal"><a href="#__codelineno-0-80">80</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="k">def</span><span class="w"> </span><span class="nf">make_initial_design</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-79">79</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-15" name="__codelineno-0-15"></a><span class="k">def</span><span class="w"> </span><span class="nf">make_initial_design</span><span class="p">(</span>
 <a id="__codelineno-0-16" name="__codelineno-0-16"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17"></a>    <span class="n">parameters</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Parameter</span><span class="p">],</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18"></a>    <span class="n">encoder</span><span class="p">:</span> <span class="n">ConfigEncoder</span><span class="p">,</span>
@@ -3939,60 +3926,59 @@ If None, no configurations will be sampled.</p>
 <a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate the initial design of the optimization process.</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25"></a>
 <a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="sd">        space: The search space to use.</span>
-<a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="sd">        encoder: The encoder to use for encoding/decoding configurations.</span>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">        sampler: The sampler to use for the initial design.</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30"></a>
-<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">            If set to &quot;sobol&quot;, a Sobol sequence will be used.</span>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">            If set to &quot;uniform&quot;, a uniform random sampler will be used.</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">            If set to &quot;prior&quot;, a prior sampler will be used, based on the defaults,</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">                and confidence scores of the hyperparameters.</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">            If set to a custom sampler, the sampler will be used directly.</span>
-<a id="__codelineno-0-36" name="__codelineno-0-36"></a>
-<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">        sample_size:</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="sd">            The number of configurations to sample.</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39"></a>
-<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">            If &quot;ndim&quot;, the number of configs will be equal to the number of dimensions.</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">            If None, no configurations will be sampled.</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42"></a>
-<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first.</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">        seed: The seed to use for the random number generation.</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="k">if</span> <span class="n">sample_prior_first</span><span class="p">:</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>        <span class="n">configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>            <span class="p">{</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>                <span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">prior</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">p</span><span class="o">.</span><span class="n">center</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>            <span class="p">}</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>        <span class="p">)</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>    <span class="k">if</span> <span class="n">sample_size</span> <span class="o">==</span> <span class="s2">&quot;ndim&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>        <span class="n">sample_size</span> <span class="o">=</span> <span class="n">ndims</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="k">elif</span> <span class="n">sample_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">sample_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>            <span class="s2">&quot;The sample size should be a positive integer if passing an int.&quot;</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>        <span class="p">)</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="k">if</span> <span class="n">sample_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>        <span class="k">match</span> <span class="n">sampler</span><span class="p">:</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>            <span class="k">case</span> <span class="s2">&quot;sobol&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">sobol</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndims</span><span class="p">)</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>            <span class="k">case</span> <span class="s2">&quot;uniform&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndims</span><span class="p">)</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>            <span class="k">case</span> <span class="s2">&quot;prior&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Prior</span><span class="o">.</span><span class="n">from_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>                <span class="k">pass</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="n">encoded_configs</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="n">encoder</span><span class="o">.</span><span class="n">domains</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="n">uniq_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">encoded_configs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="n">sample_configs</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">uniq_x</span><span class="p">[:</span><span class="n">sample_size</span><span class="p">])</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="n">configs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sample_configs</span><span class="p">)</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>    <span class="k">return</span> <span class="n">configs</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="sd">        encoder: The encoder to use for encoding/decoding configurations.</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28"></a><span class="sd">        sampler: The sampler to use for the initial design.</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29"></a>
+<a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">            If set to &quot;sobol&quot;, a Sobol sequence will be used.</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31"></a><span class="sd">            If set to &quot;uniform&quot;, a uniform random sampler will be used.</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">            If set to &quot;prior&quot;, a prior sampler will be used, based on the defaults,</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">                and confidence scores of the hyperparameters.</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34"></a><span class="sd">            If set to a custom sampler, the sampler will be used directly.</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35"></a>
+<a id="__codelineno-0-36" name="__codelineno-0-36"></a><span class="sd">        sample_size:</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37"></a><span class="sd">            The number of configurations to sample.</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38"></a>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="sd">            If &quot;ndim&quot;, the number of configs will be equal to the number of dimensions.</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a><span class="sd">            If None, no configurations will be sampled.</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first.</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">        seed: The seed to use for the random number generation.</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="n">configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="k">if</span> <span class="n">sample_prior_first</span><span class="p">:</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a>        <span class="n">configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>            <span class="p">{</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>                <span class="n">name</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">prior</span> <span class="k">if</span> <span class="n">p</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">p</span><span class="o">.</span><span class="n">center</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">parameters</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>            <span class="p">}</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="p">)</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>    <span class="n">ndims</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>    <span class="k">if</span> <span class="n">sample_size</span> <span class="o">==</span> <span class="s2">&quot;ndim&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="n">sample_size</span> <span class="o">=</span> <span class="n">ndims</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="k">elif</span> <span class="n">sample_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">sample_size</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>            <span class="s2">&quot;The sample size should be a positive integer if passing an int.&quot;</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="p">)</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="k">if</span> <span class="n">sample_size</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>        <span class="k">match</span> <span class="n">sampler</span><span class="p">:</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>            <span class="k">case</span> <span class="s2">&quot;sobol&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">sobol</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndims</span><span class="p">)</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>            <span class="k">case</span> <span class="s2">&quot;uniform&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="n">ndims</span><span class="p">)</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>            <span class="k">case</span> <span class="s2">&quot;prior&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>                <span class="n">sampler</span> <span class="o">=</span> <span class="n">Prior</span><span class="o">.</span><span class="n">from_parameters</span><span class="p">(</span><span class="n">parameters</span><span class="p">)</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>                <span class="k">pass</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="n">encoded_configs</span> <span class="o">=</span> <span class="n">sampler</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">sample_size</span> <span class="o">*</span> <span class="mi">2</span><span class="p">,</span> <span class="n">to</span><span class="o">=</span><span class="n">encoder</span><span class="o">.</span><span class="n">domains</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="n">uniq_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">encoded_configs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>        <span class="n">sample_configs</span> <span class="o">=</span> <span class="n">encoder</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">uniq_x</span><span class="p">[:</span><span class="n">sample_size</span><span class="p">])</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="n">configs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sample_configs</span><span class="p">)</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>    <span class="k">return</span> <span class="n">configs</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

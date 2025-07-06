@@ -4246,14 +4246,23 @@ you to handle it more flexibly as you need.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>config_id</code>
+                <code>trial</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>The id of the configuration you got from
-<a class="autorefs autorefs-internal" title="            ask" href="#neps.optimizers.ask_and_tell.AskAndTell.ask"><code>ask()</code></a>.</p>
+                <p>The trial to report the result for. This can be either
+the trial id (a string) or the trial object itself.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | <a class="autorefs autorefs-internal" title="            Trial
+
+
+  
+      dataclass
+   (neps.state.Trial)" href="../../state/trial/#neps.state.trial.Trial">Trial</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -4458,8 +4467,8 @@ other point and the return value can safely be ignored if you wish.</p>
 <a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Report the result of an evaluation back to the optimizer.</span>
 <a id="__codelineno-0-265" name="__codelineno-0-265"></a>
 <a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">        config_id: The id of the configuration you got from</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            [`ask()`][neps.optimizers.ask_and_tell.AskAndTell.ask].</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">        trial: The trial to report the result for. This can be either</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            the trial id (a string) or the trial object itself.</span>
 <a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">        result: The result of the evaluation. This can be an exception,</span>
 <a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">            a float, or a mapping of values, similar to that which</span>
 <a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">            you would return from `evaluate_pipeline` when your normally</span>
