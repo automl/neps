@@ -3899,54 +3899,6 @@ It provides methods to convert a SamplingResolutionContext to a NEPS-compatible 
 and to convert a NEPS-compatible config back to a SamplingResolutionContext.</p>
 
 
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>resolution_context</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The SamplingResolutionContext to convert.</p>
-              </div>
-              <p>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RAISES</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-              <span class="doc-raises-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
-              </span>
-            </td>
-            <td class="doc-raises-details">
-              <div class="doc-md-description">
-                <p>If the resolution_context is not a SamplingResolutionContext.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
 
 
 
@@ -4066,7 +4018,22 @@ and to convert a NEPS-compatible config back to a SamplingResolutionContext.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-806">806</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-791">791</a></span>
+<span class="normal"><a href="#__codelineno-0-792">792</a></span>
+<span class="normal"><a href="#__codelineno-0-793">793</a></span>
+<span class="normal"><a href="#__codelineno-0-794">794</a></span>
+<span class="normal"><a href="#__codelineno-0-795">795</a></span>
+<span class="normal"><a href="#__codelineno-0-796">796</a></span>
+<span class="normal"><a href="#__codelineno-0-797">797</a></span>
+<span class="normal"><a href="#__codelineno-0-798">798</a></span>
+<span class="normal"><a href="#__codelineno-0-799">799</a></span>
+<span class="normal"><a href="#__codelineno-0-800">800</a></span>
+<span class="normal"><a href="#__codelineno-0-801">801</a></span>
+<span class="normal"><a href="#__codelineno-0-802">802</a></span>
+<span class="normal"><a href="#__codelineno-0-803">803</a></span>
+<span class="normal"><a href="#__codelineno-0-804">804</a></span>
+<span class="normal"><a href="#__codelineno-0-805">805</a></span>
+<span class="normal"><a href="#__codelineno-0-806">806</a></span>
 <span class="normal"><a href="#__codelineno-0-807">807</a></span>
 <span class="normal"><a href="#__codelineno-0-808">808</a></span>
 <span class="normal"><a href="#__codelineno-0-809">809</a></span>
@@ -4086,57 +4053,42 @@ and to convert a NEPS-compatible config back to a SamplingResolutionContext.</p>
 <span class="normal"><a href="#__codelineno-0-823">823</a></span>
 <span class="normal"><a href="#__codelineno-0-824">824</a></span>
 <span class="normal"><a href="#__codelineno-0-825">825</a></span>
-<span class="normal"><a href="#__codelineno-0-826">826</a></span>
-<span class="normal"><a href="#__codelineno-0-827">827</a></span>
-<span class="normal"><a href="#__codelineno-0-828">828</a></span>
-<span class="normal"><a href="#__codelineno-0-829">829</a></span>
-<span class="normal"><a href="#__codelineno-0-830">830</a></span>
-<span class="normal"><a href="#__codelineno-0-831">831</a></span>
-<span class="normal"><a href="#__codelineno-0-832">832</a></span>
-<span class="normal"><a href="#__codelineno-0-833">833</a></span>
-<span class="normal"><a href="#__codelineno-0-834">834</a></span>
-<span class="normal"><a href="#__codelineno-0-835">835</a></span>
-<span class="normal"><a href="#__codelineno-0-836">836</a></span>
-<span class="normal"><a href="#__codelineno-0-837">837</a></span>
-<span class="normal"><a href="#__codelineno-0-838">838</a></span>
-<span class="normal"><a href="#__codelineno-0-839">839</a></span>
-<span class="normal"><a href="#__codelineno-0-840">840</a></span>
-<span class="normal"><a href="#__codelineno-0-841">841</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="nd">@classmethod</span>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_neps_config</span><span class="p">(</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a>    <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a>    <span class="n">config</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_FromNepsConfigResult</span><span class="p">:</span>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a NEPS-compatible config to a SamplingResolutionContext.</span>
-<a id="__codelineno-0-812" name="__codelineno-0-812"></a>
-<a id="__codelineno-0-813" name="__codelineno-0-813"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a><span class="sd">        config: A mapping of NEPS-compatible configuration keys to their values.</span>
-<a id="__codelineno-0-815" name="__codelineno-0-815"></a>
-<a id="__codelineno-0-816" name="__codelineno-0-816"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-817" name="__codelineno-0-817"></a><span class="sd">        A _FromNepsConfigResult containing predefined samplings,</span>
-<a id="__codelineno-0-818" name="__codelineno-0-818"></a><span class="sd">            environment values, and extra kwargs.</span>
-<a id="__codelineno-0-819" name="__codelineno-0-819"></a>
-<a id="__codelineno-0-820" name="__codelineno-0-820"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">        ValueError: If the config is not a valid NEPS-compatible config.</span>
-<a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a>    <span class="n">predefined_samplings</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-824" name="__codelineno-0-824"></a>    <span class="n">environment_values</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-825" name="__codelineno-0-825"></a>    <span class="n">extra_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-826" name="__codelineno-0-826"></a>
-<a id="__codelineno-0-827" name="__codelineno-0-827"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-828" name="__codelineno-0-828"></a>        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX</span><span class="p">):</span>
-<a id="__codelineno-0-829" name="__codelineno-0-829"></a>            <span class="n">sampling_path</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX_LEN</span> <span class="p">:]</span>
-<a id="__codelineno-0-830" name="__codelineno-0-830"></a>            <span class="n">predefined_samplings</span><span class="p">[</span><span class="n">sampling_path</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-831" name="__codelineno-0-831"></a>        <span class="k">elif</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX</span><span class="p">):</span>
-<a id="__codelineno-0-832" name="__codelineno-0-832"></a>            <span class="n">env_name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX_LEN</span> <span class="p">:]</span>
-<a id="__codelineno-0-833" name="__codelineno-0-833"></a>            <span class="n">environment_values</span><span class="p">[</span><span class="n">env_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-834" name="__codelineno-0-834"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-835" name="__codelineno-0-835"></a>            <span class="n">extra_kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-836" name="__codelineno-0-836"></a>
-<a id="__codelineno-0-837" name="__codelineno-0-837"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_FromNepsConfigResult</span><span class="p">(</span>
-<a id="__codelineno-0-838" name="__codelineno-0-838"></a>        <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">predefined_samplings</span><span class="p">,</span>
-<a id="__codelineno-0-839" name="__codelineno-0-839"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
-<a id="__codelineno-0-840" name="__codelineno-0-840"></a>        <span class="n">extra_kwargs</span><span class="o">=</span><span class="n">extra_kwargs</span><span class="p">,</span>
-<a id="__codelineno-0-841" name="__codelineno-0-841"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-826">826</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="nd">@classmethod</span>
+<a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_neps_config</span><span class="p">(</span>
+<a id="__codelineno-0-793" name="__codelineno-0-793"></a>    <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a>    <span class="n">config</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_FromNepsConfigResult</span><span class="p">:</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a NEPS-compatible config to a SamplingResolutionContext.</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="sd">        config: A mapping of NEPS-compatible configuration keys to their values.</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">        A _FromNepsConfigResult containing predefined samplings,</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a><span class="sd">            environment values, and extra kwargs.</span>
+<a id="__codelineno-0-804" name="__codelineno-0-804"></a>
+<a id="__codelineno-0-805" name="__codelineno-0-805"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a><span class="sd">        ValueError: If the config is not a valid NEPS-compatible config.</span>
+<a id="__codelineno-0-807" name="__codelineno-0-807"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-808" name="__codelineno-0-808"></a>    <span class="n">predefined_samplings</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a>    <span class="n">environment_values</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>    <span class="n">extra_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a>        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX</span><span class="p">):</span>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a>            <span class="n">sampling_path</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX_LEN</span> <span class="p">:]</span>
+<a id="__codelineno-0-815" name="__codelineno-0-815"></a>            <span class="n">predefined_samplings</span><span class="p">[</span><span class="n">sampling_path</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a>        <span class="k">elif</span> <span class="n">name</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX</span><span class="p">):</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>            <span class="n">env_name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX_LEN</span> <span class="p">:]</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>            <span class="n">environment_values</span><span class="p">[</span><span class="n">env_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-820" name="__codelineno-0-820"></a>            <span class="n">extra_kwargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a>
+<a id="__codelineno-0-822" name="__codelineno-0-822"></a>    <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_FromNepsConfigResult</span><span class="p">(</span>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a>        <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">predefined_samplings</span><span class="p">,</span>
+<a id="__codelineno-0-824" name="__codelineno-0-824"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
+<a id="__codelineno-0-825" name="__codelineno-0-825"></a>        <span class="n">extra_kwargs</span><span class="o">=</span><span class="n">extra_kwargs</span><span class="p">,</span>
+<a id="__codelineno-0-826" name="__codelineno-0-826"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4243,7 +4195,22 @@ and to convert a NEPS-compatible config back to a SamplingResolutionContext.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-778">778</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-763">763</a></span>
+<span class="normal"><a href="#__codelineno-0-764">764</a></span>
+<span class="normal"><a href="#__codelineno-0-765">765</a></span>
+<span class="normal"><a href="#__codelineno-0-766">766</a></span>
+<span class="normal"><a href="#__codelineno-0-767">767</a></span>
+<span class="normal"><a href="#__codelineno-0-768">768</a></span>
+<span class="normal"><a href="#__codelineno-0-769">769</a></span>
+<span class="normal"><a href="#__codelineno-0-770">770</a></span>
+<span class="normal"><a href="#__codelineno-0-771">771</a></span>
+<span class="normal"><a href="#__codelineno-0-772">772</a></span>
+<span class="normal"><a href="#__codelineno-0-773">773</a></span>
+<span class="normal"><a href="#__codelineno-0-774">774</a></span>
+<span class="normal"><a href="#__codelineno-0-775">775</a></span>
+<span class="normal"><a href="#__codelineno-0-776">776</a></span>
+<span class="normal"><a href="#__codelineno-0-777">777</a></span>
+<span class="normal"><a href="#__codelineno-0-778">778</a></span>
 <span class="normal"><a href="#__codelineno-0-779">779</a></span>
 <span class="normal"><a href="#__codelineno-0-780">780</a></span>
 <span class="normal"><a href="#__codelineno-0-781">781</a></span>
@@ -4254,48 +4221,33 @@ and to convert a NEPS-compatible config back to a SamplingResolutionContext.</p>
 <span class="normal"><a href="#__codelineno-0-786">786</a></span>
 <span class="normal"><a href="#__codelineno-0-787">787</a></span>
 <span class="normal"><a href="#__codelineno-0-788">788</a></span>
-<span class="normal"><a href="#__codelineno-0-789">789</a></span>
-<span class="normal"><a href="#__codelineno-0-790">790</a></span>
-<span class="normal"><a href="#__codelineno-0-791">791</a></span>
-<span class="normal"><a href="#__codelineno-0-792">792</a></span>
-<span class="normal"><a href="#__codelineno-0-793">793</a></span>
-<span class="normal"><a href="#__codelineno-0-794">794</a></span>
-<span class="normal"><a href="#__codelineno-0-795">795</a></span>
-<span class="normal"><a href="#__codelineno-0-796">796</a></span>
-<span class="normal"><a href="#__codelineno-0-797">797</a></span>
-<span class="normal"><a href="#__codelineno-0-798">798</a></span>
-<span class="normal"><a href="#__codelineno-0-799">799</a></span>
-<span class="normal"><a href="#__codelineno-0-800">800</a></span>
-<span class="normal"><a href="#__codelineno-0-801">801</a></span>
-<span class="normal"><a href="#__codelineno-0-802">802</a></span>
-<span class="normal"><a href="#__codelineno-0-803">803</a></span>
-<span class="normal"><a href="#__codelineno-0-804">804</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-778" name="__codelineno-0-778"></a><span class="nd">@classmethod</span>
-<a id="__codelineno-0-779" name="__codelineno-0-779"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_neps_config</span><span class="p">(</span>
-<a id="__codelineno-0-780" name="__codelineno-0-780"></a>    <span class="bp">cls</span><span class="p">,</span>
-<a id="__codelineno-0-781" name="__codelineno-0-781"></a>    <span class="n">resolution_context</span><span class="p">:</span> <span class="n">SamplingResolutionContext</span><span class="p">,</span>
-<a id="__codelineno-0-782" name="__codelineno-0-782"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-783" name="__codelineno-0-783"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a SamplingResolutionContext to a NEPS-compatible config.</span>
+<span class="normal"><a href="#__codelineno-0-789">789</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-763" name="__codelineno-0-763"></a><span class="nd">@classmethod</span>
+<a id="__codelineno-0-764" name="__codelineno-0-764"></a><span class="k">def</span><span class="w"> </span><span class="nf">to_neps_config</span><span class="p">(</span>
+<a id="__codelineno-0-765" name="__codelineno-0-765"></a>    <span class="bp">cls</span><span class="p">,</span>
+<a id="__codelineno-0-766" name="__codelineno-0-766"></a>    <span class="n">resolution_context</span><span class="p">:</span> <span class="n">SamplingResolutionContext</span><span class="p">,</span>
+<a id="__codelineno-0-767" name="__codelineno-0-767"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-768" name="__codelineno-0-768"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert a SamplingResolutionContext to a NEPS-compatible config.</span>
+<a id="__codelineno-0-769" name="__codelineno-0-769"></a>
+<a id="__codelineno-0-770" name="__codelineno-0-770"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-771" name="__codelineno-0-771"></a><span class="sd">        resolution_context: The SamplingResolutionContext to convert.</span>
+<a id="__codelineno-0-772" name="__codelineno-0-772"></a>
+<a id="__codelineno-0-773" name="__codelineno-0-773"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">        A mapping of NEPS-compatible configuration keys to their values.</span>
+<a id="__codelineno-0-775" name="__codelineno-0-775"></a>
+<a id="__codelineno-0-776" name="__codelineno-0-776"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">        ValueError: If the resolution_context is not a SamplingResolutionContext.</span>
+<a id="__codelineno-0-778" name="__codelineno-0-778"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-779" name="__codelineno-0-779"></a>    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-780" name="__codelineno-0-780"></a>
+<a id="__codelineno-0-781" name="__codelineno-0-781"></a>    <span class="n">samplings_made</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">samplings_made</span>
+<a id="__codelineno-0-782" name="__codelineno-0-782"></a>    <span class="k">for</span> <span class="n">sampling_path</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">samplings_made</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-783" name="__codelineno-0-783"></a>        <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX</span><span class="si">}{</span><span class="n">sampling_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
 <a id="__codelineno-0-784" name="__codelineno-0-784"></a>
-<a id="__codelineno-0-785" name="__codelineno-0-785"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-786" name="__codelineno-0-786"></a><span class="sd">        resolution_context: The SamplingResolutionContext to convert.</span>
-<a id="__codelineno-0-787" name="__codelineno-0-787"></a>
-<a id="__codelineno-0-788" name="__codelineno-0-788"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-789" name="__codelineno-0-789"></a><span class="sd">        A mapping of NEPS-compatible configuration keys to their values.</span>
-<a id="__codelineno-0-790" name="__codelineno-0-790"></a>
-<a id="__codelineno-0-791" name="__codelineno-0-791"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-792" name="__codelineno-0-792"></a><span class="sd">        ValueError: If the resolution_context is not a SamplingResolutionContext.</span>
-<a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-794" name="__codelineno-0-794"></a>    <span class="n">config</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-795" name="__codelineno-0-795"></a>
-<a id="__codelineno-0-796" name="__codelineno-0-796"></a>    <span class="n">samplings_made</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">samplings_made</span>
-<a id="__codelineno-0-797" name="__codelineno-0-797"></a>    <span class="k">for</span> <span class="n">sampling_path</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">samplings_made</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-798" name="__codelineno-0-798"></a>        <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">_SAMPLING_PREFIX</span><span class="si">}{</span><span class="n">sampling_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a>    <span class="n">environment_values</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">environment_values</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a>    <span class="k">for</span> <span class="n">env_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">environment_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a>        <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX</span><span class="si">}{</span><span class="n">env_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>    <span class="k">return</span> <span class="n">config</span>
+<a id="__codelineno-0-785" name="__codelineno-0-785"></a>    <span class="n">environment_values</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">environment_values</span>
+<a id="__codelineno-0-786" name="__codelineno-0-786"></a>    <span class="k">for</span> <span class="n">env_name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">environment_values</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-787" name="__codelineno-0-787"></a>        <span class="n">config</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">cls</span><span class="o">.</span><span class="n">_ENVIRONMENT_PREFIX</span><span class="si">}{</span><span class="n">env_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-788" name="__codelineno-0-788"></a>
+<a id="__codelineno-0-789" name="__codelineno-0-789"></a>    <span class="k">return</span> <span class="n">config</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5673,57 +5625,6 @@ It uses a SamplingResolutionContext to manage the resolution process,
 and a DomainSampler to sample values from Domain objects.</p>
 
 
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>resolver</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The resolver to use for resolving objects.
-This should be a callable that takes an object and a context and returns the resolved
-object.</p>
-              </div>
-              <p>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RAISES</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-              <span class="doc-raises-annotation">
-                  <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/exceptions.html#ValueError">ValueError</a></code>
-              </span>
-            </td>
-            <td class="doc-raises-details">
-              <div class="doc-md-description">
-                <p>If the resolver is not a callable or if it is not a
-DomainSampler or a SamplingResolutionContext.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
 
 
 
@@ -5876,7 +5777,16 @@ is not a DomainSampler, or if the environment_values is not a Mapping.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-311">311</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-302">302</a></span>
+<span class="normal"><a href="#__codelineno-0-303">303</a></span>
+<span class="normal"><a href="#__codelineno-0-304">304</a></span>
+<span class="normal"><a href="#__codelineno-0-305">305</a></span>
+<span class="normal"><a href="#__codelineno-0-306">306</a></span>
+<span class="normal"><a href="#__codelineno-0-307">307</a></span>
+<span class="normal"><a href="#__codelineno-0-308">308</a></span>
+<span class="normal"><a href="#__codelineno-0-309">309</a></span>
+<span class="normal"><a href="#__codelineno-0-310">310</a></span>
+<span class="normal"><a href="#__codelineno-0-311">311</a></span>
 <span class="normal"><a href="#__codelineno-0-312">312</a></span>
 <span class="normal"><a href="#__codelineno-0-313">313</a></span>
 <span class="normal"><a href="#__codelineno-0-314">314</a></span>
@@ -5895,44 +5805,35 @@ is not a DomainSampler, or if the environment_values is not a Mapping.</p>
 <span class="normal"><a href="#__codelineno-0-327">327</a></span>
 <span class="normal"><a href="#__codelineno-0-328">328</a></span>
 <span class="normal"><a href="#__codelineno-0-329">329</a></span>
-<span class="normal"><a href="#__codelineno-0-330">330</a></span>
-<span class="normal"><a href="#__codelineno-0-331">331</a></span>
-<span class="normal"><a href="#__codelineno-0-332">332</a></span>
-<span class="normal"><a href="#__codelineno-0-333">333</a></span>
-<span class="normal"><a href="#__codelineno-0-334">334</a></span>
-<span class="normal"><a href="#__codelineno-0-335">335</a></span>
-<span class="normal"><a href="#__codelineno-0-336">336</a></span>
-<span class="normal"><a href="#__codelineno-0-337">337</a></span>
-<span class="normal"><a href="#__codelineno-0-338">338</a></span>
-<span class="normal"><a href="#__codelineno-0-339">339</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>    <span class="n">obj</span><span class="p">:</span> <span class="n">Resolvable</span><span class="p">,</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>    <span class="n">domain_sampler</span><span class="p">:</span> <span class="n">DomainSampler</span><span class="p">,</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a>    <span class="n">environment_values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Resolvable</span><span class="p">,</span> <span class="n">SamplingResolutionContext</span><span class="p">]:</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the given object in the context of the provided domain sampler and</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">    environment values.</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">        obj: The Resolvable object to resolve.</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        domain_sampler: The DomainSampler to use for sampling from Domain objects.</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">        environment_values: A mapping of environment values that are fixed and not</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">            related to samplings.</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">        A tuple containing the resolved object and the</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">            SamplingResolutionContext.</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">        ValueError: If the object is not a Resolvable, or if the domain_sampler</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">            is not a DomainSampler, or if the environment_values is not a Mapping.</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>    <span class="n">context</span> <span class="o">=</span> <span class="n">SamplingResolutionContext</span><span class="p">(</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="n">resolution_root</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="n">domain_sampler</span><span class="o">=</span><span class="n">domain_sampler</span><span class="p">,</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>    <span class="p">)</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;Resolvable&quot;</span><span class="p">,</span> <span class="n">context</span><span class="p">),</span> <span class="n">context</span>
+<span class="normal"><a href="#__codelineno-0-330">330</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>    <span class="n">obj</span><span class="p">:</span> <span class="n">Resolvable</span><span class="p">,</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>    <span class="n">domain_sampler</span><span class="p">:</span> <span class="n">DomainSampler</span><span class="p">,</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="n">environment_values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Resolvable</span><span class="p">,</span> <span class="n">SamplingResolutionContext</span><span class="p">]:</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve the given object in the context of the provided domain sampler and</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">    environment values.</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">        obj: The Resolvable object to resolve.</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">        domain_sampler: The DomainSampler to use for sampling from Domain objects.</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        environment_values: A mapping of environment values that are fixed and not</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">            related to samplings.</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">        A tuple containing the resolved object and the</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">            SamplingResolutionContext.</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        ValueError: If the object is not a Resolvable, or if the domain_sampler</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">            is not a DomainSampler, or if the environment_values is not a Mapping.</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>    <span class="n">context</span> <span class="o">=</span> <span class="n">SamplingResolutionContext</span><span class="p">(</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="n">resolution_root</span><span class="o">=</span><span class="n">obj</span><span class="p">,</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>        <span class="n">domain_sampler</span><span class="o">=</span><span class="n">domain_sampler</span><span class="p">,</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>    <span class="p">)</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;Resolvable&quot;</span><span class="p">,</span> <span class="n">context</span><span class="p">),</span> <span class="n">context</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6088,7 +5989,22 @@ pipeline_space is not a Pipeline object.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-868">868</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-853">853</a></span>
+<span class="normal"><a href="#__codelineno-0-854">854</a></span>
+<span class="normal"><a href="#__codelineno-0-855">855</a></span>
+<span class="normal"><a href="#__codelineno-0-856">856</a></span>
+<span class="normal"><a href="#__codelineno-0-857">857</a></span>
+<span class="normal"><a href="#__codelineno-0-858">858</a></span>
+<span class="normal"><a href="#__codelineno-0-859">859</a></span>
+<span class="normal"><a href="#__codelineno-0-860">860</a></span>
+<span class="normal"><a href="#__codelineno-0-861">861</a></span>
+<span class="normal"><a href="#__codelineno-0-862">862</a></span>
+<span class="normal"><a href="#__codelineno-0-863">863</a></span>
+<span class="normal"><a href="#__codelineno-0-864">864</a></span>
+<span class="normal"><a href="#__codelineno-0-865">865</a></span>
+<span class="normal"><a href="#__codelineno-0-866">866</a></span>
+<span class="normal"><a href="#__codelineno-0-867">867</a></span>
+<span class="normal"><a href="#__codelineno-0-868">868</a></span>
 <span class="normal"><a href="#__codelineno-0-869">869</a></span>
 <span class="normal"><a href="#__codelineno-0-870">870</a></span>
 <span class="normal"><a href="#__codelineno-0-871">871</a></span>
@@ -6126,75 +6042,60 @@ pipeline_space is not a Pipeline object.</p>
 <span class="normal"><a href="#__codelineno-0-903">903</a></span>
 <span class="normal"><a href="#__codelineno-0-904">904</a></span>
 <span class="normal"><a href="#__codelineno-0-905">905</a></span>
-<span class="normal"><a href="#__codelineno-0-906">906</a></span>
-<span class="normal"><a href="#__codelineno-0-907">907</a></span>
-<span class="normal"><a href="#__codelineno-0-908">908</a></span>
-<span class="normal"><a href="#__codelineno-0-909">909</a></span>
-<span class="normal"><a href="#__codelineno-0-910">910</a></span>
-<span class="normal"><a href="#__codelineno-0-911">911</a></span>
-<span class="normal"><a href="#__codelineno-0-912">912</a></span>
-<span class="normal"><a href="#__codelineno-0-913">913</a></span>
-<span class="normal"><a href="#__codelineno-0-914">914</a></span>
-<span class="normal"><a href="#__codelineno-0-915">915</a></span>
-<span class="normal"><a href="#__codelineno-0-916">916</a></span>
-<span class="normal"><a href="#__codelineno-0-917">917</a></span>
-<span class="normal"><a href="#__codelineno-0-918">918</a></span>
-<span class="normal"><a href="#__codelineno-0-919">919</a></span>
-<span class="normal"><a href="#__codelineno-0-920">920</a></span>
-<span class="normal"><a href="#__codelineno-0-921">921</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="k">def</span><span class="w"> </span><span class="nf">adjust_evaluation_pipeline_for_neps_space</span><span class="p">(</span>
-<a id="__codelineno-0-869" name="__codelineno-0-869"></a>    <span class="n">evaluation_pipeline</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
-<a id="__codelineno-0-870" name="__codelineno-0-870"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
-<a id="__codelineno-0-871" name="__codelineno-0-871"></a>    <span class="n">operation_converter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Operation</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">convert_operation_to_callable</span><span class="p">,</span>
-<a id="__codelineno-0-872" name="__codelineno-0-872"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Adjust the evaluation pipeline to work with a NePS space.</span>
-<a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="sd">    This function wraps the evaluation pipeline to sample from the NePS space</span>
-<a id="__codelineno-0-875" name="__codelineno-0-875"></a><span class="sd">    and convert the sampled pipeline to a format compatible with the evaluation pipeline.</span>
-<a id="__codelineno-0-876" name="__codelineno-0-876"></a>
-<a id="__codelineno-0-877" name="__codelineno-0-877"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-878" name="__codelineno-0-878"></a><span class="sd">        evaluation_pipeline: The evaluation pipeline to adjust.</span>
-<a id="__codelineno-0-879" name="__codelineno-0-879"></a><span class="sd">        pipeline_space: The NePS pipeline space to sample from.</span>
-<a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="sd">        operation_converter: A callable to convert Operation objects to a format</span>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a><span class="sd">            compatible with the evaluation pipeline.</span>
-<a id="__codelineno-0-882" name="__codelineno-0-882"></a>
-<a id="__codelineno-0-883" name="__codelineno-0-883"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-884" name="__codelineno-0-884"></a><span class="sd">        A wrapped evaluation pipeline that samples from the NePS space.</span>
-<a id="__codelineno-0-885" name="__codelineno-0-885"></a>
-<a id="__codelineno-0-886" name="__codelineno-0-886"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-887" name="__codelineno-0-887"></a><span class="sd">        ValueError: If the evaluation_pipeline is not callable or if the</span>
-<a id="__codelineno-0-888" name="__codelineno-0-888"></a><span class="sd">            pipeline_space is not a Pipeline object.</span>
-<a id="__codelineno-0-889" name="__codelineno-0-889"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-890" name="__codelineno-0-890"></a>
-<a id="__codelineno-0-891" name="__codelineno-0-891"></a>    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">evaluation_pipeline</span><span class="p">)</span>
-<a id="__codelineno-0-892" name="__codelineno-0-892"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<a id="__codelineno-0-893" name="__codelineno-0-893"></a>        <span class="c1"># `kwargs` can contain other things not related to</span>
-<a id="__codelineno-0-894" name="__codelineno-0-894"></a>        <span class="c1"># the samplings to make or to environment values.</span>
-<a id="__codelineno-0-895" name="__codelineno-0-895"></a>        <span class="c1"># That is not an issue. Those items will be passed through.</span>
-<a id="__codelineno-0-896" name="__codelineno-0-896"></a>
-<a id="__codelineno-0-897" name="__codelineno-0-897"></a>        <span class="n">sampled_pipeline_data</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-898" name="__codelineno-0-898"></a>
-<a id="__codelineno-0-899" name="__codelineno-0-899"></a>        <span class="n">sampled_pipeline</span><span class="p">,</span> <span class="n">_resolution_context</span> <span class="o">=</span> <span class="n">resolve</span><span class="p">(</span>
-<a id="__codelineno-0-900" name="__codelineno-0-900"></a>            <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-0-901" name="__codelineno-0-901"></a>            <span class="n">domain_sampler</span><span class="o">=</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span>
-<a id="__codelineno-0-902" name="__codelineno-0-902"></a>                <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">,</span>
-<a id="__codelineno-0-903" name="__codelineno-0-903"></a>            <span class="p">),</span>
-<a id="__codelineno-0-904" name="__codelineno-0-904"></a>            <span class="n">environment_values</span><span class="o">=</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">environment_values</span><span class="p">,</span>
-<a id="__codelineno-0-905" name="__codelineno-0-905"></a>        <span class="p">)</span>
-<a id="__codelineno-0-906" name="__codelineno-0-906"></a>
-<a id="__codelineno-0-907" name="__codelineno-0-907"></a>        <span class="n">config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">sampled_pipeline</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">())</span>
-<a id="__codelineno-0-908" name="__codelineno-0-908"></a>
-<a id="__codelineno-0-909" name="__codelineno-0-909"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-910" name="__codelineno-0-910"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Operation</span><span class="p">):</span>
-<a id="__codelineno-0-911" name="__codelineno-0-911"></a>                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">operation_converter</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-0-912" name="__codelineno-0-912"></a>
-<a id="__codelineno-0-913" name="__codelineno-0-913"></a>        <span class="c1"># So that we still pass the kwargs not related to the config,</span>
-<a id="__codelineno-0-914" name="__codelineno-0-914"></a>        <span class="c1"># start with the extra kwargs we passed to the converter.</span>
-<a id="__codelineno-0-915" name="__codelineno-0-915"></a>        <span class="n">new_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">extra_kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-916" name="__codelineno-0-916"></a>        <span class="c1"># Then add all the kwargs from the config.</span>
-<a id="__codelineno-0-917" name="__codelineno-0-917"></a>        <span class="n">new_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-<a id="__codelineno-0-918" name="__codelineno-0-918"></a>
-<a id="__codelineno-0-919" name="__codelineno-0-919"></a>        <span class="k">return</span> <span class="n">evaluation_pipeline</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">new_kwargs</span><span class="p">)</span>
-<a id="__codelineno-0-920" name="__codelineno-0-920"></a>
-<a id="__codelineno-0-921" name="__codelineno-0-921"></a>    <span class="k">return</span> <span class="n">inner</span>
+<span class="normal"><a href="#__codelineno-0-906">906</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-853" name="__codelineno-0-853"></a><span class="k">def</span><span class="w"> </span><span class="nf">adjust_evaluation_pipeline_for_neps_space</span><span class="p">(</span>
+<a id="__codelineno-0-854" name="__codelineno-0-854"></a>    <span class="n">evaluation_pipeline</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
+<a id="__codelineno-0-855" name="__codelineno-0-855"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
+<a id="__codelineno-0-856" name="__codelineno-0-856"></a>    <span class="n">operation_converter</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Operation</span><span class="p">],</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">convert_operation_to_callable</span><span class="p">,</span>
+<a id="__codelineno-0-857" name="__codelineno-0-857"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-858" name="__codelineno-0-858"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Adjust the evaluation pipeline to work with a NePS space.</span>
+<a id="__codelineno-0-859" name="__codelineno-0-859"></a><span class="sd">    This function wraps the evaluation pipeline to sample from the NePS space</span>
+<a id="__codelineno-0-860" name="__codelineno-0-860"></a><span class="sd">    and convert the sampled pipeline to a format compatible with the evaluation pipeline.</span>
+<a id="__codelineno-0-861" name="__codelineno-0-861"></a>
+<a id="__codelineno-0-862" name="__codelineno-0-862"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-863" name="__codelineno-0-863"></a><span class="sd">        evaluation_pipeline: The evaluation pipeline to adjust.</span>
+<a id="__codelineno-0-864" name="__codelineno-0-864"></a><span class="sd">        pipeline_space: The NePS pipeline space to sample from.</span>
+<a id="__codelineno-0-865" name="__codelineno-0-865"></a><span class="sd">        operation_converter: A callable to convert Operation objects to a format</span>
+<a id="__codelineno-0-866" name="__codelineno-0-866"></a><span class="sd">            compatible with the evaluation pipeline.</span>
+<a id="__codelineno-0-867" name="__codelineno-0-867"></a>
+<a id="__codelineno-0-868" name="__codelineno-0-868"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-869" name="__codelineno-0-869"></a><span class="sd">        A wrapped evaluation pipeline that samples from the NePS space.</span>
+<a id="__codelineno-0-870" name="__codelineno-0-870"></a>
+<a id="__codelineno-0-871" name="__codelineno-0-871"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-872" name="__codelineno-0-872"></a><span class="sd">        ValueError: If the evaluation_pipeline is not callable or if the</span>
+<a id="__codelineno-0-873" name="__codelineno-0-873"></a><span class="sd">            pipeline_space is not a Pipeline object.</span>
+<a id="__codelineno-0-874" name="__codelineno-0-874"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-875" name="__codelineno-0-875"></a>
+<a id="__codelineno-0-876" name="__codelineno-0-876"></a>    <span class="nd">@functools</span><span class="o">.</span><span class="n">wraps</span><span class="p">(</span><span class="n">evaluation_pipeline</span><span class="p">)</span>
+<a id="__codelineno-0-877" name="__codelineno-0-877"></a>    <span class="k">def</span><span class="w"> </span><span class="nf">inner</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<a id="__codelineno-0-878" name="__codelineno-0-878"></a>        <span class="c1"># `kwargs` can contain other things not related to</span>
+<a id="__codelineno-0-879" name="__codelineno-0-879"></a>        <span class="c1"># the samplings to make or to environment values.</span>
+<a id="__codelineno-0-880" name="__codelineno-0-880"></a>        <span class="c1"># That is not an issue. Those items will be passed through.</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a>
+<a id="__codelineno-0-882" name="__codelineno-0-882"></a>        <span class="n">sampled_pipeline_data</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-883" name="__codelineno-0-883"></a>
+<a id="__codelineno-0-884" name="__codelineno-0-884"></a>        <span class="n">sampled_pipeline</span><span class="p">,</span> <span class="n">_resolution_context</span> <span class="o">=</span> <span class="n">resolve</span><span class="p">(</span>
+<a id="__codelineno-0-885" name="__codelineno-0-885"></a>            <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
+<a id="__codelineno-0-886" name="__codelineno-0-886"></a>            <span class="n">domain_sampler</span><span class="o">=</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span>
+<a id="__codelineno-0-887" name="__codelineno-0-887"></a>                <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">,</span>
+<a id="__codelineno-0-888" name="__codelineno-0-888"></a>            <span class="p">),</span>
+<a id="__codelineno-0-889" name="__codelineno-0-889"></a>            <span class="n">environment_values</span><span class="o">=</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">environment_values</span><span class="p">,</span>
+<a id="__codelineno-0-890" name="__codelineno-0-890"></a>        <span class="p">)</span>
+<a id="__codelineno-0-891" name="__codelineno-0-891"></a>
+<a id="__codelineno-0-892" name="__codelineno-0-892"></a>        <span class="n">config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">sampled_pipeline</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">())</span>
+<a id="__codelineno-0-893" name="__codelineno-0-893"></a>
+<a id="__codelineno-0-894" name="__codelineno-0-894"></a>        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-895" name="__codelineno-0-895"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Operation</span><span class="p">):</span>
+<a id="__codelineno-0-896" name="__codelineno-0-896"></a>                <span class="n">config</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">operation_converter</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-0-897" name="__codelineno-0-897"></a>
+<a id="__codelineno-0-898" name="__codelineno-0-898"></a>        <span class="c1"># So that we still pass the kwargs not related to the config,</span>
+<a id="__codelineno-0-899" name="__codelineno-0-899"></a>        <span class="c1"># start with the extra kwargs we passed to the converter.</span>
+<a id="__codelineno-0-900" name="__codelineno-0-900"></a>        <span class="n">new_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="o">**</span><span class="n">sampled_pipeline_data</span><span class="o">.</span><span class="n">extra_kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-901" name="__codelineno-0-901"></a>        <span class="c1"># Then add all the kwargs from the config.</span>
+<a id="__codelineno-0-902" name="__codelineno-0-902"></a>        <span class="n">new_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+<a id="__codelineno-0-903" name="__codelineno-0-903"></a>
+<a id="__codelineno-0-904" name="__codelineno-0-904"></a>        <span class="k">return</span> <span class="n">evaluation_pipeline</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">new_kwargs</span><span class="p">)</span>
+<a id="__codelineno-0-905" name="__codelineno-0-905"></a>
+<a id="__codelineno-0-906" name="__codelineno-0-906"></a>    <span class="k">return</span> <span class="n">inner</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6297,7 +6198,16 @@ pipeline_space is not a Pipeline object.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-674">674</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-665">665</a></span>
+<span class="normal"><a href="#__codelineno-0-666">666</a></span>
+<span class="normal"><a href="#__codelineno-0-667">667</a></span>
+<span class="normal"><a href="#__codelineno-0-668">668</a></span>
+<span class="normal"><a href="#__codelineno-0-669">669</a></span>
+<span class="normal"><a href="#__codelineno-0-670">670</a></span>
+<span class="normal"><a href="#__codelineno-0-671">671</a></span>
+<span class="normal"><a href="#__codelineno-0-672">672</a></span>
+<span class="normal"><a href="#__codelineno-0-673">673</a></span>
+<span class="normal"><a href="#__codelineno-0-674">674</a></span>
 <span class="normal"><a href="#__codelineno-0-675">675</a></span>
 <span class="normal"><a href="#__codelineno-0-676">676</a></span>
 <span class="normal"><a href="#__codelineno-0-677">677</a></span>
@@ -6316,44 +6226,35 @@ pipeline_space is not a Pipeline object.</p>
 <span class="normal"><a href="#__codelineno-0-690">690</a></span>
 <span class="normal"><a href="#__codelineno-0-691">691</a></span>
 <span class="normal"><a href="#__codelineno-0-692">692</a></span>
-<span class="normal"><a href="#__codelineno-0-693">693</a></span>
-<span class="normal"><a href="#__codelineno-0-694">694</a></span>
-<span class="normal"><a href="#__codelineno-0-695">695</a></span>
-<span class="normal"><a href="#__codelineno-0-696">696</a></span>
-<span class="normal"><a href="#__codelineno-0-697">697</a></span>
-<span class="normal"><a href="#__codelineno-0-698">698</a></span>
-<span class="normal"><a href="#__codelineno-0-699">699</a></span>
-<span class="normal"><a href="#__codelineno-0-700">700</a></span>
-<span class="normal"><a href="#__codelineno-0-701">701</a></span>
-<span class="normal"><a href="#__codelineno-0-702">702</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="n">Operation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an Operation to a callable that can be executed.</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">        operation: The Operation to convert.</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">        A callable that represents the operation.</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">        ValueError: If the operation is not a valid Operation object.</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a>    <span class="n">operator</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">,</span> <span class="n">operation</span><span class="o">.</span><span class="n">operator</span><span class="p">)</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>    <span class="n">operation_args</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">operation</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>        <span class="n">operation_args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>            <span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Operation</span><span class="p">)</span> <span class="k">else</span> <span class="n">arg</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>        <span class="p">)</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a>    <span class="n">operation_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a>    <span class="k">for</span> <span class="n">kwarg_name</span><span class="p">,</span> <span class="n">kwarg_value</span> <span class="ow">in</span> <span class="n">operation</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>        <span class="n">operation_kwargs</span><span class="p">[</span><span class="n">kwarg_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>            <span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">kwarg_value</span><span class="p">)</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kwarg_value</span><span class="p">,</span> <span class="n">Operation</span><span class="p">)</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>            <span class="k">else</span> <span class="n">kwarg_value</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a>        <span class="p">)</span>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">,</span> <span class="n">operator</span><span class="p">(</span><span class="o">*</span><span class="n">operation_args</span><span class="p">,</span> <span class="o">**</span><span class="n">operation_kwargs</span><span class="p">))</span>
+<span class="normal"><a href="#__codelineno-0-693">693</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-665" name="__codelineno-0-665"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="n">Operation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">:</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an Operation to a callable that can be executed.</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="sd">        operation: The Operation to convert.</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a><span class="sd">        A callable that represents the operation.</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="sd">        ValueError: If the operation is not a valid Operation object.</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="n">operator</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">,</span> <span class="n">operation</span><span class="o">.</span><span class="n">operator</span><span class="p">)</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a>    <span class="n">operation_args</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>    <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="n">operation</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a>        <span class="n">operation_args</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>            <span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">arg</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">arg</span><span class="p">,</span> <span class="n">Operation</span><span class="p">)</span> <span class="k">else</span> <span class="n">arg</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>        <span class="p">)</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>    <span class="n">operation_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>    <span class="k">for</span> <span class="n">kwarg_name</span><span class="p">,</span> <span class="n">kwarg_value</span> <span class="ow">in</span> <span class="n">operation</span><span class="o">.</span><span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>        <span class="n">operation_kwargs</span><span class="p">[</span><span class="n">kwarg_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>            <span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">kwarg_value</span><span class="p">)</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kwarg_value</span><span class="p">,</span> <span class="n">Operation</span><span class="p">)</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>            <span class="k">else</span> <span class="n">kwarg_value</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>        <span class="p">)</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">Callable</span><span class="p">,</span> <span class="n">operator</span><span class="p">(</span><span class="o">*</span><span class="n">operation_args</span><span class="p">,</span> <span class="o">**</span><span class="n">operation_kwargs</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6454,33 +6355,33 @@ pipeline_space is not a Pipeline object.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-736">736</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-727">727</a></span>
+<span class="normal"><a href="#__codelineno-0-728">728</a></span>
+<span class="normal"><a href="#__codelineno-0-729">729</a></span>
+<span class="normal"><a href="#__codelineno-0-730">730</a></span>
+<span class="normal"><a href="#__codelineno-0-731">731</a></span>
+<span class="normal"><a href="#__codelineno-0-732">732</a></span>
+<span class="normal"><a href="#__codelineno-0-733">733</a></span>
+<span class="normal"><a href="#__codelineno-0-734">734</a></span>
+<span class="normal"><a href="#__codelineno-0-735">735</a></span>
+<span class="normal"><a href="#__codelineno-0-736">736</a></span>
 <span class="normal"><a href="#__codelineno-0-737">737</a></span>
 <span class="normal"><a href="#__codelineno-0-738">738</a></span>
 <span class="normal"><a href="#__codelineno-0-739">739</a></span>
-<span class="normal"><a href="#__codelineno-0-740">740</a></span>
-<span class="normal"><a href="#__codelineno-0-741">741</a></span>
-<span class="normal"><a href="#__codelineno-0-742">742</a></span>
-<span class="normal"><a href="#__codelineno-0-743">743</a></span>
-<span class="normal"><a href="#__codelineno-0-744">744</a></span>
-<span class="normal"><a href="#__codelineno-0-745">745</a></span>
-<span class="normal"><a href="#__codelineno-0-746">746</a></span>
-<span class="normal"><a href="#__codelineno-0-747">747</a></span>
-<span class="normal"><a href="#__codelineno-0-748">748</a></span>
-<span class="normal"><a href="#__codelineno-0-749">749</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-736" name="__codelineno-0-736"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_operation_to_string</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="n">Operation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<a id="__codelineno-0-737" name="__codelineno-0-737"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an Operation to a string representation.</span>
-<a id="__codelineno-0-738" name="__codelineno-0-738"></a>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-740" name="__codelineno-0-740"></a><span class="sd">        operation: The Operation to convert.</span>
-<a id="__codelineno-0-741" name="__codelineno-0-741"></a>
-<a id="__codelineno-0-742" name="__codelineno-0-742"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-743" name="__codelineno-0-743"></a><span class="sd">        A string representation of the operation.</span>
-<a id="__codelineno-0-744" name="__codelineno-0-744"></a>
-<a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="sd">        ValueError: If the operation is not a valid Operation object.</span>
-<a id="__codelineno-0-747" name="__codelineno-0-747"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="n">unwrapped_config</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_operation_to_unwrapped_config</span><span class="p">(</span><span class="n">operation</span><span class="p">))</span>
-<a id="__codelineno-0-749" name="__codelineno-0-749"></a>    <span class="k">return</span> <span class="n">config_string</span><span class="o">.</span><span class="n">wrap_config_into_string</span><span class="p">(</span><span class="n">unwrapped_config</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-740">740</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_operation_to_string</span><span class="p">(</span><span class="n">operation</span><span class="p">:</span> <span class="n">Operation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Convert an Operation to a string representation.</span>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a><span class="sd">        operation: The Operation to convert.</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a><span class="sd">        A string representation of the operation.</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-737" name="__codelineno-0-737"></a><span class="sd">        ValueError: If the operation is not a valid Operation object.</span>
+<a id="__codelineno-0-738" name="__codelineno-0-738"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a>    <span class="n">unwrapped_config</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_operation_to_unwrapped_config</span><span class="p">(</span><span class="n">operation</span><span class="p">))</span>
+<a id="__codelineno-0-740" name="__codelineno-0-740"></a>    <span class="k">return</span> <span class="n">config_string</span><span class="o">.</span><span class="n">wrap_config_into_string</span><span class="p">(</span><span class="n">unwrapped_config</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6628,7 +6529,16 @@ is not a DomainSampler or if the environment_values is not a Mapping.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\neps_space.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-633">633</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-624">624</a></span>
+<span class="normal"><a href="#__codelineno-0-625">625</a></span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span>
+<span class="normal"><a href="#__codelineno-0-627">627</a></span>
+<span class="normal"><a href="#__codelineno-0-628">628</a></span>
+<span class="normal"><a href="#__codelineno-0-629">629</a></span>
+<span class="normal"><a href="#__codelineno-0-630">630</a></span>
+<span class="normal"><a href="#__codelineno-0-631">631</a></span>
+<span class="normal"><a href="#__codelineno-0-632">632</a></span>
+<span class="normal"><a href="#__codelineno-0-633">633</a></span>
 <span class="normal"><a href="#__codelineno-0-634">634</a></span>
 <span class="normal"><a href="#__codelineno-0-635">635</a></span>
 <span class="normal"><a href="#__codelineno-0-636">636</a></span>
@@ -6654,51 +6564,42 @@ is not a DomainSampler or if the environment_values is not a Mapping.</p>
 <span class="normal"><a href="#__codelineno-0-656">656</a></span>
 <span class="normal"><a href="#__codelineno-0-657">657</a></span>
 <span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span>
-<span class="normal"><a href="#__codelineno-0-661">661</a></span>
-<span class="normal"><a href="#__codelineno-0-662">662</a></span>
-<span class="normal"><a href="#__codelineno-0-663">663</a></span>
-<span class="normal"><a href="#__codelineno-0-664">664</a></span>
-<span class="normal"><a href="#__codelineno-0-665">665</a></span>
-<span class="normal"><a href="#__codelineno-0-666">666</a></span>
-<span class="normal"><a href="#__codelineno-0-667">667</a></span>
-<span class="normal"><a href="#__codelineno-0-668">668</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="n">pipeline</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="n">domain_sampler</span><span class="p">:</span> <span class="n">DomainSampler</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="n">environment_values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">SamplingResolutionContext</span><span class="p">]:</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a NePS pipeline with the given domain sampler and environment values.</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">        pipeline: The pipeline to resolve, which should be a Pipeline object.</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        domain_sampler: The DomainSampler to use for sampling from Domain objects.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">            If None, a RandomSampler with no predefined values will be used.</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">        environment_values: A mapping of environment variable names to their values.</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a><span class="sd">            If None, an empty mapping will be used.</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a><span class="sd">        A tuple containing the resolved pipeline and the SamplingResolutionContext.</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a><span class="sd">        ValueError: If the pipeline is not a Pipeline object or if the domain_sampler</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a><span class="sd">            is not a DomainSampler or if the environment_values is not a Mapping.</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="k">if</span> <span class="n">domain_sampler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="c1"># By default, use a random sampler with no predefined values.</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">domain_sampler</span> <span class="o">=</span> <span class="n">RandomSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="p">{})</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>    <span class="k">if</span> <span class="n">environment_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="c1"># By default, have no environment values.</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">environment_values</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a>    <span class="n">sampling_resolver</span> <span class="o">=</span> <span class="n">SamplingResolver</span><span class="p">()</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a>    <span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">sampling_resolver</span><span class="p">(</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>        <span class="n">obj</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>        <span class="n">domain_sampler</span><span class="o">=</span><span class="n">domain_sampler</span><span class="p">,</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a>    <span class="p">)</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">resolved_pipeline</span><span class="p">),</span> <span class="n">context</span>
+<span class="normal"><a href="#__codelineno-0-659">659</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>    <span class="n">pipeline</span><span class="p">:</span> <span class="n">P</span><span class="p">,</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>    <span class="n">domain_sampler</span><span class="p">:</span> <span class="n">DomainSampler</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a>    <span class="n">environment_values</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">P</span><span class="p">,</span> <span class="n">SamplingResolutionContext</span><span class="p">]:</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a NePS pipeline with the given domain sampler and environment values.</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">        pipeline: The pipeline to resolve, which should be a Pipeline object.</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">        domain_sampler: The DomainSampler to use for sampling from Domain objects.</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">            If None, a RandomSampler with no predefined values will be used.</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">        environment_values: A mapping of environment variable names to their values.</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">            If None, an empty mapping will be used.</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        A tuple containing the resolved pipeline and the SamplingResolutionContext.</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">        ValueError: If the pipeline is not a Pipeline object or if the domain_sampler</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">            is not a DomainSampler or if the environment_values is not a Mapping.</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>    <span class="k">if</span> <span class="n">domain_sampler</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="c1"># By default, use a random sampler with no predefined values.</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>        <span class="n">domain_sampler</span> <span class="o">=</span> <span class="n">RandomSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="p">{})</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="k">if</span> <span class="n">environment_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="c1"># By default, have no environment values.</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="n">environment_values</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="n">sampling_resolver</span> <span class="o">=</span> <span class="n">SamplingResolver</span><span class="p">()</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">context</span> <span class="o">=</span> <span class="n">sampling_resolver</span><span class="p">(</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">obj</span><span class="o">=</span><span class="n">pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">domain_sampler</span><span class="o">=</span><span class="n">domain_sampler</span><span class="p">,</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">environment_values</span><span class="o">=</span><span class="n">environment_values</span><span class="p">,</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a>    <span class="p">)</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>    <span class="k">return</span> <span class="n">cast</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">resolved_pipeline</span><span class="p">),</span> <span class="n">context</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
