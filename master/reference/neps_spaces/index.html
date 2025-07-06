@@ -628,19 +628,19 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#how-to-use-neps-spaces" class="md-nav__link">
+  <a href="#constructing-neps-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      How to use NePS Spaces
+      Constructing NePS Spaces
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="How to use NePS Spaces">
+    <nav class="md-nav" aria-label="Constructing NePS Spaces">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#simple-spaces" class="md-nav__link">
+  <a href="#hpo-search-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      Simple spaces
+      HPO Search Spaces
     </span>
   </a>
   
@@ -656,18 +656,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#resampling-and-hierarchies" class="md-nav__link">
+  <a href="#hierarchies-and-architectures" class="md-nav__link">
     <span class="md-ellipsis">
-      Resampling and Hierarchies
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#operators-and-architectures" class="md-nav__link">
-    <span class="md-ellipsis">
-      Operators and Architectures
+      Hierarchies and Architectures
     </span>
   </a>
   
@@ -3728,20 +3719,20 @@
 
 <h1 id="neps-spaces-joint-architecture-and-hyperparameter-search">NePS Spaces: Joint Architecture and Hyperparameter Search<a class="headerlink" href="#neps-spaces-joint-architecture-and-hyperparameter-search" title="Permanent link">#</a></h1>
 <p>NePS Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).</p>
-<h2 id="how-to-use-neps-spaces">How to use NePS Spaces<a class="headerlink" href="#how-to-use-neps-spaces" title="Permanent link">#</a></h2>
-<p><strong>NePS spaces</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:</p>
+<h2 id="constructing-neps-spaces">Constructing NePS Spaces<a class="headerlink" href="#constructing-neps-spaces" title="Permanent link">#</a></h2>
+<p><strong>NePS spaces</strong> include all the necessary components to define a <a href="#hpo-search-spaces">Hyperparameter Optimization (HPO) search space</a> like:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
 <li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
 <li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
 <li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
-<p>Additionally, <strong>NePS spaces</strong> can describe complex (hierarchical) architectures using:</p>
+<p>Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-and-architectures">complex (hierarchical) architectures</a> using:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
 <li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
 </ul>
-<h3 id="simple-spaces">Simple spaces<a class="headerlink" href="#simple-spaces" title="Permanent link">#</a></h3>
+<h3 id="hpo-search-spaces">HPO Search Spaces<a class="headerlink" href="#hpo-search-spaces" title="Permanent link">#</a></h3>
 <p>A <strong>NePS space</strong> is defined as a child class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">pipeline_space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
 </code></pre></div>
@@ -3756,8 +3747,9 @@
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># Here the float parameter (index 0) is used as a prior</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">float_or_int</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">float_param</span><span class="p">,</span> <span class="n">int_param</span><span class="p">),</span> <span class="n">prior</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">prior_confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="resampling-and-hierarchies">Resampling and Hierarchies<a class="headerlink" href="#resampling-and-hierarchies" title="Permanent link">#</a></h3>
-<p>You can also resample parameters to use for other parameters, even themselves recursively, with <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>:</p>
+<h3 id="hierarchies-and-architectures">Hierarchies and Architectures<a class="headerlink" href="#hierarchies-and-architectures" title="Permanent link">#</a></h3>
+<p><a href="#resampling-and-hierarchies">Resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allows you to define complex architectures akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>.</p>
+<p>You can resample parameters to use for other parameters, even themselves recursively, with <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than its source</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">resampled_float</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
@@ -3774,8 +3766,6 @@
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">next_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </code></pre></div>
 </details>
-<h3 id="operators-and-architectures">Operators and Architectures<a class="headerlink" href="#operators-and-architectures" title="Permanent link">#</a></h3>
-<p>Combining <a href="#resampling-and-hierarchies">resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allows you to define complex architectures akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>.</p>
 <p>Operations can be strings or more importantly Callables, (e.g. pytorch objects) for which you can define the arguments as parameters:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequential</span><span class="p">,</span> <span class="n">Conv2d</span><span class="p">,</span> <span class="n">ReLU</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
