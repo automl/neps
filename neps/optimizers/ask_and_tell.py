@@ -264,8 +264,8 @@ class AskAndTell:
         """Report the result of an evaluation back to the optimizer.
 
         Args:
-            config_id: The id of the configuration you got from
-                [`ask()`][neps.optimizers.ask_and_tell.AskAndTell.ask].
+            trial: The trial to report the result for. This can be either
+                the trial id (a string) or the trial object itself.
             result: The result of the evaluation. This can be an exception,
                 a float, or a mapping of values, similar to that which
                 you would return from `evaluate_pipeline` when your normally

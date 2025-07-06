@@ -99,9 +99,6 @@ class Fidelity(Resolvable, Generic[T]):
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
 
-# -------------------------------------------------
-
-
 class Pipeline(Resolvable):
     """A class representing a pipeline in NePS spaces.
     It contains attributes that can be resolved into a configuration string,

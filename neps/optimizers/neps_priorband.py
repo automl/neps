@@ -43,7 +43,7 @@ class NePSPriorBandSampler:
 
         Args:
             table (pd.DataFrame): The table containing the configurations and their
-            performance.
+                performance.
             rung (int): The current rung of the optimization.
 
         Returns:

@@ -131,7 +131,6 @@ def encode_ftpfn(
     Args:
         trials: The trials to encode
         encoder: The encoder to use
-        space: The search space
         budget_domain: The domain to use for the budgets of the FTPFN
         device: The device to use
         dtype: The dtype to use

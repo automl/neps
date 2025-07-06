@@ -52,7 +52,7 @@ class PriorBandSampler:
 
         Args:
             table: The table of all the trials that have been run.
-            rung_to_sample_for: The rung to sample for.
+            rung: The rung to sample for.
 
         Returns:
             The sampled configuration.

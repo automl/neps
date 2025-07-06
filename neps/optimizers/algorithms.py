@@ -1122,9 +1122,10 @@ def pibo(
             they cost, incentivising the optimizer to explore cheap, good performing
             configurations. This amount is modified over time. If "log", the cost will be
             log-transformed before being used.
-        !!! warning
+            !!! warning "Cost aware"
 
-            If using `cost`, cost must be provided in the reports of the trials.
+                If using `cost`, cost must be provided in the reports of the trials.
+
         device: Device to use for the optimization.
         sample_prior_first: Whether to sample the prior configuration first.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
