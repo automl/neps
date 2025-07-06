@@ -1,3 +1,9 @@
+"""NePS Algorithms
+===========
+This module provides implementations of various NePS algorithms for optimizing pipeline
+spaces.
+"""
+
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence

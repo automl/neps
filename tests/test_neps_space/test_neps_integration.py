@@ -53,7 +53,7 @@ class DemoHyperparameterSpace(Pipeline):
     )
     categorical = Categorical(
         choices=(0, 1),
-        prior_index=0,
+        prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
@@ -85,7 +85,7 @@ class DemoHyperparameterWithFidelitySpace(Pipeline):
     )
     categorical = Categorical(
         choices=(0, 1),
-        prior_index=0,
+        prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
@@ -121,7 +121,7 @@ class DemoHyperparameterComplexSpace(Pipeline):
             Resampled(_small_float),
             Resampled(_big_float),
         ),
-        prior_index=0,
+        prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     float2 = Categorical(
@@ -130,12 +130,12 @@ class DemoHyperparameterComplexSpace(Pipeline):
             Resampled(_big_float),
             float1,
         ),
-        prior_index=0,
+        prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     categorical = Categorical(
         choices=(0, 1),
-        prior_index=0,
+        prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(

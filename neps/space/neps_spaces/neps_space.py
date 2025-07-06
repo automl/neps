@@ -38,14 +38,17 @@ class SamplingResolutionContext:
     """A context for resolving samplings in a NePS space.
     It manages the resolution root, domain sampler, environment values,
     and keeps track of samplings made and resolved objects.
-    :param resolution_root: The root of the resolution, which should be a Resolvable
-    object.
-    :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
-    :param environment_values: A mapping of environment values that are fixed and not
-    related
-    to samplings. These values can be used in the resolution process.
-    :raises ValueError: If the resolution_root is not a Resolvable, or if the
-    domain_sampler is not a DomainSampler, or if the environment_values is not a Mapping.
+
+    Args:
+        resolution_root: The root of the resolution, which should be a Resolvable
+            object.
+        domain_sampler: The DomainSampler to use for sampling from Domain objects.
+        environment_values: A mapping of environment values that are fixed and not
+            related to samplings. These values can be used in the resolution process.
+
+    Raises:
+        ValueError: If the resolution_root is not a Resolvable, or if the domain_sampler
+        is not a DomainSampler, or if the environment_values is not a Mapping.
     """
 
     def __init__(
@@ -57,14 +60,18 @@ class SamplingResolutionContext:
     ):
         """Initialize the SamplingResolutionContext with a resolution root, domain
         sampler, and environment values.
-        :param resolution_root: The root of the resolution, which should be a Resolvable
-        object.
-        :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
-        :param environment_values: A mapping of environment values that are fixed and not
-        related to samplings. These values can be used in the resolution process.
-        :raises ValueError: If the resolution_root is not a Resolvable, or if the
-        domain_sampler is not a DomainSampler, or if the environment_values is not a
-        Mapping.
+
+        Args:
+            resolution_root: The root of the resolution, which should be a Resolvable
+                object.
+            domain_sampler: The DomainSampler to use for sampling from Domain objects.
+            environment_values: A mapping of environment values that are fixed and not
+                related to samplings. These values can be used in the resolution process.
+
+        Raises:
+            ValueError: If the resolution_root is not a Resolvable, or if the
+                domain_sampler is not a DomainSampler, or if the environment_values is
+                not a Mapping.
         """
         if not isinstance(resolution_root, Resolvable):
             raise ValueError(
@@ -108,30 +115,40 @@ class SamplingResolutionContext:
     @property
     def resolution_root(self) -> Resolvable:
         """Get the root of the resolution.
-        :return: The root of the resolution, which should be a Resolvable object.
+
+        Returns:
+            The root of the resolution, which should be a Resolvable object.
         """
         return self._resolution_root
 
     @property
     def samplings_made(self) -> Mapping[str, Any]:
         """Get the samplings made during the resolution process.
-        :return: A mapping of paths to sampled values.
+
+        Returns:
+            A mapping of paths to sampled values.
         """
         return self._samplings_made
 
     @property
     def environment_values(self) -> Mapping[str, Any]:
         """Get the environment values that are fixed and not related to samplings.
-        :return: A mapping of environment variable names to their values.
+
+        Returns:
+            A mapping of environment variable names to their values.
         """
         return self._environment_values
 
     @contextlib.contextmanager
     def resolving(self, _obj: Any, name: str) -> Generator[None]:
         """Context manager for resolving an object in the current resolution context.
-        :param _obj: The object being resolved, can be any type.
-        :param name: The name of the object being resolved, used for debugging.
-        :raises ValueError: If the name is not a valid string.
+
+        Args:
+            _obj: The object being resolved, can be any type.
+            name: The name of the object being resolved, used for debugging.
+
+        Raises:
+            ValueError: If the name is not a valid string.
         """
         if not name or not isinstance(name, str):
             raise ValueError(
@@ -150,17 +167,25 @@ class SamplingResolutionContext:
 
     def was_already_resolved(self, obj: Any) -> bool:
         """Check if the given object was already resolved in the current context.
-        :param obj: The object to check if it was already resolved.
-        :return: True if the object was already resolved, False otherwise.
+
+        Args:
+            obj: The object to check if it was already resolved.
+
+        Returns:
+            True if the object was already resolved, False otherwise.
         """
         return obj in self._resolved_objects
 
     def add_resolved(self, original: Any, resolved: Any) -> None:
         """Add a resolved object to the context.
-        :param original: The original object that was resolved.
-        :param resolved: The resolved value of the original object.
-        :raises ValueError: If the original object was already resolved or if it is a
-        Resampled.
+
+        Args:
+            original: The original object that was resolved.
+            resolved: The resolved value of the original object.
+
+        Raises:
+            ValueError: If the original object was already resolved or if it is a
+                Resampled.
         """
         if self.was_already_resolved(original):
             raise ValueError(
@@ -177,9 +202,15 @@ class SamplingResolutionContext:
 
     def get_resolved(self, obj: Any) -> Any:
         """Get the resolved value for the given object.
-        :param obj: The object for which to get the resolved value.
-        :return: The resolved value of the object.
-        :raises ValueError: If the object was not already resolved in the context.
+
+        Args:
+            obj: The object for which to get the resolved value.
+
+        Returns:
+            The resolved value of the object.
+
+        Raises:
+            ValueError: If the object was not already resolved in the context.
         """
         try:
             return self._resolved_objects[obj]
@@ -190,10 +221,16 @@ class SamplingResolutionContext:
 
     def sample_from(self, domain_obj: Domain) -> Any:
         """Sample a value from the given domain object.
-        :param domain_obj: The domain object from which to sample a value.
-        :return: The sampled value from the domain object.
-        :raises ValueError: If the domain object was already resolved or if the path
-        has already been sampled from.
+
+        Args:
+            domain_obj: The domain object from which to sample a value.
+
+        Returns:
+            The sampled value from the domain object.
+
+        Raises:
+            ValueError: If the domain object was already resolved or if the path
+                has already been sampled from.
         """
         # Each `domain_obj` is only ever sampled from once.
         # This is okay and the expected behavior.
@@ -236,9 +273,15 @@ class SamplingResolutionContext:
 
     def get_value_from_environment(self, var_name: str) -> Any:
         """Get a value from the environment variables.
-        :param var_name: The name of the environment variable to get the value from.
-        :return: The value of the environment variable.
-        :raises ValueError: If the environment variable is not found in the context.
+
+        Args:
+            var_name: The name of the environment variable to get the value from.
+
+        Returns:
+            The value of the environment variable.
+
+        Raises:
+            ValueError: If the environment variable is not found in the context.
         """
         try:
             return self._environment_values[var_name]
@@ -252,11 +295,6 @@ class SamplingResolver:
     """A class responsible for resolving samplings in a NePS space.
     It uses a SamplingResolutionContext to manage the resolution process,
     and a DomainSampler to sample values from Domain objects.
-    :param resolver: The resolver to use for resolving objects.
-    This should be a callable that takes an object and a context and returns the resolved
-    object.
-    :raises ValueError: If the resolver is not a callable or if it is not a
-    DomainSampler or a SamplingResolutionContext.
     """
 
     def __call__(
@@ -267,14 +305,20 @@ class SamplingResolver:
     ) -> tuple[Resolvable, SamplingResolutionContext]:
         """Resolve the given object in the context of the provided domain sampler and
         environment values.
-        :param obj: The Resolvable object to resolve.
-        :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
-        :param environment_values: A mapping of environment values that are fixed and not
-        related to samplings.
-        :return: A tuple containing the resolved object and the
-        SamplingResolutionContext.
-        :raises ValueError: If the object is not a Resolvable, or if the domain_sampler
-        is not a DomainSampler, or if the environment_values is not a Mapping.
+
+        Args:
+            obj: The Resolvable object to resolve.
+            domain_sampler: The DomainSampler to use for sampling from Domain objects.
+            environment_values: A mapping of environment values that are fixed and not
+                related to samplings.
+
+        Returns:
+            A tuple containing the resolved object and the
+                SamplingResolutionContext.
+
+        Raises:
+            ValueError: If the object is not a Resolvable, or if the domain_sampler
+                is not a DomainSampler, or if the environment_values is not a Mapping.
         """
         context = SamplingResolutionContext(
             resolution_root=obj,
@@ -581,14 +625,20 @@ def resolve(
     environment_values: Mapping[str, Any] | None = None,
 ) -> tuple[P, SamplingResolutionContext]:
     """Resolve a NePS pipeline with the given domain sampler and environment values.
-    :param pipeline: The pipeline to resolve, which should be a Pipeline object.
-    :param domain_sampler: The DomainSampler to use for sampling from Domain objects.
-    If None, a RandomSampler with no predefined values will be used.
-    :param environment_values: A mapping of environment variable names to their values.
-    If None, an empty mapping will be used.
-    :return: A tuple containing the resolved pipeline and the SamplingResolutionContext.
-    :raises ValueError: If the pipeline is not a Pipeline object or if the domain_sampler
-    is not a DomainSampler or if the environment_values is not a Mapping.
+
+    Args:
+        pipeline: The pipeline to resolve, which should be a Pipeline object.
+        domain_sampler: The DomainSampler to use for sampling from Domain objects.
+            If None, a RandomSampler with no predefined values will be used.
+        environment_values: A mapping of environment variable names to their values.
+            If None, an empty mapping will be used.
+
+    Returns:
+        A tuple containing the resolved pipeline and the SamplingResolutionContext.
+
+    Raises:
+        ValueError: If the pipeline is not a Pipeline object or if the domain_sampler
+            is not a DomainSampler or if the environment_values is not a Mapping.
     """
     if domain_sampler is None:
         # By default, use a random sampler with no predefined values.
@@ -612,9 +662,15 @@ def resolve(
 
 def convert_operation_to_callable(operation: Operation) -> Callable:
     """Convert an Operation to a callable that can be executed.
-    :param operation: The Operation to convert.
-    :return: A callable that represents the operation.
-    :raises ValueError: If the operation is not a valid Operation object.
+
+    Args:
+        operation: The Operation to convert.
+
+    Returns:
+        A callable that represents the operation.
+
+    Raises:
+        ValueError: If the operation is not a valid Operation object.
     """
     operator = cast(Callable, operation.operator)
 
@@ -668,9 +724,15 @@ def _operation_to_unwrapped_config(
 
 def convert_operation_to_string(operation: Operation) -> str:
     """Convert an Operation to a string representation.
-    :param operation: The Operation to convert.
-    :return: A string representation of the operation.
-    :raises ValueError: If the operation is not a valid Operation object.
+
+    Args:
+        operation: The Operation to convert.
+
+    Returns:
+        A string representation of the operation.
+
+    Raises:
+        ValueError: If the operation is not a valid Operation object.
     """
     unwrapped_config = tuple(_operation_to_unwrapped_config(operation))
     return config_string.wrap_config_into_string(unwrapped_config)
@@ -683,8 +745,6 @@ class NepsCompatConverter:
     """A class to convert between NePS configurations and NEPS-compatible configurations.
     It provides methods to convert a SamplingResolutionContext to a NEPS-compatible config
     and to convert a NEPS-compatible config back to a SamplingResolutionContext.
-    :param resolution_context: The SamplingResolutionContext to convert.
-    :raises ValueError: If the resolution_context is not a SamplingResolutionContext.
     """
 
     _SAMPLING_PREFIX = "SAMPLING__"
@@ -704,9 +764,15 @@ class NepsCompatConverter:
         resolution_context: SamplingResolutionContext,
     ) -> Mapping[str, Any]:
         """Convert a SamplingResolutionContext to a NEPS-compatible config.
-        :param resolution_context: The SamplingResolutionContext to convert.
-        :return: A mapping of NEPS-compatible configuration keys to their values.
-        :raises ValueError: If the resolution_context is not a SamplingResolutionContext.
+
+        Args:
+            resolution_context: The SamplingResolutionContext to convert.
+
+        Returns:
+            A mapping of NEPS-compatible configuration keys to their values.
+
+        Raises:
+            ValueError: If the resolution_context is not a SamplingResolutionContext.
         """
         config: dict[str, Any] = {}
 
@@ -726,10 +792,16 @@ class NepsCompatConverter:
         config: Mapping[str, Any],
     ) -> _FromNepsConfigResult:
         """Convert a NEPS-compatible config to a SamplingResolutionContext.
-        :param config: A mapping of NEPS-compatible configuration keys to their values.
-        :return: A _FromNepsConfigResult containing predefined samplings,
-        environment values, and extra kwargs.
-        :raises ValueError: If the config is not a valid NEPS-compatible config.
+
+        Args:
+            config: A mapping of NEPS-compatible configuration keys to their values.
+
+        Returns:
+            A _FromNepsConfigResult containing predefined samplings,
+                environment values, and extra kwargs.
+
+        Raises:
+            ValueError: If the config is not a valid NEPS-compatible config.
         """
         predefined_samplings = {}
         environment_values = {}
@@ -784,13 +856,19 @@ def adjust_evaluation_pipeline_for_neps_space(
     """Adjust the evaluation pipeline to work with a NePS space.
     This function wraps the evaluation pipeline to sample from the NePS space
     and convert the sampled pipeline to a format compatible with the evaluation pipeline.
-    :param evaluation_pipeline: The evaluation pipeline to adjust.
-    :param pipeline_space: The NePS pipeline space to sample from.
-    :param operation_converter: A callable to convert Operation objects to a format
-    compatible with the evaluation pipeline.
-    :return: A wrapped evaluation pipeline that samples from the NePS space.
-    :raises ValueError: If the evaluation_pipeline is not callable or if the
-    pipeline_space is not a Pipeline object.
+
+    Args:
+        evaluation_pipeline: The evaluation pipeline to adjust.
+        pipeline_space: The NePS pipeline space to sample from.
+        operation_converter: A callable to convert Operation objects to a format
+            compatible with the evaluation pipeline.
+
+    Returns:
+        A wrapped evaluation pipeline that samples from the NePS space.
+
+    Raises:
+        ValueError: If the evaluation_pipeline is not callable or if the
+            pipeline_space is not a Pipeline object.
     """
 
     @functools.wraps(evaluation_pipeline)

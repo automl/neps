@@ -65,12 +65,12 @@ class ConvPipeline(Pipeline):
     )
     conv_choices_prior_confidence: ConfidenceLevel = Categorical(
         choices=_conv_choices_prior_confidence_choices,
-        prior_index=1,
+        prior=1,
         prior_confidence=ConfidenceLevel.LOW,
     )
     conv_choices: tuple[str, ...] = Categorical(
         choices=(_conv_choices_low, _conv_choices_high),
-        prior_index=conv_choices_prior_index,
+        prior=conv_choices_prior_index,
         prior_confidence=conv_choices_prior_confidence,
     )
 

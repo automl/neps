@@ -32,14 +32,22 @@ if TYPE_CHECKING:
 class NePSRandomSearch:
     """A simple random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values.
-    :param pipeline: The pipeline to optimize, which should be a Pipeline object.
-    :raises ValueError: If the pipeline is not a Pipeline object.
+
+    Args:
+        pipeline: The pipeline to optimize, which should be a Pipeline object.
+
+    Raises:
+        ValueError: If the pipeline is not a Pipeline object.
     """
 
     def __init__(self, pipeline: Pipeline):
         """Initialize the RandomSearch optimizer with a pipeline.
-        :param pipeline: The pipeline to optimize, which should be a Pipeline object.
-        :raises ValueError: If the pipeline is not a Pipeline object.
+
+        Args:
+            pipeline: The pipeline to optimize, which should be a Pipeline object.
+
+        Raises:
+            ValueError: If the pipeline is not a Pipeline object.
         """
         self._pipeline = pipeline
 
@@ -58,15 +66,21 @@ class NePSRandomSearch:
     ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
         """Sample configurations randomly from the pipeline's domain and environment
         values.
-        :param trials: A mapping of trial IDs to Trial objects, representing previous
-        trials.
-        :param budget_info: The budget information for the optimization process.
-        :param n: The number of configurations to sample. If None, a single configuration
-        will be sampled.
-        :return: A SampledConfig object or a list of SampledConfig objects, depending
-        on the value of n.
-        :raises ValueError: If the pipeline is not a Pipeline object or if the trials are
-        not a valid mapping of trial IDs to Trial objects.
+
+        Args:
+            trials: A mapping of trial IDs to Trial objects, representing previous
+                trials.
+            budget_info: The budget information for the optimization process.
+            n: The number of configurations to sample. If None, a single configuration
+                will be sampled.
+
+        Returns:
+            A SampledConfig object or a list of SampledConfig objects, depending
+                on the value of n.
+
+        Raises:
+            ValueError: If the pipeline is not a Pipeline object or if the trials are
+                not a valid mapping of trial IDs to Trial objects.
         """
         n_prev_trials = len(trials)
         n_requested = 1 if n is None else n
@@ -89,14 +103,22 @@ class NePSComplexRandomSearch:
     """A complex random search optimizer for a NePS pipeline.
     It samples configurations randomly from the pipeline's domain and environment values,
     and also performs mutations and crossovers based on previous successful trials.
-    :param pipeline: The pipeline to optimize, which should be a Pipeline object.
-    :raises ValueError: If the pipeline is not a Pipeline object.
+
+    Args:
+        pipeline: The pipeline to optimize, which should be a Pipeline object.
+
+    Raises:
+        ValueError: If the pipeline is not a Pipeline object.
     """
 
     def __init__(self, pipeline: Pipeline):
         """Initialize the ComplexRandomSearch optimizer with a pipeline.
-        :param pipeline: The pipeline to optimize, which should be a Pipeline object.
-        :raises ValueError: If the pipeline is not a Pipeline object.
+
+        Args:
+            pipeline: The pipeline to optimize, which should be a Pipeline object.
+
+        Raises:
+            ValueError: If the pipeline is not a Pipeline object.
         """
         self._pipeline = pipeline
 
@@ -126,15 +148,21 @@ class NePSComplexRandomSearch:
         """Sample configurations randomly from the pipeline's domain and environment
         values, and also perform mutations and crossovers based on previous successful
         trials.
-        :param trials: A mapping of trial IDs to Trial objects, representing previous
-        trials.
-        :param budget_info: The budget information for the optimization process.
-        :param n: The number of configurations to sample. If None, a single configuration
-        will be sampled.
-        :return: A SampledConfig object or a list of SampledConfig objects, depending
-        on the value of n.
-        :raises ValueError: If the pipeline is not a Pipeline object or if the trials are
-        not a valid mapping of trial IDs to Trial objects.
+
+        Args:
+            trials: A mapping of trial IDs to Trial objects, representing previous
+                trials.
+            budget_info: The budget information for the optimization process.
+            n: The number of configurations to sample. If None, a single configuration
+                will be sampled.
+
+        Returns:
+            A SampledConfig object or a list of SampledConfig objects, depending
+                on the value of n.
+
+        Raises:
+            ValueError: If the pipeline is not a Pipeline object or if the trials are
+                not a valid mapping of trial IDs to Trial objects.
         """
         n_prev_trials = len(trials)
         n_requested = 1 if n is None else n

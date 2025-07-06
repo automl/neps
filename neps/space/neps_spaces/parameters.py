@@ -11,7 +11,7 @@ import enum
 import math
 import random
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Generic, Protocol, TypeVar, cast, runtime_checkable
+from typing import Any, Generic, Literal, Protocol, TypeVar, cast, runtime_checkable
 
 T = TypeVar("T")
 
@@ -194,6 +194,26 @@ class ConfidenceLevel(enum.Enum):
     HIGH = "high"
 
 
+def convert_confidence_level(confidence: str) -> ConfidenceLevel:
+    """Convert a string representation of confidence level to ConfidenceLevel enum.
+
+    Args:
+        confidence: A string representing the confidence level, e.g., "low", "medium",
+        "high".
+
+    Returns:
+        ConfidenceLevel: The corresponding ConfidenceLevel enum value.
+
+    Raises:
+        ValueError: If the input string does not match any of the defined confidence
+        levels.
+    """
+    try:
+        return ConfidenceLevel[confidence.upper()]
+    except KeyError as e:
+        raise ValueError(f"Invalid confidence level: {confidence}") from e
+
+
 class Domain(Resolvable, abc.ABC, Generic[T]):
     """An abstract base class representing a domain in NePS spaces."""
 
@@ -370,21 +390,23 @@ class Categorical(Domain[int], Generic[T]):
 
     Attributes:
         choices: A tuple of choices or a Domain of choices.
-        prior_index: The index of the prior choice in the choices tuple.
+        prior: The index of the prior choice in the choices tuple.
         prior_confidence: The confidence level of the prior choice.
     """
 
     def __init__(
         self,
         choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T],
-        prior_index: int | Domain[int] | _Unset = _UNSET,
-        prior_confidence: ConfidenceLevel | _Unset = _UNSET,
+        prior: int | Domain[int] | _Unset = _UNSET,
+        prior_confidence: (
+            ConfidenceLevel | Literal["low", "medium", "high"] | _Unset
+        ) = _UNSET,
     ):
         """Initialize the Categorical domain with choices and optional prior.
 
         Args:
             choices: A tuple of choices or a Domain of choices.
-            prior_index: The index of the prior choice in the choices tuple.
+            prior: The index of the prior choice in the choices tuple.
             prior_confidence: The confidence level of the prior choice.
 
         """
@@ -393,8 +415,12 @@ class Categorical(Domain[int], Generic[T]):
             self._choices = tuple(choice for choice in choices)
         else:
             self._choices = choices
-        self._prior_index = prior_index
-        self._prior_confidence = prior_confidence
+        self._prior = prior
+        self._prior_confidence = (
+            convert_confidence_level(prior_confidence)
+            if isinstance(prior_confidence, str)
+            else prior_confidence
+        )
 
     @property
     def min_value(self) -> int:
@@ -432,9 +458,9 @@ class Categorical(Domain[int], Generic[T]):
         """Check if the categorical domain has a prior defined.
 
         Returns:
-            True if the prior index and prior confidence are set, False otherwise.
+            True if the prior and prior confidence are set, False otherwise.
         """
-        return self._prior_index is not _UNSET and self._prior_confidence is not _UNSET
+        return self._prior is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> int:
@@ -449,7 +475,7 @@ class Categorical(Domain[int], Generic[T]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
-        return int(cast(int, self._prior_index))
+        return int(cast(int, self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
@@ -522,7 +548,7 @@ class Categorical(Domain[int], Generic[T]):
         new_choices = cast(tuple, self._choices)[new_min : new_max + 1]
         return Categorical(
             choices=new_choices,
-            prior_index=new_choices.index(cast(tuple, self._choices)[center]),
+            prior=new_choices.index(cast(tuple, self._choices)[center]),
             prior_confidence=confidence,
         )
 
@@ -544,7 +570,9 @@ class Float(Domain[float]):
         max_value: float,
         log: bool = False,  # noqa: FBT001, FBT002
         prior: float | _Unset = _UNSET,
-        prior_confidence: ConfidenceLevel | _Unset = _UNSET,
+        prior_confidence: (
+            Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
+        ) = _UNSET,
     ):
         """Initialize the Float domain with min and max values, and optional prior.
 
@@ -560,7 +588,11 @@ class Float(Domain[float]):
         self._max_value = max_value
         self._log = log
         self._prior = prior
-        self._prior_confidence = prior_confidence
+        self._prior_confidence = (
+            convert_confidence_level(prior_confidence)
+            if isinstance(prior_confidence, str)
+            else prior_confidence
+        )
 
     @property
     def min_value(self) -> float:
@@ -709,7 +741,9 @@ class Integer(Domain[int]):
         max_value: int,
         log: bool = False,  # noqa: FBT001, FBT002
         prior: int | _Unset = _UNSET,
-        prior_confidence: ConfidenceLevel | _Unset = _UNSET,
+        prior_confidence: (
+            Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
+        ) = _UNSET,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
 
@@ -724,7 +758,11 @@ class Integer(Domain[int]):
         self._max_value = max_value
         self._log = log
         self._prior = prior
-        self._prior_confidence = prior_confidence
+        self._prior_confidence = (
+            convert_confidence_level(prior_confidence)
+            if isinstance(prior_confidence, str)
+            else prior_confidence
+        )
 
     @property
     def min_value(self) -> int:
@@ -811,7 +849,7 @@ class Integer(Domain[int]):
 
         Raises:
             NotImplementedError: If the domain is set to sample on a logarithmic
-            scale, as this is not implemented yet.
+                scale, as this is not implemented yet.
 
         """
         if self._log:
@@ -876,7 +914,7 @@ class Operation(Resolvable):
 
         Args:
             operator: The operator to be used in the operation, can be a callable or a
-            string.
+                string.
             args: A sequence of arguments to be passed to the operator.
             kwargs: A mapping of keyword arguments to be passed to the operator.
 
@@ -992,7 +1030,7 @@ class Resampled(Resolvable):
 
     Attributes:
         source: The source of the resampling, which can be a resolvable object or a
-        string.
+            string.
     """
 
     def __init__(self, source: Resolvable | str):

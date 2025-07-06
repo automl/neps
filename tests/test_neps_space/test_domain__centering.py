@@ -133,7 +133,7 @@ def test_centering_categorical(
     )
     categorical2 = Categorical(
         choices=tuple(range(1, 101)),
-        prior_index=categorical_prior_index_original,
+        prior=categorical_prior_index_original,
         prior_confidence=confidence_level,
     )
 
@@ -271,7 +271,7 @@ def test_centering_stranger_ranges_categorical(
 
     categorical2 = Categorical(
         choices=tuple(range(7)),
-        prior_index=2,
+        prior=2,
         prior_confidence=confidence_level,
     )
     categorical2_centered = categorical2.centered_around(

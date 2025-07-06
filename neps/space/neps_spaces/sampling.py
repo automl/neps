@@ -29,10 +29,16 @@ class DomainSampler(Protocol):
         current_path: str,
     ) -> T:
         """Sample a value from the given domain.
-        :param domain_obj: The domain object to sample from.
-        :param current_path: The current path in the resolution context.
-        :return: A sampled value of type T from the domain.
-        :raises NotImplementedError: If the method is not implemented.
+
+        Args:
+            domain_obj: The domain object to sample from.
+            current_path: The current path in the resolution context.
+
+        Returns:
+            A sampled value of type T from the domain.
+
+        Raises:
+            NotImplementedError: If the method is not implemented.
         """
         raise NotImplementedError()
 
@@ -40,7 +46,9 @@ class DomainSampler(Protocol):
 class OnlyPredefinedValuesSampler(DomainSampler):
     """A sampler that only returns predefined values for a given path.
     If the path is not found in the predefined values, it raises a ValueError.
-    :param predefined_samplings: A mapping of paths to predefined values.
+
+    Args:
+        predefined_samplings: A mapping of paths to predefined values.
     """
 
     def __init__(
@@ -48,8 +56,12 @@ class OnlyPredefinedValuesSampler(DomainSampler):
         predefined_samplings: Mapping[str, Any],
     ):
         """Initialize the sampler with predefined samplings.
-        :param predefined_samplings: A mapping of paths to predefined values.
-        :raises ValueError: If predefined_samplings is empty.
+
+        Args:
+            predefined_samplings: A mapping of paths to predefined values.
+
+        Raises:
+            ValueError: If predefined_samplings is empty.
         """
         self._predefined_samplings = predefined_samplings
 
@@ -60,10 +72,16 @@ class OnlyPredefinedValuesSampler(DomainSampler):
         current_path: str,
     ) -> T:
         """Sample a value from the predefined samplings for the given path.
-        :param domain_obj: The domain object, not used in this sampler.
-        :param current_path: The path for which to sample a value.
-        :return: The predefined value for the given path.
-        :raises ValueError: If the current path is not in the predefined samplings.
+
+        Args:
+            domain_obj: The domain object, not used in this sampler.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            The predefined value for the given path.
+
+        Raises:
+            ValueError: If the current path is not in the predefined samplings.
         """
         if current_path not in self._predefined_samplings:
             raise ValueError(f"No predefined value for path: {current_path!r}.")
@@ -73,9 +91,11 @@ class OnlyPredefinedValuesSampler(DomainSampler):
 class RandomSampler(DomainSampler):
     """A sampler that randomly samples from a predefined set of values.
     If the current path is not in the predefined values, it samples from the domain.
-    :param predefined_samplings: A mapping of paths to predefined values.
-    This sampler will use these values if available, otherwise it will sample from the
-    domain.
+
+    Args:
+        predefined_samplings: A mapping of paths to predefined values.
+            This sampler will use these values if available, otherwise it will sample
+            from the domain.
     """
 
     def __init__(
@@ -83,8 +103,11 @@ class RandomSampler(DomainSampler):
         predefined_samplings: Mapping[str, Any],
     ):
         """Initialize the sampler with predefined samplings.
-        :param predefined_samplings: A mapping of paths to predefined values.
-        :raises
+
+        Args:
+            predefined_samplings: A mapping of paths to predefined values.
+
+        Raises:
             ValueError: If predefined_samplings is empty.
         """
         self._predefined_samplings = predefined_samplings
@@ -96,12 +119,18 @@ class RandomSampler(DomainSampler):
         current_path: str,
     ) -> T:
         """Sample a value from the predefined samplings or the domain.
-        :param domain_obj: The domain object from which to sample.
-        :param current_path: The path for which to sample a value.
-        :return: A sampled value, either from the predefined samplings or from the
-        domain.
-        :raises ValueError: If the current path is not in the predefined samplings and
-        the domain does not have a prior defined.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            A sampled value, either from the predefined samplings or from the
+                domain.
+
+        Raises:
+            ValueError: If the current path is not in the predefined samplings and
+                the domain does not have a prior defined.
         """
         if current_path not in self._predefined_samplings:
             sampled_value = domain_obj.sample()
@@ -113,12 +142,15 @@ class RandomSampler(DomainSampler):
 class PriorOrFallbackSampler(DomainSampler):
     """A sampler that uses a prior value if available, otherwise falls back to another
     sampler.
-    :param fallback_sampler: A DomainSampler to use if the prior is not available.
-    :param prior_use_probability: The probability of using the prior value when
-    available.
-    This should be a float between 0 and 1, where 0 means never use the prior and 1 means
-    always use it.
-    :raises ValueError: If the prior_use_probability is not between 0 and 1.
+
+    Args:
+        fallback_sampler: A DomainSampler to use if the prior is not available.
+        prior_use_probability: The probability of using the prior value when
+            available. This should be a float between 0 and 1, where 0 means never use
+            the prior and 1 means always use it.
+
+    Raises:
+        ValueError: If the prior_use_probability is not between 0 and 1.
     """
 
     def __init__(
@@ -127,12 +159,15 @@ class PriorOrFallbackSampler(DomainSampler):
         prior_use_probability: float,
     ):
         """Initialize the sampler with a fallback sampler and a prior use probability.
-        :param fallback_sampler: A DomainSampler to use if the prior is not available.
-        :param prior_use_probability: The probability of using the prior value when
-        available.
-        This should be a float between 0 and 1, where 0 means never use the prior and 1
-        means always use it.
-        :raises ValueError: If the prior_use_probability is not between 0 and 1.
+
+        Args:
+            fallback_sampler: A DomainSampler to use if the prior is not available.
+            prior_use_probability: The probability of using the prior value when
+                available. This should be a float between 0 and 1, where 0 means never
+                use the prior and 1 means always use it.
+
+        Raises:
+            ValueError: If the prior_use_probability is not between 0 and 1.
         """
         if not 0 <= prior_use_probability <= 1:
             raise ValueError(
@@ -151,11 +186,17 @@ class PriorOrFallbackSampler(DomainSampler):
     ) -> T:
         """Sample a value from the domain, using the prior if available and according to
         the prior use probability.
-        :param domain_obj: The domain object from which to sample.
-        :param current_path: The path for which to sample a value.
-        :return: A sampled value, either from the prior or from the fallback sampler.
-        :raises ValueError: If the domain does not have a prior defined and the fallback
-        sampler is not provided.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            A sampled value, either from the prior or from the fallback sampler.
+
+        Raises:
+            ValueError: If the domain does not have a prior defined and the fallback
+                sampler is not provided.
         """
         use_prior = random.choices(
             (True, False),
@@ -191,12 +232,16 @@ class MutateByForgettingSampler(DomainSampler):
     """A sampler that mutates predefined samplings by forgetting a certain number of
     them. It randomly selects a number of predefined samplings to forget and returns a
     new sampler that only uses the remaining samplings.
-    :param predefined_samplings: A mapping of paths to predefined values.
-    :param n_forgets: The number of predefined samplings to forget.
-    This should be an integer greater than 0 and less than or equal to the number of
-    predefined samplings.
-    :raises ValueError: If n_forgets is not a valid integer or if it exceeds the number
-    of predefined samplings.
+
+    Args:
+        predefined_samplings: A mapping of paths to predefined values.
+        n_forgets: The number of predefined samplings to forget.
+            This should be an integer greater than 0 and less than or equal to the
+            number of predefined samplings.
+
+    Raises:
+        ValueError: If n_forgets is not a valid integer or if it exceeds the number
+            of predefined samplings.
     """
 
     def __init__(
@@ -205,12 +250,16 @@ class MutateByForgettingSampler(DomainSampler):
         n_forgets: int,
     ):
         """Initialize the sampler with predefined samplings and a number of forgets.
-        :param predefined_samplings: A mapping of paths to predefined values.
-        :param n_forgets: The number of predefined samplings to forget.
-        This should be an integer greater than 0 and less than or equal to the number of
-        predefined samplings.
-        :raises ValueError: If n_forgets is not a valid integer or if it exceeds the
-        number of predefined samplings.
+
+        Args:
+            predefined_samplings: A mapping of paths to predefined values.
+            n_forgets: The number of predefined samplings to forget.
+                This should be an integer greater than 0 and less than or equal to the
+                number of predefined samplings.
+
+        Raises:
+            ValueError: If n_forgets is not a valid integer or if it exceeds the
+                number of predefined samplings.
         """
         if (
             not isinstance(n_forgets, int)
@@ -235,12 +284,18 @@ class MutateByForgettingSampler(DomainSampler):
         current_path: str,
     ) -> T:
         """Sample a value from the mutated predefined samplings or the domain.
-        :param domain_obj: The domain object from which to sample.
-        :param current_path: The path for which to sample a value.
-        :return: A sampled value, either from the mutated predefined samplings or from
-        the domain.
-        :raises ValueError: If the current path is not in the mutated predefined
-        samplings and the domain does not have a prior defined.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            A sampled value, either from the mutated predefined samplings or from
+                the domain.
+
+        Raises:
+            ValueError: If the current path is not in the mutated predefined
+                samplings and the domain does not have a prior defined.
         """
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
 
@@ -248,12 +303,16 @@ class MutateByForgettingSampler(DomainSampler):
 class MutatateUsingCentersSampler(DomainSampler):
     """A sampler that mutates predefined samplings by forgetting a certain number of them,
     but still uses the original values as centers for sampling.
-    :param predefined_samplings: A mapping of paths to predefined values.
-    :param n_mutations: The number of predefined samplings to mutate.
-    This should be an integer greater than 0 and less than or equal to the number of
-    predefined samplings.
-    :raises ValueError: If n_mutations is not a valid integer or if it exceeds the number
-    of predefined samplings.
+
+    Args:
+        predefined_samplings: A mapping of paths to predefined values.
+        n_mutations: The number of predefined samplings to mutate.
+            This should be an integer greater than 0 and less than or equal to the number
+            of predefined samplings.
+
+    Raises:
+        ValueError: If n_mutations is not a valid integer or if it exceeds the number
+            of predefined samplings.
     """
 
     def __init__(
@@ -262,12 +321,16 @@ class MutatateUsingCentersSampler(DomainSampler):
         n_mutations: int,
     ):
         """Initialize the sampler with predefined samplings and a number of mutations.
-        :param predefined_samplings: A mapping of paths to predefined values.
-        :param n_mutations: The number of predefined samplings to mutate.
-        This should be an integer greater than 0 and less than or equal to the number of
-        predefined samplings.
-        :raises ValueError: If n_mutations is not a valid integer or if it exceeds
-        the number of predefined samplings.
+
+        Args:
+            predefined_samplings: A mapping of paths to predefined values.
+            n_mutations: The number of predefined samplings to mutate.
+                This should be an integer greater than 0 and less than or equal to the
+                number of predefined samplings.
+
+        Raises:
+            ValueError: If n_mutations is not a valid integer or if it exceeds
+                the number of predefined samplings.
         """
         if (
             not isinstance(n_mutations, int)
@@ -292,12 +355,18 @@ class MutatateUsingCentersSampler(DomainSampler):
     ) -> T:
         """Sample a value from the predefined samplings or the domain, using original
         values as centers if the current path is not in the kept samplings.
-        :param domain_obj: The domain object from which to sample.
-        :param current_path: The path for which to sample a value.
-        :return: A sampled value, either from the kept samplings or from the domain,
-        using the original values as centers if necessary.
-        :raises ValueError: If the current path is not in the kept samplings and the
-        domain does not have a prior defined.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            A sampled value, either from the kept samplings or from the domain,
+                using the original values as centers if necessary.
+
+        Raises:
+            ValueError: If the current path is not in the kept samplings and the
+                domain does not have a prior defined.
         """
         if current_path not in self._kept_samplings_to_make:
             # For this path we either have forgotten the value or we never had it.
@@ -349,17 +418,20 @@ def _crossover_samplings_to_make_by_mixing(
 class CrossoverByMixingSampler(DomainSampler):
     """A sampler that performs a crossover operation by mixing two sets of predefined
     samplings. It combines the predefined samplings from two sources, allowing for a
-    probability-based
-    selection of values from either source.
-    :param predefined_samplings_1: The first set of predefined samplings.
-    :param predefined_samplings_2: The second set of predefined samplings.
-    :param prefer_first_probability: The probability of preferring values from the first
-    set over the second set when both have values for the same path.
-    This should be a float between 0 and 1, where 0 means always prefer the second set
-    and 1 means always prefer the first set.
-    :raises ValueError: If prefer_first_probability is not between 0 and 1.
-    :raises CrossoverNotPossibleError: If no crossovers were made between the two sets
-    of predefined samplings.
+    probability-based selection of values from either source.
+
+    Args:
+        predefined_samplings_1: The first set of predefined samplings.
+        predefined_samplings_2: The second set of predefined samplings.
+        prefer_first_probability: The probability of preferring values from the first
+            set over the second set when both have values for the same path.
+            This should be a float between 0 and 1, where 0 means always prefer the
+            second set and 1 means always prefer the first set.
+
+    Raises:
+        ValueError: If prefer_first_probability is not between 0 and 1.
+        CrossoverNotPossibleError: If no crossovers were made between the two sets
+            of predefined samplings.
     """
 
     def __init__(
@@ -370,13 +442,17 @@ class CrossoverByMixingSampler(DomainSampler):
     ):
         """Initialize the sampler with two sets of predefined samplings and a preference
         probability for the first set.
-        :param predefined_samplings_1: The first set of predefined samplings.
-        :param predefined_samplings_2: The second set of predefined samplings.
-        :param prefer_first_probability: The probability of preferring values from the
-        first set over the second set when both have values for the same path.
-        This should be a float between 0 and 1, where 0 means always prefer the second
-        set and 1 means always prefer the first set.
-        :raises ValueError: If prefer_first_probability is not between 0 and 1.
+
+        Args:
+            predefined_samplings_1: The first set of predefined samplings.
+            predefined_samplings_2: The second set of predefined samplings.
+            prefer_first_probability: The probability of preferring values from the
+                first set over the second set when both have values for the same path.
+                This should be a float between 0 and 1, where 0 means always prefer the
+                second set and 1 means always prefer the first set.
+
+        Raises:
+            ValueError: If prefer_first_probability is not between 0 and 1.
         """
         if not isinstance(prefer_first_probability, float) or not (
             0 <= prefer_first_probability <= 1
@@ -409,11 +485,17 @@ class CrossoverByMixingSampler(DomainSampler):
         current_path: str,
     ) -> T:
         """Sample a value from the crossed-over predefined samplings or the domain.
-        :param domain_obj: The domain object from which to sample.
-        :param current_path: The path for which to sample a value.
-        :return: A sampled value, either from the crossed-over predefined samplings or
-        from the domain.
-        :raises ValueError: If the current path is not in the crossed-over predefined
-        samplings and the domain does not have a prior defined.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value.
+
+        Returns:
+            A sampled value, either from the crossed-over predefined samplings or
+                from the domain.
+
+        Raises:
+            ValueError: If the current path is not in the crossed-over predefined
+                samplings and the domain does not have a prior defined.
         """
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
