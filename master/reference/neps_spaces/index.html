@@ -664,6 +664,15 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#operators-and-architectures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operators and Architectures
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -3711,7 +3720,7 @@
 <h1 id="neps-spaces-joint-architecture-and-hyperparameter-search">NePS Spaces: Joint Architecture and Hyperparameter Search<a class="headerlink" href="#neps-spaces-joint-architecture-and-hyperparameter-search" title="Permanent link">#</a></h1>
 <p>NePS Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).</p>
 <h2 id="how-to-use-neps-spaces">How to use NePS Spaces<a class="headerlink" href="#how-to-use-neps-spaces" title="Permanent link">#</a></h2>
-<p>A <strong>NePS space</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space, including:</p>
+<p><strong>NePS spaces</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
 <li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
@@ -3736,19 +3745,64 @@
 <p>You can provide <strong>your knowledge about where a good value for this parameter lies</strong> by indicating a <code>prior=</code>. You can also specify a <code>prior_confidence=</code> to indicate how strongly you want NePS to focus on these, one of either <code>"low"</code>, <code>"medium"</code>, or <code>"high"</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>    <span class="c1"># Categorical parameters can also choose between other parameters</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># Here the float parameter (index 0) is used as a prior</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">cat_param_2</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">float_param</span><span class="p">,</span> <span class="n">int_param</span><span class="p">),</span> <span class="n">prior</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">prior_confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">float_or_int</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">float_param</span><span class="p">,</span> <span class="n">int_param</span><span class="p">),</span> <span class="n">prior</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">prior_confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
 <h3 id="resampling-and-hierarchies">Resampling and Hierarchies<a class="headerlink" href="#resampling-and-hierarchies" title="Permanent link">#</a></h3>
 <p>You can also resample parameters to use for other parameters, even themselves recursively, with <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than float_param</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">float_param_2</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than its source</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">resampled_float</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="c1"># If you only use a parameter to resample from it, prefix it with an underscore</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="c1"># This way, your evaluate_pipeline will not receive it as an argument</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">_float</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">resampled_float_2</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">_float</span><span class="p">)</span>
 </code></pre></div>
 <details class="tip">
-<summary>Self-Reference</summary>
-<p>When referencing another parameter that is not yet defined, or itself, use a string of the parameter name</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">cat_param_3</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;cat_param_3&quot;</span><span class="p">),</span> <span class="p">))</span>
+<summary>Self- and future references</summary>
+<p>When referencing itself or a not yet defined parameter use a string of that parameters name</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;next_param&quot;</span><span class="p">)))</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">next_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </code></pre></div>
+</details>
+<h3 id="operators-and-architectures">Operators and Architectures<a class="headerlink" href="#operators-and-architectures" title="Permanent link">#</a></h3>
+<p>Combining <a href="#resampling-and-hierarchies">resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allows you to define complex architectures akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>.</p>
+<p>Operations can be strings or more importantly Callables, (e.g. pytorch modules) for which you can define the arguments as parameters:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequential</span><span class="p">,</span> <span class="n">Conv2d</span><span class="p">,</span> <span class="n">ReLU</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="k">class</span><span class="w"> </span><span class="nc">NN_Space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">kernel_size</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="c1"># Define a convolution operation with a kernel size parameter</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="n">_convolution</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>            <span class="n">operator</span><span class="o">=</span><span class="n">Conv2d</span><span class="p">,</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>            <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">:</span><span class="n">kernel_size</span><span class="p">}</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="p">)</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>        <span class="n">_relu</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>            <span class="n">operator</span><span class="o">=</span><span class="n">ReLU</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>        <span class="p">)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a>        <span class="n">_model_args</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a>            <span class="n">choices</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a>                <span class="c1"># The Sequential will either get a convolution followed by a ReLU</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a>                <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="n">_convolution</span><span class="p">),</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a>                 <span class="n">Resampled</span><span class="p">(</span><span class="n">_relu</span><span class="p">)),</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>
+<a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>                <span class="c1"># Or just a ReLU activation</span>
+<a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>                <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="n">_relu</span><span class="p">),)</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>            <span class="p">)</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>        <span class="p">)</span>
+<a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>
+<a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        <span class="c1"># Define a sequential operation, using the previously defined arguments</span>
+<a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        <span class="n">model</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
+<a id="__codelineno-5-29" name="__codelineno-5-29" href="#__codelineno-5-29"></a>            <span class="n">operator</span><span class="o">=</span><span class="n">Sequential</span><span class="p">,</span>
+<a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>            <span class="n">args</span><span class="o">=</span><span class="n">_model_args</span>
+<a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>        <span class="p">)</span>
+</code></pre></div>
+<details class="warning">
+<summary>Tuples as choice</summary>
+<p>When using a tuple as one of the choices in a <code>Categorical</code>, all choices must be tuples.</p>
 </details>
 <hr />
 <h2 id="inspecting-and-manipulating-configurations">Inspecting and Manipulating Configurations<a class="headerlink" href="#inspecting-and-manipulating-configurations" title="Permanent link">#</a></h2>
