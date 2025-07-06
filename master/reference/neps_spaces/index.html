@@ -630,62 +630,35 @@
         <li class="md-nav__item">
   <a href="#how-to-use-neps-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      How to use NePS-Spaces
+      How to use NePS Spaces
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Categorical" class="md-nav__link">
+  <a href="#defining-a-neps-space" class="md-nav__link">
     <span class="md-ellipsis">
-      Categorical
+      Defining a NePS Space
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Fidelity" class="md-nav__link">
-    <span class="md-ellipsis">
-      Fidelity
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Float" class="md-nav__link">
-    <span class="md-ellipsis">
-      Float
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Integer" class="md-nav__link">
-    <span class="md-ellipsis">
-      Integer
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#defining-a-jahs-search-space" class="md-nav__link">
-    <span class="md-ellipsis">
-      Defining a JAHS Search Space
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Defining a JAHS Search Space">
+    <nav class="md-nav" aria-label="Defining a NePS Space">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#example-simple-cnn-architecture-hyperparameters" class="md-nav__link">
+  <a href="#using-your-knowledge-providing-a-prior" class="md-nav__link">
     <span class="md-ellipsis">
-      Example: Simple CNN Architecture + Hyperparameters
+      Using your knowledge, providing a Prior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operations-and-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      Operations and Hierarchies
     </span>
   </a>
   
@@ -693,99 +666,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#domains-and-priors" class="md-nav__link">
-    <span class="md-ellipsis">
-      Domains and Priors
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#sampling-and-resolution" class="md-nav__link">
-    <span class="md-ellipsis">
-      Sampling and Resolution
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#available-algorithms" class="md-nav__link">
-    <span class="md-ellipsis">
-      Available Algorithms
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Available Algorithms">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#randomsearch" class="md-nav__link">
-    <span class="md-ellipsis">
-      RandomSearch
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#complexrandomsearch" class="md-nav__link">
-    <span class="md-ellipsis">
-      ComplexRandomSearch
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#priorband-multi-fidelity-prior" class="md-nav__link">
-    <span class="md-ellipsis">
-      PriorBand (Multi-Fidelity + Prior)
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="PriorBand (Multi-Fidelity + Prior)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#example-using-priorband" class="md-nav__link">
-    <span class="md-ellipsis">
-      Example: Using PriorBand
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#multi-fidelity-and-fidelity-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      Multi-Fidelity and Fidelity Parameters
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#advanced-sampling-mutation-crossover-and-priors" class="md-nav__link">
-    <span class="md-ellipsis">
-      Advanced Sampling: Mutation, Crossover, and Priors
-    </span>
-  </a>
   
 </li>
       
@@ -793,15 +673,6 @@
   <a href="#inspecting-and-manipulating-configurations" class="md-nav__link">
     <span class="md-ellipsis">
       Inspecting and Manipulating Configurations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#references" class="md-nav__link">
-    <span class="md-ellipsis">
-      References
     </span>
   </a>
   
@@ -3837,10 +3708,10 @@
 
 
 
-<h1 id="neps-spaces-joint-architecture-and-hyperparameter-search-jahs">NePS-Spaces: Joint Architecture and HyperParameter Search (JAHS)<a class="headerlink" href="#neps-spaces-joint-architecture-and-hyperparameter-search-jahs" title="Permanent link">#</a></h1>
-<p>NePS-Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).</p>
+<h1 id="neps-spaces-joint-architecture-and-hyperparameter-search-jahs">NePS Spaces: Joint Architecture and HyperParameter Search (JAHS)<a class="headerlink" href="#neps-spaces-joint-architecture-and-hyperparameter-search-jahs" title="Permanent link">#</a></h1>
+<p>NePS Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).</p>
 <hr />
-<h2 id="how-to-use-neps-spaces">How to use NePS-Spaces<a class="headerlink" href="#how-to-use-neps-spaces" title="Permanent link">#</a></h2>
+<h2 id="how-to-use-neps-spaces">How to use NePS Spaces<a class="headerlink" href="#how-to-use-neps-spaces" title="Permanent link">#</a></h2>
 <p>A <strong>NePS space</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space, including:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
@@ -3848,622 +3719,28 @@
 <li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
 <li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
-<details class="example">
-<summary>Quick Parameter Reference</summary>
-
-
-<div class="doc doc-object doc-module">
-
-
-
-
-    <div class="doc doc-contents first">
-
-        <p>This module defines various classes and protocols for representing and manipulating
-search spaces in NePS (Neural Parameter Search). It includes definitions for domains,
-pipelines, operations, and fidelity, as well as utilities for sampling and resolving
-search spaces.</p>
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.space.neps_spaces.parameters.Categorical" class="doc doc-heading">
-              <code class="highlight language-python"><span class="n">Categorical</span></code>
-
-<a href="#neps.space.neps_spaces.parameters.Categorical" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-
-        <p>A domain representing a categorical choice from a set of options.</p>
-
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>choices</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>A tuple of choices or a Domain of choices.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a> | <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>, ...] | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior_index</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The index of the prior choice in the choices tuple.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior_confidence</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The confidence level of the prior choice.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.space.neps_spaces.parameters.Fidelity" class="doc doc-heading">
-              <code class="highlight language-python"><span class="n">Fidelity</span></code>
-
-<a href="#neps.space.neps_spaces.parameters.Fidelity" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-
-        <p>A class representing a fidelity in a NePS space.</p>
-
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>domain</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The domain of the fidelity, which can be an Integer or Float domain.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            Integer (neps.space.neps_spaces.parameters.Integer)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer">Integer</a> | <a class="autorefs autorefs-internal" title="            Float (neps.space.neps_spaces.parameters.Float)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float">Float</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.space.neps_spaces.parameters.Float" class="doc doc-heading">
-              <code class="highlight language-python"><span class="n">Float</span></code>
-
-<a href="#neps.space.neps_spaces.parameters.Float" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-
-        <p>A domain representing a continuous range of floating-point values.</p>
-
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>min_value</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The minimum value of the domain.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>max_value</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The maximum value of the domain.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>log</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>Whether to sample values on a logarithmic scale.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code>False</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The prior value for the domain, if any.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior_confidence</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The confidence level of the prior value.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.space.neps_spaces.parameters.Integer" class="doc doc-heading">
-              <code class="highlight language-python"><span class="n">Integer</span></code>
-
-<a href="#neps.space.neps_spaces.parameters.Integer" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-
-
-        <p>A domain representing a range of integer values.</p>
-
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>min_value</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The minimum value of the domain.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>max_value</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The maximum value of the domain.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>log</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>Whether to sample values on a logarithmic scale.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code>False</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The prior value for the domain, if any.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>prior_confidence</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The confidence level of the prior value.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-
-
-
-  </div>
-
-    </div>
-
-</div></details>
-<p>Additionally, <strong>NePS spaces</strong> can define complex architectures using:</p>
+<p>Additionally, <strong>NePS spaces</strong> can describe complex (hierarchical) architectures using:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
 </ul>
 <hr />
-<h2 id="defining-a-jahs-search-space">Defining a JAHS Search Space<a class="headerlink" href="#defining-a-jahs-search-space" title="Permanent link">#</a></h2>
-<p>You define a JAHS space by composing <code>Pipeline</code>, <code>Operation</code>, and <code>Domain</code> objects. This allows you to jointly search over architectures and hyperparameters.</p>
-<h3 id="example-simple-cnn-architecture-hyperparameters">Example: Simple CNN Architecture + Hyperparameters<a class="headerlink" href="#example-simple-cnn-architecture-hyperparameters" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">Operation</span><span class="p">,</span> <span class="n">Float</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Categorical</span><span class="p">,</span> <span class="n">Fidelity</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># Define operations (e.g., convolution, pooling, activation)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">conv_op</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;conv&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">kernel_size</span><span class="o">=</span><span class="n">Categorical</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">]),</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">filters</span><span class="o">=</span><span class="n">Integer</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">activation</span><span class="o">=</span><span class="n">Categorical</span><span class="p">([</span><span class="s2">&quot;relu&quot;</span><span class="p">,</span> <span class="s2">&quot;tanh&quot;</span><span class="p">]),</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">pool_op</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;maxpool&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">pool_size</span><span class="o">=</span><span class="n">Categorical</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]),</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="p">)</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># Define the pipeline (architecture)</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">layers</span><span class="o">=</span><span class="p">[</span><span class="n">conv_op</span><span class="p">,</span> <span class="n">pool_op</span><span class="p">],</span>
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">learning_rate</span><span class="o">=</span><span class="n">Float</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">),</span>
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">optimizer</span><span class="o">=</span><span class="n">Categorical</span><span class="p">([</span><span class="s2">&quot;adam&quot;</span><span class="p">,</span> <span class="s2">&quot;sgd&quot;</span><span class="p">]),</span>
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="n">epochs</span><span class="o">=</span><span class="n">Fidelity</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>  <span class="c1"># Mark as fidelity for multi-fidelity</span>
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a><span class="p">)</span>
+<h2 id="defining-a-neps-space">Defining a NePS Space<a class="headerlink" href="#defining-a-neps-space" title="Permanent link">#</a></h2>
+<p>A NePS space is defined as a class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">pipeline_space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
 </code></pre></div>
-<p>You can nest operations, use lists for repeated blocks, and combine with standard hyperparameters.</p>
-<hr />
-<h2 id="domains-and-priors">Domains and Priors<a class="headerlink" href="#domains-and-priors" title="Permanent link">#</a></h2>
-<p>Each parameter is defined by a <code>Domain</code> object:
-- <code>Float</code>: Continuous range (optionally log-scale, with prior and confidence)
-- <code>Integer</code>: Discrete range (optionally log-scale, with prior and confidence)
-- <code>Categorical</code>: Discrete set of choices (with optional prior)</p>
-<p>You can specify a prior value and a confidence level (<code>low</code>, <code>medium</code>, <code>high</code>) to guide the optimizer.</p>
-<hr />
-<h2 id="sampling-and-resolution">Sampling and Resolution<a class="headerlink" href="#sampling-and-resolution" title="Permanent link">#</a></h2>
-<p>NePS-Spaces provides a flexible sampling and resolution system:
-- <strong>Random sampling</strong>: Uniformly samples from all domains
-- <strong>Prior-based sampling</strong>: Uses priors with a tunable probability
-- <strong>Mutation/crossover</strong>: For complex search strategies
-- <strong>Fidelity-aware sampling</strong>: For multi-fidelity optimization (e.g., Successive Halving, Hyperband)</p>
-<hr />
-<h2 id="available-algorithms">Available Algorithms<a class="headerlink" href="#available-algorithms" title="Permanent link">#</a></h2>
-<h3 id="randomsearch">RandomSearch<a class="headerlink" href="#randomsearch" title="Permanent link">#</a></h3>
-<p>Samples configurations randomly from the pipeline space.</p>
-<h3 id="complexrandomsearch">ComplexRandomSearch<a class="headerlink" href="#complexrandomsearch" title="Permanent link">#</a></h3>
-<p>Samples randomly, but also mutates and crosses over previous successful configurations.</p>
-<h3 id="priorband-multi-fidelity-prior">PriorBand (Multi-Fidelity + Prior)<a class="headerlink" href="#priorband-multi-fidelity-prior" title="Permanent link">#</a></h3>
-<p>Implements the PriorBand algorithm, which combines prior-based, incumbent, and random sampling in a multi-fidelity bracketed setting (e.g., Successive Halving, Hyperband, ASHA).</p>
-<h4 id="example-using-priorband">Example: Using PriorBand<a class="headerlink" href="#example-using-priorband" title="Permanent link">#</a></h4>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces.optimizers.bracket_optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">priorband</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">optimizer</span> <span class="o">=</span> <span class="n">priorband</span><span class="p">(</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">eta</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">sample_prior_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">base</span><span class="o">=</span><span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>  <span class="c1"># or &quot;successive_halving&quot;, &quot;asha&quot;, &quot;async_hb&quot;</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">)</span>
+<p>We can then define the hyperparameters that make up the space, like so:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;medium&quot;</span><span class="p">)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
-<hr />
-<h2 id="multi-fidelity-and-fidelity-parameters">Multi-Fidelity and Fidelity Parameters<a class="headerlink" href="#multi-fidelity-and-fidelity-parameters" title="Permanent link">#</a></h2>
-<p>To enable multi-fidelity optimization, mark a parameter as a <code>Fidelity</code>:
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces.parameters</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fidelity</span><span class="p">,</span> <span class="n">Integer</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="o">...</span><span class="p">,</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">epochs</span><span class="o">=</span><span class="n">Fidelity</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)),</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="p">)</span>
+<h3 id="using-your-knowledge-providing-a-prior">Using your knowledge, providing a Prior<a class="headerlink" href="#using-your-knowledge-providing-a-prior" title="Permanent link">#</a></h3>
+<p>You can provide <strong>your knowledge about where a good value for this parameter lies</strong> by indicating a <code>prior=</code>. You can also specify a <code>prior_confidence=</code> to indicate how strongly you want NePS to focus on these, one of either <code>"low"</code>, <code>"medium"</code>, or <code>"high"</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>    <span class="n">categorical_param</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">([</span><span class="s2">&quot;option1&quot;</span><span class="p">,</span> <span class="s2">&quot;option2&quot;</span><span class="p">,</span> <span class="s2">&quot;option3&quot;</span><span class="p">],</span> <span class="n">prior</span><span class="o">=</span><span class="s2">&quot;option2&quot;</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
-This allows algorithms like PriorBand to efficiently allocate resources.</p>
-<hr />
-<h2 id="advanced-sampling-mutation-crossover-and-priors">Advanced Sampling: Mutation, Crossover, and Priors<a class="headerlink" href="#advanced-sampling-mutation-crossover-and-priors" title="Permanent link">#</a></h2>
-<p>NePS-Spaces supports advanced sampling strategies:
-- <strong>MutateByForgettingSampler</strong>: Randomly forgets some choices to encourage exploration
-- <strong>CrossoverByMixingSampler</strong>: Mixes two configurations
-- <strong>PriorOrFallbackSampler</strong>: Uses prior with a given probability, otherwise falls back to another sampler</p>
-<p>These can be used to build custom optimizers or for research.</p>
+<h3 id="operations-and-hierarchies">Operations and Hierarchies<a class="headerlink" href="#operations-and-hierarchies" title="Permanent link">#</a></h3>
 <hr />
 <h2 id="inspecting-and-manipulating-configurations">Inspecting and Manipulating Configurations<a class="headerlink" href="#inspecting-and-manipulating-configurations" title="Permanent link">#</a></h2>
 <p>NePS-Spaces provides utilities for working with configuration strings, unwrapping/wrapping hierarchical configs, and pretty-printing architectures (see <code>config_string.py</code>).</p>
 <hr />
-<h2 id="references">References<a class="headerlink" href="#references" title="Permanent link">#</a></h2>
-<ul>
-<li>See the <code>neps.space.neps_spaces</code> package for all primitives and utilities</li>
-<li>See <code>neps.space.neps_spaces.optimizers</code> for available algorithms</li>
-<li>See the <a href="https://arxiv.org/abs/2206.08917">JAHS-Bench-201 paper</a> for background</li>
-</ul>
-<hr />
-<p>For more details, see the API docs and examples in the repository.</p>
-<hr />
-<h1 id="extended-examples">Extended Examples<a class="headerlink" href="#extended-examples" title="Permanent link">#</a></h1>
-<h2 id="example-activation-function-search-with-fixed-and-optimized-parameters">Example: Activation Function Search with Fixed and Optimized Parameters<a class="headerlink" href="#example-activation-function-search-with-fixed-and-optimized-parameters" title="Permanent link">#</a></h2>
-<p>From simple to complex, showing fixed values, optimized values, and resampling.</p>
-<p>```python
-from neps.space.neps_spaces.parameters import Pipeline, Operation, Float, Integer, Categorical, Resampled</p>
 
 
 
