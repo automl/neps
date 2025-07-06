@@ -688,26 +688,11 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#inspecting-and-manipulating-configurations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Inspecting and Manipulating Configurations
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Inspecting and Manipulating Configurations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
   <a href="#inspecting-configurations" class="md-nav__link">
     <span class="md-ellipsis">
-      Inspecting configurations
+      Inspecting Configurations
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -3845,10 +3830,8 @@
 <li><a class="autorefs autorefs-internal" title="            neps_priorband" href="../../api/neps/optimizers/neps_algorithms/#neps.optimizers.neps_algorithms.neps_priorband"><code>PriorBand</code></a>, which uses <a href="../search_algorithms/multifidelity/">multi-fidelity</a> and the prior knowledge encoded in the NePS space</li>
 </ul>
 </div>
-<h2 id="inspecting-and-manipulating-configurations">Inspecting and Manipulating Configurations<a class="headerlink" href="#inspecting-and-manipulating-configurations" title="Permanent link">#</a></h2>
-<p>NePS saves the configurations as paths, where each sampling decision is recorded. This makes them hard to read, so NePS-Spaces provides utilities for working with configuration strings.</p>
-<h3 id="inspecting-configurations">Inspecting configurations<a class="headerlink" href="#inspecting-configurations" title="Permanent link">#</a></h3>
-<p>You can load the configuration from the <code>results</code> directory using the <a class="autorefs autorefs-internal" title="            NepsCompatConverter" href="../../api/neps/space/neps_spaces/neps_space/#neps.space.neps_spaces.neps_space.NepsCompatConverter"><code>NepsCompatConverter</code></a> class, which converts the configuration such that it can be used with the NePS Spaces API:</p>
+<h2 id="inspecting-configurations">Inspecting Configurations<a class="headerlink" href="#inspecting-configurations" title="Permanent link">#</a></h2>
+<p>NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration from the <code>results</code> directory using the <a class="autorefs autorefs-internal" title="            NepsCompatConverter" href="../../api/neps/space/neps_spaces/neps_space/#neps.space.neps_spaces.neps_space.NepsCompatConverter"><code>NepsCompatConverter</code></a> class, which converts the configuration such that it can be used with the NePS Spaces API:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">neps_space</span>
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
@@ -3856,15 +3839,16 @@
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">conf_dict</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 <a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">resolution_context</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">conf_dict</span><span class="p">)</span>
 <a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
-<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1"># Use the resolution context to &quot;resample&quot; the configuration using a Sampler that follows the instructions in the configuration</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1"># Use the resolution context to sample the configuration using a Sampler that follows the instructions in the configuration</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pipeline</span><span class="o">=</span><span class="n">NN_Space</span><span class="p">(),</span>
-<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">),</span>
-<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">environment_values</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">environment_values</span><span class="p">)</span>
-<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>
-<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="c1"># The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model</span>
-<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">model_callable</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="n">resolved_pipeline</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="c1"># Predefined samplings are the decisions made at each sampling step</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">),</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="c1"># Environment values are the fidelities and arguments of the evaluation function that are not part of the search space</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>    <span class="n">environment_values</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">environment_values</span><span class="p">)</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="c1"># The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model</span>
+<a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a><span class="n">model_callable</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="n">resolved_pipeline</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
 </code></pre></div>
-<hr />
 
 
 
