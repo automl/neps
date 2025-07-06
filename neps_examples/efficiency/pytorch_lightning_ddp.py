@@ -100,5 +100,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/pytorch_lightning_ddp",
-    evaluations_to_spend=5
+    fidelities_to_spend=5
     )

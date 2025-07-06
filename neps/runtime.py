@@ -340,10 +340,11 @@ class DefaultWorker:
                 )
             
         if self.settings.fidelities_to_spend is not None:
+            fidelity_name = list(self.optimizer.space.fidelities.keys())[0]
             count = sum(
-                trial.report.cost
+                trial.config[fidelity_name]
                 for _, trial in trials.items()
-                if trial.report is not None and trial.report.cost is not None
+                if trial.report is not None and trial.config[fidelity_name] is not None
             )
             if count >= self.settings.fidelities_to_spend:
                 return (

@@ -212,5 +212,5 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         root_directory="results/pytorch_fsdp",
-        evaluations_to_spend=20
+        fidelities_to_spend=20
         )
