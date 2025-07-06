@@ -32,7 +32,14 @@ class Resolvable(Protocol):
         raise NotImplementedError()
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
-        """Create a new resolvable object from the given attributes."""
+        """Create a new resolvable object from the given attributes.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new resolvable object with the specified attributes.
+        """
         raise NotImplementedError()
 
 
@@ -40,6 +47,12 @@ def resolvable_is_fully_resolved(resolvable: Resolvable) -> bool:
     """Check if a resolvable object is fully resolved.
     A resolvable object is considered fully resolved if all its attributes are either
     not instances of Resolvable or are themselves fully resolved.
+
+    Args:
+      resolvable: Resolvable:
+
+    Returns:
+        bool: True if the resolvable object is fully resolved, False otherwise.
     """
     attr_objects = resolvable.get_attrs().values()
     return all(
@@ -50,18 +63,17 @@ def resolvable_is_fully_resolved(resolvable: Resolvable) -> bool:
 
 class Fidelity(Resolvable, Generic[T]):
     """A class representing a fidelity in a NePS space.
-    It encapsulates a domain that defines the range of values for the fidelity.
-    :param domain: The domain of the fidelity, which can be an Integer or Float domain.
-    :raises ValueError: If the domain has a prior defined, as fidelity domains should not
-    have priors.
+
+    Attributes:
+        domain: The domain of the fidelity, which can be an Integer or Float domain.
     """
 
     def __init__(self, domain: Integer | Float):
         """Initialize the Fidelity with a domain.
-        :param domain: The domain of the fidelity, which can be an Integer or Float
-        domain.
-        :raises ValueError: If the domain has a prior defined, as fidelity domains should
-        not have priors.
+
+        Args:
+            domain: The domain of the fidelity, which can be an Integer or Float domain.
+
         """
         if domain.has_prior:
             raise ValueError(f"The domain of a Fidelity can not have priors: {domain!r}.")
@@ -70,14 +82,19 @@ class Fidelity(Resolvable, Generic[T]):
     @property
     def min_value(self) -> int | float:
         """Get the minimum value of the fidelity domain.
-        :return: The minimum value of the fidelity domain.
+
+        Returns:
+            The minimum value of the fidelity domain.
+
         """
         return self._domain.min_value
 
     @property
     def max_value(self) -> int | float:
         """Get the maximum value of the fidelity domain.
-        :return: The maximum value of the fidelity domain.
+
+        Returns:
+            The maximum value of the fidelity domain.
         """
         return self._domain.max_value
 
@@ -85,31 +102,42 @@ class Fidelity(Resolvable, Generic[T]):
         """Get the attributes of the fidelity as a mapping.
         This method collects all attributes of the fidelity class and instance,
         excluding private attributes and methods, and returns them as a dictionary.
-        :return: A mapping of attribute names to their values.
-        :raises ValueError: If the fidelity has no domain defined.
+
+        Returns:
+          A mapping of attribute names to their values.
+
+        Raises:
+          ValueError: If the fidelity has no domain defined.
+
         """
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Fidelity:  # noqa: ARG002
         """Create a new Fidelity instance from the given attributes.
-        :param attrs: A mapping of attribute names to their values.
-        :return: A new Fidelity instance with the specified attributes.
-        :raises ValueError: If the fidelity has no domain defined.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new Fidelity instance with the specified attributes.
+
+        Raises:
+            ValueError: If the fidelity has no domain defined.
+
         """
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
 
 class Pipeline(Resolvable):
-    """A class representing a pipeline in NePS spaces.
-    It contains attributes that can be resolved into a configuration string,
-    and it can be used to sample configurations based on defined domains.
-    """
+    """A class representing a pipeline in NePS spaces."""
 
     @property
     def fidelity_attrs(self) -> Mapping[str, Fidelity]:
         """Get the fidelity attributes of the pipeline. Fidelity attributes are special
         attributes that represent the fidelity of the pipeline.
-        :return: A mapping of fidelity attribute names to Fidelity objects.
+
+        Returns:
+            A mapping of attribute names to Fidelity objects.
         """
         return {k: v for k, v in self.get_attrs().items() if isinstance(v, Fidelity)}
 
@@ -117,7 +145,9 @@ class Pipeline(Resolvable):
         """Get the attributes of the pipeline as a mapping.
         This method collects all attributes of the pipeline class and instance,
         excluding private attributes and methods, and returns them as a dictionary.
-        :return: A mapping of attribute names to their values.
+
+        Returns:
+            A mapping of attribute names to their values.
         """
         attrs = {}
 
@@ -139,10 +169,16 @@ class Pipeline(Resolvable):
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Pipeline:
         """Create a new Pipeline instance from the given attributes.
-        :param attrs: A mapping of attribute names to their values.
-        :return: A new Pipeline instance with the specified attributes.
-        :raises ValueError: If the attributes do not match the pipeline's expected
-        structure.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+
+        Returns:
+            A new Pipeline instance with the specified attributes.
+
+        Raises:
+            ValueError: If the attributes do not match the pipeline's expected structure.
         """
         new_pipeline = Pipeline()
         for name, value in attrs.items():
@@ -159,10 +195,7 @@ class ConfidenceLevel(enum.Enum):
 
 
 class Domain(Resolvable, abc.ABC, Generic[T]):
-    """An abstract base class representing a domain in NePS spaces.
-    It defines the properties and methods that all domains must implement,
-    such as min and max values, sampling, and centered domains.
-    """
+    """An abstract base class representing a domain in NePS spaces."""
 
     @property
     @abc.abstractmethod
@@ -187,6 +220,7 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
     def prior(self) -> T:
         """Get the prior value of the domain.
         Raises ValueError if the domain has no prior defined.
+
         """
         raise NotImplementedError()
 
@@ -195,6 +229,7 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
     def prior_confidence(self) -> ConfidenceLevel:
         """Get the confidence level of the prior.
         Raises ValueError if the domain has no prior defined.
+
         """
         raise NotImplementedError()
 
@@ -204,6 +239,7 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
         """Get a string identifier for the range compatibility of the domain.
         This identifier is used to check if two domains are compatible based on their
         ranges.
+
         """
         raise NotImplementedError()
 
@@ -211,6 +247,7 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
     def sample(self) -> T:
         """Sample a value from the domain.
         Returns a value of type T that is within the domain's range.
+
         """
         raise NotImplementedError()
 
@@ -222,10 +259,19 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
     ) -> Domain[T]:
         """Create a new domain centered around a given value with a specified confidence
         level.
-        :param center: The value around which to center the new domain.
-        :param confidence: The confidence level for the new domain.
-        :return: A new Domain instance that is centered around the specified value.
-        :raises ValueError: If the center value is not within the domain's range.
+
+        Args:
+          center: The value around which to center the new domain.
+          confidence: The confidence level for the new domain.
+          center: T:
+          confidence: ConfidenceLevel:
+
+        Returns:
+          A new Domain instance that is centered around the specified value.
+
+        Raises:
+          ValueError: If the center value is not within the domain's range.
+
         """
         raise NotImplementedError()
 
@@ -233,16 +279,24 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
         """Get the attributes of the domain as a mapping.
         This method collects all attributes of the domain class and instance,
         excluding private attributes and methods, and returns them as a dictionary.
-        :return: A mapping of attribute names to their values.
+
+        Returns:
+            A mapping of attribute names to their values.
         """
         return {k.lstrip("_"): v for k, v in vars(self).items()}
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Domain[T]:
         """Create a new Domain instance from the given attributes.
-        :param attrs: A mapping of attribute names to their values.
-        :return: A new Domain instance with the specified attributes.
-        :raises ValueError: If the attributes do not match the domain's expected
-        structure.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new Domain instance with the specified attributes.
+
+        Raises:
+            ValueError: If the attributes do not match the domain's expected structure.
+
         """
         return type(self)(**attrs)
 
@@ -254,6 +308,25 @@ def _calculate_new_domain_bounds(
     center: int | float,
     confidence: ConfidenceLevel,
 ) -> tuple[int, int] | tuple[float, float]:
+    """Calculate new bounds for a domain based on a center value and confidence level.
+    This function determines the new minimum and maximum values for a domain based on
+    a given center value and a confidence level. It splits the domain range into chunks
+    and adjusts the bounds based on the specified confidence level.
+
+    Args:
+        number_type: The type of numbers in the domain (int or float).
+        min_value: The minimum value of the domain.
+        max_value: The maximum value of the domain.
+        center: The center value around which to calculate the new bounds.
+        confidence: The confidence level for the new bounds.
+
+    Returns:
+        A tuple containing the new minimum and maximum values for the domain.
+
+    Raises:
+        ValueError: If the center value is not within the domain's range or if the
+        number_type is not supported.
+    """
     if center < min_value or center > max_value:
         raise ValueError(
             f"Center value {center!r} must be within domain range [{min_value!r},"
@@ -294,11 +367,11 @@ def _calculate_new_domain_bounds(
 
 class Categorical(Domain[int], Generic[T]):
     """A domain representing a categorical choice from a set of options.
-    It allows for sampling from a predefined set of choices and can be centered around
-    a specific choice with a given confidence level.
-    :param choices: A tuple of choices or a Domain of choices.
-    :param prior_index: The index of the prior choice in the choices tuple.
-    :param prior_confidence: The confidence level of the prior choice.
+
+    Attributes:
+        choices: A tuple of choices or a Domain of choices.
+        prior_index: The index of the prior choice in the choices tuple.
+        prior_confidence: The confidence level of the prior choice.
     """
 
     def __init__(
@@ -308,10 +381,12 @@ class Categorical(Domain[int], Generic[T]):
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
         """Initialize the Categorical domain with choices and optional prior.
-        :param choices: A tuple of choices or a Domain of choices.
-        :param prior_index: The index of the prior choice in the choices tuple.
-        :param prior_confidence: The confidence level of the prior choice.
-        :raises ValueError: If the choices are empty or prior_index is out of bounds.
+
+        Args:
+            choices: A tuple of choices or a Domain of choices.
+            prior_index: The index of the prior choice in the choices tuple.
+            prior_confidence: The confidence level of the prior choice.
+
         """
         self._choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T]
         if isinstance(choices, Sequence):
@@ -324,36 +399,53 @@ class Categorical(Domain[int], Generic[T]):
     @property
     def min_value(self) -> int:
         """Get the minimum value of the categorical domain.
-        :return: The minimum index of the choices, which is always 0.
+
+        Returns:
+            The minimum index of the choices, which is always 0.
+
         """
         return 0
 
     @property
     def max_value(self) -> int:
         """Get the maximum value of the categorical domain.
-        :return: The maximum index of the choices, which is the length of choices minus 1.
+
+        Returns:
+            The maximum index of the choices, which is the length of the choices tuple
+            minus one.
+
         """
         return max(len(cast(tuple, self._choices)) - 1, 0)
 
     @property
     def choices(self) -> tuple[T | Domain[T] | Resolvable, ...] | Domain[T]:
         """Get the choices available in the categorical domain.
-        :return: A tuple of choices or a Domain of choices.
+
+        Returns:
+            A tuple of choices or a Domain of choices.
+
         """
         return self._choices
 
     @property
     def has_prior(self) -> bool:
         """Check if the categorical domain has a prior defined.
-        :return: True if the prior index and confidence are set, False otherwise.
+
+        Returns:
+            True if the prior index and prior confidence are set, False otherwise.
         """
         return self._prior_index is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> int:
         """Get the prior index of the categorical domain.
-        :return: The index of the prior choice in the choices tuple.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The index of the prior choice in the choices tuple.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -362,8 +454,13 @@ class Categorical(Domain[int], Generic[T]):
     @property
     def prior_confidence(self) -> ConfidenceLevel:
         """Get the confidence level of the prior choice.
-        :return: The confidence level of the prior choice.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The confidence level of the prior choice.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -372,14 +469,22 @@ class Categorical(Domain[int], Generic[T]):
     @property
     def range_compatibility_identifier(self) -> str:
         """Get a string identifier for the range compatibility of the categorical domain.
-        :return: A string representation of the number of choices in the domain.
+
+        Returns:
+            A string representation of the number of choices in the domain.
+
         """
         return f"{len(cast(tuple, self._choices))}"
 
     def sample(self) -> int:
         """Sample a random index from the categorical choices.
-        :return: A randomly selected index from the choices tuple.
-        :raises ValueError: If the choices are empty.
+
+        Returns:
+          A randomly selected index from the choices tuple.
+
+        Raises:
+          ValueError: If the choices are empty.
+
         """
         return int(random.randint(0, len(cast(tuple[T], self._choices)) - 1))
 
@@ -389,11 +494,20 @@ class Categorical(Domain[int], Generic[T]):
         confidence: ConfidenceLevel,
     ) -> Categorical:
         """Create a new categorical domain centered around a specific choice index.
-        :param center: The index of the choice around which to center the new domain.
-        :param confidence: The confidence level for the new domain.
-        :return: A new Categorical instance with a range centered around the specified
-        choice index.
-        :raises ValueError: If the center index is out of bounds of the choices.
+
+        Args:
+          center: The index of the choice around which to center the new domain.
+          confidence: The confidence level for the new domain.
+          center: int:
+          confidence: ConfidenceLevel:
+
+        Returns:
+          A new Categorical instance with a range centered around the specified
+          choice index.
+
+        Raises:
+          ValueError: If the center index is out of bounds of the choices.
+
         """
         new_min, new_max = cast(
             tuple[int, int],
@@ -415,13 +529,13 @@ class Categorical(Domain[int], Generic[T]):
 
 class Float(Domain[float]):
     """A domain representing a continuous range of floating-point values.
-    It allows for sampling from a range defined by minimum and maximum values,
-    and can be centered around a specific value with a given confidence level.
-    :param min_value: The minimum value of the domain.
-    :param max_value: The maximum value of the domain.
-    :param log: Whether to sample values on a logarithmic scale.
-    :param prior: The prior value for the domain, if any.
-    :param prior_confidence: The confidence level of the prior value.
+
+    Attributes:
+        min_value: The minimum value of the domain.
+        max_value: The maximum value of the domain.
+        log: Whether to sample values on a logarithmic scale.
+        prior: The prior value for the domain, if any.
+        prior_confidence: The confidence level of the prior value.
     """
 
     def __init__(
@@ -433,12 +547,14 @@ class Float(Domain[float]):
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
         """Initialize the Float domain with min and max values, and optional prior.
-        :param min_value: The minimum value of the domain.
-        :param max_value: The maximum value of the domain.
-        :param log: Whether to sample values on a logarithmic scale.
-        :param prior: The prior value for the domain, if any.
-        :param prior_confidence: The confidence level of the prior value.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Args:
+            min_value: The minimum value of the domain.
+            max_value: The maximum value of the domain.
+            log: Whether to sample values on a logarithmic scale.
+            prior: The prior value for the domain, if any.
+            prior_confidence: The confidence level of the prior value.
+
         """
         self._min_value = min_value
         self._max_value = max_value
@@ -449,31 +565,49 @@ class Float(Domain[float]):
     @property
     def min_value(self) -> float:
         """Get the minimum value of the floating-point domain.
-        :return: The minimum value of the domain.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Returns:
+          The minimum value of the domain.
+
+        Raises:
+          ValueError: If min_value is greater than max_value.
+
         """
         return self._min_value
 
     @property
     def max_value(self) -> float:
         """Get the maximum value of the floating-point domain.
-        :return: The maximum value of the domain.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Returns:
+          The maximum value of the domain.
+
+        Raises:
+          ValueError: If min_value is greater than max_value.
+
         """
         return self._max_value
 
     @property
     def has_prior(self) -> bool:
         """Check if the floating-point domain has a prior defined.
-        :return: True if the prior and prior confidence are set, False otherwise.
+
+        Returns:
+            True if the prior and prior confidence are set, False otherwise.
+
         """
         return self._prior is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> float:
         """Get the prior value of the floating-point domain.
-        :return: The prior value of the domain.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The prior value of the domain.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -482,8 +616,13 @@ class Float(Domain[float]):
     @property
     def prior_confidence(self) -> ConfidenceLevel:
         """Get the confidence level of the prior value.
-        :return: The confidence level of the prior value.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The confidence level of the prior value.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -493,15 +632,23 @@ class Float(Domain[float]):
     def range_compatibility_identifier(self) -> str:
         """Get a string identifier for the range compatibility of the floating-point
         domain.
-        :return: A string representation of the minimum and maximum values, and whether
-        the domain is logarithmic.
+
+        Returns:
+            A string representation of the minimum and maximum values, and whether
+            the domain is logarithmic.
+
         """
         return f"{self._min_value}_{self._max_value}_{self._log}"
 
     def sample(self) -> float:
         """Sample a random floating-point value from the domain.
-        :return: A randomly selected floating-point value within the domain's range.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Returns:
+          A randomly selected floating-point value within the domain's range.
+
+        Raises:
+          ValueError: If min_value is greater than max_value.
+
         """
         if self._log:
             log_min = math.log(self._min_value)
@@ -515,10 +662,19 @@ class Float(Domain[float]):
         confidence: ConfidenceLevel,
     ) -> Float:
         """Create a new floating-point domain centered around a specific value.
-        :param center: The value around which to center the new domain.
-        :param confidence: The confidence level for the new domain.
-        :return: A new Float instance that is centered around the specified value.
-        :raises ValueError: If the center value is not within the domain's range.
+
+        Args:
+            center: The value around which to center the new domain.
+            confidence: The confidence level for the new domain.
+            center: float:
+            confidence: ConfidenceLevel:
+
+        Returns:
+            A new Float instance that is centered around the specified value.
+
+        Raises:
+            ValueError: If the center value is not within the domain's range.
+
         """
         new_min, new_max = _calculate_new_domain_bounds(
             number_type=float,
@@ -538,13 +694,13 @@ class Float(Domain[float]):
 
 class Integer(Domain[int]):
     """A domain representing a range of integer values.
-    It allows for sampling from a range defined by minimum and maximum values,
-    and can be centered around a specific value with a given confidence level.
-    :param min_value: The minimum value of the domain.
-    :param max_value: The maximum value of the domain.
-    :param log: Whether to sample values on a logarithmic scale.
-    :param prior: The prior value for the domain, if any.
-    :param prior_confidence: The confidence level of the prior value.
+
+    Attributes:
+        min_value: The minimum value of the domain.
+        max_value: The maximum value of the domain.
+        log: Whether to sample values on a logarithmic scale.
+        prior: The prior value for the domain, if any.
+        prior_confidence: The confidence level of the prior value.
     """
 
     def __init__(
@@ -556,12 +712,13 @@ class Integer(Domain[int]):
         prior_confidence: ConfidenceLevel | _Unset = _UNSET,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
-        :param min_value: The minimum value of the domain.
-        :param max_value: The maximum value of the domain.
-        :param log: Whether to sample values on a logarithmic scale.
-        :param prior: The prior value for the domain, if any.
-        :param prior_confidence: The confidence level of the prior value.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Args:
+            min_value: The minimum value of the domain.
+            max_value: The maximum value of the domain.
+            log: Whether to sample values on a logarithmic scale.
+            prior: The prior value for the domain, if any.
+            prior_confidence: The confidence level of the prior value.
         """
         self._min_value = min_value
         self._max_value = max_value
@@ -572,31 +729,49 @@ class Integer(Domain[int]):
     @property
     def min_value(self) -> int:
         """Get the minimum value of the integer domain.
-        :return: The minimum value of the domain.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Returns:
+          The minimum value of the domain.
+
+        Raises:
+          ValueError: If min_value is greater than max_value.
+
         """
         return self._min_value
 
     @property
     def max_value(self) -> int:
         """Get the maximum value of the integer domain.
-        :return: The maximum value of the domain.
-        :raises ValueError: If min_value is greater than max_value.
+
+        Returns:
+          The maximum value of the domain.
+
+        Raises:
+          ValueError: If min_value is greater than max_value.
+
         """
         return self._max_value
 
     @property
     def has_prior(self) -> bool:
         """Check if the integer domain has a prior defined.
-        :return: True if the prior and prior confidence are set, False otherwise.
+
+        Returns:
+            True if the prior and prior confidence are set, False otherwise.
+
         """
         return self._prior is not _UNSET and self._prior_confidence is not _UNSET
 
     @property
     def prior(self) -> int:
         """Get the prior value of the integer domain.
-        :return: The prior value of the domain.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The prior value of the domain.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -605,8 +780,13 @@ class Integer(Domain[int]):
     @property
     def prior_confidence(self) -> ConfidenceLevel:
         """Get the confidence level of the prior value.
-        :return: The confidence level of the prior value.
-        :raises ValueError: If the domain has no prior defined.
+
+        Returns:
+          The confidence level of the prior value.
+
+        Raises:
+          ValueError: If the domain has no prior defined.
+
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior defined.")
@@ -615,16 +795,24 @@ class Integer(Domain[int]):
     @property
     def range_compatibility_identifier(self) -> str:
         """Get a string identifier for the range compatibility of the integer domain.
-        :return: A string representation of the minimum and maximum values, and whether
-        the domain is logarithmic.
+
+        Returns:
+            A string representation of the minimum and maximum values, and whether
+            the domain is logarithmic.
+
         """
         return f"{self._min_value}_{self._max_value}_{self._log}"
 
     def sample(self) -> int:
         """Sample a random integer value from the domain.
-        :return: A randomly selected integer value within the domain's range.
-        :raises NotImplementedError: If the domain is set to sample on a logarithmic
-        scale, as this is not implemented yet.
+
+        Returns:
+            A randomly selected integer value within the domain's range.
+
+        Raises:
+            NotImplementedError: If the domain is set to sample on a logarithmic
+            scale, as this is not implemented yet.
+
         """
         if self._log:
             raise NotImplementedError("TODO.")
@@ -636,10 +824,19 @@ class Integer(Domain[int]):
         confidence: ConfidenceLevel,
     ) -> Integer:
         """Create a new integer domain centered around a specific value.
-        :param center: The value around which to center the new domain.
-        :param confidence: The confidence level for the new domain.
-        :return: A new Integer instance that is centered around the specified value.
-        :raises ValueError: If the center value is not within the domain's range.
+
+        Args:
+            center: The value around which to center the new domain.
+            confidence: The confidence level for the new domain.
+            center: int:
+            confidence: ConfidenceLevel:
+
+        Returns:
+            A new Integer instance that is centered around the specified value.
+
+        Raises:
+            ValueError: If the center value is not within the domain's range.
+
         """
         new_min, new_max = cast(
             tuple[int, int],
@@ -662,13 +859,11 @@ class Integer(Domain[int]):
 
 class Operation(Resolvable):
     """A class representing an operation in a NePS space.
-    It encapsulates an operator (a callable or a string), arguments, and keyword
-    arguments.
-    The operator can be a function or a string representing a function name.
-    :param operator: The operator to be used in the operation, can be a callable or a
-    string.
-    :param args: A sequence of arguments to be passed to the operator.
-    :param kwargs: A mapping of keyword arguments to be passed to the operator.
+
+    Attributes:
+        operator: The operator to be used in the operation, can be a callable or a string.
+        args: A sequence of arguments to be passed to the operator.
+        kwargs: A mapping of keyword arguments to be passed to the operator.
     """
 
     def __init__(
@@ -678,11 +873,13 @@ class Operation(Resolvable):
         kwargs: Mapping[str, Any] | Resolvable | None = None,
     ):
         """Initialize the Operation with an operator, arguments, and keyword arguments.
-        :param operator: The operator to be used in the operation, can be a callable or a
-        string.
-        :param args: A sequence of arguments to be passed to the operator.
-        :param kwargs: A mapping of keyword arguments to be passed to the operator.
-        :raises ValueError: If the operator is not callable or a string.
+
+        Args:
+            operator: The operator to be used in the operation, can be a callable or a
+            string.
+            args: A sequence of arguments to be passed to the operator.
+            kwargs: A mapping of keyword arguments to be passed to the operator.
+
         """
         self._operator = operator
 
@@ -701,24 +898,39 @@ class Operation(Resolvable):
     @property
     def operator(self) -> Callable | str:
         """Get the operator of the operation.
-        :return: The operator, which can be a callable or a string.
-        :raises ValueError: If the operator is not callable or a string.
+
+        Returns:
+            The operator, which can be a callable or a string.
+
+        Raises:
+            ValueError: If the operator is not callable or a string.
+
         """
         return self._operator
 
     @property
     def args(self) -> tuple[Any, ...]:
         """Get the arguments of the operation.
-        :return: A tuple of arguments to be passed to the operator.
-        :raises ValueError: If the args are not a tuple or Resolvable.
+
+        Returns:
+            A tuple of arguments to be passed to the operator.
+
+        Raises:
+            ValueError: If the args are not a tuple or Resolvable.
+
         """
         return cast(tuple[Any, ...], self._args)
 
     @property
     def kwargs(self) -> Mapping[str, Any]:
         """Get the keyword arguments of the operation.
-        :return: A mapping of keyword arguments to be passed to the operator.
-        :raises ValueError: If the kwargs are not a mapping or Resolvable.
+
+        Returns:
+            A mapping of keyword arguments to be passed to the operator.
+
+        Raises:
+            ValueError: If the kwargs are not a mapping or Resolvable.
+
         """
         return cast(Mapping[str, Any], self._kwargs)
 
@@ -726,7 +938,10 @@ class Operation(Resolvable):
         """Get the attributes of the operation as a mapping.
         This method collects all attributes of the operation class and instance,
         excluding private attributes and methods, and returns them as a dictionary.
-        :return: A mapping of attribute names to their values.
+
+        Returns:
+            A mapping of attribute names to their values.
+
         """
         # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         result: dict[str, Any] = {}
@@ -745,10 +960,16 @@ class Operation(Resolvable):
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Operation:
         """Create a new Operation instance from the given attributes.
-        :param attrs: A mapping of attribute names to their values.
-        :return: A new Operation instance with the specified attributes.
-        :raises ValueError: If the attributes do not match the operation's expected
-        structure.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new Operation instance with the specified attributes.
+
+        Raises:
+            ValueError: If the attributes do not match the operation's expected structure.
+
         """
         # TODO: [lum] simplify this. We know the fields. Maybe other places too.
         final_attrs: dict[str, Any] = {}
@@ -768,37 +989,50 @@ class Operation(Resolvable):
 
 class Resampled(Resolvable):
     """A class representing a resampling operation in a NePS space.
-    It can either be a resolvable object or a string representing a resampling by name.
-    :param source: The source of the resampling, can be a resolvable object or a string.
+
+    Attributes:
+        source: The source of the resampling, which can be a resolvable object or a
+        string.
     """
 
     def __init__(self, source: Resolvable | str):
         """Initialize the Resampled object with a source.
-        :param source: The source of the resampling, which can be a resolvable object or
-        a string.
-        :raises ValueError: If the source is not a resolvable object or a string.
+
+        Args:
+            source: The source of the resampling, can be a resolvable object or a string.
         """
         self._source = source
 
     @property
     def source(self) -> Resolvable | str:
         """Get the source of the resampling.
-        :return: The source of the resampling, which can be a resolvable object or a
-        string.
+
+        Returns:
+            The source of the resampling, which can be a resolvable object or a string
+
         """
         return self._source
 
     @property
     def is_resampling_by_name(self) -> bool:
         """Check if the resampling is by name.
-        :return: True if the source is a string, False otherwise.
+
+        Returns:
+            True if the source is a string, indicating a resampling by name,
+            False if the source is a resolvable object.
+
         """
         return isinstance(self._source, str)
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the resampling source as a mapping.
-        :return: A mapping of attribute names to their values.
-        :raises ValueError: If the resampling is by name or the source is not resolvable.
+
+        Returns:
+          A mapping of attribute names to their values.
+
+        Raises:
+          ValueError: If the resampling is by name or the source is not resolvable.
+
         """
         if self.is_resampling_by_name:
             raise ValueError(
@@ -812,9 +1046,16 @@ class Resampled(Resolvable):
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
         """Create a new resolvable object from the given attributes.
-        :param attrs: A mapping of attribute names to their values.
-        :return: A new resolvable object created from the specified attributes.
-        :raises ValueError: If the resampling is by name or the source is not resolvable.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new resolvable object created from the specified attributes.
+
+        Raises:
+            ValueError: If the resampling is by name or the source is not resolvable.
+
         """
         if self.is_resampling_by_name:
             raise ValueError(
