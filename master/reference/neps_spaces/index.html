@@ -3733,7 +3733,7 @@
 <li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
 </ul>
 <h3 id="simple-spaces">Simple spaces<a class="headerlink" href="#simple-spaces" title="Permanent link">#</a></h3>
-<p>A NePS space is defined as a child class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
+<p>A <strong>NePS space</strong> is defined as a child class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">pipeline_space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
 </code></pre></div>
 <p>We can then define the hyperparameters that make up the space, like so:</p>
@@ -3791,8 +3791,8 @@
 <a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a>        <span class="p">)</span>
 <a id="__codelineno-5-22" name="__codelineno-5-22" href="#__codelineno-5-22"></a>    <span class="p">)</span>
 <a id="__codelineno-5-23" name="__codelineno-5-23" href="#__codelineno-5-23"></a>
-<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    <span class="c1"># Define a sequential operation, using the previously defined arguments</span>
-<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    <span class="c1"># This is the only parameter that will be passed to the evaluate_pipeline function</span>
+<a id="__codelineno-5-24" name="__codelineno-5-24" href="#__codelineno-5-24"></a>    <span class="c1"># Define a sequential operation, using the previously defined _model_args</span>
+<a id="__codelineno-5-25" name="__codelineno-5-25" href="#__codelineno-5-25"></a>    <span class="c1"># This model will be the only parameter passed to the evaluate_pipeline function</span>
 <a id="__codelineno-5-26" name="__codelineno-5-26" href="#__codelineno-5-26"></a>    <span class="n">model</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span>
 <a id="__codelineno-5-27" name="__codelineno-5-27" href="#__codelineno-5-27"></a>        <span class="n">operator</span><span class="o">=</span><span class="n">Sequential</span><span class="p">,</span>
 <a id="__codelineno-5-28" name="__codelineno-5-28" href="#__codelineno-5-28"></a>        <span class="n">args</span><span class="o">=</span><span class="n">_model_args</span>
