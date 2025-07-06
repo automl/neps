@@ -3743,11 +3743,14 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than float_param</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">float_param_2</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="c1"># When referencing another parameter that is not yet defined, or</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="c1"># itself, use a string of the parameter name</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">cat_param_3</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;cat_param_3&quot;</span><span class="p">),</span> <span class="p">))</span>
 </code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Self-Reference</p>
+<p>When referencing another parameter that is not yet defined, or
+itself, use a string of the parameter name
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">cat_param_3</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;cat_param_3&quot;</span><span class="p">),</span> <span class="p">))</span>
+</code></pre></div></p>
+</div>
 <hr />
 <h2 id="inspecting-and-manipulating-configurations">Inspecting and Manipulating Configurations<a class="headerlink" href="#inspecting-and-manipulating-configurations" title="Permanent link">#</a></h2>
 <p>NePS-Spaces provides utilities for working with configuration strings, unwrapping/wrapping hierarchical configs, and pretty-printing architectures (see <code>config_string.py</code>).</p>
