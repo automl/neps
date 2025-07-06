@@ -2,21 +2,21 @@
 
 NePS Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).
 
-## How to use NePS Spaces
+## Constructing NePS Spaces
 
-**NePS spaces** include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:
+**NePS spaces** include all the necessary components to define a [Hyperparameter Optimization (HPO) search space](#hpo-search-spaces) like:
 
 - [`Integer`][neps.space.neps_spaces.parameters.Integer]: Discrete integer values
 - [`Float`][neps.space.neps_spaces.parameters.Float]: Continuous float values
 - [`Categorical`][neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values
 - [`Fidelity`][neps.space.neps_spaces.parameters.Fidelity]: Special type for float or integer, [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., epochs, dataset size)
 
-Additionally, **NePS spaces** can describe complex (hierarchical) architectures using:
+Additionally, **NePS spaces** can describe [complex (hierarchical) architectures](#hierarchies-and-architectures) using:
 
 - [`Operation`][neps.space.neps_spaces.parameters.Operation]: Define operations (e.g., convolution, pooling, activation) with arguments
 - [`Resampled`][neps.space.neps_spaces.parameters.Resampled]: Resample other parameters
 
-### Simple spaces
+### HPO Search Spaces
 
 A **NePS space** is defined as a child class of [`Pipeline`][neps.space.neps_spaces.parameters.Pipeline]:
 
@@ -44,16 +44,18 @@ You can provide **your knowledge about where a good value for this parameter lie
     float_or_int = Categorical(choices=(float_param, int_param), prior=0, prior_confidence="high")
 ```
 
-### Resampling and Hierarchies
+### Hierarchies and Architectures
 
-You can also resample parameters to use for other parameters, even themselves recursively, with [`Resampled`][neps.space.neps_spaces.parameters.Resampled]:
+[Resampling][neps.space.neps_spaces.parameters.Resampled] and [operations][neps.space.neps_spaces.parameters.Operation] allow you to define complex architectures akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar).
+
+With `Resampled` you can reuse parameters in for other parameters, even themselves recursively:
 
 ```python
     # The new parameter will have the same range but will be resampled
     # independently, so it can take different values than its source
     resampled_float = Resampled(source=float_param)
 
-    # If you only use a parameter to resample from it, prefix it with an underscore
+    # If you only use a parameter to resample from it later, prefix it with an underscore
     # This way, your evaluation function will not receive it as an argument
     _float = Float(min_value=1, max_value=3)
     resampled_float_2 = Resampled(source=_float)
@@ -61,18 +63,14 @@ You can also resample parameters to use for other parameters, even themselves re
 
 ??? tip "Self- and future references"
 
-    When referencing itself or a not yet defined parameter use a string of that parameters name
+    When referencing itself or a not yet defined parameter use a string of that parameters name:
 
     ```python
     self_reference = Categorical(choices=(Resampled("self_reference"), Resampled("next_param")))
     next_param = Float(min_value=0, max_value=5)
     ```
 
-### Operators and Architectures
-
-Combining [resampling](#resampling-and-hierarchies) and [operations][neps.space.neps_spaces.parameters.Operation] allows you to define complex architectures akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar).
-
-Operations can be strings or more importantly Callables, (e.g. pytorch objects) for which you can define the arguments as parameters:
+Operations can be Callables, (e.g. pytorch objects) whose arguments can themselves be parameters:
 
 ```python
 
