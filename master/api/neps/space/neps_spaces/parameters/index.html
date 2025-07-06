@@ -10819,7 +10819,8 @@ False if the source is a resolvable object.</p>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>A string representing the confidence level, e.g., "low", "medium",</p>
+                <p>A string representing the confidence level, e.g., "low", "medium",
+"high".</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -10877,7 +10878,8 @@ False if the source is a resolvable object.</p>
             </td>
             <td class="doc-raises-details">
               <div class="doc-md-description">
-                <p>If the input string does not match any of the defined confidence</p>
+                <p>If the input string does not match any of the defined confidence
+levels.</p>
               </div>
             </td>
           </tr>
@@ -10909,14 +10911,14 @@ False if the source is a resolvable object.</p>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a>
 <a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">        confidence: A string representing the confidence level, e.g., &quot;low&quot;, &quot;medium&quot;,</span>
-<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">        &quot;high&quot;.</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">            &quot;high&quot;.</span>
 <a id="__codelineno-0-203" name="__codelineno-0-203"></a>
 <a id="__codelineno-0-204" name="__codelineno-0-204"></a><span class="sd">    Returns:</span>
 <a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        ConfidenceLevel: The corresponding ConfidenceLevel enum value.</span>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a>
 <a id="__codelineno-0-207" name="__codelineno-0-207"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">        ValueError: If the input string does not match any of the defined confidence</span>
-<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">        levels.</span>
+<a id="__codelineno-0-209" name="__codelineno-0-209"></a><span class="sd">            levels.</span>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-211" name="__codelineno-0-211"></a>    <span class="k">try</span><span class="p">:</span>
 <a id="__codelineno-0-212" name="__codelineno-0-212"></a>        <span class="k">return</span> <span class="n">ConfidenceLevel</span><span class="p">[</span><span class="n">confidence</span><span class="o">.</span><span class="n">upper</span><span class="p">()]</span>
