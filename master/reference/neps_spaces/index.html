@@ -3586,29 +3586,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/space/neps_spaces/parameters/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Parameters
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../api/neps/space/neps_spaces/sampling/" class="md-nav__link">
         
   
@@ -4128,10 +4105,10 @@
 <h2 id="how-to-use-neps-spaces">How to use NePS-Spaces<a class="headerlink" href="#how-to-use-neps-spaces" title="Permanent link">#</a></h2>
 <p>A <strong>NePS space</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space, including:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
-<li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
-<li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
-<li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
+<li>[<code>Integer</code>][neps.space.neps_spaces.parameters.Integer]: Discrete integer values</li>
+<li>[<code>Float</code>][neps.space.neps_spaces.parameters.Float]: Continuous float values</li>
+<li>[<code>Categorical</code>][neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values</li>
+<li>[<code>Fidelity</code>][neps.space.neps_spaces.parameters.Fidelity]: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
 <details class="example">
 <summary>Quick Parameter Reference</summary>
@@ -4147,7 +4124,7 @@
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code></p>
+              Bases: <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code></p>
 
 
         <p>A domain representing a range of integer values.</p>
@@ -4167,7 +4144,7 @@
 
   
       property
-   (neps.space.neps_spaces.parameters.Integer.min_value)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer.min_value">min_value</a></code></td>
+   (neps.space.neps_spaces.parameters.Integer.min_value)" href="#neps.space.neps_spaces.parameters.Integer.min_value">min_value</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The minimum value of the domain.</p>
@@ -4186,7 +4163,7 @@
 
   
       property
-   (neps.space.neps_spaces.parameters.Integer.max_value)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer.max_value">max_value</a></code></td>
+   (neps.space.neps_spaces.parameters.Integer.max_value)" href="#neps.space.neps_spaces.parameters.Integer.max_value">max_value</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The maximum value of the domain.</p>
@@ -4219,7 +4196,7 @@
 
   
       property
-   (neps.space.neps_spaces.parameters.Integer.prior)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer.prior">prior</a></code></td>
+   (neps.space.neps_spaces.parameters.Integer.prior)" href="#neps.space.neps_spaces.parameters.Integer.prior">prior</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The prior value for the domain, if any.</p>
@@ -4238,7 +4215,7 @@
 
   
       property
-   (neps.space.neps_spaces.parameters.Integer.prior_confidence)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer.prior_confidence">prior_confidence</a></code></td>
+   (neps.space.neps_spaces.parameters.Integer.prior_confidence)" href="#neps.space.neps_spaces.parameters.Integer.prior_confidence">prior_confidence</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The confidence level of the prior value.</p>
@@ -4246,7 +4223,7 @@
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -4347,7 +4324,7 @@
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -4700,7 +4677,7 @@
   </span>
 
 <a href="#neps.space.neps_spaces.parameters.Integer.prior_confidence" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4719,7 +4696,7 @@
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -4819,8 +4796,8 @@ the domain is logarithmic.</p>
 
 <a href="#neps.space.neps_spaces.parameters.Integer.centered_around" class="headerlink" title="Permanent link">#</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">centered_around</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Integer (neps.space.neps_spaces.parameters.Integer)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer">Integer</a></span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Integer">Integer</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4863,7 +4840,7 @@ the domain is logarithmic.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -4895,7 +4872,7 @@ the domain is logarithmic.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -4915,7 +4892,7 @@ the domain is logarithmic.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Integer (neps.space.neps_spaces.parameters.Integer)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer">Integer</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.Integer">Integer</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -5041,7 +5018,7 @@ the domain is logarithmic.</p>
 
 
 <a href="#neps.space.neps_spaces.parameters.Integer.from_attrs" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Domain">Domain</span></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5088,7 +5065,7 @@ the domain is logarithmic.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                    <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -5344,7 +5321,7 @@ scale, as this is not implemented yet.</p>
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>]</code></p>
+              Bases: <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>]</code></p>
 
 
         <p>A domain representing a continuous range of floating-point values.</p>
@@ -5364,7 +5341,7 @@ scale, as this is not implemented yet.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Float.min_value)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float.min_value">min_value</a></code></td>
+   (neps.space.neps_spaces.parameters.Float.min_value)" href="#neps.space.neps_spaces.parameters.Float.min_value">min_value</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The minimum value of the domain.</p>
@@ -5383,7 +5360,7 @@ scale, as this is not implemented yet.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Float.max_value)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float.max_value">max_value</a></code></td>
+   (neps.space.neps_spaces.parameters.Float.max_value)" href="#neps.space.neps_spaces.parameters.Float.max_value">max_value</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The maximum value of the domain.</p>
@@ -5416,7 +5393,7 @@ scale, as this is not implemented yet.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Float.prior)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float.prior">prior</a></code></td>
+   (neps.space.neps_spaces.parameters.Float.prior)" href="#neps.space.neps_spaces.parameters.Float.prior">prior</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The prior value for the domain, if any.</p>
@@ -5435,7 +5412,7 @@ scale, as this is not implemented yet.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Float.prior_confidence)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float.prior_confidence">prior_confidence</a></code></td>
+   (neps.space.neps_spaces.parameters.Float.prior_confidence)" href="#neps.space.neps_spaces.parameters.Float.prior_confidence">prior_confidence</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The confidence level of the prior value.</p>
@@ -5443,7 +5420,7 @@ scale, as this is not implemented yet.</p>
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -5544,7 +5521,7 @@ scale, as this is not implemented yet.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -5899,7 +5876,7 @@ scale, as this is not implemented yet.</p>
   </span>
 
 <a href="#neps.space.neps_spaces.parameters.Float.prior_confidence" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5918,7 +5895,7 @@ scale, as this is not implemented yet.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -6019,8 +5996,8 @@ the domain is logarithmic.</p>
 
 <a href="#neps.space.neps_spaces.parameters.Float.centered_around" class="headerlink" title="Permanent link">#</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">centered_around</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Float (neps.space.neps_spaces.parameters.Float)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float">Float</a></span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Float">Float</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6063,7 +6040,7 @@ the domain is logarithmic.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -6095,7 +6072,7 @@ the domain is logarithmic.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -6115,7 +6092,7 @@ the domain is logarithmic.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Float (neps.space.neps_spaces.parameters.Float)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float">Float</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.Float">Float</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -6235,7 +6212,7 @@ the domain is logarithmic.</p>
 
 
 <a href="#neps.space.neps_spaces.parameters.Float.from_attrs" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Domain">Domain</span></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6282,7 +6259,7 @@ the domain is logarithmic.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                    <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -6539,7 +6516,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code>, <code><a class="autorefs autorefs-external" title="typing.Generic" href="https://docs.python.org/3/library/typing.html#typing.Generic">Generic</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code></p>
+              Bases: <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>]</code>, <code><a class="autorefs autorefs-external" title="typing.Generic" href="https://docs.python.org/3/library/typing.html#typing.Generic">Generic</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code></p>
 
 
         <p>A domain representing a categorical choice from a set of options.</p>
@@ -6559,7 +6536,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Categorical.choices)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical.choices">choices</a></code></td>
+   (neps.space.neps_spaces.parameters.Categorical.choices)" href="#neps.space.neps_spaces.parameters.Categorical.choices">choices</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>A tuple of choices or a Domain of choices.</p>
@@ -6567,7 +6544,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a>, ...] | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span>, ...] | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                   </span>
               </p>
             </td>
@@ -6581,7 +6558,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a>, ...] | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span>, ...] | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                   </span>
               </p>
             </td>
@@ -6592,7 +6569,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
   
       property
-   (neps.space.neps_spaces.parameters.Categorical.prior_confidence)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical.prior_confidence">prior_confidence</a></code></td>
+   (neps.space.neps_spaces.parameters.Categorical.prior_confidence)" href="#neps.space.neps_spaces.parameters.Categorical.prior_confidence">prior_confidence</a></code></td>
             <td class="doc-attribute-details">
               <div class="doc-md-description">
                 <p>The confidence level of the prior choice.</p>
@@ -6600,7 +6577,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-attribute-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -6629,7 +6606,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a> | <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>, ...] | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span> | <a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a>, ...] | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                   </span>
               </p>
             </td>
@@ -6645,7 +6622,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>] | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -6665,7 +6642,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -6753,7 +6730,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
 <a href="#neps.space.neps_spaces.parameters.Categorical.choices" class="headerlink" title="Permanent link">#</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">choices</span><span class="p">:</span> <span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a></span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Domain">Domain</span></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span></span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Domain">Domain</span></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span>
 </code></pre></div>
 
@@ -6773,7 +6750,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a>, ...] | <a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<span title="neps.space.neps_spaces.parameters.T">T</span> | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>] | <span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span>, ...] | <span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -7019,7 +6996,7 @@ minus one.</p>
   </span>
 
 <a href="#neps.space.neps_spaces.parameters.Categorical.prior_confidence" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">prior_confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -7038,7 +7015,7 @@ minus one.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -7137,8 +7114,8 @@ minus one.</p>
 
 <a href="#neps.space.neps_spaces.parameters.Categorical.centered_around" class="headerlink" title="Permanent link">#</a></h4>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">centered_around</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Categorical (neps.space.neps_spaces.parameters.Categorical)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical">Categorical</a></span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">center</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n">confidence</span><span class="p">:</span> <span class="n"><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Categorical">Categorical</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -7181,7 +7158,7 @@ minus one.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -7213,7 +7190,7 @@ minus one.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</span></code>
                   </span>
               </p>
             </td>
@@ -7233,7 +7210,7 @@ minus one.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Categorical (neps.space.neps_spaces.parameters.Categorical)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical">Categorical</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.Categorical">Categorical</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -7360,7 +7337,7 @@ choice index.</p>
 
 
 <a href="#neps.space.neps_spaces.parameters.Categorical.from_attrs" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Domain">Domain</span></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.T">T</span></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -7407,7 +7384,7 @@ choice index.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Domain (neps.space.neps_spaces.parameters.Domain)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Domain">Domain</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
+                    <code><span title="neps.space.neps_spaces.parameters.Domain">Domain</span>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -7656,7 +7633,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="            Resolvable (neps.space.neps_spaces.parameters.Resolvable)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resolvable">Resolvable</a></code>, <code><a class="autorefs autorefs-external" title="typing.Generic" href="https://docs.python.org/3/library/typing.html#typing.Generic">Generic</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code></p>
+              Bases: <code><span title="neps.space.neps_spaces.parameters.Resolvable">Resolvable</span></code>, <code><a class="autorefs autorefs-external" title="typing.Generic" href="https://docs.python.org/3/library/typing.html#typing.Generic">Generic</a>[<span title="neps.space.neps_spaces.parameters.T">T</span>]</code></p>
 
 
         <p>A class representing a fidelity in a NePS space.</p>
@@ -7704,7 +7681,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            Integer (neps.space.neps_spaces.parameters.Integer)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer">Integer</a> | <a class="autorefs autorefs-internal" title="            Float (neps.space.neps_spaces.parameters.Float)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float">Float</a></code>
+                      <code><span title="neps.space.neps_spaces.parameters.Integer">Integer</span> | <span title="neps.space.neps_spaces.parameters.Float">Float</span></code>
                   </span>
               </p>
             </td>
@@ -7858,7 +7835,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
 
 <a href="#neps.space.neps_spaces.parameters.Fidelity.from_attrs" class="headerlink" title="Permanent link">#</a></h4>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Fidelity (neps.space.neps_spaces.parameters.Fidelity)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity">Fidelity</a></span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Fidelity">Fidelity</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -7905,7 +7882,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Fidelity (neps.space.neps_spaces.parameters.Fidelity)" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity">Fidelity</a></code>
+                    <code><span title="neps.space.neps_spaces.parameters.Fidelity">Fidelity</span></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -8088,7 +8065,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 </details>
 <p>Additionally, <strong>NePS spaces</strong> can define complex architectures using:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
+<li>[<code>Operation</code>][neps.space.neps_spaces.parameters.Operation]: Define operations (e.g., convolution, pooling, activation) with arguments</li>
 </ul>
 <hr />
 <h2 id="defining-a-jahs-search-space">Defining a JAHS Search Space<a class="headerlink" href="#defining-a-jahs-search-space" title="Permanent link">#</a></h2>

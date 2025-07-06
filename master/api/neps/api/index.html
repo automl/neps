@@ -3131,29 +3131,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../space/neps_spaces/parameters/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Parameters
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../space/neps_spaces/sampling/" class="md-nav__link">
         
   
@@ -3727,7 +3704,7 @@
       dataclass
    (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="o">|</span> <span class="n"><span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span></span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span></span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="p">),</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span> <span class="o">=</span> <span class="s2">&quot;neps_results&quot;</span><span class="p">,</span>
@@ -3753,14 +3730,14 @@
       dataclass
    (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n"><a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a></span>
 <a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>        <span class="p">]</span>
-<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n"><a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a></span><span class="p">]</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a></span><span class="p">[</span><span class="n"><span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n"><a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a></span><span class="p">]</span>
 <a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a></span><span class="p">[</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>            <span class="n"><a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            SearchSpace
 
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span></span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>            <span class="n"><a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a></span><span class="p">,</span>
 <a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>        <span class="p">]</span>
 <a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            CustomOptimizer
@@ -3952,7 +3929,7 @@ as dictionarys, e.g.,</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span> | <span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span></code>
                   </span>
               </p>
             </td>
@@ -5599,12 +5576,12 @@ runtime to run your optimizer.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a>[<a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a>[<a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a>[<a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a>[<a class="autorefs autorefs-internal" title="            SearchSpace
+   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a>[<a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a>[<span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a>[<a class="autorefs autorefs-external" title="typing.Concatenate" href="https://docs.python.org/3/library/typing.html#typing.Concatenate">Concatenate</a>[<a class="autorefs autorefs-internal" title="            SearchSpace
 
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-internal" title="            CustomOptimizer
+   (neps.space.SearchSpace)" href="../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <span title="neps.space.neps_spaces.parameters.Pipeline">Pipeline</span>, ...], <a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a>] | <a class="autorefs autorefs-internal" title="            CustomOptimizer
 
 
   
