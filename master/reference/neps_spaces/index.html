@@ -634,17 +634,17 @@
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#defining-a-neps-space" class="md-nav__link">
+    <nav class="md-nav" aria-label="How to use NePS Spaces">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#simple-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      Defining a NePS Space
+      Simple spaces
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Defining a NePS Space">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#using-your-knowledge-providing-a-prior" class="md-nav__link">
@@ -656,9 +656,9 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#operations-and-hierarchies" class="md-nav__link">
+  <a href="#resampling-and-hierarchies" class="md-nav__link">
     <span class="md-ellipsis">
-      Operations and Hierarchies
+      Resampling and Hierarchies
     </span>
   </a>
   
@@ -3721,21 +3721,33 @@
 <p>Additionally, <strong>NePS spaces</strong> can describe complex (hierarchical) architectures using:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
+<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
 </ul>
-<hr />
-<h2 id="defining-a-neps-space">Defining a NePS Space<a class="headerlink" href="#defining-a-neps-space" title="Permanent link">#</a></h2>
-<p>A NePS space is defined as a class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
+<h3 id="simple-spaces">Simple spaces<a class="headerlink" href="#simple-spaces" title="Permanent link">#</a></h3>
+<p>A NePS space is defined as a child class of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">pipeline_space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
 </code></pre></div>
 <p>We can then define the hyperparameters that make up the space, like so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;medium&quot;</span><span class="p">)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">cat_param</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">])</span>
 </code></pre></div>
 <h3 id="using-your-knowledge-providing-a-prior">Using your knowledge, providing a Prior<a class="headerlink" href="#using-your-knowledge-providing-a-prior" title="Permanent link">#</a></h3>
 <p>You can provide <strong>your knowledge about where a good value for this parameter lies</strong> by indicating a <code>prior=</code>. You can also specify a <code>prior_confidence=</code> to indicate how strongly you want NePS to focus on these, one of either <code>"low"</code>, <code>"medium"</code>, or <code>"high"</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>    <span class="n">categorical_param</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">([</span><span class="s2">&quot;option1&quot;</span><span class="p">,</span> <span class="s2">&quot;option2&quot;</span><span class="p">,</span> <span class="s2">&quot;option3&quot;</span><span class="p">],</span> <span class="n">prior</span><span class="o">=</span><span class="s2">&quot;option2&quot;</span><span class="p">,</span> <span class="n">confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>    <span class="c1"># Categorical parameters can also choose between other parameters</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="c1"># Here the float parameter (index 0) is used as a prior</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">cat_param_2</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">float_param</span><span class="p">,</span> <span class="n">int_param</span><span class="p">),</span> <span class="n">prior</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">prior_confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="operations-and-hierarchies">Operations and Hierarchies<a class="headerlink" href="#operations-and-hierarchies" title="Permanent link">#</a></h3>
+<h3 id="resampling-and-hierarchies">Resampling and Hierarchies<a class="headerlink" href="#resampling-and-hierarchies" title="Permanent link">#</a></h3>
+<p>You can also resample parameters to use for other parameters, even themselves recursively, with <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than float_param</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">float_param_2</span> <span class="o">=</span> <span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="c1"># When referencing another parameter that is not yet defined, or</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="c1"># itself, use a string of the parameter name</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">cat_param_3</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;cat_param_3&quot;</span><span class="p">),</span> <span class="p">))</span>
+</code></pre></div>
 <hr />
 <h2 id="inspecting-and-manipulating-configurations">Inspecting and Manipulating Configurations<a class="headerlink" href="#inspecting-and-manipulating-configurations" title="Permanent link">#</a></h2>
 <p>NePS-Spaces provides utilities for working with configuration strings, unwrapping/wrapping hierarchical configs, and pretty-printing architectures (see <code>config_string.py</code>).</p>
