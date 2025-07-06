@@ -20,8 +20,7 @@ TAB = "    "
 
 if not SRCDIR.exists():
     raise FileNotFoundError(
-        f"{SRCDIR} does not exist, make sure you are running this from the root of the"
-        " repository."
+        f"{SRCDIR} does not exist, make sure you are running this from the root of the repository."
     )
 
 for path in sorted(SRCDIR.rglob("*.py")):
@@ -35,10 +34,6 @@ for path in sorted(SRCDIR.rglob("*.py")):
         continue
 
     if any(part.startswith("_") for part in parts):
-        continue
-
-    # Skip neps_spaces/parameters module to avoid conflicts with reference/neps_spaces.md
-    if "neps_spaces" in parts and "parameters" in parts:
         continue
 
     with mkdocs_gen_files.open(full_doc_path, "w") as fd:
