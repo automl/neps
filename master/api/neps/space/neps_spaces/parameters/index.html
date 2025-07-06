@@ -6004,12 +6004,7 @@ excluding private attributes and methods, and returns them as a dictionary.
 
         <p>A domain representing a range of integer values.
 It allows for sampling from a range defined by minimum and maximum values,
-and can be centered around a specific value with a given confidence level.
-:param min_value: The minimum value of the domain.
-:param max_value: The maximum value of the domain.
-:param log: Whether to sample values on a logarithmic scale.
-:param prior: The prior value for the domain, if any.
-:param prior_confidence: The confidence level of the prior value.</p>
+and can be centered around a specific value with a given confidence level.</p>
 
         <p>:param max_value: The maximum value of the domain.
 :param log: Whether to sample values on a logarithmic scale.
@@ -6025,7 +6020,12 @@ and can be centered around a specific value with a given confidence level.
 
                   <details class="quote">
                     <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-550">550</a></span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-545">545</a></span>
+<span class="normal"><a href="#__codelineno-0-546">546</a></span>
+<span class="normal"><a href="#__codelineno-0-547">547</a></span>
+<span class="normal"><a href="#__codelineno-0-548">548</a></span>
+<span class="normal"><a href="#__codelineno-0-549">549</a></span>
+<span class="normal"><a href="#__codelineno-0-550">550</a></span>
 <span class="normal"><a href="#__codelineno-0-551">551</a></span>
 <span class="normal"><a href="#__codelineno-0-552">552</a></span>
 <span class="normal"><a href="#__codelineno-0-553">553</a></span>
@@ -6040,32 +6040,27 @@ and can be centered around a specific value with a given confidence level.
 <span class="normal"><a href="#__codelineno-0-562">562</a></span>
 <span class="normal"><a href="#__codelineno-0-563">563</a></span>
 <span class="normal"><a href="#__codelineno-0-564">564</a></span>
-<span class="normal"><a href="#__codelineno-0-565">565</a></span>
-<span class="normal"><a href="#__codelineno-0-566">566</a></span>
-<span class="normal"><a href="#__codelineno-0-567">567</a></span>
-<span class="normal"><a href="#__codelineno-0-568">568</a></span>
-<span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="p">):</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Integer domain with min and max values, and optional prior.</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    :param min_value: The minimum value of the domain.</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    :param max_value: The maximum value of the domain.</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    :param log: Whether to sample values on a logarithmic scale.</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">    :param prior: The prior value for the domain, if any.</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">    :param prior_confidence: The confidence level of the prior value.</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    :raises ValueError: If min_value is greater than max_value.</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">log</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span> <span class="o">=</span> <span class="n">prior</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior_confidence</span> <span class="o">=</span> <span class="n">prior_confidence</span>
+<span class="normal"><a href="#__codelineno-0-565">565</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="p">):</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Integer domain with min and max values, and optional prior.</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">    :param min_value: The minimum value of the domain.</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">    :param max_value: The maximum value of the domain.</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">    :param log: Whether to sample values on a logarithmic scale.</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">    :param prior: The prior value for the domain, if any.</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">    :param prior_confidence: The confidence level of the prior value.</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    :raises ValueError: If min_value is greater than max_value.</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">log</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span> <span class="o">=</span> <span class="n">prior</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior_confidence</span> <span class="o">=</span> <span class="n">prior_confidence</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
@@ -6260,7 +6255,12 @@ the domain is logarithmic.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-633">633</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-628">628</a></span>
+<span class="normal"><a href="#__codelineno-0-629">629</a></span>
+<span class="normal"><a href="#__codelineno-0-630">630</a></span>
+<span class="normal"><a href="#__codelineno-0-631">631</a></span>
+<span class="normal"><a href="#__codelineno-0-632">632</a></span>
+<span class="normal"><a href="#__codelineno-0-633">633</a></span>
 <span class="normal"><a href="#__codelineno-0-634">634</a></span>
 <span class="normal"><a href="#__codelineno-0-635">635</a></span>
 <span class="normal"><a href="#__codelineno-0-636">636</a></span>
@@ -6282,39 +6282,34 @@ the domain is logarithmic.</p>
 <span class="normal"><a href="#__codelineno-0-652">652</a></span>
 <span class="normal"><a href="#__codelineno-0-653">653</a></span>
 <span class="normal"><a href="#__codelineno-0-654">654</a></span>
-<span class="normal"><a href="#__codelineno-0-655">655</a></span>
-<span class="normal"><a href="#__codelineno-0-656">656</a></span>
-<span class="normal"><a href="#__codelineno-0-657">657</a></span>
-<span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="k">def</span><span class="w"> </span><span class="nf">centered_around</span><span class="p">(</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="n">center</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="n">confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span><span class="p">,</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Integer</span><span class="p">:</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new integer domain centered around a specific value.</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    :param center: The value around which to center the new domain.</span>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    :param confidence: The confidence level for the new domain.</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    :return: A new Integer instance that is centered around the specified value.</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    :raises ValueError: If the center value is not within the domain&#39;s range.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="n">new_min</span><span class="p">,</span> <span class="n">new_max</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="n">_calculate_new_domain_bounds</span><span class="p">(</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a>            <span class="n">number_type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a>            <span class="n">min_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_value</span><span class="p">,</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>            <span class="n">max_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_value</span><span class="p">,</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>            <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>            <span class="n">confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="p">),</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="p">)</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">min_value</span><span class="o">=</span><span class="n">new_min</span><span class="p">,</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">max_value</span><span class="o">=</span><span class="n">new_max</span><span class="p">,</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">prior</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="n">prior_confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-655">655</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="k">def</span><span class="w"> </span><span class="nf">centered_around</span><span class="p">(</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>    <span class="n">center</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="n">confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span><span class="p">,</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Integer</span><span class="p">:</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new integer domain centered around a specific value.</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">    :param center: The value around which to center the new domain.</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    :param confidence: The confidence level for the new domain.</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">    :return: A new Integer instance that is centered around the specified value.</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">    :raises ValueError: If the center value is not within the domain&#39;s range.</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a>    <span class="n">new_min</span><span class="p">,</span> <span class="n">new_max</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a>        <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>        <span class="n">_calculate_new_domain_bounds</span><span class="p">(</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>            <span class="n">number_type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a>            <span class="n">min_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_value</span><span class="p">,</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>            <span class="n">max_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_value</span><span class="p">,</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>            <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>            <span class="n">confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>        <span class="p">),</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="p">)</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">min_value</span><span class="o">=</span><span class="n">new_min</span><span class="p">,</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="n">max_value</span><span class="o">=</span><span class="n">new_max</span><span class="p">,</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">prior</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">prior_confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6425,23 +6420,23 @@ scale, as this is not implemented yet.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-623">623</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-618">618</a></span>
+<span class="normal"><a href="#__codelineno-0-619">619</a></span>
+<span class="normal"><a href="#__codelineno-0-620">620</a></span>
+<span class="normal"><a href="#__codelineno-0-621">621</a></span>
+<span class="normal"><a href="#__codelineno-0-622">622</a></span>
+<span class="normal"><a href="#__codelineno-0-623">623</a></span>
 <span class="normal"><a href="#__codelineno-0-624">624</a></span>
 <span class="normal"><a href="#__codelineno-0-625">625</a></span>
-<span class="normal"><a href="#__codelineno-0-626">626</a></span>
-<span class="normal"><a href="#__codelineno-0-627">627</a></span>
-<span class="normal"><a href="#__codelineno-0-628">628</a></span>
-<span class="normal"><a href="#__codelineno-0-629">629</a></span>
-<span class="normal"><a href="#__codelineno-0-630">630</a></span>
-<span class="normal"><a href="#__codelineno-0-631">631</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a random integer value from the domain.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">    :return: A randomly selected integer value within the domain&#39;s range.</span>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    :raises NotImplementedError: If the domain is set to sample on a logarithmic</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">    scale, as this is not implemented yet.</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;TODO.&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">))</span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a random integer value from the domain.</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">    :return: A randomly selected integer value within the domain&#39;s range.</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">    :raises NotImplementedError: If the domain is set to sample on a logarithmic</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    scale, as this is not implemented yet.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;TODO.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6499,7 +6494,12 @@ string.
 
                   <details class="quote">
                     <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-674">674</a></span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-669">669</a></span>
+<span class="normal"><a href="#__codelineno-0-670">670</a></span>
+<span class="normal"><a href="#__codelineno-0-671">671</a></span>
+<span class="normal"><a href="#__codelineno-0-672">672</a></span>
+<span class="normal"><a href="#__codelineno-0-673">673</a></span>
+<span class="normal"><a href="#__codelineno-0-674">674</a></span>
 <span class="normal"><a href="#__codelineno-0-675">675</a></span>
 <span class="normal"><a href="#__codelineno-0-676">676</a></span>
 <span class="normal"><a href="#__codelineno-0-677">677</a></span>
@@ -6519,37 +6519,32 @@ string.
 <span class="normal"><a href="#__codelineno-0-691">691</a></span>
 <span class="normal"><a href="#__codelineno-0-692">692</a></span>
 <span class="normal"><a href="#__codelineno-0-693">693</a></span>
-<span class="normal"><a href="#__codelineno-0-694">694</a></span>
-<span class="normal"><a href="#__codelineno-0-695">695</a></span>
-<span class="normal"><a href="#__codelineno-0-696">696</a></span>
-<span class="normal"><a href="#__codelineno-0-697">697</a></span>
-<span class="normal"><a href="#__codelineno-0-698">698</a></span>
-<span class="normal"><a href="#__codelineno-0-699">699</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>    <span class="n">operator</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a>    <span class="n">args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a>    <span class="n">kwargs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="p">):</span>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Operation with an operator, arguments, and keyword arguments.</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">    :param operator: The operator to be used in the operation, can be a callable or a</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a><span class="sd">    string.</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a><span class="sd">    :param args: A sequence of arguments to be passed to the operator.</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a><span class="sd">    :param kwargs: A mapping of keyword arguments to be passed to the operator.</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a><span class="sd">    :raises ValueError: If the operator is not callable or a string.</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_operator</span> <span class="o">=</span> <span class="n">operator</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="p">()</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="n">args</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span> <span class="k">if</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="p">{}</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
+<span class="normal"><a href="#__codelineno-0-694">694</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-669" name="__codelineno-0-669"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a>    <span class="n">operator</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a>    <span class="n">args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>    <span class="n">kwargs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a><span class="p">):</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Operation with an operator, arguments, and keyword arguments.</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a><span class="sd">    :param operator: The operator to be used in the operation, can be a callable or a</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a><span class="sd">    string.</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a><span class="sd">    :param args: A sequence of arguments to be passed to the operator.</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a><span class="sd">    :param kwargs: A mapping of keyword arguments to be passed to the operator.</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a><span class="sd">    :raises ValueError: If the operator is not callable or a string.</span>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_operator</span> <span class="o">=</span> <span class="n">operator</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_args</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span> <span class="k">else</span> <span class="p">()</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_args</span> <span class="o">=</span> <span class="n">args</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Resolvable</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kwargs</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span> <span class="k">if</span> <span class="n">kwargs</span> <span class="k">else</span> <span class="p">{}</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
@@ -6665,7 +6660,12 @@ structure.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-746">746</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-741">741</a></span>
+<span class="normal"><a href="#__codelineno-0-742">742</a></span>
+<span class="normal"><a href="#__codelineno-0-743">743</a></span>
+<span class="normal"><a href="#__codelineno-0-744">744</a></span>
+<span class="normal"><a href="#__codelineno-0-745">745</a></span>
+<span class="normal"><a href="#__codelineno-0-746">746</a></span>
 <span class="normal"><a href="#__codelineno-0-747">747</a></span>
 <span class="normal"><a href="#__codelineno-0-748">748</a></span>
 <span class="normal"><a href="#__codelineno-0-749">749</a></span>
@@ -6680,32 +6680,27 @@ structure.</p>
 <span class="normal"><a href="#__codelineno-0-758">758</a></span>
 <span class="normal"><a href="#__codelineno-0-759">759</a></span>
 <span class="normal"><a href="#__codelineno-0-760">760</a></span>
-<span class="normal"><a href="#__codelineno-0-761">761</a></span>
-<span class="normal"><a href="#__codelineno-0-762">762</a></span>
-<span class="normal"><a href="#__codelineno-0-763">763</a></span>
-<span class="normal"><a href="#__codelineno-0-764">764</a></span>
-<span class="normal"><a href="#__codelineno-0-765">765</a></span>
-<span class="normal"><a href="#__codelineno-0-766">766</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Operation</span><span class="p">:</span>
-<a id="__codelineno-0-747" name="__codelineno-0-747"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new Operation instance from the given attributes.</span>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a><span class="sd">    :param attrs: A mapping of attribute names to their values.</span>
-<a id="__codelineno-0-749" name="__codelineno-0-749"></a><span class="sd">    :return: A new Operation instance with the specified attributes.</span>
-<a id="__codelineno-0-750" name="__codelineno-0-750"></a><span class="sd">    :raises ValueError: If the attributes do not match the operation&#39;s expected</span>
-<a id="__codelineno-0-751" name="__codelineno-0-751"></a><span class="sd">    structure.</span>
-<a id="__codelineno-0-752" name="__codelineno-0-752"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-753" name="__codelineno-0-753"></a>    <span class="c1"># TODO: [lum] simplify this. We know the fields. Maybe other places too.</span>
-<a id="__codelineno-0-754" name="__codelineno-0-754"></a>    <span class="n">final_attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-755" name="__codelineno-0-755"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-756" name="__codelineno-0-756"></a>        <span class="k">if</span> <span class="s2">&quot;{&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;}&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-<a id="__codelineno-0-757" name="__codelineno-0-757"></a>            <span class="n">base</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-758" name="__codelineno-0-758"></a>            <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;}&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-759" name="__codelineno-0-759"></a>            <span class="n">final_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="p">{})[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-760" name="__codelineno-0-760"></a>        <span class="k">elif</span> <span class="s2">&quot;[&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;]&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
-<a id="__codelineno-0-761" name="__codelineno-0-761"></a>            <span class="n">base</span><span class="p">,</span> <span class="n">idx_str</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;[&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-762" name="__codelineno-0-762"></a>            <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">idx_str</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;]&quot;</span><span class="p">))</span>
-<a id="__codelineno-0-763" name="__codelineno-0-763"></a>            <span class="n">final_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-0-764" name="__codelineno-0-764"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-765" name="__codelineno-0-765"></a>            <span class="n">final_attrs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-766" name="__codelineno-0-766"></a>    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="o">**</span><span class="n">final_attrs</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-761">761</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-741" name="__codelineno-0-741"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Operation</span><span class="p">:</span>
+<a id="__codelineno-0-742" name="__codelineno-0-742"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new Operation instance from the given attributes.</span>
+<a id="__codelineno-0-743" name="__codelineno-0-743"></a><span class="sd">    :param attrs: A mapping of attribute names to their values.</span>
+<a id="__codelineno-0-744" name="__codelineno-0-744"></a><span class="sd">    :return: A new Operation instance with the specified attributes.</span>
+<a id="__codelineno-0-745" name="__codelineno-0-745"></a><span class="sd">    :raises ValueError: If the attributes do not match the operation&#39;s expected</span>
+<a id="__codelineno-0-746" name="__codelineno-0-746"></a><span class="sd">    structure.</span>
+<a id="__codelineno-0-747" name="__codelineno-0-747"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-748" name="__codelineno-0-748"></a>    <span class="c1"># TODO: [lum] simplify this. We know the fields. Maybe other places too.</span>
+<a id="__codelineno-0-749" name="__codelineno-0-749"></a>    <span class="n">final_attrs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-750" name="__codelineno-0-750"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-751" name="__codelineno-0-751"></a>        <span class="k">if</span> <span class="s2">&quot;{&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;}&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+<a id="__codelineno-0-752" name="__codelineno-0-752"></a>            <span class="n">base</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;{&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-753" name="__codelineno-0-753"></a>            <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;}&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-754" name="__codelineno-0-754"></a>            <span class="n">final_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="p">{})[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-755" name="__codelineno-0-755"></a>        <span class="k">elif</span> <span class="s2">&quot;[&quot;</span> <span class="ow">in</span> <span class="n">name</span> <span class="ow">and</span> <span class="s2">&quot;]&quot;</span> <span class="ow">in</span> <span class="n">name</span><span class="p">:</span>
+<a id="__codelineno-0-756" name="__codelineno-0-756"></a>            <span class="n">base</span><span class="p">,</span> <span class="n">idx_str</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;[&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-757" name="__codelineno-0-757"></a>            <span class="n">idx</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">idx_str</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;]&quot;</span><span class="p">))</span>
+<a id="__codelineno-0-758" name="__codelineno-0-758"></a>            <span class="n">final_attrs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-0-759" name="__codelineno-0-759"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-760" name="__codelineno-0-760"></a>            <span class="n">final_attrs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-761" name="__codelineno-0-761"></a>    <span class="k">return</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)(</span><span class="o">**</span><span class="n">final_attrs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6733,7 +6728,12 @@ excluding private attributes and methods, and returns them as a dictionary.
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-725">725</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-720">720</a></span>
+<span class="normal"><a href="#__codelineno-0-721">721</a></span>
+<span class="normal"><a href="#__codelineno-0-722">722</a></span>
+<span class="normal"><a href="#__codelineno-0-723">723</a></span>
+<span class="normal"><a href="#__codelineno-0-724">724</a></span>
+<span class="normal"><a href="#__codelineno-0-725">725</a></span>
 <span class="normal"><a href="#__codelineno-0-726">726</a></span>
 <span class="normal"><a href="#__codelineno-0-727">727</a></span>
 <span class="normal"><a href="#__codelineno-0-728">728</a></span>
@@ -6747,31 +6747,26 @@ excluding private attributes and methods, and returns them as a dictionary.
 <span class="normal"><a href="#__codelineno-0-736">736</a></span>
 <span class="normal"><a href="#__codelineno-0-737">737</a></span>
 <span class="normal"><a href="#__codelineno-0-738">738</a></span>
-<span class="normal"><a href="#__codelineno-0-739">739</a></span>
-<span class="normal"><a href="#__codelineno-0-740">740</a></span>
-<span class="normal"><a href="#__codelineno-0-741">741</a></span>
-<span class="normal"><a href="#__codelineno-0-742">742</a></span>
-<span class="normal"><a href="#__codelineno-0-743">743</a></span>
-<span class="normal"><a href="#__codelineno-0-744">744</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-726" name="__codelineno-0-726"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the attributes of the operation as a mapping.</span>
-<a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="sd">    This method collects all attributes of the operation class and instance,</span>
-<a id="__codelineno-0-728" name="__codelineno-0-728"></a><span class="sd">    excluding private attributes and methods, and returns them as a dictionary.</span>
-<a id="__codelineno-0-729" name="__codelineno-0-729"></a><span class="sd">    :return: A mapping of attribute names to their values.</span>
-<a id="__codelineno-0-730" name="__codelineno-0-730"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-731" name="__codelineno-0-731"></a>    <span class="c1"># TODO: [lum] simplify this. We know the fields. Maybe other places too.</span>
-<a id="__codelineno-0-732" name="__codelineno-0-732"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-733" name="__codelineno-0-733"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-734" name="__codelineno-0-734"></a>        <span class="n">stripped_name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-735" name="__codelineno-0-735"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
-<a id="__codelineno-0-736" name="__codelineno-0-736"></a>            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-737" name="__codelineno-0-737"></a>                <span class="c1"># Multiple {{}} needed to escape surrounding &#39;{&#39; and &#39;}&#39;.</span>
-<a id="__codelineno-0-738" name="__codelineno-0-738"></a>                <span class="n">result</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stripped_name</span><span class="si">}</span><span class="se">{{</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
-<a id="__codelineno-0-740" name="__codelineno-0-740"></a>            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
-<a id="__codelineno-0-741" name="__codelineno-0-741"></a>                <span class="n">result</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stripped_name</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
-<a id="__codelineno-0-742" name="__codelineno-0-742"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-743" name="__codelineno-0-743"></a>            <span class="n">result</span><span class="p">[</span><span class="n">stripped_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
-<a id="__codelineno-0-744" name="__codelineno-0-744"></a>    <span class="k">return</span> <span class="n">result</span>
+<span class="normal"><a href="#__codelineno-0-739">739</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-720" name="__codelineno-0-720"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the attributes of the operation as a mapping.</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a><span class="sd">    This method collects all attributes of the operation class and instance,</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a><span class="sd">    excluding private attributes and methods, and returns them as a dictionary.</span>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">    :return: A mapping of attribute names to their values.</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>    <span class="c1"># TODO: [lum] simplify this. We know the fields. Maybe other places too.</span>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a>    <span class="n">result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">vars</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a>        <span class="n">stripped_name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">lstrip</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>                <span class="c1"># Multiple {{}} needed to escape surrounding &#39;{&#39; and &#39;}&#39;.</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>                <span class="n">result</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stripped_name</span><span class="si">}</span><span class="se">{{</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="se">}}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>                <span class="n">result</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">stripped_name</span><span class="si">}</span><span class="s2">[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+<a id="__codelineno-0-737" name="__codelineno-0-737"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-738" name="__codelineno-0-738"></a>            <span class="n">result</span><span class="p">[</span><span class="n">stripped_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a>    <span class="k">return</span> <span class="n">result</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7012,19 +7007,19 @@ It can either be a resolvable object or a string representing a resampling by na
 
                   <details class="quote">
                     <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-775">775</a></span>
-<span class="normal"><a href="#__codelineno-0-776">776</a></span>
-<span class="normal"><a href="#__codelineno-0-777">777</a></span>
-<span class="normal"><a href="#__codelineno-0-778">778</a></span>
-<span class="normal"><a href="#__codelineno-0-779">779</a></span>
-<span class="normal"><a href="#__codelineno-0-780">780</a></span>
-<span class="normal"><a href="#__codelineno-0-781">781</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-775" name="__codelineno-0-775"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">):</span>
-<a id="__codelineno-0-776" name="__codelineno-0-776"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Resampled object with a source.</span>
-<a id="__codelineno-0-777" name="__codelineno-0-777"></a><span class="sd">    :param source: The source of the resampling, which can be a resolvable object or</span>
-<a id="__codelineno-0-778" name="__codelineno-0-778"></a><span class="sd">    a string.</span>
-<a id="__codelineno-0-779" name="__codelineno-0-779"></a><span class="sd">    :raises ValueError: If the source is not a resolvable object or a string.</span>
-<a id="__codelineno-0-780" name="__codelineno-0-780"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-781" name="__codelineno-0-781"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="n">source</span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-770">770</a></span>
+<span class="normal"><a href="#__codelineno-0-771">771</a></span>
+<span class="normal"><a href="#__codelineno-0-772">772</a></span>
+<span class="normal"><a href="#__codelineno-0-773">773</a></span>
+<span class="normal"><a href="#__codelineno-0-774">774</a></span>
+<span class="normal"><a href="#__codelineno-0-775">775</a></span>
+<span class="normal"><a href="#__codelineno-0-776">776</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-770" name="__codelineno-0-770"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="n">Resolvable</span> <span class="o">|</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-0-771" name="__codelineno-0-771"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Resampled object with a source.</span>
+<a id="__codelineno-0-772" name="__codelineno-0-772"></a><span class="sd">    :param source: The source of the resampling, which can be a resolvable object or</span>
+<a id="__codelineno-0-773" name="__codelineno-0-773"></a><span class="sd">    a string.</span>
+<a id="__codelineno-0-774" name="__codelineno-0-774"></a><span class="sd">    :raises ValueError: If the source is not a resolvable object or a string.</span>
+<a id="__codelineno-0-775" name="__codelineno-0-775"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-776" name="__codelineno-0-776"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_source</span> <span class="o">=</span> <span class="n">source</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
@@ -7112,7 +7107,12 @@ string.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-813">813</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-808">808</a></span>
+<span class="normal"><a href="#__codelineno-0-809">809</a></span>
+<span class="normal"><a href="#__codelineno-0-810">810</a></span>
+<span class="normal"><a href="#__codelineno-0-811">811</a></span>
+<span class="normal"><a href="#__codelineno-0-812">812</a></span>
+<span class="normal"><a href="#__codelineno-0-813">813</a></span>
 <span class="normal"><a href="#__codelineno-0-814">814</a></span>
 <span class="normal"><a href="#__codelineno-0-815">815</a></span>
 <span class="normal"><a href="#__codelineno-0-816">816</a></span>
@@ -7122,27 +7122,22 @@ string.</p>
 <span class="normal"><a href="#__codelineno-0-820">820</a></span>
 <span class="normal"><a href="#__codelineno-0-821">821</a></span>
 <span class="normal"><a href="#__codelineno-0-822">822</a></span>
-<span class="normal"><a href="#__codelineno-0-823">823</a></span>
-<span class="normal"><a href="#__codelineno-0-824">824</a></span>
-<span class="normal"><a href="#__codelineno-0-825">825</a></span>
-<span class="normal"><a href="#__codelineno-0-826">826</a></span>
-<span class="normal"><a href="#__codelineno-0-827">827</a></span>
-<span class="normal"><a href="#__codelineno-0-828">828</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-813" name="__codelineno-0-813"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Resolvable</span><span class="p">:</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new resolvable object from the given attributes.</span>
-<a id="__codelineno-0-815" name="__codelineno-0-815"></a><span class="sd">    :param attrs: A mapping of attribute names to their values.</span>
-<a id="__codelineno-0-816" name="__codelineno-0-816"></a><span class="sd">    :return: A new resolvable object created from the specified attributes.</span>
-<a id="__codelineno-0-817" name="__codelineno-0-817"></a><span class="sd">    :raises ValueError: If the resampling is by name or the source is not resolvable.</span>
-<a id="__codelineno-0-818" name="__codelineno-0-818"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_resampling_by_name</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-823">823</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-808" name="__codelineno-0-808"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Resolvable</span><span class="p">:</span>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new resolvable object from the given attributes.</span>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a><span class="sd">    :param attrs: A mapping of attribute names to their values.</span>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a><span class="sd">    :return: A new resolvable object created from the specified attributes.</span>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a><span class="sd">    :raises ValueError: If the resampling is by name or the source is not resolvable.</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_resampling_by_name</span><span class="p">:</span>
+<a id="__codelineno-0-815" name="__codelineno-0-815"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a>            <span class="s2">&quot;This is a resampling by name, can&#39;t create object for it:&quot;</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>            <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>        <span class="p">)</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
 <a id="__codelineno-0-820" name="__codelineno-0-820"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-821" name="__codelineno-0-821"></a>            <span class="s2">&quot;This is a resampling by name, can&#39;t create object for it:&quot;</span>
-<a id="__codelineno-0-822" name="__codelineno-0-822"></a>            <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a>        <span class="p">)</span>
-<a id="__codelineno-0-824" name="__codelineno-0-824"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
-<a id="__codelineno-0-825" name="__codelineno-0-825"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-826" name="__codelineno-0-826"></a>            <span class="sa">f</span><span class="s2">&quot;Source should be a resolvable object. Is: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-827" name="__codelineno-0-827"></a>        <span class="p">)</span>
-<a id="__codelineno-0-828" name="__codelineno-0-828"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a>            <span class="sa">f</span><span class="s2">&quot;Source should be a resolvable object. Is: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-822" name="__codelineno-0-822"></a>        <span class="p">)</span>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -7169,7 +7164,12 @@ string.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-798">798</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-793">793</a></span>
+<span class="normal"><a href="#__codelineno-0-794">794</a></span>
+<span class="normal"><a href="#__codelineno-0-795">795</a></span>
+<span class="normal"><a href="#__codelineno-0-796">796</a></span>
+<span class="normal"><a href="#__codelineno-0-797">797</a></span>
+<span class="normal"><a href="#__codelineno-0-798">798</a></span>
 <span class="normal"><a href="#__codelineno-0-799">799</a></span>
 <span class="normal"><a href="#__codelineno-0-800">800</a></span>
 <span class="normal"><a href="#__codelineno-0-801">801</a></span>
@@ -7177,25 +7177,20 @@ string.</p>
 <span class="normal"><a href="#__codelineno-0-803">803</a></span>
 <span class="normal"><a href="#__codelineno-0-804">804</a></span>
 <span class="normal"><a href="#__codelineno-0-805">805</a></span>
-<span class="normal"><a href="#__codelineno-0-806">806</a></span>
-<span class="normal"><a href="#__codelineno-0-807">807</a></span>
-<span class="normal"><a href="#__codelineno-0-808">808</a></span>
-<span class="normal"><a href="#__codelineno-0-809">809</a></span>
-<span class="normal"><a href="#__codelineno-0-810">810</a></span>
-<span class="normal"><a href="#__codelineno-0-811">811</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the attributes of the resampling source as a mapping.</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">    :return: A mapping of attribute names to their values.</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">    :raises ValueError: If the resampling is by name or the source is not resolvable.</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_resampling_by_name</span><span class="p">:</span>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-805" name="__codelineno-0-805"></a>            <span class="sa">f</span><span class="s2">&quot;This is a resampling by name, can&#39;t get attrs from it: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a>        <span class="p">)</span>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a>            <span class="sa">f</span><span class="s2">&quot;Source should be a resolvable object. Is: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>        <span class="p">)</span>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">()</span>
+<span class="normal"><a href="#__codelineno-0-806">806</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-793" name="__codelineno-0-793"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<a id="__codelineno-0-794" name="__codelineno-0-794"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get the attributes of the resampling source as a mapping.</span>
+<a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">    :return: A mapping of attribute names to their values.</span>
+<a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">    :raises ValueError: If the resampling is by name or the source is not resolvable.</span>
+<a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_resampling_by_name</span><span class="p">:</span>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a>            <span class="sa">f</span><span class="s2">&quot;This is a resampling by name, can&#39;t get attrs from it: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>        <span class="p">)</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">):</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-804" name="__codelineno-0-804"></a>            <span class="sa">f</span><span class="s2">&quot;Source should be a resolvable object. Is: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="si">!r}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-805" name="__codelineno-0-805"></a>        <span class="p">)</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_source</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">()</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

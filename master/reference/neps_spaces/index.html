@@ -4125,7 +4125,7 @@
 <li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
 <li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
 <li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
-<li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
+<li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
 <details class="example">
 <summary>Quick Parameter Reference</summary>
@@ -4146,12 +4146,7 @@
 
         <p>A domain representing a range of integer values.
 It allows for sampling from a range defined by minimum and maximum values,
-and can be centered around a specific value with a given confidence level.
-:param min_value: The minimum value of the domain.
-:param max_value: The maximum value of the domain.
-:param log: Whether to sample values on a logarithmic scale.
-:param prior: The prior value for the domain, if any.
-:param prior_confidence: The confidence level of the prior value.</p>
+and can be centered around a specific value with a given confidence level.</p>
 
         <p>:param max_value: The maximum value of the domain.
 :param log: Whether to sample values on a logarithmic scale.
@@ -4167,7 +4162,12 @@ and can be centered around a specific value with a given confidence level.
 
                   <details class="quote">
                     <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-550">550</a></span>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-545">545</a></span>
+<span class="normal"><a href="#__codelineno-0-546">546</a></span>
+<span class="normal"><a href="#__codelineno-0-547">547</a></span>
+<span class="normal"><a href="#__codelineno-0-548">548</a></span>
+<span class="normal"><a href="#__codelineno-0-549">549</a></span>
+<span class="normal"><a href="#__codelineno-0-550">550</a></span>
 <span class="normal"><a href="#__codelineno-0-551">551</a></span>
 <span class="normal"><a href="#__codelineno-0-552">552</a></span>
 <span class="normal"><a href="#__codelineno-0-553">553</a></span>
@@ -4182,32 +4182,27 @@ and can be centered around a specific value with a given confidence level.
 <span class="normal"><a href="#__codelineno-0-562">562</a></span>
 <span class="normal"><a href="#__codelineno-0-563">563</a></span>
 <span class="normal"><a href="#__codelineno-0-564">564</a></span>
-<span class="normal"><a href="#__codelineno-0-565">565</a></span>
-<span class="normal"><a href="#__codelineno-0-566">566</a></span>
-<span class="normal"><a href="#__codelineno-0-567">567</a></span>
-<span class="normal"><a href="#__codelineno-0-568">568</a></span>
-<span class="normal"><a href="#__codelineno-0-569">569</a></span>
-<span class="normal"><a href="#__codelineno-0-570">570</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="p">):</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Integer domain with min and max values, and optional prior.</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    :param min_value: The minimum value of the domain.</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    :param max_value: The maximum value of the domain.</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    :param log: Whether to sample values on a logarithmic scale.</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a><span class="sd">    :param prior: The prior value for the domain, if any.</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a><span class="sd">    :param prior_confidence: The confidence level of the prior value.</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a><span class="sd">    :raises ValueError: If min_value is greater than max_value.</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">log</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span> <span class="o">=</span> <span class="n">prior</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior_confidence</span> <span class="o">=</span> <span class="n">prior_confidence</span>
+<span class="normal"><a href="#__codelineno-0-565">565</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="p">):</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Initialize the Integer domain with min and max values, and optional prior.</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">    :param min_value: The minimum value of the domain.</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">    :param max_value: The maximum value of the domain.</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">    :param log: Whether to sample values on a logarithmic scale.</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">    :param prior: The prior value for the domain, if any.</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">    :param prior_confidence: The confidence level of the prior value.</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">    :raises ValueError: If min_value is greater than max_value.</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span> <span class="o">=</span> <span class="n">min_value</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span> <span class="o">=</span> <span class="n">max_value</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_log</span> <span class="o">=</span> <span class="n">log</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior</span> <span class="o">=</span> <span class="n">prior</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_prior_confidence</span> <span class="o">=</span> <span class="n">prior_confidence</span>
 </code></pre></div></td></tr></table></div>
                   </details>
 
@@ -4402,7 +4397,12 @@ the domain is logarithmic.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-633">633</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-628">628</a></span>
+<span class="normal"><a href="#__codelineno-0-629">629</a></span>
+<span class="normal"><a href="#__codelineno-0-630">630</a></span>
+<span class="normal"><a href="#__codelineno-0-631">631</a></span>
+<span class="normal"><a href="#__codelineno-0-632">632</a></span>
+<span class="normal"><a href="#__codelineno-0-633">633</a></span>
 <span class="normal"><a href="#__codelineno-0-634">634</a></span>
 <span class="normal"><a href="#__codelineno-0-635">635</a></span>
 <span class="normal"><a href="#__codelineno-0-636">636</a></span>
@@ -4424,39 +4424,34 @@ the domain is logarithmic.</p>
 <span class="normal"><a href="#__codelineno-0-652">652</a></span>
 <span class="normal"><a href="#__codelineno-0-653">653</a></span>
 <span class="normal"><a href="#__codelineno-0-654">654</a></span>
-<span class="normal"><a href="#__codelineno-0-655">655</a></span>
-<span class="normal"><a href="#__codelineno-0-656">656</a></span>
-<span class="normal"><a href="#__codelineno-0-657">657</a></span>
-<span class="normal"><a href="#__codelineno-0-658">658</a></span>
-<span class="normal"><a href="#__codelineno-0-659">659</a></span>
-<span class="normal"><a href="#__codelineno-0-660">660</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="k">def</span><span class="w"> </span><span class="nf">centered_around</span><span class="p">(</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a>    <span class="n">center</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a>    <span class="n">confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span><span class="p">,</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Integer</span><span class="p">:</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new integer domain centered around a specific value.</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    :param center: The value around which to center the new domain.</span>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    :param confidence: The confidence level for the new domain.</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a><span class="sd">    :return: A new Integer instance that is centered around the specified value.</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a><span class="sd">    :raises ValueError: If the center value is not within the domain&#39;s range.</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a>    <span class="n">new_min</span><span class="p">,</span> <span class="n">new_max</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="n">_calculate_new_domain_bounds</span><span class="p">(</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a>            <span class="n">number_type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a>            <span class="n">min_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_value</span><span class="p">,</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>            <span class="n">max_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_value</span><span class="p">,</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>            <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>            <span class="n">confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="p">),</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="p">)</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">min_value</span><span class="o">=</span><span class="n">new_min</span><span class="p">,</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">max_value</span><span class="o">=</span><span class="n">new_max</span><span class="p">,</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>        <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">prior</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="n">prior_confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-655">655</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="k">def</span><span class="w"> </span><span class="nf">centered_around</span><span class="p">(</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a>    <span class="n">center</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="n">confidence</span><span class="p">:</span> <span class="n">ConfidenceLevel</span><span class="p">,</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Integer</span><span class="p">:</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new integer domain centered around a specific value.</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">    :param center: The value around which to center the new domain.</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">    :param confidence: The confidence level for the new domain.</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">    :return: A new Integer instance that is centered around the specified value.</span>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">    :raises ValueError: If the center value is not within the domain&#39;s range.</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a>    <span class="n">new_min</span><span class="p">,</span> <span class="n">new_max</span> <span class="o">=</span> <span class="n">cast</span><span class="p">(</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a>        <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">],</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>        <span class="n">_calculate_new_domain_bounds</span><span class="p">(</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>            <span class="n">number_type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a>            <span class="n">min_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_value</span><span class="p">,</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>            <span class="n">max_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">max_value</span><span class="p">,</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>            <span class="n">center</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>            <span class="n">confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>        <span class="p">),</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>    <span class="p">)</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>    <span class="k">return</span> <span class="n">Integer</span><span class="p">(</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="n">min_value</span><span class="o">=</span><span class="n">new_min</span><span class="p">,</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>        <span class="n">max_value</span><span class="o">=</span><span class="n">new_max</span><span class="p">,</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>        <span class="n">log</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">,</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">prior</span><span class="o">=</span><span class="n">center</span><span class="p">,</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">prior_confidence</span><span class="o">=</span><span class="n">confidence</span><span class="p">,</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4567,23 +4562,23 @@ scale, as this is not implemented yet.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\space\neps_spaces\parameters.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-623">623</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-618">618</a></span>
+<span class="normal"><a href="#__codelineno-0-619">619</a></span>
+<span class="normal"><a href="#__codelineno-0-620">620</a></span>
+<span class="normal"><a href="#__codelineno-0-621">621</a></span>
+<span class="normal"><a href="#__codelineno-0-622">622</a></span>
+<span class="normal"><a href="#__codelineno-0-623">623</a></span>
 <span class="normal"><a href="#__codelineno-0-624">624</a></span>
 <span class="normal"><a href="#__codelineno-0-625">625</a></span>
-<span class="normal"><a href="#__codelineno-0-626">626</a></span>
-<span class="normal"><a href="#__codelineno-0-627">627</a></span>
-<span class="normal"><a href="#__codelineno-0-628">628</a></span>
-<span class="normal"><a href="#__codelineno-0-629">629</a></span>
-<span class="normal"><a href="#__codelineno-0-630">630</a></span>
-<span class="normal"><a href="#__codelineno-0-631">631</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a random integer value from the domain.</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">    :return: A randomly selected integer value within the domain&#39;s range.</span>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">    :raises NotImplementedError: If the domain is set to sample on a logarithmic</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">    scale, as this is not implemented yet.</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;TODO.&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a>    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">))</span>
+<span class="normal"><a href="#__codelineno-0-626">626</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a random integer value from the domain.</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">    :return: A randomly selected integer value within the domain&#39;s range.</span>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">    :raises NotImplementedError: If the domain is set to sample on a logarithmic</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">    scale, as this is not implemented yet.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log</span><span class="p">:</span>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;TODO.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_min_value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_max_value</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
