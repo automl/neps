@@ -48,7 +48,7 @@ class SamplingResolutionContext:
 
     Raises:
         ValueError: If the resolution_root is not a Resolvable, or if the domain_sampler
-        is not a DomainSampler, or if the environment_values is not a Mapping.
+            is not a DomainSampler, or if the environment_values is not a Mapping.
     """
 
     def __init__(

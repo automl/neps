@@ -199,14 +199,14 @@ def convert_confidence_level(confidence: str) -> ConfidenceLevel:
 
     Args:
         confidence: A string representing the confidence level, e.g., "low", "medium",
-        "high".
+            "high".
 
     Returns:
         ConfidenceLevel: The corresponding ConfidenceLevel enum value.
 
     Raises:
         ValueError: If the input string does not match any of the defined confidence
-        levels.
+            levels.
     """
     try:
         return ConfidenceLevel[confidence.upper()]
