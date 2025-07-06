@@ -125,9 +125,6 @@ neps.run(
 ## Getting the results
 The results of the optimization process are stored in the `root_directory=`
 provided to [`neps.run()`][neps.api.run].
-To obtain a summary of the optimization process, you can enable the
-`post_run_summary=True` argument in [`neps.run()`][neps.api.run],
-while will generate a summary csv after the run has finished.
 
 === "Result Directory"
 
@@ -143,9 +140,11 @@ while will generate a summary csv after the run has finished.
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary                 # Only if post_run_summary=True
+    ├── summary                 
     │  ├── full.csv
     │  └── short.csv
+    │  ├── best_config_trajectory.txt
+    │  └── best_config.txt
     ├── optimizer_info.yaml     # The optimizer's configuration
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
@@ -153,7 +152,7 @@ while will generate a summary csv after the run has finished.
 === "python"
 
     ```python
-    neps.run(..., post_run_summary=True)
+    neps.run(..., write_summary_to_disk=True)
     ```
 
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate

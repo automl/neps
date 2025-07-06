@@ -382,9 +382,16 @@ class NePSState:
             else:
                 previous_trial_location = None
 
+            id_str = sampled_config.id
+            config_name = f"{sampled_config.id}"
+            parts = id_str.split('_rung_')
+            if len(parts) == 2 and all(p.isdigit() for p in parts):
+                config_id, rung_id = map(int, parts)
+                config_name = f"{config_id}_rung_{rung_id}"
+
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
+                location=str(self._trial_repo.directory / f"config_{config_name}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,

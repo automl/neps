@@ -40,10 +40,10 @@ Currently, this creates one plot that shows the best error value across the numb
 
 ## What's on disk?
 In the root directory, NePS maintains several files at all times that are human readable and can be useful
-If you pass the `post_run_summary=` argument to [`neps.run()`][neps.api.run],
-NePS will also generate a summary CSV file for you.
+If you pass the `write_summary_to_disk=` argument to [`neps.run()`][neps.api.run],
+NePS will generate a summary CSV and TXT files for you.  
 
-=== "`neps.run(..., post_run_summary=True)`"
+=== "`neps.run(..., write_summary_to_disk=True)`"
 
     ```
     ROOT_DIRECTORY
@@ -54,15 +54,15 @@ NePS will also generate a summary CSV file for you.
     │      └── report.yaml
     ├── summary
     │  ├── full.csv
-    │  └── short.csv
-    ├── best_objective_trajectory.txt
-    ├── best_objective.txt
+    │  ├── short.csv
+    │  ├── best_config_trajectory.txt
+    │  └── best_config.txt
     ├── optimizer_info.yaml
     └── optimizer_state.pkl
     ```
 
 
-=== "`neps.run(..., post_run_summary=False)`"
+=== "`neps.run(..., write_summary_to_disk=False)`"
 
     ```
     ROOT_DIRECTORY
@@ -71,8 +71,6 @@ NePS will also generate a summary CSV file for you.
     │      ├── config.yaml
     │      ├── metadata.yaml
     │      └── report.yaml
-    ├── best_objective_trajectory.txt
-    ├── best_objective.txt
     ├── optimizer_info.yaml
     └── optimizer_state.pkl
     ```
@@ -81,8 +79,8 @@ NePS will also generate a summary CSV file for you.
 The `full.csv` contains all configuration details in CSV format.
 Details include configuration hyperparameters and any returned result and cost from the `evaluate_pipeline` function.
 
-The `best_objective_trajectory.txt` contains logging of the incumbent trajectory.
-The `best_objective.txt` records current incumbent.
+The `best_config_trajectory.txt` contains logging of the incumbent trajectory.
+The `best_config.txt` records current incumbent.
 
 # TensorBoard Integration
 

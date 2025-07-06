@@ -139,11 +139,11 @@ def _interpolate_time(
 
     if x_range is not None:
         min_b, max_b = x_range
-        new_entry = {c: np.nan for c in df.columns}
+        new_entry = dict.fromkeys(df.columns, np.nan)
         _df = pd.DataFrame.from_dict(new_entry, orient="index").T
         _df.index = [min_b]
         df = pd.concat((df, _df)).sort_index()
-        new_entry = {c: np.nan for c in df.columns}
+        new_entry = dict.fromkeys(df.columns, np.nan)
         _df = pd.DataFrame.from_dict(new_entry, orient="index").T
         _df.index = [max_b]
         df = pd.concat((df, _df)).sort_index()
@@ -157,7 +157,7 @@ def _interpolate_time(
 
 def _df_to_x_range(df: pd.DataFrame, x_range: tuple | None = None) -> pd.DataFrame:
     x_max = np.inf if x_range is None else int(x_range[-1])
-    new_entry = {c: np.nan for c in df.columns}
+    new_entry = dict.fromkeys(df.columns, np.nan)
     _df = pd.DataFrame.from_dict(new_entry, orient="index").T
     _df.index = [x_max]
     df = pd.concat((df, _df)).sort_index()
