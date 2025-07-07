@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
 from neps.space.parsing import convert_to_space
-from neps.status.status import post_run_csv
+from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
 
 if TYPE_CHECKING:
@@ -33,9 +33,9 @@ def run(  # noqa: PLR0913
     ),
     *,
     root_directory: str | Path = "neps_results",
-    overwrite_working_directory: bool = False,
-    post_run_summary: bool = True,
+    overwrite_root_directory: bool = False,
     evaluations_to_spend: int | None = None,
+    write_summary_to_disk: bool = True,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
@@ -192,10 +192,10 @@ def run(  # noqa: PLR0913
 
         root_directory: The directory to save progress to.
 
-        overwrite_working_directory: If true, delete the working directory at the start of
+        overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
-        post_run_summary: If True, creates a csv file after each worker is done,
+        write_summary_to_disk: If True, creates a csv and txt files after each worker is done,
             holding summary information about the configs and results.
 
         max_evaluations_per_run: Number of evaluations this specific call should do.
@@ -504,24 +504,21 @@ def run(  # noqa: PLR0913
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,
         ignore_errors=ignore_errors,
-        overwrite_optimization_dir=overwrite_working_directory,
+        overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
+        write_summary_to_disk=write_summary_to_disk,
     )
 
-    if post_run_summary:
-        full_frame_path, short_path = post_run_csv(root_directory)
+    post_run_csv(root_directory)
+    root_directory = Path(root_directory)
+    summary_dir = root_directory / "summary"
+    if write_summary_to_disk==False:
+        trajectory_of_improvements(root_directory)
         logger.info(
-            "The post run summary has been created, which is a csv file with the "
-            "output of all data in the run."
-            f"\nYou can find a full dataframe at: {full_frame_path}."
-            f"\nYou can find a quick summary at: {short_path}."
+            "The summary folder has been created, which contains csv and txt files with the "
+            "output of all data in the run (short.csv - only the best; full.csv - all runs"
+            "; best_config_trajectory.txt for incumbent trajectory; and best_config.txt for final incumbent)."
+            f"\nYou can find summary folder at: {summary_dir}."
         )
-    else:
-        logger.info(
-            "Skipping the creation of the post run summary, which is a csv file with the "
-            " output of all data in the run."
-            "\nSet `post_run_summary=True` to enable it."
-        )
-
 
 __all__ = ["run"]

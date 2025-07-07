@@ -7,6 +7,7 @@ import logging
 import os
 import shutil
 import time
+import math
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from portalocker import portalocker
+from pathlib import Path
+from filelock import FileLock
 
 from neps.env import (
     FS_SYNC_GRACE_BASE,
@@ -41,6 +44,7 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
+from neps.status.status import post_run_csv, _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
@@ -321,12 +325,22 @@ class DefaultWorker:
     ) -> str | Literal[False]:
         if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                count = sum(
-                    1
-                    for _, trial in trials.items()
-                    if trial.metadata.state
-                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
-                )
+                if self.optimizer.space.fidelities:
+                    count = sum(
+                        trial.report.cost
+                        for _, trial in trials.items()
+                        if trial.report is not None and trial.report.cost is not None
+                    )
+                    for name, fidelity_param in self.optimizer.space.fidelities.items():
+                        count = math.ceil(count / fidelity_param.upper)
+                else:
+                    count = sum(
+                        1
+                        for _, trial in trials.items()
+                        if trial.metadata.state
+                        not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                    )
+                    
             else:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
@@ -509,7 +523,34 @@ class DefaultWorker:
         """
         _set_workers_neps_state(self.state)
 
-        logger.info("Launching NePS")
+        main_dir = Path(self.state.path)
+        if self.settings.write_summary_to_disk:
+            full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
+
+            # Create empty CSV files
+            with csv_locker.lock():
+                full_df_path.parent.mkdir(parents=True, exist_ok=True)
+                full_df_path.touch(exist_ok=True)
+                short_path.touch(exist_ok=True)
+
+            summary_dir = main_dir / "summary"
+            summary_dir.mkdir(parents=True, exist_ok=True)
+
+            improvement_trace_path = summary_dir / "best_config_trajectory.txt"
+            improvement_trace_path.touch(exist_ok=True)
+            best_config_path = summary_dir / "best_config.txt"
+            best_config_path.touch(exist_ok=True)
+            _trace_lock = FileLock(".trace.lock")
+            _trace_lock_path = Path(str(_trace_lock.lock_file))
+            _trace_lock_path.touch(exist_ok=True)
+
+            all_best_configs = []
+            logger.info("Summary files of evaluations can be found in folder `Summary` in the main directory: %s", main_dir)
+
+        _best_score_so_far = float("inf")
+
+        optimizer_name = self.state._optimizer_info["name"]
+        logger.info("Using optimizer: %s", optimizer_name)
 
         _time_monotonic_start = time.monotonic()
         _error_from_evaluation: Exception | None = None
@@ -639,6 +680,56 @@ class DefaultWorker:
                 for _key, callback in _TRIAL_END_CALLBACKS.items():
                     callback(trial_to_eval)
 
+            if report.objective_to_minimize is not None and report.err is None:
+                new_score = report.objective_to_minimize
+                if new_score < _best_score_so_far:
+                    _best_score_so_far = new_score
+                    logger.info(
+                        "Evaluated trial: %s with objective %s is the new best trial.",
+                        evaluated_trial.id,
+                        new_score,
+                    )
+                    
+                    if self.settings.write_summary_to_disk:
+                        # Store in memory for later file re-writing
+                        all_best_configs.append({
+                            "score": new_score,
+                            "trial_id": evaluated_trial.id,
+                            "config": evaluated_trial.config
+                        })
+
+                        # Build trace text and best config text
+                        trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+                        for best in all_best_configs:
+                            trace_text += (
+                                f"Objective to minimize: {best['score']}\n"
+                                f"Config ID: {best['trial_id']}\n"
+                                f"Config: {best['config']}\n"
+                                + "-" * 80 + "\n"
+                            )
+
+                        best_config = all_best_configs[-1]  # Latest best
+                        best_config_text = (
+                            f"# Best config:"
+                            f"\n\n    Config ID: {best_config['trial_id']}"
+                            f"\n    Objective to minimize: {best_config['score']}"
+                            f"\n    Config: {best_config['config']}"
+                        )
+
+                        # Write files from scratch
+                        with _trace_lock:
+                            with open(improvement_trace_path, mode='w') as f:
+                                f.write(trace_text)
+
+                            with open(best_config_path, mode='w') as f:
+                                f.write(best_config_text)
+
+                if self.settings.write_summary_to_disk:
+                    full_df, short = status(main_dir)
+                    with csv_locker.lock():
+                        full_df.to_csv(full_df_path)
+                        short.to_frame().to_csv(short_path)
+
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
             logger.debug("Cost %s: %s", evaluated_trial.id, report.objective_to_minimize)
@@ -717,6 +808,7 @@ def _launch_runtime(  # noqa: PLR0913
     fidelities_to_spend: int | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
+    write_summary_to_disk: bool = True,
 ) -> None:
     default_report_values = DefaultReportValues(
         objective_value_on_error=objective_value_on_error,
@@ -796,6 +888,7 @@ def _launch_runtime(  # noqa: PLR0913
         max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_cost_for_worker=None,  # TODO: User can't specify yet
+        write_summary_to_disk=write_summary_to_disk
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.

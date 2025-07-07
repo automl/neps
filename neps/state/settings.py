@@ -188,3 +188,8 @@ class WorkerSettings:
     If `None`, there is no limit and this worker will continue to evaluate
     indefinitely or until another stopping criterion is met.
     """
+    
+    write_summary_to_disk: bool = True
+    """If True, creates a csv and txt files after each worker is done,
+            holding summary information about the configs and results.
+    """

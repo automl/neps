@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from neps.state.trial import State
 
 import neps
-
+import numpy as np
 
 def process_seed(
     *,
@@ -21,51 +22,45 @@ def process_seed(
         path = path / str(seed) / "neps_root_directory"
 
     _fulldf, _summary = neps.status(path, print_summary=False)
-    raise NotImplementedError(
-        "I'm sorry, I broke this. We now dump all the information neps has available"
-        " into the above dataframe `fulldf`."
-    )
-    # > sorted_stats = sorted(sorted(stats.items()), key=lambda x: len(x[0]))
-    # > stats = OrderedDict(sorted_stats)
+    if _fulldf.empty:
+        raise ValueError(f"No trials found in {path}")
+    
+    _fulldf = _fulldf.sort_values("time_sampled")
 
-    # > # max_cost only relevant for scaling x-axis when using fidelity on the x-axis
-    # > max_cost: float = -1.0
-    # > if key_to_extract == "fidelity":
-    # >     # TODO(eddiebergman): This can crash for a number of reasons, namely if the
-    # >     # config crased and it's result is an error, or if the `"info_dict"` and/or
-    # >     # `key_to_extract` doesn't exist
-    # >     max_cost = max(s.result["info_dict"][key_to_extract] for s in stats.values())
+    def get_cost(idx: str | int) -> float:
+        row = _fulldf.loc[idx]
+        if key_to_extract and key_to_extract in row:
+            return float(row[key_to_extract]) 
+        return 1.0
 
-    # > global_start = stats[min(stats.keys())].metadata["time_sampled"]
+    losses = []
+    costs = []
 
-    # > def get_cost(idx: str) -> float:
-    # >     if key_to_extract is not None:
-    # >         # TODO(eddiebergman): This can crash for a number of reasons, namely if
-    # >         # the config crased and it's result is an error, or if the `"info_dict"`
-    # >         # and/or `key_to_extract` doesn't exist
-    # >         return float(stats[idx].result["info_dict"][key_to_extract])
+    # max_cost only relevant for scaling x-axis when using fidelity on the x-axis
+    max_cost: float = -1.0
+    global_start = _fulldf["time_sampled"].min()
 
-    # >     return 1.0
+    for config_id, config_result in _fulldf.iterrows():
+        if config_result["state"] != State.SUCCESS:
+            continue
 
-    # > losses = []
-    # > costs = []
+        cost = get_cost(config_id)
 
-    # > for config_id, config_result in stats.items():
-    # >     config_cost = get_cost(config_id)
-    # >     if consider_continuations:
-    # >         if n_workers == 1:
-    # >             # calculates continuation costs for MF algorithms NOTE: assumes that
-    # >             # all recorded evaluations are black-box evaluations where
-    # >             # continuations or freeze-thaw was not accounted for during opt
-    # >             if "previous_config_id" in config_result.metadata:
-    # >                 previous_config_id = config_result.metadata["previous_config_id"]
-    # >                 config_cost -= get_cost(previous_config_id)
-    # >         else:
-    # >             config_cost = config_result.metadata["time_end"] - global_start
+        if consider_continuations:
+            if n_workers == 1 and "previous_config_id" in config_result["metadata"]:
+                # calculates continuation costs for MF algorithms NOTE: assumes that
+                # all recorded evaluations are black-box evaluations where
+                # continuations or freeze-thaw was not accounted for during optimization
+                previous_id = config_result["metadata"]["previous_config_id"]
+               
+                if previous_id in _fulldf.index and key_to_extract:
+                    cost -= get_cost(config_id)
+                else:
+                    cost = float(config_result["time_end"] - global_start)
 
-    # >     # TODO(eddiebergman): Assumes it never crashed and there's a
-    # >     # objective_to_minimize available,not fixing now but it should be addressed
-    # >     losses.append(config_result.result["objective_to_minimize"])  # type: ignore
-    # >     costs.append(config_cost)
+        loss = float(config_result["objective_to_minimize"])
+        losses.append(loss)
+        costs.append(cost)
+        max_cost = max(max_cost, cost)
 
-    # > return list(np.minimum.accumulate(losses)), costs, max_cost
+    return list(np.minimum.accumulate(losses)), costs, max_cost

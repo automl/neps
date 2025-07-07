@@ -108,13 +108,13 @@ If the run previously stopped due to reaching a budget and you specify the same 
 
 ## Overwriting a Run
 
-To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_working_directory=True` argument.
+To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_root_directory=True` argument.
 
 ```python
 neps.run(
     ...,
     root_directory="path/to/previous_result_dir",
-    overwrite_working_directory=True,
+    overwrite_root_directory=True,
 )
 ```
 
@@ -125,9 +125,6 @@ neps.run(
 ## Getting the results
 The results of the optimization process are stored in the `root_directory=`
 provided to [`neps.run()`][neps.api.run].
-To obtain a summary of the optimization process, you can enable the
-`post_run_summary=True` argument in [`neps.run()`][neps.api.run],
-while will generate a summary csv after the run has finished.
 
 === "Result Directory"
 
@@ -143,9 +140,11 @@ while will generate a summary csv after the run has finished.
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary                 # Only if post_run_summary=True
+    ├── summary                 
     │  ├── full.csv
     │  └── short.csv
+    │  ├── best_config_trajectory.txt
+    │  └── best_config.txt
     ├── optimizer_info.yaml     # The optimizer's configuration
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
@@ -153,7 +152,7 @@ while will generate a summary csv after the run has finished.
 === "python"
 
     ```python
-    neps.run(..., post_run_summary=True)
+    neps.run(..., write_summary_to_disk=True)
     ```
 
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
@@ -177,7 +176,7 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluations_to_spend=100,
         max_evaluations_per_run=10, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
-        overwrite_working_directory=False, #!!!
+        overwrite_root_directory=False, #!!!
     )
     ```
 
@@ -187,7 +186,7 @@ Any new workers that come online will automatically pick up work and work togeth
 
     !!! warning
 
-        Ensure `overwrite_working_directory=False` to prevent newly spawned workers from deleting the shared directory!
+        Ensure `overwrite_root_directory=False` to prevent newly spawned workers from deleting the shared directory!
 
 
 === "Shell"
