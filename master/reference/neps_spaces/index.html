@@ -3800,7 +3800,7 @@
 <p class="admonition-title">Quote</p>
 <p>This is a quote admonition.</p>
 </div>
-<details class="important">
+<details class="info">
 <summary>Self- and future references</summary>
 <p>When referencing itself or a not yet defined parameter use a string of that parameters name:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;next_param&quot;</span><span class="p">)))</span>
@@ -3842,7 +3842,7 @@
 </code></pre></div>
 <details class="warning">
 <summary>Tuples as choice</summary>
-<p>When using a tuple as one of the choices in a <code>Categorical</code>, all choices must be tuples.</p>
+<p>When using a tuple as one of the choices in a <code>Categorical</code>, all choices must be tuples, as in the example above with <code>python (_relu,)</code>.</p>
 </details>
 <h2 id="using-neps-spaces">Using NePS Spaces<a class="headerlink" href="#using-neps-spaces" title="Permanent link">#</a></h2>
 <p>To use a NePS space, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
@@ -3852,7 +3852,7 @@
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">NN_Space</span><span class="p">()</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
 </code></pre></div>
-<div class="admonition tip">
+<div class="admonition abstract">
 <p class="admonition-title">NePS Space-compatible optimizers</p>
 <p>Currently, NePS Spaces is compatible with these optimizers, which can be imported from <a class="autorefs autorefs-internal" title="NePS Algorithms" href="../../api/neps/optimizers/neps_algorithms/#neps.optimizers.neps_algorithms--neps-algorithms">neps.optimizers.neps_algorithms</a>:</p>
 <ul>
