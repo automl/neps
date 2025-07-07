@@ -18,14 +18,14 @@ Additionally, **NePS spaces** can describe [complex (hierarchical) architectures
 
 ### HPO Search Spaces
 
-A **NePS space** is defined as a child class of [`Pipeline`][neps.space.neps_spaces.parameters.Pipeline]:
+A **NePS space** is defined as a subclass of [`Pipeline`][neps.space.neps_spaces.parameters.Pipeline]:
 
 ```python
 
-def pipeline_space(Pipeline):
+class pipeline_space(Pipeline):
 ```
 
-We can then define the hyperparameters that make up the space, like so:
+Here we define the hyperparameters that make up the space, like so:
 
 ```python
 
@@ -34,15 +34,15 @@ We can then define the hyperparameters that make up the space, like so:
     cat_param = Categorical(choices=["A", "B", "C"])
 ```
 
-### Using your knowledge, providing a Prior
+!!! tip "**Using your knowledge, providing a Prior**"
 
-You can provide **your knowledge about where a good value for this parameter lies** by indicating a `prior=`. You can also specify a `prior_confidence=` to indicate how strongly you want NePS to focus on these, one of either `"low"`, `"medium"`, or `"high"`:
+    You can provide **your knowledge about where a good value for this parameter lies** by indicating a `prior=`. You can also specify a `prior_confidence=` to indicate how strongly you want NePS to focus on these, one of either `"low"`, `"medium"`, or `"high"`:
 
-```python
-    # Categorical parameters can also choose between other parameters
-    # Here the float parameter (index 0) is used as a prior
-    float_or_int = Categorical(choices=(float_param, int_param), prior=0, prior_confidence="high")
-```
+    ```python
+        # Categorical parameters can also choose between other parameters
+        # Here the float parameter (index 0) is used as a prior
+        float_or_int = Categorical(choices=(float_param, int_param), prior=0, prior_confidence="high")
+    ```
 
 ### Hierarchies and Architectures
 
@@ -61,7 +61,7 @@ With `Resampled` you can reuse parameters in for other parameters, even themselv
     resampled_float_2 = Resampled(source=_float)
 ```
 
-??? tip "Self- and future references"
+??? info "Self- and future references"
 
     When referencing itself or a not yet defined parameter use a string of that parameters name:
 
@@ -109,7 +109,7 @@ class NN_Space(Pipeline):
 
 ??? warning "Tuples as choice"
 
-    When using a tuple as one of the choices in a `Categorical`, all choices must be tuples.
+    When using a tuple as one of the choices in a `Categorical`, all choices must be tuples, as in the example above with ```(_relu,)```.
 
 ## Using NePS Spaces
 
@@ -123,7 +123,7 @@ neps.run(
 )
 ```
 
-!!! tip "NePS Space-compatible optimizers"
+!!! abstract "NePS Space-compatible optimizers"
 
     Currently, NePS Spaces is compatible with these optimizers, which can be imported from [neps.optimizers.neps_algorithms][neps.optimizers.neps_algorithms--neps-algorithms]:
 
