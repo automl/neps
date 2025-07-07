@@ -6,7 +6,7 @@ and algorithms.
 """
 
 from neps.api import run
-from neps.optimizers import algorithms
+from neps.optimizers import algorithms, neps_algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
 from neps.plot.plot import plot
@@ -28,6 +28,7 @@ __all__ = [
     "Trial",
     "algorithms",
     "load_yamls",
+    "neps_algorithms",
     "plot",
     "run",
     "status",

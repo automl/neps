@@ -10,8 +10,6 @@ from collections.abc import Callable, Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Any, Literal
 
-import pandas as pd
-
 from neps.optimizers.neps_bracket_optimizer import _NePSBracketOptimizer
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
 from neps.optimizers.neps_random_search import NePSComplexRandomSearch, NePSRandomSearch
