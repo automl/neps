@@ -25,6 +25,7 @@ all_main_examples = {  # Used for printing in python -m neps_examples
 core_examples = [  # Run locally and on github actions
     "basic_usage/hyperparameters",  # NOTE: This needs to be first for some tests to work
     "basic_usage/analyse",
+    "basic_usage/pytorch_nn_example",
     "experimental/expert_priors_for_architecture_and_hyperparameters",
     "efficiency/multi_fidelity",
 ]

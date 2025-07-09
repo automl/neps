@@ -2,12 +2,6 @@ import logging
 import numpy as np
 import neps
 
-# This example demonstrates how to use NePS to optimize hyperparameters
-# of a pipeline. The pipeline is a simple function that takes in
-# five hyperparameters and returns their sum.
-# Neps uses the default optimizer to minimize this objective function.
-
-
 def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     objective_to_minimize = -float(
         np.sum([float1, float2, int(categorical), integer1, integer2])

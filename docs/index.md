@@ -59,33 +59,26 @@ import logging
 
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def evaluate_pipeline(
-        hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str
-) -> dict:
+def evaluate_pipeline(hyperparameter_a: float, hyperparameter_b: int, architecture_parameter: str):
     # Create your model
     model = MyModel(architecture_parameter)
 
     # Train and evaluate the model with your training pipeline
-    validation_error = train_and_eval(
-        model, hyperparameter_a, hyperparameter_b
-    )
+    validation_error = train_and_eval(model, hyperparameter_a, hyperparameter_b)
     return validation_error
 
 
 # 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
-pipeline_space = dict(
-    hyperparameter_a=neps.Float(
-        lower=0.001, upper=0.1, log=True  # The search space is sampled in log space
-    ),
-    hyperparameter_b=neps.Integer(lower=1, upper=42),
-    architecture_parameter=neps.Categorical(["option_a", "option_b"]),
-)
+class PipelineSpace(neps.Pipeline):
+    hyperparameter_a = neps.Float(min_value=0.001, max_value=0.1, log=True)  # Log scale parameter
+    hyperparameter_b = neps.Integer(min_value=1, max_value=42)
+    architecture_parameter = neps.Categorical(choices=("option_a", "option_b"))
 
 # 3. Run the NePS optimization
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
+    pipeline_space=PipelineSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
     max_evaluations_total=100,
 )

@@ -16,15 +16,14 @@ pip install neural-pipeline-search
 1. **Establish a [`pipeline_space=`](reference/neps_spaces.md)**:
 
 ```python
-pipeline_space={
-    "some_parameter": (0.0, 1.0),   # float
-    "another_parameter": (0, 10),   # integer
-    "optimizer": ["sgd", "adam"],   # categorical
-    "epoch": neps.Integer(lower=1, upper=100, is_fidelity=True),
-    "learning_rate": neps.Float(lower=1e-5, upper=1, log=True),
-    "alpha": neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
-}
-
+class PipelineSpace(neps.Pipeline):
+    # Define the parameters of your search space
+    some_parameter = neps.Float(min_value=0.0, max_value=1.0)       # float
+    another_parameter = neps.Integer(min_value=0, max_value=10)     # integer
+    optimizer = neps.Categorical(choices=("sgd", "adam"))           # categorical
+    epoch = neps.Fidelity(neps.Integer(min_value=1, max_value=100))
+    learning_rate = neps.Float(min_value=1e-5, max_value=1, log=True)
+    alpha = neps.Float(min_value=0.1, max_value=1.0, prior=0.99, prior_confidence="high")
 ```
 
 2. **Define an `evaluate_pipeline()` function**:
@@ -42,7 +41,7 @@ def evaluate_pipeline(some_parameter: float,
 3. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
 ```python
-neps.run(evaluate_pipeline, pipeline_space)
+neps.run(evaluate_pipeline, PipelineSpace())
 ```
 
 ---
