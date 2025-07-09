@@ -3724,9 +3724,10 @@
 <thead>
 <tr>
 <th style="text-align: left;">Algorithm</th>
-<th style="text-align: center;"><a href="../search_algorithms/multifidelity/">Multi-Fidelity</a></th>
-<th style="text-align: center;"><a href="../search_algorithms/prior/">Priors</a></th>
+<th style="text-align: center;"><a href="../search_algorithms/multifidelity.md">Multi-Fidelity</a></th>
+<th style="text-align: center;"><a href="../search_algorithms/prior.md">Priors</a></th>
 <th style="text-align: center;">Model-based</th>
+<th style="text-align: center;"><a href="../neps_spaces.md#hierarchies-and-architectures">NePS-ready</a></th>
 </tr>
 </thead>
 <tbody>
@@ -3735,57 +3736,74 @@
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            grid_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.grid_search">️️✖️*</a></td>
 <td style="text-align: center;">❌</td>
 <td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>Random Search</code></td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">️️✖️*</a></td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.random_search">✔️*</a></td>
 <td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/bayesian_optimization/"><code>Bayesian Optimization</code></a></td>
+<td style="text-align: left;"><code>Complex Random Search</code></td>
+<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            neps_complex_random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.neps_complex_random_search">️️✖️*</a></td>
+<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            neps_complex_random_search" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.neps_complex_random_search">✔️*</a></td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../search_algorithms/bayesian_optimization.md"><code>Bayesian Optimization</code></a></td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            bayesian_optimization" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.bayesian_optimization">️️✖️*</a></td>
 <td style="text-align: center;">❌</td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity/#1-successive-halfing"><code>Successive Halving</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity.md#1-successive-halfing"><code>Successive Halving</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            successive_halving" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.successive_halving">✔️*</a></td>
 <td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity/#asynchronous-successive-halving"><code>ASHA</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity.md#asynchronous-successive-halving"><code>ASHA</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            asha" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.asha">✔️*</a></td>
 <td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity/#2-hyperband"><code>Hyperband</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity.md#2-hyperband"><code>Hyperband</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            hyperband" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.hyperband">✔️*</a></td>
 <td style="text-align: center;">❌</td>
-</tr>
-<tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity/"><code>Asynch HB</code></a></td>
-<td style="text-align: center;">✅</td>
-<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            async_hb" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.async_hb">✔️*</a></td>
 <td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity/#3-in-context-freeze-thaw-bayesian-optimization"><code>IfBO</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity.md"><code>Asynch HB</code></a></td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"><a class="autorefs autorefs-internal" title="            async_hb" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.async_hb">✔️*</a></td>
+<td style="text-align: center;">❌</td>
+<td style="text-align: center;">❌</td>
+</tr>
+<tr>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization"><code>IfBO</code></a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            ifbo" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.ifbo">✔️*</a></td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/prior/#1-pibo"><code>PiBO</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/prior.md#1-pibo"><code>PiBO</code></a></td>
 <td style="text-align: center;"><a class="autorefs autorefs-internal" title="            pibo" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms.pibo">️️✖️*</a></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;">❌</td>
 </tr>
 <tr>
-<td style="text-align: left;"><a href="../search_algorithms/multifidelity_prior/#1-priorband"><code>PriorBand</code></a></td>
+<td style="text-align: left;"><a href="../search_algorithms/multifidelity_prior.md#1-priorband"><code>PriorBand</code></a></td>
+<td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
