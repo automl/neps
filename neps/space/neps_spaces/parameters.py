@@ -428,6 +428,10 @@ class Categorical(Domain[int], Generic[T]):
             if isinstance(prior_confidence, str)
             else prior_confidence
         )
+        if self._prior is not _UNSET and self._prior_confidence is _UNSET:
+            raise ValueError(
+                "If prior is set, prior_confidence must also be set to a valid value."
+            )
 
     @property
     def min_value(self) -> int:
@@ -481,7 +485,7 @@ class Categorical(Domain[int], Generic[T]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence defined.")
         return int(cast(int, self._prior))
 
     @property
@@ -496,7 +500,7 @@ class Categorical(Domain[int], Generic[T]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property
@@ -600,6 +604,10 @@ class Float(Domain[float]):
             if isinstance(prior_confidence, str)
             else prior_confidence
         )
+        if self._prior is not _UNSET and self._prior_confidence is _UNSET:
+            raise ValueError(
+                "If prior is set, prior_confidence must also be set to a valid value."
+            )
 
     @property
     def min_value(self) -> float:
@@ -649,7 +657,7 @@ class Float(Domain[float]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence defined.")
         return float(cast(float, self._prior))
 
     @property
@@ -664,7 +672,7 @@ class Float(Domain[float]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence  defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property
@@ -770,6 +778,10 @@ class Integer(Domain[int]):
             if isinstance(prior_confidence, str)
             else prior_confidence
         )
+        if self._prior != _UNSET and self._prior_confidence is _UNSET:
+            raise ValueError(
+                "If prior is set, prior_confidence must also be set to a valid value."
+            )
 
     @property
     def min_value(self) -> int:
@@ -819,7 +831,7 @@ class Integer(Domain[int]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence defined.")
         return int(cast(int, self._prior))
 
     @property
@@ -834,7 +846,7 @@ class Integer(Domain[int]):
 
         """
         if not self.has_prior:
-            raise ValueError("Domain has no prior defined.")
+            raise ValueError("Domain has no prior and prior_confidence defined.")
         return cast(ConfidenceLevel, self._prior_confidence)
 
     @property

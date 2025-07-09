@@ -11,6 +11,7 @@ NePS Spaces provides a powerful framework for defining and optimizing complex se
 - [`Categorical`][neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values
 - [`Fidelity`][neps.space.neps_spaces.parameters.Fidelity]: Special type for float or integer, [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., epochs, dataset size)
 
+Using these types, you can define the parameters that NePS will optimize during the search process.
 Additionally, **NePS spaces** can describe [complex (hierarchical) architectures](#hierarchies-and-architectures) using:
 
 - [`Operation`][neps.space.neps_spaces.parameters.Operation]: Define operations (e.g., convolution, pooling, activation) with arguments
@@ -127,11 +128,11 @@ neps.run(
 
 !!! abstract "NePS Space-compatible optimizers"
 
-    Currently, NePS Spaces is compatible with these optimizers, which can be imported from [neps.neps_algorithms][neps.optimizers.neps_algorithms--neps-algorithms]:
+    Currently, NePS Spaces is compatible with these optimizers, which can be imported from [neps.algorithms][neps.optimizers.algorithms--neps-algorithms]:
 
-    - [`Random Search`][neps.optimizers.neps_algorithms.neps_random_search], which can sample the space uniformly at random
-    - [`Complex Random Search`][neps.optimizers.neps_algorithms.neps_complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
-    - [`PriorBand`][neps.optimizers.neps_algorithms.neps_priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the NePS space
+    - [`Random Search`][neps.optimizers.algorithms.neps_random_search], which can sample the space uniformly at random
+    - [`Complex Random Search`][neps.optimizers.algorithms.neps_complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
+    - [`PriorBand`][neps.optimizers.algorithms.neps_priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the NePS space
 
 ## Inspecting Configurations
 
@@ -155,4 +156,21 @@ resolved_pipeline, resolution_context = neps_space.resolve(pipeline=NN_Space(),
 
 # The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model
 model_callable = neps_space.convert_operation_to_callable(operation=resolved_pipeline.model)
+```
+
+## Using ConfigSpace
+
+For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/main/) library,
+can also define the `pipeline_space` through `ConfigurationSpace()`
+
+```python
+from configspace import ConfigurationSpace, Float
+
+configspace = ConfigurationSpace(
+    {
+        "learning_rate": Float("learning_rate", bounds=(1e-4, 1e-1), log=True)
+        "optimizer": ["adam", "sgd", "rmsprop"],
+        "dropout_rate": 0.5,
+    }
+)
 ```

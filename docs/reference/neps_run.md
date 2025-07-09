@@ -34,15 +34,15 @@ neps.run(
     It requires these configurations as input and should return either a dictionary or a sole loss value as the output.
 2.  This defines the search space for the configurations from which the optimizer samples.
     It accepts either a dictionary with the configuration names as keys, a path to a YAML configuration file, or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
-    For comprehensive information and examples, please refer to the detailed guide available [here](../reference/pipeline_space.md)
+    For comprehensive information and examples, please refer to the detailed guide available [here](../reference/neps_spaces.md)
 3.  The directory path where the information about the optimization and its progress gets stored.
     This is also used to synchronize multiple calls to `neps.run()` for parallelization.
 
 
 See the following for more:
 
-* What kind of [pipeline space](../reference/pipeline_space.md) can you define?
-* What goes in and what goes out of [`evaluate_pipeline()`](../reference/evaluate_pipeline.md)?
+* What kind of [pipeline space](../reference/neps_spaces.md) can you define?
+* What goes in and what goes out of [`evaluate_pipeline()`](../reference/neps_run.md)?
 
 ## Budget, how long to run?
 To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
@@ -69,7 +69,7 @@ neps.run(
 2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
     This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
-    For more details, please refer [here](../reference/evaluate_pipeline.md)
+    For more details, please refer [here](../reference/neps_spaces.md)
 
 ## Getting some feedback, logging
 NePS will not print anything to the console. To view the progress of workers,

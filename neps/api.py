@@ -77,30 +77,29 @@ def run(  # noqa: PLR0913, C901
         validation_error = -some_parameter
         return validation_error
 
-    pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
+    PipelineSpace(Pipeline):
+        dataset = "mnist"               # constant
+        nlayers = neps.Integer(2,10)    # integer
+        alpha = neps.Float(0.1, 1.0)    # float
+        optimizer = neps.Categorical(   # categorical
+            ("adam", "sgd", "rmsprop")
+        )
+        learning_rate = neps.Float(     # log spaced float
+            min_value=1e-5, max_value=1, log=True
+        )
+        epochs = neps.Fidelity(         # fidelity integer
+            neps.Integer(1, 100)
+        )
+        batch_size = neps.Integer(      # integer with a prior
+            min_value=32,
+            max_value=512,
+            prior=128,
+            prior_confidence="medium"
+        )
+
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space={
-            "some_parameter": (0.0, 1.0),   # float
-            "another_parameter": (0, 10),   # integer
-            "optimizer": ["sgd", "adam"],   # categorical
-            "epoch": neps.Integer(          # fidelity integer
-                lower=1,
-                upper=100,
-                is_fidelity=True
-            ),
-            "learning_rate": neps.Float(    # log spaced float
-                lower=1e-5,
-                uperr=1,
-                log=True
-            ),
-            "alpha": neps.Float(            # float with a prior
-                lower=0.1,
-                upper=1.0,
-                prior=0.99,
-                prior_confidence="high",
-            )
-        },
+        pipeline_space=PipelineSpace(),
         root_directory="usage_example",
         max_evaluations_total=5,
     )
@@ -134,25 +133,28 @@ def run(  # noqa: PLR0913, C901
             This most direct way to specify the search space is as follows:
 
             ```python
-            neps.run(
-                pipeline_space={
-                    "dataset": "mnist",             # constant
-                    "nlayers": (2, 10),             # integer
-                    "alpha": (0.1, 1.0),            # float
-                    "optimizer": [                  # categorical
-                        "adam", "sgd", "rmsprop"
-                    ],
-                    "learning_rate": neps.Float(,   # log spaced float
-                        lower=1e-5, upper=1, log=True
-                    ),
-                    "epochs": neps.Integer(         # fidelity integer
-                        lower=1, upper=100, is_fidelity=True
-                    ),
-                    "batch_size": neps.Integer(     # integer with a prior
-                        lower=32, upper=512, prior=128
-                    ),
+            PipelineSpace(Pipeline):
+                dataset = "mnist"               # constant
+                nlayers = neps.Integer(2,10)    # integer
+                alpha = neps.Float(0.1, 1.0)    # float
+                optimizer = neps.Categorical(   # categorical
+                    ("adam", "sgd", "rmsprop")
+                )
+                learning_rate = neps.Float(     # log spaced float
+                    min_value=1e-5, max_value=1, log=True
+                )
+                epochs = neps.Fidelity(         # fidelity integer
+                    neps.Integer(1, 100)
+                )
+                batch_size = neps.Integer(      # integer with a prior
+                    min_value=32,
+                    max_value=512,
+                    prior=128,
+                    prior_confidence="medium"
+                )
 
-                }
+            neps.run(
+                pipeline_space=PipelineSpace()
             )
             ```
 
@@ -164,29 +166,8 @@ def run(  # noqa: PLR0913, C901
 
             * `prior=`: If you have a good idea about what a good setting
                 for a parameter may be, you can set this as the prior for
-                a parameter. You can specify this along with `prior_confidence`
-                if you would like to assign a `"low"`, `"medium"`, or `"high"`
-                confidence to the prior.
-
-
-            !!! note "Yaml support"
-
-                To support spaces defined in yaml, you may also define the parameters
-                as dictionarys, e.g.,
-
-                ```python
-                neps.run(
-                    pipeline_space={
-                        "dataset": "mnist",
-                        "nlayers": {"type": "int", "lower": 2, "upper": 10},
-                        "alpha": {"type": "float", "lower": 0.1, "upper": 1.0},
-                        "optimizer": {"type": "cat", "choices": ["adam", "sgd", "rmsprop"]},
-                        "learning_rate": {"type": "float", "lower": 1e-5, "upper": 1, "log": True},
-                        "epochs": {"type": "int", "lower": 1, "upper": 100, "is_fidelity": True},
-                        "batch_size": {"type": "int", "lower": 32, "upper": 512, "prior": 128},
-                    }
-                )
-                ```
+                a parameter. You specify this along with `prior_confidence`
+                to assign a `"low"`, `"medium"`, or `"high"`confidence to the prior.
 
             !!! note "ConfigSpace support"
 
@@ -256,98 +237,7 @@ def run(  # noqa: PLR0913, C901
 
             ??? note "Available optimizers"
 
-                ---
-
-                * `#!python "bayesian_optimization"`,
-
-                    ::: neps.optimizers.algorithms.bayesian_optimization
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "ifbo"`
-
-                    ::: neps.optimizers.algorithms.ifbo
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "successive_halving"`:
-
-                    ::: neps.optimizers.algorithms.successive_halving
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "hyperband"`:
-
-                    ::: neps.optimizers.algorithms.hyperband
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "priorband"`:
-
-                    ::: neps.optimizers.algorithms.priorband
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "asha"`:
-
-                    ::: neps.optimizers.algorithms.asha
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "async_hb"`:
-
-                    ::: neps.optimizers.algorithms.async_hb
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "random_search"`:
-
-                    ::: neps.optimizers.algorithms.random_search
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "grid_search"`:
-
-                    ::: neps.optimizers.algorithms.grid_search
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
+                See the [optimizers documentation](../../reference/search_algorithms/landing_page_algo.md) for a list of available optimizers.
 
             With any optimizer choice, you also may provide some additional parameters to the optimizers.
             We do not recommend this unless you are familiar with the optimizer you are using. You

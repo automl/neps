@@ -23,13 +23,13 @@ def make_grid(
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
 
-    For [`Float`][neps.space.Float] and [`Integer`][neps.space.Integer]
+    For [`Float`][neps.space.HPOFloat] and [`Integer`][neps.space.HPOInteger]
     the parameter `size_per_numerical_hp=` is used to determine a grid.
 
-    For [`Categorical`][neps.space.Categorical]
+    For [`Categorical`][neps.space.HPOCategorical]
     hyperparameters, we include all the choices in the grid.
 
-    For [`Constant`][neps.space.Constant] hyperparameters,
+    For [`Constant`][neps.space.HPOConstant] hyperparameters,
     we include the constant value in the grid.
 
     Args:

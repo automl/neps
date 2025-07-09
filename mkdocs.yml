@@ -139,8 +139,7 @@ nav:
   - Getting Started: 'getting_started.md'
   - Reference:
     - Run: 'reference/neps_run.md'
-    - Search Space: 'reference/pipeline_space.md'
-    - NePS-Spaces: 'reference/neps_spaces.md'
+    - NePS Spaces: 'reference/neps_spaces.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - Analysing Runs: 'reference/analyse.md'
     - Optimizer: 'reference/optimizers.md'

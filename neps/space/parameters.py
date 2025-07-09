@@ -287,9 +287,9 @@ class HPOConstant:
 Parameter: TypeAlias = HPOFloat | HPOInteger | HPOCategorical
 """A type alias for all the parameter types.
 
-* [`Float`][neps.space.Float]
-* [`Integer`][neps.space.Integer]
-* [`Categorical`][neps.space.Categorical]
+* [`Float`][neps.space.HPOFloat]
+* [`Integer`][neps.space.HPOInteger]
+* [`Categorical`][neps.space.HPOCategorical]
 
-A [`Constant`][neps.space.Constant] is not included as it does not change value.
+A [`Constant`][neps.space.HPOConstant] is not included as it does not change value.
 """

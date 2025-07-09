@@ -13,7 +13,7 @@ pip install neural-pipeline-search
 
 ## The 3 Main Components
 
-1. **Establish a [`pipeline_space=`](reference/pipeline_space.md)**:
+1. **Establish a [`pipeline_space=`](reference/neps_spaces.md)**:
 
 ```python
 pipeline_space={
@@ -52,7 +52,7 @@ neps.run(evaluate_pipeline, pipeline_space)
 The [reference](reference/neps_run.md) section provides detailed information on the individual components of NePS.
 
 1. How to use the [**`neps.run()`** function](reference/neps_run.md) to start the optimization process.
-2. The different [search space](reference/pipeline_space.md) options available.
+2. The different [search space](reference/neps_spaces.md) options available.
 3. How to choose and configure the [optimizer](reference/optimizers.md) used.
 4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
 5. How to [analyze](reference/analyse.md) the optimization runs.

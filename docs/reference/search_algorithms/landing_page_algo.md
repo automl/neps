@@ -36,7 +36,7 @@ We present a collection of MF-algorithms [here](./multifidelity.md) and algorith
 
 ## What are Priors?
 
-Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/pipeline_space.md#using-your-knowledge-providing-a-prior).
+Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/neps_spaces.md#hpo-search-spaces).
 
 !!! tip "Advantages of using Priors"
 

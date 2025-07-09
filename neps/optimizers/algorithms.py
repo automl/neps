@@ -1,4 +1,6 @@
-"""The selection of optimization algorithms available in NePS.
+"""NePS Algorithms
+===========
+The selection of optimization algorithms available in NePS.
 
 This module conveniently starts with 'a' to be at the top and
 is where most of the code documentation for optimizers can be found.
@@ -722,7 +724,7 @@ def successive_halving(
     or `#!python sampler="prior"`.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         eta: The reduction factor used for building brackets
         early_stopping_rate: Determines the number of rungs in a bracket
             Choosing 0 creates maximal rungs given the fidelity bounds.
@@ -797,7 +799,7 @@ def hyperband(
     as this algorithm could be considered an extension of it.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         eta: The reduction factor used for building brackets
         sampler: The type of sampling procedure to use:
 
@@ -904,7 +906,7 @@ def asha(
     as this algorithm could be considered an extension of it.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         eta: The reduction factor used for building brackets
         sampler: The type of sampling procedure to use:
 
@@ -1007,7 +1009,7 @@ def async_hb(
     takes elements from each.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         eta: The reduction factor used for building brackets
         sampler: The type of sampling procedure to use:
 
@@ -1078,7 +1080,7 @@ def priorband(
     See: https://openreview.net/forum?id=uoiwugtpCH&noteId=xECpK2WH6k
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         eta: The reduction factor used for building brackets
         sample_prior_first: Whether to sample the prior configuration first.
         base: The base algorithm to use for the bracketing.
@@ -1150,7 +1152,7 @@ def bayesian_optimization(
     acquisition function.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         initial_design_size: Number of samples used before using the surrogate model.
             If "ndim", it will use the number of parameters in the search space.
         cost_aware: Whether to consider reported "cost" from configurations in decision
@@ -1241,7 +1243,7 @@ def pibo(
         has.
 
     Args:
-        space: The search space to sample from.
+        pipeline_space: The search space to sample from.
         initial_design_size: Number of samples used before using the surrogate model.
             If "ndim", it will use the number of parameters in the search space.
         cost_aware: Whether to consider reported "cost" from configurations in decision
