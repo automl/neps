@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913, C901
+def run(  # noqa: PLR0913, C901, PLR0912
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | Pipeline,
     *,
@@ -353,6 +353,19 @@ def run(  # noqa: PLR0913, C901
 
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+
+    # Optimizer compatibility check: If the space is a Pipeline and the optimizer is not
+    # one of the NEPS optimizers, we raise an error.
+    if isinstance(space, Pipeline) and _optimizer_ask not in (
+        neps.optimizers.algorithms.neps_random_search,
+        neps.optimizers.algorithms.neps_priorband,
+        neps.optimizers.algorithms.neps_complex_random_search,
+    ):
+        raise ValueError(
+            "The provided optimizer is not compatible with this complex search space. "
+            "Please use one of the NEPS optimizers, such as 'neps_random_search', "
+            "'neps_priorband', or 'neps_complex_random_search'."
+        )
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
