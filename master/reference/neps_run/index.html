@@ -3737,13 +3737,13 @@ You can find most of the features NePS provides through the API of this function
     It requires these configurations as input and should return either a dictionary or a sole loss value as the output.</li>
 <li>This defines the search space for the configurations from which the optimizer samples.
     It accepts either a dictionary with the configuration names as keys, a path to a YAML configuration file, or a <a href="https://automl.github.io/ConfigSpace/"><code>configSpace.ConfigurationSpace</code></a> object.
-    For comprehensive information and examples, please refer to the detailed guide available <a href="../reference/pipeline_space.md">here</a></li>
+    For comprehensive information and examples, please refer to the detailed guide available <a href="../neps_spaces/">here</a></li>
 <li>The directory path where the information about the optimization and its progress gets stored.
     This is also used to synchronize multiple calls to <code>neps.run()</code> for parallelization.</li>
 </ol>
 <p>See the following for more:</p>
 <ul>
-<li>What kind of <a href="../reference/pipeline_space.md">pipeline space</a> can you define?</li>
+<li>What kind of <a href="../neps_spaces/">pipeline space</a> can you define?</li>
 <li>What goes in and what goes out of <a href="./"><code>evaluate_pipeline()</code></a>?</li>
 </ul>
 <h2 id="budget-how-long-to-run">Budget, how long to run?<a class="headerlink" href="#budget-how-long-to-run" title="Permanent link">#</a></h2>
