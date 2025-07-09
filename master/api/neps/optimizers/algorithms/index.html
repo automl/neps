@@ -3953,13 +3953,22 @@ as this algorithm could be considered an extension of it.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -4143,7 +4152,7 @@ and if so, should it be at the highest fidelity.</p>
 <a id="__codelineno-0-904" name="__codelineno-0-904"></a><span class="sd">    as this algorithm could be considered an extension of it.</span>
 <a id="__codelineno-0-905" name="__codelineno-0-905"></a>
 <a id="__codelineno-0-906" name="__codelineno-0-906"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-907" name="__codelineno-0-907"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-908" name="__codelineno-0-908"></a><span class="sd">        eta: The reduction factor used for building brackets</span>
 <a id="__codelineno-0-909" name="__codelineno-0-909"></a><span class="sd">        sampler: The type of sampling procedure to use:</span>
 <a id="__codelineno-0-910" name="__codelineno-0-910"></a>
@@ -4246,13 +4255,22 @@ takes elements from each.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -4430,7 +4448,7 @@ takes elements from each.</p>
 <a id="__codelineno-0-1007" name="__codelineno-0-1007"></a><span class="sd">    takes elements from each.</span>
 <a id="__codelineno-0-1008" name="__codelineno-0-1008"></a>
 <a id="__codelineno-0-1009" name="__codelineno-0-1009"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-1010" name="__codelineno-0-1010"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-1011" name="__codelineno-0-1011"></a><span class="sd">        eta: The reduction factor used for building brackets</span>
 <a id="__codelineno-0-1012" name="__codelineno-0-1012"></a><span class="sd">        sampler: The type of sampling procedure to use:</span>
 <a id="__codelineno-0-1013" name="__codelineno-0-1013"></a>
@@ -4534,13 +4552,22 @@ acquisition function.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -4803,7 +4830,7 @@ automatically.</p>
 <a id="__codelineno-0-1150" name="__codelineno-0-1150"></a><span class="sd">    acquisition function.</span>
 <a id="__codelineno-0-1151" name="__codelineno-0-1151"></a>
 <a id="__codelineno-0-1152" name="__codelineno-0-1152"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1153" name="__codelineno-0-1153"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-1153" name="__codelineno-0-1153"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-1154" name="__codelineno-0-1154"></a><span class="sd">        initial_design_size: Number of samples used before using the surrogate model.</span>
 <a id="__codelineno-0-1155" name="__codelineno-0-1155"></a><span class="sd">            If &quot;ndim&quot;, it will use the number of parameters in the search space.</span>
 <a id="__codelineno-0-1156" name="__codelineno-0-1156"></a><span class="sd">        cost_aware: Whether to consider reported &quot;cost&quot; from configurations in decision</span>
@@ -5282,13 +5309,22 @@ as this algorithm could be considered an extension of it.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -5474,7 +5510,7 @@ and if so, should it be at the highest fidelity level.</p>
 <a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">    as this algorithm could be considered an extension of it.</span>
 <a id="__codelineno-0-798" name="__codelineno-0-798"></a>
 <a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">        eta: The reduction factor used for building brackets</span>
 <a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">        sampler: The type of sampling procedure to use:</span>
 <a id="__codelineno-0-803" name="__codelineno-0-803"></a>
@@ -6519,13 +6555,22 @@ has.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -6736,7 +6781,7 @@ In this case, the max fidelity is always used.</p>
 <a id="__codelineno-0-1241" name="__codelineno-0-1241"></a><span class="sd">        has.</span>
 <a id="__codelineno-0-1242" name="__codelineno-0-1242"></a>
 <a id="__codelineno-0-1243" name="__codelineno-0-1243"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1244" name="__codelineno-0-1244"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-1244" name="__codelineno-0-1244"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-1245" name="__codelineno-0-1245"></a><span class="sd">        initial_design_size: Number of samples used before using the surrogate model.</span>
 <a id="__codelineno-0-1246" name="__codelineno-0-1246"></a><span class="sd">            If &quot;ndim&quot;, it will use the number of parameters in the search space.</span>
 <a id="__codelineno-0-1247" name="__codelineno-0-1247"></a><span class="sd">        cost_aware: Whether to consider reported &quot;cost&quot; from configurations in decision</span>
@@ -6863,13 +6908,22 @@ risk at lower fidelities, which is factored into the sampling procedure.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -7066,7 +7120,7 @@ proceed with bayesian optimization when sampling a new configuration.</p>
 <a id="__codelineno-0-1078" name="__codelineno-0-1078"></a><span class="sd">    See: https://openreview.net/forum?id=uoiwugtpCH&amp;noteId=xECpK2WH6k</span>
 <a id="__codelineno-0-1079" name="__codelineno-0-1079"></a>
 <a id="__codelineno-0-1080" name="__codelineno-0-1080"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1081" name="__codelineno-0-1081"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-1081" name="__codelineno-0-1081"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-1082" name="__codelineno-0-1082"></a><span class="sd">        eta: The reduction factor used for building brackets</span>
 <a id="__codelineno-0-1083" name="__codelineno-0-1083"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first.</span>
 <a id="__codelineno-0-1084" name="__codelineno-0-1084"></a><span class="sd">        base: The base algorithm to use for the bracketing.</span>
@@ -7457,13 +7511,22 @@ or <code class="highlight"><span class="n">sampler</span><span class="o">=</span
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>space</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            SearchSpace
+
+
+  
+      dataclass
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -7704,7 +7767,7 @@ and if so, should it be at the highest fidelity level.</p>
 <a id="__codelineno-0-722" name="__codelineno-0-722"></a><span class="sd">    or `#!python sampler=&quot;prior&quot;`.</span>
 <a id="__codelineno-0-723" name="__codelineno-0-723"></a>
 <a id="__codelineno-0-724" name="__codelineno-0-724"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">        space: The search space to sample from.</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-726" name="__codelineno-0-726"></a><span class="sd">        eta: The reduction factor used for building brackets</span>
 <a id="__codelineno-0-727" name="__codelineno-0-727"></a><span class="sd">        early_stopping_rate: Determines the number of rungs in a bracket</span>
 <a id="__codelineno-0-728" name="__codelineno-0-728"></a><span class="sd">            Choosing 0 creates maximal rungs given the fidelity bounds.</span>
