@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import shutil
 import warnings
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
@@ -340,7 +340,7 @@ def run(  # noqa: PLR0913, C901, PLR0912
             f" {root_directory}."
         )
         warmstart_neps(
-            path=Path(root_directory),
+            working_directory=Path(root_directory),
             pipeline_space=pipeline_space,
             warmstart_configs=warmstart_configs,
             optimizer=optimizer,
@@ -473,15 +473,16 @@ def run(  # noqa: PLR0913, C901, PLR0912
 
 
 def warmstart_neps(
-    path: Path,
     pipeline_space: Pipeline,
-    warmstart_configs: list[
+    working_directory: Path | str,
+    warmstart_configs: Sequence[
         tuple[
             dict[str, Any] | Mapping[str, Any],
             dict[str, Any] | Mapping[str, Any],
             EvaluatePipelineReturn,
         ]
     ],
+    overwrite_working_directory: bool = False,  # noqa: FBT001, FBT002
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
@@ -492,33 +493,33 @@ def warmstart_neps(
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
-    overwrite_working_directory: bool = False,  # noqa: FBT001, FBT002
 ) -> None:
     """Warmstart the NePS state with given configurations.
     This is useful for testing and debugging purposes, where you want to
     start with a set of predefined configurations and their results.
 
     Args:
-        path: The path to the NePS state directory.
         pipeline_space: The pipeline space to use for the warmstart.
+        working_directory: The path to the NePS state directory.
         warmstart_configs: A list of tuples, where each tuple contains a configuration,
             environment values, and the result of the evaluation.
             The configuration is a dictionary of parameter values, the environment values
             are also a dictionary, and the result is the evaluation result.
-        optimizer: The optimizer to use for the warmstart. This can be a string, a
-            callable, or a tuple of a callable and a dictionary of parameters.
-            If "auto", the optimizer will be chosen based on the pipeline space.
         overwrite_working_directory: If True, the working directory will be deleted before
             starting the warmstart. This is useful for testing and debugging purposes,
             where you want to start with a clean state.
+        optimizer: The optimizer to use for the warmstart. This can be a string, a
+            callable, or a tuple of a callable and a dictionary of parameters.
+            If "auto", the optimizer will be chosen based on the pipeline space.
     """
-    if overwrite_working_directory and path.is_dir():
-        shutil.rmtree(path)
+    working_directory = Path(working_directory)
+    if overwrite_working_directory and working_directory.is_dir():
+        shutil.rmtree(working_directory)
     optimizer_ask, optimizer_info = neps.optimizers.load_optimizer(
         optimizer, pipeline_space
     )
     state = NePSState.create_or_load(
-        path,
+        working_directory,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
@@ -541,14 +542,14 @@ def warmstart_neps(
         )
         trial.config = NepsCompatConverter.to_neps_config(resolution_context)
         if (
-            path
+            working_directory
             / f"configs/config_{n_config}{'_0' if pipeline_space.fidelity_attrs else ''}"
         ).is_dir():
             raise ValueError(
-                f"Warmstart config {n_config} already exists in {path}. Please remove it"
-                " before running the script again."
+                f"Warmstart config {n_config} already exists in {working_directory}."
+                " Please remove it before running the script again."
             )
-        TrialRepo(path / "configs").store_new_trial(trial)
+        TrialRepo(working_directory / "configs").store_new_trial(trial)
         assert trial.report
         assert trial.metadata.evaluating_worker_id
         state.lock_and_report_trial_evaluation(
@@ -558,4 +559,4 @@ def warmstart_neps(
         )
 
 
-__all__ = ["run"]
+__all__ = ["run", "warmstart_neps"]
