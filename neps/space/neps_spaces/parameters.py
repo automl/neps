@@ -413,6 +413,13 @@ class Categorical(Domain[int], Generic[T]):
         self._choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T]
         if isinstance(choices, Sequence):
             self._choices = tuple(choice for choice in choices)
+            if any(isinstance(choice, tuple) for choice in self._choices) and any(
+                not isinstance(choice, tuple) for choice in self._choices
+            ):
+                self._choices = tuple(
+                    (choice,) if not isinstance(choice, tuple) else choice
+                    for choice in self._choices
+                )
         else:
             self._choices = choices
         self._prior = prior
@@ -853,7 +860,11 @@ class Integer(Domain[int]):
 
         """
         if self._log:
-            raise NotImplementedError("TODO.")
+            return int(
+                math.exp(
+                    random.uniform(math.log(self._min_value), math.log(self._max_value))
+                )
+            )
         return int(random.randint(self._min_value, self._max_value))
 
     def centered_around(

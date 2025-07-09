@@ -7,7 +7,7 @@ from pytest_cases import fixture
 from neps.optimizers import OptimizerInfo
 from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.space import Float, SearchSpace
+from neps.space import HPOFloat, SearchSpace
 from neps.state import (
     DefaultReportValues,
     NePSState,
@@ -33,7 +33,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -85,7 +85,7 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -135,7 +135,7 @@ def test_default_values_on_not_specified(
 def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(

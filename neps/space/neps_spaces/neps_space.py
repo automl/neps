@@ -9,17 +9,21 @@ import dataclasses
 import functools
 from collections.abc import Callable, Generator, Mapping
 from typing import (
+    TYPE_CHECKING,
     Any,
     TypeVar,
     cast,
 )
 
+import neps
 from neps.optimizers import optimizer
 from neps.space.neps_spaces import config_string
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Domain,
     Fidelity,
+    Float,
+    Integer,
     Operation,
     Pipeline,
     Resampled,
@@ -30,6 +34,10 @@ from neps.space.neps_spaces.sampling import (
     OnlyPredefinedValuesSampler,
     RandomSampler,
 )
+from neps.space.parsing import convert_mapping
+
+if TYPE_CHECKING:
+    from neps.space import SearchSpace
 
 P = TypeVar("P", bound="Pipeline")
 
@@ -902,3 +910,82 @@ def adjust_evaluation_pipeline_for_neps_space(
         return evaluation_pipeline(*args, **new_kwargs)
 
     return inner
+
+
+def convert_neps_to_classic_search_space(space: Pipeline) -> SearchSpace | None:
+    """Convert a NePS space to a classic SearchSpace if possible.
+    This function checks if the NePS space can be converted to a classic SearchSpace
+    by ensuring that it does not contain any complex types like Operation or Resampled,
+    and that all choices of Categorical parameters are of basic types (int, str, float).
+    If the checks pass, it converts the NePS space to a classic SearchSpace.
+
+    Args:
+        space: The NePS space to convert, which should be a Pipeline object.
+
+    Returns:
+        A classic SearchSpace if the conversion is possible, otherwise None.
+    """
+    # First check: No parameters are of type Operation or Resampled
+    if not any(
+        isinstance(param, Operation | Resampled) for param in space.get_attrs().values()
+    ):
+        # Second check: All choices of all categoricals are of basic
+        # types i.e. int, str or float
+        categoricals = [
+            param
+            for param in space.get_attrs().values()
+            if isinstance(param, Categorical)
+        ]
+        if all(
+            any(
+                all(isinstance(choice, datatype) for choice in list(cat_param.choices))  # type: ignore
+                for datatype in [int, float, str]
+            )
+            for cat_param in categoricals
+        ):
+            # If both checks pass, convert the space to a classic SearchSpace
+            classic_space: dict[str, Any] = {}
+            for key, value in space.get_attrs().items():
+                if isinstance(value, Categorical):
+                    classic_space[key] = neps.HPOCategorical(
+                        choices=list(set(value.choices)),  # type: ignore
+                        prior=value.choices[value.prior] if value.has_prior else None,  # type: ignore
+                        prior_confidence=(
+                            value.prior_confidence.value if value.has_prior else "low"
+                        ),
+                    )
+                elif isinstance(value, Integer):
+                    classic_space[key] = neps.HPOInteger(
+                        lower=value.min_value,
+                        upper=value.max_value,
+                        prior=value.prior if value.has_prior else None,
+                        prior_confidence=(
+                            value.prior_confidence.value if value.has_prior else "low"
+                        ),
+                    )
+                elif isinstance(value, Float):
+                    classic_space[key] = neps.HPOFloat(
+                        lower=value.min_value,
+                        upper=value.max_value,
+                        prior=value.prior if value.has_prior else None,
+                        prior_confidence=(
+                            value.prior_confidence.value if value.has_prior else "low"
+                        ),
+                    )
+                elif isinstance(value, Fidelity):
+                    if isinstance(value._domain, Integer):
+                        classic_space[key] = neps.HPOInteger(
+                            lower=value._domain.min_value,
+                            upper=value._domain.max_value,
+                            is_fidelity=True,
+                        )
+                    elif isinstance(value._domain, Float):
+                        classic_space[key] = neps.HPOFloat(
+                            lower=value._domain.min_value,
+                            upper=value._domain.max_value,
+                            is_fidelity=True,
+                        )
+                else:
+                    classic_space[key] = neps.HPOConstant(value)
+            return convert_mapping(classic_space)
+    return None

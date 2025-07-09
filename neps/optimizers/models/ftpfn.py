@@ -10,7 +10,7 @@ from ifbo import FTPFN
 from neps.sampling import Prior, Sampler
 
 if TYPE_CHECKING:
-    from neps.space import ConfigEncoder, Domain, Float, Integer
+    from neps.space import ConfigEncoder, Domain, HPOFloat, HPOInteger
     from neps.state.trial import Trial
 
 
@@ -106,7 +106,7 @@ FTPFN_DTYPE = torch.float32
 
 def encode_ftpfn(
     trials: Mapping[str, Trial],
-    fid: tuple[str, Integer | Float],
+    fid: tuple[str, HPOInteger | HPOFloat],
     budget_domain: Domain,
     encoder: ConfigEncoder,
     *,
@@ -168,12 +168,14 @@ def encode_ftpfn(
     # We could possibly include some bounded transform to assert this.
     minimize_ys = torch.tensor(
         [
-            pending_value
-            if trial.report is None
-            else (
-                error_value
-                if trial.report.objective_to_minimize is None
-                else trial.report.objective_to_minimize
+            (
+                pending_value
+                if trial.report is None
+                else (
+                    error_value
+                    if trial.report.objective_to_minimize is None
+                    else trial.report.objective_to_minimize
+                )
             )
             for trial in trials.values()
         ],

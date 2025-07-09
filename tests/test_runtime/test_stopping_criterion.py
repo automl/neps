@@ -8,7 +8,7 @@ from pytest_cases import fixture
 from neps.optimizers.algorithms import random_search
 from neps.optimizers.optimizer import OptimizerInfo
 from neps.runtime import DefaultWorker
-from neps.space import Float, SearchSpace
+from neps.space import HPOFloat, SearchSpace
 from neps.state import (
     DefaultReportValues,
     NePSState,
@@ -36,7 +36,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 def test_max_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -88,7 +88,7 @@ def test_max_evaluations_total_stopping_criterion(
 def test_worker_evaluations_total_stopping_criterion(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -149,7 +149,7 @@ def test_worker_evaluations_total_stopping_criterion(
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -203,7 +203,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
 
 def test_max_cost_total(neps_state: NePSState) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -251,7 +251,7 @@ def test_max_cost_total(neps_state: NePSState) -> None:
 
 
 def test_worker_cost_total(neps_state: NePSState) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -307,7 +307,7 @@ def test_worker_cost_total(neps_state: NePSState) -> None:
 
 
 def test_worker_wallclock_time(neps_state: NePSState) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -362,7 +362,7 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
 
 
 def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -418,7 +418,7 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
 
 
 def test_max_evaluation_time_global(neps_state: NePSState) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(pipeline_space=SearchSpace({"a": HPOFloat(0, 1)}))
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),

@@ -16,7 +16,9 @@ from neps.optimizers.models.ftpfn import (
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
 from neps.sampling import Prior, Sampler
-from neps.space import ConfigEncoder, Domain, Float, Integer, SearchSpace
+from neps.space import ConfigEncoder, Domain, HPOFloat, HPOInteger, SearchSpace
+from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.parameters import Pipeline
 
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
@@ -68,10 +70,10 @@ def _adjust_space_to_match_stepsize(
     r = x - n * step_size
     new_lower = fidelity.lower + r
 
-    new_fid: Float | Integer
+    new_fid: HPOFloat | HPOInteger
     match fidelity:
-        case Float():
-            new_fid = Float(
+        case HPOFloat():
+            new_fid = HPOFloat(
                 lower=float(new_lower),
                 upper=float(fidelity.upper),
                 log=fidelity.log,
@@ -79,8 +81,8 @@ def _adjust_space_to_match_stepsize(
                 is_fidelity=True,
                 prior_confidence=fidelity.prior_confidence,
             )
-        case Integer():
-            new_fid = Integer(
+        case HPOInteger():
+            new_fid = HPOInteger(
                 lower=int(new_lower),
                 upper=int(fidelity.upper),
                 log=fidelity.log,
@@ -102,7 +104,7 @@ class IFBO:
     * Github: https://github.com/automl/ifBO/tree/main
     """
 
-    space: SearchSpace
+    space: SearchSpace | Pipeline
     """The entire search space for the pipeline."""
 
     encoder: ConfigEncoder
@@ -135,6 +137,15 @@ class IFBO:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
+        if isinstance(self.space, Pipeline):
+            converted_space = convert_neps_to_classic_search_space(self.space)
+            if converted_space is not None:
+                self.space = converted_space
+            else:
+                raise ValueError(
+                    "This optimizer only supports HPO search spaces, please use a NePS"
+                    " space-compatible optimizer."
+                )
         assert self.space.fidelity is not None
         fidelity_name, fidelity = self.space.fidelity
         parameters = self.space.searchables

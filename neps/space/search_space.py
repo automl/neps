@@ -9,23 +9,29 @@ from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
+from neps.space.parameters import (
+    HPOCategorical,
+    HPOConstant,
+    HPOFloat,
+    HPOInteger,
+    Parameter,
+)
 
 
 # NOTE: The use of `Mapping` instead of `dict` is so that type-checkers
 # can check if we accidetally mutate these as we pass the parameters around.
 # We really should not, and instead make a copy if we really need to.
 @dataclass
-class SearchSpace(Mapping[str, Parameter | Constant]):
+class SearchSpace(Mapping[str, Parameter | HPOConstant]):
     """A container for parameters."""
 
-    elements: Mapping[str, Parameter | Constant] = field(default_factory=dict)
+    elements: Mapping[str, Parameter | HPOConstant] = field(default_factory=dict)
     """All items in the search space."""
 
-    categoricals: Mapping[str, Categorical] = field(init=False)
+    categoricals: Mapping[str, HPOCategorical] = field(init=False)
     """The categorical hyperparameters in the search space."""
 
-    numerical: Mapping[str, Integer | Float] = field(init=False)
+    numerical: Mapping[str, HPOInteger | HPOFloat] = field(init=False)
     """The numerical hyperparameters in the search space.
 
     !!! note
@@ -33,7 +39,7 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         This does not include fidelities.
     """
 
-    fidelities: Mapping[str, Integer | Float] = field(init=False)
+    fidelities: Mapping[str, HPOInteger | HPOFloat] = field(init=False)
     """The fidelities in the search space.
 
     Currently no optimizer supports multiple fidelities but it is defined here incase.
@@ -53,7 +59,7 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         return {**self.numerical, **self.categoricals}
 
     @property
-    def fidelity(self) -> tuple[str, Float | Integer] | None:
+    def fidelity(self) -> tuple[str, HPOFloat | HPOInteger] | None:
         """The fidelity parameter for the search space."""
         return None if len(self.fidelities) == 0 else next(iter(self.fidelities.items()))
 
@@ -61,15 +67,15 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         # Ensure that we have a consistent order for all our items.
         self.elements = dict(sorted(self.elements.items(), key=lambda x: x[0]))
 
-        fidelities: dict[str, Float | Integer] = {}
-        numerical: dict[str, Float | Integer] = {}
-        categoricals: dict[str, Categorical] = {}
+        fidelities: dict[str, HPOFloat | HPOInteger] = {}
+        numerical: dict[str, HPOFloat | HPOInteger] = {}
+        categoricals: dict[str, HPOCategorical] = {}
         constants: dict[str, Any] = {}
 
         # Process the hyperparameters
         for name, hp in self.elements.items():
             match hp:
-                case Float() | Integer() if hp.is_fidelity:
+                case HPOFloat() | HPOInteger() if hp.is_fidelity:
                     # We should allow this at some point, but until we do,
                     # raise an error
                     if len(fidelities) >= 1:
@@ -80,11 +86,11 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
                         )
                     fidelities[name] = hp
 
-                case Float() | Integer():
+                case HPOFloat() | HPOInteger():
                     numerical[name] = hp
-                case Categorical():
+                case HPOCategorical():
                     categoricals[name] = hp
-                case Constant():
+                case HPOConstant():
                     constants[name] = hp.value
 
                 case _:
@@ -95,7 +101,7 @@ class SearchSpace(Mapping[str, Parameter | Constant]):
         self.constants = constants
         self.fidelities = fidelities
 
-    def __getitem__(self, key: str) -> Parameter | Constant:
+    def __getitem__(self, key: str) -> Parameter | HPOConstant:
         return self.elements[key]
 
     def __iter__(self) -> Iterator[str]:

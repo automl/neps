@@ -7,13 +7,18 @@ import itertools
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from neps.runtime import get_workers_neps_state
+from neps.space.neps_spaces import neps_space
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
+
+if TYPE_CHECKING:
+    from neps.space.neps_spaces.parameters import Pipeline
 
 
 @dataclass
@@ -99,7 +104,9 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(self) -> str:
+    def formatted(
+        self, pipeline_space_variables: tuple[Pipeline, list[str]] | None = None
+    ) -> str:
         """Return a formatted string of the summary."""
         state_summary = "\n".join(
             f"    {state.name.lower()}: {len(trials)}"
@@ -114,13 +121,52 @@ class Summary:
                 best_summary = "No best found yet."
         else:
             best_trial, best_objective_to_minimize = self.best
+
+            # Format config based on whether pipeline_space_variables is provided
+
             best_summary = (
                 f"# Best Found (config {best_trial.metadata.id}):"
                 "\n"
                 f"\n    objective_to_minimize: {best_objective_to_minimize}"
-                f"\n    config: {best_trial.config}"
-                f"\n    path: {best_trial.metadata.location}"
             )
+            if pipeline_space_variables is None:
+                best_summary += f"\n    config: {best_trial.config}"
+            else:
+                pipeline_configs = [
+                    neps_space.config_string.ConfigString(
+                        neps_space.convert_operation_to_string(
+                            getattr(
+                                neps_space.resolve(pipeline_space_variables[0])[0],
+                                variable,
+                            )
+                        )
+                    ).pretty_format()
+                    for variable in pipeline_space_variables[1]
+                ]
+                for pipeline_config in pipeline_configs:
+                    # Replace literal \t and \n with actual formatting
+                    formatted_config = pipeline_config.replace("\\t", "    ").replace(
+                        "\\n", "\n"
+                    )
+
+                    # Add proper indentation to each line
+                    lines = formatted_config.split("\n")
+                    indented_lines = []
+                    for i, line in enumerate(lines):
+                        if i == 0:
+                            indented_lines.append(
+                                line
+                            )  # First line gets base indentation
+                        else:
+                            indented_lines.append(
+                                "        " + line
+                            )  # Subsequent lines get extra indentation
+
+                    formatted_config = "\n".join(indented_lines)
+                    best_summary += f"\n    config:\n        {formatted_config}"
+
+            best_summary += f"\n    path: {best_trial.metadata.location}"
+
             assert best_trial.report is not None
             if best_trial.report.cost is not None:
                 best_summary += f"\n    cost: {best_trial.report.cost}"
@@ -172,12 +218,17 @@ def status(
     root_directory: str | Path,
     *,
     print_summary: bool = False,
+    pipeline_space_variables: tuple[Pipeline, list[str]] | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Print status information of a neps run and return results.
 
     Args:
         root_directory: The root directory given to neps.run.
-        print_summary: If true, print a summary of the current run state
+        print_summary: If true, print a summary of the current run state.
+        pipeline_space_variables: If provided, this tuple contains the Pipeline and a
+            list of variable names to format the config in the summary. This is useful
+            for pipelines that have a complex configuration structure, allowing for a
+            more readable output.
 
     Returns:
         Dataframe of full results and short summary series.
@@ -186,7 +237,7 @@ def status(
     summary = Summary.from_directory(root_directory)
 
     if print_summary:
-        print(summary.formatted())
+        print(summary.formatted(pipeline_space_variables=pipeline_space_variables))
 
     df = summary.df()
 

@@ -23,7 +23,7 @@ from neps.sampling.distributions import (
     TruncatedNormal,
 )
 from neps.sampling.samplers import Sampler
-from neps.space import Categorical, ConfigEncoder, Domain, Float, Integer
+from neps.space import ConfigEncoder, Domain, HPOCategorical, HPOFloat, HPOInteger
 
 if TYPE_CHECKING:
     from torch.distributions import Distribution
@@ -120,7 +120,7 @@ class Prior(Sampler):
     @classmethod
     def from_parameters(
         cls,
-        parameters: Mapping[str, Categorical | Float | Integer],
+        parameters: Mapping[str, HPOCategorical | HPOFloat | HPOInteger],
         *,
         center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
@@ -160,7 +160,9 @@ class Prior(Sampler):
                 continue
 
             confidence_score = confidence_values.get(name, _mapping[hp.prior_confidence])
-            center = hp.choices.index(default) if isinstance(hp, Categorical) else default
+            center = (
+                hp.choices.index(default) if isinstance(hp, HPOCategorical) else default
+            )
             centers.append((center, confidence_score))
 
         return Prior.from_domains_and_centers(domains=domains, centers=centers)
@@ -356,7 +358,7 @@ class CenteredPrior(Prior):
 
         if x.shape[-1] != len(self.distributions):
             raise ValueError(
-                f"Got a tensor `x` whose last dimesion (the hyperparameter dimension)"
+                "Got a tensor `x` whose last dimesion (the hyperparameter dimension)"
                 f" is of length {x.shape[-1]=} but"
                 f" the CenteredPrior called has {len(self.distributions)=}"
                 " distributions to use for calculating the `log_pdf`. Perhaps"

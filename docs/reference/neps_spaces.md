@@ -21,6 +21,7 @@ Additionally, **NePS spaces** can describe [complex (hierarchical) architectures
 A **NePS space** is defined as a subclass of [`Pipeline`][neps.space.neps_spaces.parameters.Pipeline]:
 
 ```python
+from neps.space.neps_spaces.parameters import Pipeline, Float, Integer, Categorical, Fidelity, Resampled, Operation
 
 class pipeline_space(Pipeline):
 ```
@@ -32,6 +33,7 @@ Here we define the hyperparameters that make up the space, like so:
     float_param = Float(min_value=0.1, max_value=1.0)
     int_param = Integer(min_value=1, max_value=10)
     cat_param = Categorical(choices=["A", "B", "C"])
+    epochs = Fidelity(Integer(1, 16))
 ```
 
 !!! tip "**Using your knowledge, providing a Prior**"

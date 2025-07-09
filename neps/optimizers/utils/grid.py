@@ -5,7 +5,14 @@ from typing import Any
 
 import torch
 
-from neps.space import Categorical, Constant, Domain, Float, Integer, SearchSpace
+from neps.space import (
+    Domain,
+    HPOCategorical,
+    HPOConstant,
+    HPOFloat,
+    HPOInteger,
+    SearchSpace,
+)
 
 
 def make_grid(
@@ -34,11 +41,11 @@ def make_grid(
     param_ranges: dict[str, list[Any]] = {}
     for name, hp in space.items():
         match hp:
-            case Categorical():
+            case HPOCategorical():
                 param_ranges[name] = list(hp.choices)
-            case Constant():
+            case HPOConstant():
                 param_ranges[name] = [hp.value]
-            case Integer() | Float():
+            case HPOInteger() | HPOFloat():
                 if hp.is_fidelity and ignore_fidelity:
                     param_ranges[name] = [hp.upper]
                     continue

@@ -6,12 +6,22 @@ and algorithms.
 """
 
 from neps.api import run
-from neps.optimizers import algorithms, neps_algorithms
+from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
 from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
-from neps.space import Categorical, Constant, Float, Integer, SearchSpace
+from neps.space import HPOCategorical, HPOConstant, HPOFloat, HPOInteger, SearchSpace
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    ConfidenceLevel,
+    Fidelity,
+    Float,
+    Integer,
+    Operation,
+    Pipeline,
+    Resampled,
+)
 from neps.state import BudgetInfo, Trial
 from neps.status.status import status
 from neps.utils.files import load_and_merge_yamls as load_yamls
@@ -20,15 +30,22 @@ __all__ = [
     "AskAndTell",
     "BudgetInfo",
     "Categorical",
-    "Constant",
+    "ConfidenceLevel",
+    "Fidelity",
     "Float",
+    "HPOCategorical",
+    "HPOConstant",
+    "HPOFloat",
+    "HPOInteger",
     "Integer",
+    "Operation",
+    "Pipeline",
+    "Resampled",
     "SampledConfig",
     "SearchSpace",
     "Trial",
     "algorithms",
     "load_yamls",
-    "neps_algorithms",
     "plot",
     "run",
     "status",

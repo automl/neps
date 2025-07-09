@@ -46,8 +46,9 @@ def get_model_and_optimizer(learning_rate):
 
 def evaluate_pipeline(
     pipeline_directory: Path,  # The path associated with this configuration
-    previous_pipeline_directory: Path
-    | None,  # The path associated with any previous config
+    previous_pipeline_directory: (
+        Path | None
+    ),  # The path associated with any previous config
     learning_rate: float,
     epoch: int,
 ) -> dict:
@@ -82,15 +83,15 @@ def evaluate_pipeline(
     )
 
 
-pipeline_space = dict(
-    learning_rate=neps.Float(lower=1e-4, upper=1e0, log=True),
-    epoch=neps.Integer(lower=1, upper=10, is_fidelity=True),
-)
+class PipelineSpace(neps.Pipeline):
+    learning_rate = neps.Float(min_value=1e-4, max_value=1e0, log=True)
+    epoch = neps.Fidelity(neps.Integer(min_value=1, max_value=10))
+
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
+    pipeline_space=PipelineSpace(),
     root_directory="results/multi_fidelity_example",
     # Optional: Do not start another evaluation after <=50 epochs, corresponds to cost
     # field above.

@@ -5,12 +5,18 @@ from __future__ import annotations
 import logging
 import warnings
 from collections.abc import Callable, Mapping
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
+import neps
+import neps.optimizers.algorithms
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
-from neps.space.neps_spaces.neps_space import adjust_evaluation_pipeline_for_neps_space
+from neps.space.neps_spaces.neps_space import (
+    adjust_evaluation_pipeline_for_neps_space,
+    convert_neps_to_classic_search_space,
+)
 from neps.space.neps_spaces.parameters import Pipeline
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv
@@ -20,20 +26,15 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
-    from neps.space import Parameter, SearchSpace
+    from neps.space import SearchSpace
     from neps.state import EvaluatePipelineReturn
 
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913
+def run(  # noqa: PLR0913, C901
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: (
-        Mapping[str, dict | str | int | float | Parameter]
-        | SearchSpace
-        | ConfigurationSpace
-        | Pipeline
-    ),
+    pipeline_space: ConfigurationSpace | Pipeline,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_working_directory: bool = False,
@@ -416,6 +417,43 @@ def run(  # noqa: PLR0913
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
+
+    # Check if the pipeline_space only contains basic HPO parameters.
+    # If yes, we convert it to a classic SearchSpace, to use with the old optimizers.
+    # If no, we use adjust_evaluation_pipeline_for_neps_space to convert the
+    # pipeline_space and only use the new NEPS optimizers.
+
+    # If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space
+    inner_optimizer = None
+    if isinstance(optimizer, partial):
+        inner_optimizer = optimizer.func
+        while isinstance(inner_optimizer, partial):
+            inner_optimizer = inner_optimizer.func
+    if (
+        optimizer
+        not in (
+            neps.optimizers.algorithms.neps_random_search,
+            neps.optimizers.algorithms.neps_priorband,
+            neps.optimizers.algorithms.neps_complex_random_search,
+        )
+        and (
+            not inner_optimizer
+            or inner_optimizer
+            not in (
+                neps.optimizers.algorithms.neps_random_search,
+                neps.optimizers.algorithms.neps_priorband,
+                neps.optimizers.algorithms.neps_complex_random_search,
+            )
+        )
+        and optimizer != "auto"
+    ):
+        converted_space = convert_neps_to_classic_search_space(pipeline_space)
+        if converted_space:
+            logger.info(
+                "The provided pipeline_space only contains basic HPO parameters, "
+                "converting it to a classic SearchSpace."
+            )
+            pipeline_space = converted_space
 
     if isinstance(pipeline_space, Pipeline):
         assert not isinstance(evaluate_pipeline, str)

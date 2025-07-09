@@ -50,15 +50,15 @@ echo -10 > {pipeline_directory}/validation_error_from_slurm_job.txt
     return validation_error
 
 
-pipeline_space = dict(
-    optimizer=neps.Categorical(choices=["sgd", "adam"]),
-    learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
-)
+class PipelineSpace(neps.Pipeline):
+    optimizer = neps.Categorical(choices=("sgd", "adam"))
+    learning_rate = neps.Float(min_value=10e-7, max_value=10e-3, log=True)
+
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
-    pipeline_space=pipeline_space,
+    pipeline_space=PipelineSpace(),
     root_directory="results/slurm_script_example",
     max_evaluations_total=5,
 )

@@ -6,8 +6,7 @@ import numpy as np
 import pytest
 
 import neps
-import neps.optimizers.algorithms as old_algorithms
-from neps.optimizers import neps_algorithms
+from neps.optimizers import algorithms
 from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
     Fidelity,
@@ -19,34 +18,6 @@ from neps.space.neps_spaces.parameters import (
 
 def evaluate_pipeline(float1, float2, integer1, fidelity):
     return -float(np.sum([float1, float2, integer1])) * fidelity
-
-
-old_pipeline_space = {
-    "float1": neps.Float(
-        lower=1,
-        upper=1000,
-        log=False,
-        prior=600,
-        prior_confidence="medium",
-    ),
-    "float2": neps.Float(
-        lower=-100,
-        upper=100,
-        prior=0,
-        prior_confidence="medium",
-    ),
-    "integer1": neps.Integer(
-        lower=0,
-        upper=500,
-        prior=35,
-        prior_confidence="low",
-    ),
-    "fidelity": neps.Integer(
-        lower=1,
-        upper=100,
-        is_fidelity=True,
-    ),
-}
 
 
 class DemoHyperparameterWithFidelitySpace(Pipeline):
@@ -81,27 +52,27 @@ class DemoHyperparameterWithFidelitySpace(Pipeline):
     ("optimizer", "optimizer_name"),
     [
         (
-            neps_algorithms.neps_random_search,
+            algorithms.neps_random_search,
             "new__RandomSearch",
         ),
         (
-            neps_algorithms.neps_complex_random_search,
+            algorithms.neps_complex_random_search,
             "new__ComplexRandomSearch",
         ),
         (
-            partial(neps_algorithms.neps_priorband, base="successive_halving"),
+            partial(algorithms.neps_priorband, base="successive_halving"),
             "new__priorband+successive_halving",
         ),
         (
-            partial(neps_algorithms.neps_priorband, base="asha"),
+            partial(algorithms.neps_priorband, base="asha"),
             "new__priorband+asha",
         ),
         (
-            partial(neps_algorithms.neps_priorband, base="async_hb"),
+            partial(algorithms.neps_priorband, base="async_hb"),
             "new__priorband+async_hb",
         ),
         (
-            neps_algorithms.neps_priorband,
+            algorithms.neps_priorband,
             "new__priorband+hyperband",
         ),
     ],
@@ -127,26 +98,26 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     ("optimizer", "optimizer_name"),
     [
         (
-            partial(old_algorithms.priorband, base="successive_halving"),
+            partial(algorithms.priorband, base="successive_halving"),
             "old__priorband+successive_halving",
         ),
         (
-            partial(old_algorithms.priorband, base="asha"),
+            partial(algorithms.priorband, base="asha"),
             "old__priorband+asha",
         ),
         (
-            partial(old_algorithms.priorband, base="async_hb"),
+            partial(algorithms.priorband, base="async_hb"),
             "old__priorband+async_hb",
         ),
         (
-            old_algorithms.priorband,
+            algorithms.priorband,
             "old__priorband+hyperband",
         ),
     ],
 )
 def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
-    pipeline_space = old_pipeline_space
+    pipeline_space = DemoHyperparameterWithFidelitySpace()
     root_directory = f"results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
 
     neps.run(

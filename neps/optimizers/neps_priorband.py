@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-import neps.space.neps_spaces.parameters
 import neps.space.neps_spaces.sampling
 from neps.optimizers.utils import brackets
 from neps.space.neps_spaces import neps_space
@@ -21,12 +20,14 @@ from neps.space.neps_spaces import neps_space
 if TYPE_CHECKING:
     import pandas as pd
 
+    from neps.space.neps_spaces.parameters import Pipeline
+
 
 @dataclass
 class NePSPriorBandSampler:
     """Implement a sampler based on PriorBand."""
 
-    space: neps.space.neps_spaces.parameters.Pipeline
+    space: Pipeline
     """The pipeline space to optimize over."""
 
     eta: int

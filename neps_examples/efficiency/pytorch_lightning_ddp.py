@@ -11,7 +11,8 @@ NUM_GPU = 8  # Number of GPUs to use for DDP
 
 
 class ToyModel(nn.Module):
-    """ Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html """
+    """Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html"""
+
     def __init__(self):
         super(ToyModel, self).__init__()
         self.net1 = nn.Linear(10, 10)
@@ -20,6 +21,7 @@ class ToyModel(nn.Module):
 
     def forward(self, x):
         return self.net2(self.relu(self.net1(x)))
+
 
 class LightningModel(L.LightningModule):
     def __init__(self, lr):
@@ -51,6 +53,7 @@ class LightningModel(L.LightningModule):
     def configure_optimizers(self):
         return torch.optim.SGD(self.parameters(), lr=self.lr)
 
+
 def evaluate_pipeline(lr=0.1, epoch=20):
     L.seed_everything(42)
     # Model
@@ -70,35 +73,27 @@ def evaluate_pipeline(lr=0.1, epoch=20):
     test_dataloader = DataLoader(test_dataset, batch_size=20, shuffle=False)
 
     # Trainer with DDP Strategy
-    trainer = L.Trainer(gradient_clip_val=0.25,
-                        max_epochs=epoch,
-                        fast_dev_run=False,
-                        strategy='ddp',
-                        devices=NUM_GPU
-                        )
+    trainer = L.Trainer(
+        gradient_clip_val=0.25,
+        max_epochs=epoch,
+        fast_dev_run=False,
+        strategy="ddp",
+        devices=NUM_GPU,
+    )
     trainer.fit(model, train_dataloader, val_dataloader)
     trainer.validate(model, test_dataloader)
     return trainer.logged_metrics["val_loss"].item()
 
 
-pipeline_space = dict(
-    lr=neps.Float(
-        lower=0.001,
-        upper=0.1,
-        log=True,
-        prior=0.01
-        ),
-    epoch=neps.Integer(
-        lower=1,
-        upper=3,
-        is_fidelity=True
-        )
-    )
+class PipelineSpace(neps.Pipeline):
+    lr = neps.Float(min_value=0.001, max_value=0.1, log=True, prior=0.01)
+    epoch = neps.Fidelity(neps.Integer(min_value=1, max_value=3))
+
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
+    pipeline_space=PipelineSpace(),
     root_directory="results/pytorch_lightning_ddp",
-    max_evaluations_total=5
-    )
+    max_evaluations_total=5,
+)

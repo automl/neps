@@ -1,4 +1,4 @@
-""" Some parts of this code are taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
+"""Some parts of this code are taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html
 
 Mind that this example does not run on Windows at the moment."""
 
@@ -32,8 +32,8 @@ NUM_GPU = 8  # Number of GPUs to use for DDP
 
 
 def setup(rank, world_size):
-    os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "12355"
 
     # initialize the process group
     dist.init_process_group("gloo", rank=rank, world_size=world_size)
@@ -44,7 +44,8 @@ def cleanup():
 
 
 class ToyModel(nn.Module):
-    """ Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html """
+    """Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html"""
+
     def __init__(self):
         super(ToyModel, self).__init__()
         self.net1 = nn.Linear(10, 10)
@@ -56,7 +57,7 @@ class ToyModel(nn.Module):
 
 
 def demo_basic(rank, world_size, loss_dict, learning_rate, epochs):
-    """ Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html (modified)"""
+    """Taken from https://pytorch.org/tutorials/intermediate/ddp_tutorial.html (modified)"""
     print(f"Running basic DDP example on rank {rank}.")
     setup(rank, world_size)
 
@@ -88,28 +89,33 @@ def demo_basic(rank, world_size, loss_dict, learning_rate, epochs):
 
 def evaluate_pipeline(learning_rate, epochs):
     from torch.multiprocessing import Manager
+
     world_size = NUM_GPU  # Number of GPUs
 
     manager = Manager()
     loss_dict = manager.dict()
 
-    mp.spawn(demo_basic,
-             args=(world_size, loss_dict, learning_rate, epochs),
-             nprocs=world_size,
-             join=True)
+    mp.spawn(
+        demo_basic,
+        args=(world_size, loss_dict, learning_rate, epochs),
+        nprocs=world_size,
+        join=True,
+    )
 
     loss = sum(loss_dict.values()) // world_size
-    return {'loss': loss}
+    return {"loss": loss}
 
 
-pipeline_space = dict(
-    learning_rate=neps.Float(lower=10e-7, upper=10e-3, log=True),
-    epochs=neps.Integer(lower=1, upper=3)
-)
+class PipelineSpace(neps.Pipeline):
+    learning_rate = neps.Float(min_value=10e-7, max_value=10e-3, log=True)
+    epochs = neps.Integer(min_value=1, max_value=3)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    neps.run(evaluate_pipeline=evaluate_pipeline,
-             pipeline_space=pipeline_space,
-             root_directory="results/pytorch_ddp",
-             max_evaluations_total=25)
+    neps.run(
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=PipelineSpace(),
+        root_directory="results/pytorch_ddp",
+        max_evaluations_total=25,
+    )

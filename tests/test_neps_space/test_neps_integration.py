@@ -6,7 +6,7 @@ import pytest
 
 import neps
 import neps.optimizers
-from neps.optimizers import neps_algorithms
+import neps.optimizers.algorithms
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
@@ -155,8 +155,8 @@ class DemoHyperparameterComplexSpace(Pipeline):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps_algorithms.neps_random_search,
-        neps_algorithms.neps_complex_random_search,
+        neps.optimizers.algorithms.neps_random_search,
+        neps.optimizers.algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_demo(optimizer):
@@ -178,8 +178,8 @@ def test_hyperparameter_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps_algorithms.neps_random_search,
-        neps_algorithms.neps_complex_random_search,
+        neps.optimizers.algorithms.neps_random_search,
+        neps.optimizers.algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_with_fidelity_demo(optimizer):
@@ -201,8 +201,8 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps_algorithms.neps_random_search,
-        neps_algorithms.neps_complex_random_search,
+        neps.optimizers.algorithms.neps_random_search,
+        neps.optimizers.algorithms.neps_complex_random_search,
     ],
 )
 def test_hyperparameter_complex_demo(optimizer):
@@ -326,8 +326,8 @@ class DemoOperationSpace(Pipeline):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps_algorithms.neps_random_search,
-        neps_algorithms.neps_complex_random_search,
+        neps.optimizers.algorithms.neps_random_search,
+        neps.optimizers.algorithms.neps_complex_random_search,
     ],
 )
 def test_operation_demo(optimizer):

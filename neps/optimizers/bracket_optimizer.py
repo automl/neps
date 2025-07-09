@@ -21,6 +21,8 @@ from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.sampling.samplers import Sampler
+from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.parameters import Pipeline
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -212,7 +214,7 @@ class BracketOptimizer:
     `"successive_halving"`, `"asha"`, `"hyperband"`, etc.
     """
 
-    space: SearchSpace
+    space: SearchSpace | Pipeline
     """The pipeline space to optimize over."""
 
     encoder: ConfigEncoder
@@ -251,12 +253,22 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
-    def __call__(  # noqa: C901, PLR0912
+    def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
+        if isinstance(self.space, Pipeline):
+            converted_space = convert_neps_to_classic_search_space(self.space)
+            if converted_space is not None:
+                self.space = converted_space
+            else:
+                raise ValueError(
+                    "This optimizer only supports HPO search spaces, please use a NePS"
+                    " space-compatible optimizer."
+                )
+
         assert n is None, "TODO"
         space = self.space
         parameters = space.searchables
