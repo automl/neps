@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import warnings
 from collections.abc import Callable, Mapping
 from functools import partial
@@ -12,13 +13,19 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 import neps
 import neps.optimizers.algorithms
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
+from neps.optimizers.ask_and_tell import AskAndTell
 from neps.runtime import _launch_runtime
+from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import (
+    NepsCompatConverter,
     adjust_evaluation_pipeline_for_neps_space,
     convert_neps_to_classic_search_space,
 )
 from neps.space.neps_spaces.parameters import Pipeline
 from neps.space.parsing import convert_to_space
+from neps.state import NePSState, OptimizationState, SeedSnapshot
+from neps.state.neps_state import TrialRepo
+from neps.state.pipeline_eval import EvaluatePipelineReturn
 from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
 
@@ -57,6 +64,16 @@ def run(  # noqa: PLR0913, C901, PLR0912
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
+    warmstart_configs: (
+        list[
+            tuple[
+                dict[str, Any] | Mapping[str, Any],
+                dict[str, Any] | Mapping[str, Any],
+                Any,
+            ]
+        ]
+        | None
+    ) = None,
 ) -> None:
     """Run the optimization.
 
@@ -290,6 +307,16 @@ def run(  # noqa: PLR0913, C901, PLR0912
                 This is mainly meant for internal development but allows you to use the NePS
                 runtime to run your optimizer.
 
+        warmstart_configs: A list of configurations to warmstart the NePS state with.
+            This is useful for testing and debugging purposes, where you want to
+            start with a set of predefined configurations and their results.
+            Each configuration is a tuple of three elements:
+            1. A dictionary of the samplings to make, i.e. resolution_context.samplings_made
+            2. A dictionary of the environment values, i.e. resolution_context.environment_values
+            3. The result of the evaluation, which is the return value of the `evaluate_pipeline`
+               function, i.e. the objective value to minimize or a dictionary with
+               `"objective_to_minimize"` and `"cost"` keys.
+
     """  # noqa: E501
     if (
         max_evaluations_total is None
@@ -305,6 +332,21 @@ def run(  # noqa: PLR0913, C901, PLR0912
             UserWarning,
             stacklevel=2,
         )
+
+    if warmstart_configs:
+        logger.info(
+            "Warmstarting neps.run with the provided"
+            f" {len(warmstart_configs)} configurations using root directory"
+            f" {root_directory}."
+        )
+        warmstart_neps(
+            path=Path(root_directory),
+            pipeline_space=pipeline_space,
+            warmstart_configs=warmstart_configs,
+            optimizer=optimizer,
+            overwrite_working_directory=overwrite_working_directory,
+        )
+        overwrite_working_directory = False
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
 
@@ -336,7 +378,7 @@ def run(  # noqa: PLR0913, C901, PLR0912
             )
         )
         and optimizer != "auto"
-    ):
+    ) and not warmstart_configs:
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
             logger.info(
@@ -344,6 +386,33 @@ def run(  # noqa: PLR0913, C901, PLR0912
                 "converting it to a classic SearchSpace."
             )
             pipeline_space = converted_space
+
+    # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
+    # algorithm, we raise an error, as the optimizer is not compatible.
+    if (
+        isinstance(pipeline_space, Pipeline)
+        and optimizer
+        not in (
+            neps.optimizers.algorithms.neps_random_search,
+            neps.optimizers.algorithms.neps_priorband,
+            neps.optimizers.algorithms.neps_complex_random_search,
+        )
+        and (
+            not inner_optimizer
+            or inner_optimizer
+            not in (
+                neps.optimizers.algorithms.neps_random_search,
+                neps.optimizers.algorithms.neps_priorband,
+                neps.optimizers.algorithms.neps_complex_random_search,
+            )
+        )
+        and optimizer != "auto"
+    ):
+        raise ValueError(
+            "The provided optimizer is not compatible with this complex search space. "
+            "Please use one of the NEPS optimizers, such as 'neps_random_search', "
+            "'neps_priorband', or 'neps_complex_random_search'."
+        )
 
     if isinstance(pipeline_space, Pipeline):
         assert not isinstance(evaluate_pipeline, str)
@@ -353,19 +422,6 @@ def run(  # noqa: PLR0913, C901, PLR0912
 
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
-
-    # Optimizer compatibility check: If the space is a Pipeline and the optimizer is not
-    # one of the NEPS optimizers, we raise an error.
-    if isinstance(space, Pipeline) and _optimizer_ask not in (
-        neps.optimizers.algorithms.neps_random_search,
-        neps.optimizers.algorithms.neps_priorband,
-        neps.optimizers.algorithms.neps_complex_random_search,
-    ):
-        raise ValueError(
-            "The provided optimizer is not compatible with this complex search space. "
-            "Please use one of the NEPS optimizers, such as 'neps_random_search', "
-            "'neps_priorband', or 'neps_complex_random_search'."
-        )
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
@@ -413,6 +469,92 @@ def run(  # noqa: PLR0913, C901, PLR0912
             "Skipping the creation of the post run summary, which is a csv file with the "
             " output of all data in the run."
             "\nSet `post_run_summary=True` to enable it."
+        )
+
+
+def warmstart_neps(
+    path: Path,
+    pipeline_space: Pipeline,
+    warmstart_configs: list[
+        tuple[
+            dict[str, Any] | Mapping[str, Any],
+            dict[str, Any] | Mapping[str, Any],
+            EvaluatePipelineReturn,
+        ]
+    ],
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+    overwrite_working_directory: bool = False,  # noqa: FBT001, FBT002
+) -> None:
+    """Warmstart the NePS state with given configurations.
+    This is useful for testing and debugging purposes, where you want to
+    start with a set of predefined configurations and their results.
+
+    Args:
+        path: The path to the NePS state directory.
+        pipeline_space: The pipeline space to use for the warmstart.
+        warmstart_configs: A list of tuples, where each tuple contains a configuration,
+            environment values, and the result of the evaluation.
+            The configuration is a dictionary of parameter values, the environment values
+            are also a dictionary, and the result is the evaluation result.
+        optimizer: The optimizer to use for the warmstart. This can be a string, a
+            callable, or a tuple of a callable and a dictionary of parameters.
+            If "auto", the optimizer will be chosen based on the pipeline space.
+        overwrite_working_directory: If True, the working directory will be deleted before
+            starting the warmstart. This is useful for testing and debugging purposes,
+            where you want to start with a clean state.
+    """
+    if overwrite_working_directory and path.is_dir():
+        shutil.rmtree(path)
+    optimizer_ask, optimizer_info = neps.optimizers.load_optimizer(
+        optimizer, pipeline_space
+    )
+    state = NePSState.create_or_load(
+        path,
+        optimizer_info=optimizer_info,
+        optimizer_state=OptimizationState(
+            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+        ),
+    )
+    for n_config, (config, env, result) in enumerate(warmstart_configs):
+        _, resolution_context = neps_space.resolve(
+            pipeline=pipeline_space,
+            domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+                predefined_samplings=config
+            ),
+            environment_values=env,
+        )
+
+        ask_tell = AskAndTell(optimizer=optimizer_ask, worker_id="warmstart_worker")
+        trial = ask_tell.tell_custom(
+            config_id=f"{n_config}{'_0' if pipeline_space.fidelity_attrs else ''}",
+            config=config,
+            result=result,
+        )
+        trial.config = NepsCompatConverter.to_neps_config(resolution_context)
+        if (
+            path
+            / f"configs/config_{n_config}{'_0' if pipeline_space.fidelity_attrs else ''}"
+        ).is_dir():
+            raise ValueError(
+                f"Warmstart config {n_config} already exists in {path}. Please remove it"
+                " before running the script again."
+            )
+        TrialRepo(path / "configs").store_new_trial(trial)
+        assert trial.report
+        assert trial.metadata.evaluating_worker_id
+        state.lock_and_report_trial_evaluation(
+            trial=trial,
+            report=trial.report,
+            worker_id=trial.metadata.evaluating_worker_id,
         )
 
 
