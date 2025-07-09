@@ -1,4 +1,4 @@
-# Introduction
+# Contributing
 
 ## Getting Help
 
@@ -14,10 +14,11 @@ Automatic checks are run on every pull request and on every commit to `master`.
 
 ## Installation
 
-There are three required steps and one optional:
+There are four steps: 
 
 1. Install uv
-1. Install the neps package using uv
+1. Clone the neps repository
+1. Create virtual env and install the neps package
 1. Activate pre-commit for the repository
 
 For instructions see below.
@@ -92,7 +93,6 @@ uv pip install ruff
 ruff check --fix neps  # the --fix flag will try to fix issues it can automatically
 ```
 
-
 This will also be run using `pre-commit` hooks.
 
 To ignore a rule for a specific line, you can add a comment with `ruff: disable` at the end of the line, e.g.
@@ -139,6 +139,17 @@ or types defined from NePS, there is probably a good reason for a mypy error.
 If you have issues regarding typing, please feel free to reach out for help `@eddiebergman`.
 
 
+### Mypy: How to ignore warnings?
+
+There are two options:
+
+- Disable the warning locally:
+
+  ```python
+  code = "foo"  # type: ignore
+  ```
+
+
 ### Examples and Integration Tests
 
 We use some examples in [neps_examples](https://github.com/automl/neps/tree/master/neps_examples) as integration tests, which we run from the main directory via
@@ -150,27 +161,15 @@ pytest
 If tests fail for you on the master, please raise an issue on github, preferably with some information on the error,
 traceback and the environment in which you are running, i.e. python version, OS, etc.
 
-## Disabling and Skipping Checks etc.
-
 ### Pre-commit: How to not run hooks?
 
 To commit without running `pre-commit` use `git commit --no-verify -m <COMMIT MESSAGE>`.
 
-### Mypy: How to ignore warnings?
-
-There are two options:
-
-- Disable the warning locally:
-
-  ```python
-  code = "foo"  # type: ignore
-  ```
-
-### Managing Dependencies
+## Managing Dependencies
 
 To manage dependencies we use [uv](https://docs.astral.sh/uv/getting-started/) (replaces pip).
 
-#### Add dependencies
+### Add dependencies
 
 To install a dependency use
 
@@ -182,7 +181,7 @@ and commit the updated `pyproject.toml` to git.
 
 For more advanced dependency management see examples in `pyproject.toml` or have a look at the [uv documentation](https://docs.astral.sh/uv/getting-started/).
 
-#### Install dependencies added by others
+### Install dependencies added by others
 
 When other contributors added dependencies to `pyproject.toml`, you can install them via
 
@@ -226,13 +225,13 @@ There are four steps to releasing a new version of neps:
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
-## 1. Run tests
+### 1. Run tests
 
 ```bash
 uv run pytest
 ```
 
-## 2. Update the Package Version and CITATION.cff
+### 2. Update the Package Version and CITATION.cff
 
 ```bash
 bump-my-version bump <major | minor | patch>
@@ -250,6 +249,8 @@ mike serve
 ```
 
 and then looking at it.
+
+Update the citations page.
 
 Afterwards, publish it via
 
