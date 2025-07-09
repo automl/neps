@@ -3676,11 +3676,31 @@
     <div class="doc doc-contents ">
 
         <p>Get a grid of configurations from the search space.</p>
-<p>For [<code>Float</code>][neps.space.Float] and [<code>Integer</code>][neps.space.Integer]
+<p>For <a class="autorefs autorefs-internal" title="            HPOFloat
+
+
+  
+      dataclass
+  " href="../../../space/parameters/#neps.space.parameters.HPOFloat"><code>Float</code></a> and <a class="autorefs autorefs-internal" title="            HPOInteger
+
+
+  
+      dataclass
+  " href="../../../space/parameters/#neps.space.parameters.HPOInteger"><code>Integer</code></a>
 the parameter <code>size_per_numerical_hp=</code> is used to determine a grid.</p>
-<p>For [<code>Categorical</code>][neps.space.Categorical]
+<p>For <a class="autorefs autorefs-internal" title="            HPOCategorical
+
+
+  
+      dataclass
+  " href="../../../space/parameters/#neps.space.parameters.HPOCategorical"><code>Categorical</code></a>
 hyperparameters, we include all the choices in the grid.</p>
-<p>For [<code>Constant</code>][neps.space.Constant] hyperparameters,
+<p>For <a class="autorefs autorefs-internal" title="            HPOConstant
+
+
+  
+      dataclass
+  " href="../../../space/parameters/#neps.space.parameters.HPOConstant"><code>Constant</code></a> hyperparameters,
 we include the constant value in the grid.</p>
 
 
@@ -3799,13 +3819,13 @@ we include the constant value in the grid.</p>
 <a id="__codelineno-0-23" name="__codelineno-0-23"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
 <a id="__codelineno-0-24" name="__codelineno-0-24"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a grid of configurations from the search space.</span>
 <a id="__codelineno-0-25" name="__codelineno-0-25"></a>
-<a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    For [`Float`][neps.space.Float] and [`Integer`][neps.space.Integer]</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26"></a><span class="sd">    For [`Float`][neps.space.HPOFloat] and [`Integer`][neps.space.HPOInteger]</span>
 <a id="__codelineno-0-27" name="__codelineno-0-27"></a><span class="sd">    the parameter `size_per_numerical_hp=` is used to determine a grid.</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28"></a>
-<a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">    For [`Categorical`][neps.space.Categorical]</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29"></a><span class="sd">    For [`Categorical`][neps.space.HPOCategorical]</span>
 <a id="__codelineno-0-30" name="__codelineno-0-30"></a><span class="sd">    hyperparameters, we include all the choices in the grid.</span>
 <a id="__codelineno-0-31" name="__codelineno-0-31"></a>
-<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    For [`Constant`][neps.space.Constant] hyperparameters,</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32"></a><span class="sd">    For [`Constant`][neps.space.HPOConstant] hyperparameters,</span>
 <a id="__codelineno-0-33" name="__codelineno-0-33"></a><span class="sd">    we include the constant value in the grid.</span>
 <a id="__codelineno-0-34" name="__codelineno-0-34"></a>
 <a id="__codelineno-0-35" name="__codelineno-0-35"></a><span class="sd">    Args:</span>

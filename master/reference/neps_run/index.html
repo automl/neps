@@ -3744,7 +3744,7 @@ You can find most of the features NePS provides through the API of this function
 <p>See the following for more:</p>
 <ul>
 <li>What kind of <a href="../reference/pipeline_space.md">pipeline space</a> can you define?</li>
-<li>What goes in and what goes out of <a href="../evaluate_pipeline/"><code>evaluate_pipeline()</code></a>?</li>
+<li>What goes in and what goes out of <a href="./"><code>evaluate_pipeline()</code></a>?</li>
 </ul>
 <h2 id="budget-how-long-to-run">Budget, how long to run?<a class="headerlink" href="#budget-how-long-to-run" title="Permanent link">#</a></h2>
 <p>To define a budget, provide <code>max_evaluations_total=</code> to <a class="autorefs autorefs-internal" title="            run" href="../../api/neps/api/#neps.api.run"><code>neps.run()</code></a>,
@@ -3768,7 +3768,7 @@ or <code>max_cost_total=</code> to specify a cost threshold for your own custom 
 <li>Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
     This requires adding a cost value to the output of the <code>evaluate_pipeline</code> function, for example, return <code class="highlight"><span class="p">{</span><span class="s1">&#39;objective_to_minimize&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;cost&#39;</span><span class="p">:</span> <span class="n">cost</span><span class="p">}</span></code>.
-    For more details, please refer <a href="../evaluate_pipeline/">here</a></li>
+    For more details, please refer <a href="../neps_spaces/">here</a></li>
 </ol>
 <h2 id="getting-some-feedback-logging">Getting some feedback, logging<a class="headerlink" href="#getting-some-feedback-logging" title="Permanent link">#</a></h2>
 <p>NePS will not print anything to the console. To view the progress of workers,
