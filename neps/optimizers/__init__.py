@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from functools import partial
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers.algorithms import (
@@ -71,18 +72,27 @@ def load_optimizer(
 
         # Provided optimizer initializer
         case _ if callable(optimizer):
+            inner_optimizer = None
+            if isinstance(optimizer, partial):
+                inner_optimizer = optimizer.func
+                while isinstance(inner_optimizer, partial):
+                    inner_optimizer = inner_optimizer.func
+            else:
+                inner_optimizer = optimizer
             keywords = extract_keyword_defaults(optimizer)
 
             # Error catch and type ignore needed while we transition from SearchSpace to
             # Pipeline
             try:
-                _optimizer = optimizer(space)  # type: ignore
+                _optimizer = inner_optimizer(space, **keywords)  # type: ignore
             except TypeError as e:
                 raise TypeError(
-                    f"Optimizer {optimizer} does not accept a space of type"
+                    f"Optimizer {inner_optimizer} does not accept a space of type"
                     f" {type(space)}."
                 ) from e
-            info = OptimizerInfo(name=optimizer.__name__, info=keywords)
+
+            info = OptimizerInfo(name=inner_optimizer.__name__, info=keywords)
+
             return _optimizer, info
 
         # Custom optimizer, we create it

@@ -6,7 +6,6 @@ import logging
 import shutil
 import warnings
 from collections.abc import Callable, Mapping, Sequence
-from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
@@ -20,6 +19,7 @@ from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import (
     NepsCompatConverter,
     adjust_evaluation_pipeline_for_neps_space,
+    check_neps_space_compatibility,
     convert_neps_to_classic_search_space,
 )
 from neps.space.neps_spaces.parameters import Pipeline
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913, C901, PLR0912
+def run(  # noqa: PLR0913, C901
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | Pipeline,
     *,
@@ -265,10 +265,11 @@ def run(  # noqa: PLR0913, C901, PLR0912
             ```python
             neps.run(
                 ...,
-                optimzier={
-                    "name": "priorband",
-                    "sample_prior_first": True,
-                }
+                optimzier=("priorband",
+                    {
+                        "sample_prior_first": True,
+                    }
+                )
             )
             ```
 
@@ -352,62 +353,23 @@ def run(  # noqa: PLR0913, C901, PLR0912
     # pipeline_space and only use the new NEPS optimizers.
 
     # If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space
-    inner_optimizer = None
-    if isinstance(optimizer, partial):
-        inner_optimizer = optimizer.func
-        while isinstance(inner_optimizer, partial):
-            inner_optimizer = inner_optimizer.func
-    if (
-        optimizer
-        not in (
-            neps.optimizers.algorithms.neps_random_search,
-            neps.optimizers.algorithms.neps_priorband,
-            neps.optimizers.algorithms.neps_complex_random_search,
-        )
-        and (
-            not inner_optimizer
-            or inner_optimizer
-            not in (
-                neps.optimizers.algorithms.neps_random_search,
-                neps.optimizers.algorithms.neps_priorband,
-                neps.optimizers.algorithms.neps_complex_random_search,
-            )
-        )
-        and optimizer != "auto"
-    ) and not warmstart_configs:
+
+    neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
+    if neps_classic_space_compatibility in ["both", "classic"] and not warmstart_configs:
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
-            logger.info(
-                "The provided pipeline_space only contains basic HPO parameters, "
-                "converting it to a classic SearchSpace."
-            )
             pipeline_space = converted_space
 
     # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
     # algorithm, we raise an error, as the optimizer is not compatible.
     if (
         isinstance(pipeline_space, Pipeline)
-        and optimizer
-        not in (
-            neps.optimizers.algorithms.neps_random_search,
-            neps.optimizers.algorithms.neps_priorband,
-            neps.optimizers.algorithms.neps_complex_random_search,
-        )
-        and (
-            not inner_optimizer
-            or inner_optimizer
-            not in (
-                neps.optimizers.algorithms.neps_random_search,
-                neps.optimizers.algorithms.neps_priorband,
-                neps.optimizers.algorithms.neps_complex_random_search,
-            )
-        )
-        and optimizer != "auto"
+        and neps_classic_space_compatibility == "classic"
     ):
         raise ValueError(
             "The provided optimizer is not compatible with this complex search space. "
-            "Please use one of the NEPS optimizers, such as 'neps_random_search', "
-            "'neps_priorband', or 'neps_complex_random_search'."
+            "Please use one that is, such as 'random_search', "
+            "'priorband', or 'complex_random_search'."
         )
 
     if isinstance(pipeline_space, Pipeline):

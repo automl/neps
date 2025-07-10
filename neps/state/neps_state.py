@@ -653,7 +653,7 @@ def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
     deserialized = deserialize(path)
     if "name" not in deserialized or "info" not in deserialized:
         raise NePSError(
-            f"Invalid optimizer info deserialized from"
+            "Invalid optimizer info deserialized from"
             f" {path}. Did not find"
             " keys 'name' and 'info'."
         )

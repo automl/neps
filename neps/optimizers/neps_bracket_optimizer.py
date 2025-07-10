@@ -150,7 +150,7 @@ class _NePSBracketOptimizer:
         # TODO: [lum] have a CenterSampler as fallback, not Random
         _try_always_priors_sampler = PriorOrFallbackSampler(
             fallback_sampler=RandomSampler(predefined_samplings={}),
-            prior_use_probability=1,
+            always_use_prior=True,
         )
 
         _environment_values = {}

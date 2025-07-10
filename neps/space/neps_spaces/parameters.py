@@ -76,7 +76,10 @@ class Fidelity(Resolvable, Generic[T]):
 
         """
         if domain.has_prior:
-            raise ValueError(f"The domain of a Fidelity can not have priors: {domain!r}.")
+            raise ValueError(
+                "The domain of a Fidelity can not have priors, has prior:"
+                f" {domain.prior!r}."
+            )
         self._domain = domain
 
     @property
@@ -865,10 +868,6 @@ class Integer(Domain[int]):
 
         Returns:
             A randomly selected integer value within the domain's range.
-
-        Raises:
-            NotImplementedError: If the domain is set to sample on a logarithmic
-                scale, as this is not implemented yet.
 
         """
         if self._log:

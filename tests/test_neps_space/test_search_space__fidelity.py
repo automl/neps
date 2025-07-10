@@ -35,7 +35,7 @@ def test_fidelity_creation_raises_when_domain_has_prior():
     # Creating a fidelity object with a domain that has a prior should not be possible.
     with pytest.raises(
         ValueError,
-        match=re.escape("The domain of a Fidelity can not have priors: "),
+        match=re.escape("The domain of a Fidelity can not have priors, has prior: 10"),
     ):
         Fidelity(
             domain=Integer(

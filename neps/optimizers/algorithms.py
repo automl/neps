@@ -36,14 +36,17 @@ from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.neps_bracket_optimizer import _NePSBracketOptimizer
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
-from neps.optimizers.neps_random_search import NePSComplexRandomSearch, NePSRandomSearch
+from neps.optimizers.neps_random_search import (
+    NePSComplexRandomSearch,
+    NePSRandomSearch,
+)
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import Pipeline, Resolvable
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -403,7 +406,7 @@ def determine_optimizer_automatically(space: SearchSpace | Pipeline) -> str:
     if isinstance(space, Pipeline):
         if space.fidelity_attrs:
             return "neps_priorband"
-        return "neps_complex_random_search"
+        return "complex_random_search"
     has_prior = any(
         parameter.prior is not None for parameter in space.searchables.values()
     )
@@ -427,7 +430,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest fidelity"] = False,
-) -> RandomSearch:
+) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
     You may also `use_priors=` to sample from a distribution centered around your defined
@@ -444,9 +447,8 @@ def random_search(
         if converted_space is not None:
             pipeline_space = converted_space
         else:
-            raise ValueError(
-                "This optimizer only supports HPO search spaces, please use a NePS"
-                " space-compatible optimizer."
+            return neps_random_search(
+                pipeline_space, use_priors=use_priors, ignore_fidelity=ignore_fidelity
             )
     assert ignore_fidelity in (
         True,
@@ -1050,7 +1052,7 @@ def priorband(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
     bayesian_optimization_kick_in_point: int | float | None = None,
-) -> BracketOptimizer:
+) -> BracketOptimizer | _NePSBracketOptimizer:
     """Priorband is also a bandit-based optimization algorithm that uses a _fidelity_,
     providing a general purpose sampling extension to other algorithms. It makes better
     use of the prior information you provide in the search space along with the fact
@@ -1093,9 +1095,16 @@ def priorband(
         if converted_space is not None:
             pipeline_space = converted_space
         else:
-            raise ValueError(
-                "This optimizer only supports HPO search spaces, please use a NePS"
-                " space-compatible optimizer."
+            if bayesian_optimization_kick_in_point is not None:
+                raise ValueError(
+                    "The priorband variant for this complex search space does not"
+                    " support a bayesian optimization kick-in point yet."
+                )
+            return neps_priorband(
+                pipeline_space,
+                eta=eta,
+                sample_prior_first=sample_prior_first,
+                base=base,
             )
     if all(parameter.prior is None for parameter in pipeline_space.searchables.values()):
         logger.warning(
@@ -1332,36 +1341,92 @@ def custom(
     )
 
 
-def neps_complex_random_search(
-    pipeline: Pipeline,
-    *_args: Any,
-    **_kwargs: Any,
+def complex_random_search(
+    pipeline_space: Pipeline,
+    *,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
 ) -> NePSComplexRandomSearch:
     """A complex random search algorithm that samples configurations uniformly at random,
     but allows for more complex sampling strategies.
 
     Args:
         pipeline: The search space to sample from.
+        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
+            If `True`, the algorithm will sample the fidelity like a normal parameter.
+            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+    Raises:
+        ValueError: If the pipeline has fidelity attributes and `ignore_fidelity` is
+            set to `False`. Complex random search does not support fidelities by default.
     """
 
+    if pipeline_space.fidelity_attrs and ignore_fidelity is False:
+        raise ValueError(
+            "Complex Random Search does not support fidelities by default."
+            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "to always sample at max fidelity."
+        )
+    if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
+        logger.warning(
+            "You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+
     return NePSComplexRandomSearch(
-        pipeline=pipeline,
+        pipeline=pipeline_space,
+        ignore_fidelity=ignore_fidelity,
     )
 
 
 def neps_random_search(
-    pipeline: Pipeline,
-    *_args: Any,
-    **_kwargs: Any,
+    pipeline_space: Pipeline,
+    *,
+    use_priors: bool = False,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
 ) -> NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
     Args:
-        pipeline: The search space to sample from.
+        pipeline_space: The search space to sample from.
+        use_priors: Whether to use priors when sampling.
+            If `True`, the algorithm will sample from the prior distribution
+            defined in the search space.
+        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
+            If `True`, the algorithm will sample the fidelity like a normal parameter.
+            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+    Raises:
+        ValueError: If the pipeline space has fidelity attributes and `ignore_fidelity` is
+            set to `False`. Random search does not support fidelities by default.
     """
 
+    if pipeline_space.fidelity_attrs and ignore_fidelity is False:
+        raise ValueError(
+            "Random Search does not support fidelities by default."
+            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "to always sample at max fidelity."
+        )
+    if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
+        logger.warning(
+            "You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+    parameters = pipeline_space.get_attrs().values()
+    non_fid_parameters = [
+        parameter
+        for parameter in parameters
+        if parameter not in pipeline_space.fidelity_attrs.values()
+    ]
+    if use_priors and not any(
+        parameter.has_prior  # type: ignore
+        for parameter in non_fid_parameters
+        if isinstance(parameter, Resolvable)
+    ):
+        raise ValueError(
+            "You have set use_priors=True, but no priors are defined in the search space."
+            "Consider using a different optimizer that supports priors."
+        )
+
     return NePSRandomSearch(
-        pipeline=pipeline,
+        pipeline=pipeline_space, use_priors=use_priors, ignore_fidelity=ignore_fidelity
     )
 
 
@@ -1471,7 +1536,7 @@ def _neps_bracket_optimizer(
 
 
 def neps_priorband(
-    space: Pipeline,
+    pipeline_space: Pipeline,
     *,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
@@ -1480,7 +1545,7 @@ def neps_priorband(
     """Create a PriorBand optimizer for the given pipeline space.
 
     Args:
-        space: The pipeline space to optimize over.
+        pipeline_space: The pipeline space to optimize over.
         eta: The eta parameter for the algorithm.
         sample_prior_first: Whether to sample the prior first.
             If set to `"highest_fidelity"`, the prior will be sampled at the
@@ -1493,8 +1558,23 @@ def neps_priorband(
     Returns:
         An instance of _BracketOptimizer configured for PriorBand sampling.
     """
+    parameters = pipeline_space.get_attrs().values()
+    non_fid_parameters = [
+        parameter
+        for parameter in parameters
+        if parameter not in pipeline_space.fidelity_attrs.values()
+    ]
+    if not any(
+        parameter.has_prior  # type: ignore
+        for parameter in non_fid_parameters
+        if isinstance(parameter, Resolvable)
+    ):
+        logger.warning(
+            "Warning: No priors are defined in the search space, priorband will sample"
+            " uniformly. Consider using hyperband instead."
+        )
     return _neps_bracket_optimizer(
-        pipeline_space=space,
+        pipeline_space=pipeline_space,
         bracket_type=base,
         eta=eta,
         sampler="priorband",
@@ -1524,7 +1604,7 @@ PredefinedOptimizers: Mapping[
         async_hb,
         priorband,
         neps_random_search,
-        neps_complex_random_search,
+        complex_random_search,
         neps_priorband,
     )
 }
@@ -1543,6 +1623,6 @@ OptimizerChoice: TypeAlias = Literal[
     "grid_search",
     "ifbo",
     "neps_random_search",
-    "neps_complex_random_search",
+    "complex_random_search",
     "neps_priorband",
 ]

@@ -57,10 +57,10 @@ def case_search_space_with_fid() -> Pipeline:
 @case
 def case_search_space_no_fid_with_prior() -> Pipeline:
     class SpacePrior(Pipeline):
-        a = Float(0, 1, prior=0.5)
-        b = Categorical(("a", "b", "c"), prior=0)
+        a = Float(0, 1, prior=0.5, prior_confidence="medium")
+        b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
         c = "a"
-        d = Integer(0, 10, prior=5)
+        d = Integer(0, 10, prior=5, prior_confidence="medium")
 
     return SpacePrior()
 
@@ -68,10 +68,10 @@ def case_search_space_no_fid_with_prior() -> Pipeline:
 @case
 def case_search_space_fid_with_prior() -> Pipeline:
     class SpaceFidPrior(Pipeline):
-        a = Float(0, 1, prior=0.5)
-        b = Categorical(("a", "b", "c"), prior=0)
+        a = Float(0, 1, prior=0.5, prior_confidence="medium")
+        b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
         c = "a"
-        d = Integer(0, 10, prior=5)
+        d = Integer(0, 10, prior=5, prior_confidence="medium")
         e = Fidelity(Integer(1, 10))
 
     return SpaceFidPrior()
@@ -103,6 +103,8 @@ NO_DEFAULT_FIDELITY_SUPPORT = [
     "grid_search",
     "bayesian_optimization",
     "pibo",
+    "neps_random_search",
+    "complex_random_search",
 ]
 NO_DEFAULT_PRIOR_SUPPORT = [
     "grid_search",
@@ -115,6 +117,8 @@ NO_DEFAULT_PRIOR_SUPPORT = [
     "random_search",
     "moasha",
     "mo_hyperband",
+    "neps_random_search",
+    "complex_random_search",
 ]
 REQUIRES_PRIOR = [
     "pibo",
@@ -124,7 +128,7 @@ REQUIRES_PRIOR = [
 REQUIRES_NEPS_SPACE = [
     "neps_priorband",
     "neps_random_search",
-    "neps_complex_random_search",
+    "complex_random_search",
 ]
 
 

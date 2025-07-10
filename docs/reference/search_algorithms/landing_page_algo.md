@@ -10,7 +10,7 @@ We distinguish between algorithms that use different types of information and st
 | :- | :------------: | :----: | :---------: | :-----------------: |
 | `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
 | `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
-| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.neps_complex_random_search]|[✔️*][neps.optimizers.algorithms.neps_complex_random_search]|❌|✅|
+| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|
 | [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
 | [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
 | [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|❌|

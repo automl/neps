@@ -151,7 +151,7 @@ class NePSPriorBandSampler:
                 fallback_sampler=neps.space.neps_spaces.sampling.RandomSampler(
                     predefined_samplings={}
                 ),
-                prior_use_probability=1,
+                always_use_prior=True,
             )
         )
 

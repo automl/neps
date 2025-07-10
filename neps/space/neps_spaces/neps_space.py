@@ -8,15 +8,11 @@ import contextlib
 import dataclasses
 import functools
 from collections.abc import Callable, Generator, Mapping
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    TypeVar,
-    cast,
-)
+from functools import partial
+from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeVar, cast
 
 import neps
-from neps.optimizers import optimizer
+from neps.optimizers import algorithms, optimizer
 from neps.space.neps_spaces import config_string
 from neps.space.neps_spaces.parameters import (
     Categorical,
@@ -989,3 +985,121 @@ def convert_neps_to_classic_search_space(space: Pipeline) -> SearchSpace | None:
                     classic_space[key] = neps.HPOConstant(value)
             return convert_mapping(classic_space)
     return None
+
+
+def check_neps_space_compatibility(
+    optimizer_to_check: (
+        algorithms.OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[algorithms.OptimizerChoice, Mapping[str, Any]]
+        | Callable[
+            Concatenate[SearchSpace, ...], optimizer.AskFunction
+        ]  # Hack, while we transit
+        | Callable[
+            Concatenate[Pipeline, ...], optimizer.AskFunction
+        ]  # from SearchSpace to
+        | Callable[
+            Concatenate[SearchSpace | Pipeline, ...], optimizer.AskFunction
+        ]  # Pipeline
+        | algorithms.CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+) -> Literal["neps", "classic", "both"]:
+    """Check if the given optimizer is compatible with a NePS space.
+    This function checks if the optimizer is a NePS-specific algorithm,
+    a classic algorithm, or a combination of both.
+
+    Args:
+        optimizer_to_check: The optimizer to check for compatibility.
+            It can be a NePS-specific algorithm, a classic algorithm,
+            or a combination of both.
+
+    Returns:
+        A string indicating the compatibility:
+            - "neps" if the optimizer is a NePS-specific algorithm,
+            - "classic" if the optimizer is a classic algorithm,
+            - "both" if the optimizer is a combination of both.
+    """
+    inner_optimizer = None
+    if isinstance(optimizer_to_check, partial):
+        inner_optimizer = optimizer_to_check.func
+        while isinstance(inner_optimizer, partial):
+            inner_optimizer = inner_optimizer.func
+
+    only_neps_algorithm = (
+        optimizer_to_check
+        in (
+            algorithms.neps_random_search,
+            algorithms.neps_priorband,
+            algorithms.complex_random_search,
+        )
+        or (
+            inner_optimizer
+            and inner_optimizer
+            in (
+                algorithms.neps_random_search,
+                algorithms.neps_priorband,
+                algorithms.complex_random_search,
+            )
+        )
+        or optimizer_to_check == "auto"
+        or (
+            optimizer_to_check[0]
+            in (
+                "neps_random_search",
+                "neps_priorband",
+                "complex_random_search",
+            )
+            if isinstance(optimizer_to_check, tuple)
+            else False
+        )
+        or (
+            optimizer_to_check
+            in (
+                "neps_random_search",
+                "neps_priorband",
+                "complex_random_search",
+            )
+            if isinstance(optimizer_to_check, str)
+            else False
+        )
+    )
+    if only_neps_algorithm:
+        return "neps"
+    neps_and_classic_algorithm = (
+        optimizer
+        in (
+            algorithms.random_search,
+            algorithms.priorband,
+        )
+        or (
+            inner_optimizer
+            and inner_optimizer
+            in (
+                algorithms.random_search,
+                algorithms.priorband,
+            )
+        )
+        or optimizer_to_check == "auto"
+        or (
+            optimizer_to_check[0]
+            in (
+                "random_search",
+                "priorband",
+            )
+            if isinstance(optimizer_to_check, tuple)
+            else False
+        )
+        or (
+            optimizer_to_check
+            in (
+                "random_search",
+                "priorband",
+            )
+            if isinstance(optimizer_to_check, str)
+            else False
+        )
+    )
+    if neps_and_classic_algorithm:
+        return "both"
+    return "classic"

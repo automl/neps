@@ -28,6 +28,8 @@ from neps.space import ConfigEncoder, Domain, HPOCategorical, HPOFloat, HPOInteg
 if TYPE_CHECKING:
     from torch.distributions import Distribution
 
+PRIOR_CONFIDENCE_MAPPING = {"low": 0.25, "medium": 0.5, "high": 0.75}
+
 
 class Prior(Sampler):
     """A protocol for priors over search spaces.
@@ -128,7 +130,7 @@ class Prior(Sampler):
         """Create a prior distribution from dict of parameters.
 
         Args:
-            parameters: The parameters to createa a prior from. Will look
+            parameters: The parameters to create a prior from. Will look
                 at the `.prior` and `.prior_confidence` of the parameters
                 to create a truncated normal.
 
@@ -144,7 +146,7 @@ class Prior(Sampler):
         Returns:
             The prior distribution
         """
-        _mapping = {"low": 0.25, "medium": 0.5, "high": 0.75}
+        _mapping = PRIOR_CONFIDENCE_MAPPING
 
         center_values = center_values or {}
         confidence_values = confidence_values or {}

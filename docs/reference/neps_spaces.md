@@ -130,9 +130,9 @@ neps.run(
 
     Currently, NePS Spaces is compatible with these optimizers, which can be imported from [neps.algorithms][neps.optimizers.algorithms--neps-algorithms]:
 
-    - [`Random Search`][neps.optimizers.algorithms.neps_random_search], which can sample the space uniformly at random
-    - [`Complex Random Search`][neps.optimizers.algorithms.neps_complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
-    - [`PriorBand`][neps.optimizers.algorithms.neps_priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the NePS space
+    - [`Random Search`][neps.optimizers.algorithms.random_search], which can sample the space uniformly at random
+    - [`Complex Random Search`][neps.optimizers.algorithms.complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
+    - [`PriorBand`][neps.optimizers.algorithms.priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the NePS space
 
 ## Inspecting Configurations
 

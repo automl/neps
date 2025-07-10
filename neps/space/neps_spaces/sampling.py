@@ -8,9 +8,15 @@ import random
 from collections.abc import Mapping
 from typing import Any, Protocol, TypeVar, cast, runtime_checkable
 
+from scipy import stats
+
+from neps.sampling.priors import PRIOR_CONFIDENCE_MAPPING
 from neps.space.neps_spaces.parameters import (
+    Categorical,
     ConfidenceLevel,
     Domain,
+    Float,
+    Integer,
     Pipeline,
 )
 
@@ -145,38 +151,23 @@ class PriorOrFallbackSampler(DomainSampler):
 
     Args:
         fallback_sampler: A DomainSampler to use if the prior is not available.
-        prior_use_probability: The probability of using the prior value when
-            available. This should be a float between 0 and 1, where 0 means never use
-            the prior and 1 means always use it.
-
-    Raises:
-        ValueError: If the prior_use_probability is not between 0 and 1.
+        always_use_prior: If True, always use the prior value when available.
     """
 
     def __init__(
         self,
         fallback_sampler: DomainSampler,
-        prior_use_probability: float,
+        always_use_prior: bool = False,  # noqa: FBT001, FBT002
     ):
-        """Initialize the sampler with a fallback sampler and a prior use probability.
+        """Initialize the sampler with a fallback sampler and a flag to always use the
+        prior.
 
         Args:
             fallback_sampler: A DomainSampler to use if the prior is not available.
-            prior_use_probability: The probability of using the prior value when
-                available. This should be a float between 0 and 1, where 0 means never
-                use the prior and 1 means always use it.
-
-        Raises:
-            ValueError: If the prior_use_probability is not between 0 and 1.
+            always_use_prior: If True, always use the prior value when available.
         """
-        if not 0 <= prior_use_probability <= 1:
-            raise ValueError(
-                "The given `prior_use_probability` value is out of range:"
-                f" {prior_use_probability!r}."
-            )
-
         self._fallback_sampler = fallback_sampler
-        self._prior_use_probability = prior_use_probability
+        self._always_use_prior = always_use_prior
 
     def __call__(
         self,
@@ -185,7 +176,7 @@ class PriorOrFallbackSampler(DomainSampler):
         current_path: str,
     ) -> T:
         """Sample a value from the domain, using the prior if available and according to
-        the prior use probability.
+        the prior confidence probability.
 
         Args:
             domain_obj: The domain object from which to sample.
@@ -198,13 +189,52 @@ class PriorOrFallbackSampler(DomainSampler):
             ValueError: If the domain does not have a prior defined and the fallback
                 sampler is not provided.
         """
-        use_prior = random.choices(
-            (True, False),
-            weights=(self._prior_use_probability, 1 - self._prior_use_probability),
-            k=1,
-        )[0]
-        if domain_obj.has_prior and use_prior:
-            return domain_obj.prior
+        if domain_obj.has_prior:
+            _prior_probability = PRIOR_CONFIDENCE_MAPPING.get(
+                domain_obj.prior_confidence.value, 0.5
+            )
+            if isinstance(domain_obj, Categorical) or self._always_use_prior:
+                if (
+                    random.choices(
+                        (True, False),
+                        weights=(_prior_probability, 1 - _prior_probability),
+                        k=1,
+                    )[0]
+                    or self._always_use_prior
+                ):
+                    # If the prior is defined, we sample from it.
+                    return domain_obj.prior
+
+            # For Integers and Floats, sample gaussians around the prior
+
+            elif isinstance(domain_obj, Integer | Float):
+                # Sample an integer from a Gaussian distribution centered around the
+                # prior, cut of the tails to ensure the value is within the domain's
+                # range. Using the _prior_probability to determine the standard deviation
+                assert hasattr(domain_obj, "min_value")
+                assert hasattr(domain_obj, "max_value")
+                assert hasattr(domain_obj, "prior")
+
+                std_dev = 1 / (
+                    10
+                    * _prior_probability
+                    / (domain_obj.max_value - domain_obj.min_value)  # type: ignore
+                )
+
+                a = (domain_obj.min_value - domain_obj.prior) / std_dev  # type: ignore
+                b = (domain_obj.max_value - domain_obj.prior) / std_dev  # type: ignore
+                sampled_value = stats.truncnorm.rvs(
+                    a=a,
+                    b=b,
+                    loc=domain_obj.prior,  # type: ignore
+                    scale=std_dev,
+                )
+                if isinstance(domain_obj, Integer):
+                    sampled_value = int(round(sampled_value))
+                else:
+                    sampled_value = float(sampled_value)  # type: ignore
+                return cast(T, sampled_value)
+
         return self._fallback_sampler(
             domain_obj=domain_obj,
             current_path=current_path,

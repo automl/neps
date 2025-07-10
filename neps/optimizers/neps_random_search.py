@@ -8,9 +8,10 @@ import heapq
 import random
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from neps.space.neps_spaces.neps_space import _prepare_sampled_configs, resolve
+from neps.space.neps_spaces.parameters import Float, Integer
 from neps.space.neps_spaces.sampling import (
     CrossoverByMixingSampler,
     CrossoverNotPossibleError,
@@ -40,7 +41,12 @@ class NePSRandomSearch:
         ValueError: If the pipeline is not a Pipeline object.
     """
 
-    def __init__(self, pipeline: Pipeline):
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        use_priors: bool = False,  # noqa: FBT001, FBT002
+        ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
+    ):
         """Initialize the RandomSearch optimizer with a pipeline.
 
         Args:
@@ -54,9 +60,31 @@ class NePSRandomSearch:
         self._environment_values = {}
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            self._environment_values[fidelity_name] = fidelity_obj.max_value
+            if ignore_fidelity == "highest fidelity":
+                self._environment_values[fidelity_name] = fidelity_obj.max_value
+            elif not ignore_fidelity:
+                raise ValueError(
+                    "RandomSearch does not support fidelities by default. Consider using"
+                    " a different optimizer or setting `ignore_fidelity=True` or `highest"
+                    " fidelity`."
+                )
+            # Sample randomly from the fidelity bounds.
+            elif isinstance(fidelity_obj._domain, Integer):
+                assert isinstance(fidelity_obj.min_value, int)
+                assert isinstance(fidelity_obj.max_value, int)
+                self._environment_values[fidelity_name] = random.randint(
+                    fidelity_obj.min_value, fidelity_obj.max_value
+                )
+            elif isinstance(fidelity_obj._domain, Float):
+                self._environment_values[fidelity_name] = random.uniform(
+                    fidelity_obj.min_value, fidelity_obj.max_value
+                )
 
         self._random_sampler = RandomSampler(predefined_samplings={})
+        self.use_prior = use_priors
+        self._prior_sampler = PriorOrFallbackSampler(
+            fallback_sampler=self._random_sampler
+        )
 
     def __call__(
         self,
@@ -86,14 +114,24 @@ class NePSRandomSearch:
         n_requested = 1 if n is None else n
         return_single = n is None
 
-        chosen_pipelines = [
-            resolve(
-                pipeline=self._pipeline,
-                domain_sampler=self._random_sampler,
-                environment_values=self._environment_values,
-            )
-            for _ in range(n_requested)
-        ]
+        if self.use_prior:
+            chosen_pipelines = [
+                resolve(
+                    pipeline=self._pipeline,
+                    domain_sampler=self._prior_sampler,
+                    environment_values=self._environment_values,
+                )
+                for _ in range(n_requested)
+            ]
+        else:
+            chosen_pipelines = [
+                resolve(
+                    pipeline=self._pipeline,
+                    domain_sampler=self._random_sampler,
+                    environment_values=self._environment_values,
+                )
+                for _ in range(n_requested)
+            ]
 
         return _prepare_sampled_configs(chosen_pipelines, n_prev_trials, return_single)
 
@@ -111,7 +149,11 @@ class NePSComplexRandomSearch:
         ValueError: If the pipeline is not a Pipeline object.
     """
 
-    def __init__(self, pipeline: Pipeline):
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
+    ):
         """Initialize the ComplexRandomSearch optimizer with a pipeline.
 
         Args:
@@ -125,19 +167,37 @@ class NePSComplexRandomSearch:
         self._environment_values = {}
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            self._environment_values[fidelity_name] = fidelity_obj.max_value
+            if ignore_fidelity == "highest fidelity":
+                self._environment_values[fidelity_name] = fidelity_obj.max_value
+            elif not ignore_fidelity:
+                raise ValueError(
+                    "ComplexRandomSearch does not support fidelities by default. Consider"
+                    " using a different optimizer or setting `ignore_fidelity=True` or"
+                    " `highest fidelity`."
+                )
+            # Sample randomly from the fidelity bounds.
+            elif isinstance(fidelity_obj._domain, Integer):
+                assert isinstance(fidelity_obj.min_value, int)
+                assert isinstance(fidelity_obj.max_value, int)
+                self._environment_values[fidelity_name] = random.randint(
+                    fidelity_obj.min_value, fidelity_obj.max_value
+                )
+            elif isinstance(fidelity_obj._domain, Float):
+                self._environment_values[fidelity_name] = random.uniform(
+                    fidelity_obj.min_value, fidelity_obj.max_value
+                )
 
         self._random_sampler = RandomSampler(
             predefined_samplings={},
         )
         self._try_always_priors_sampler = PriorOrFallbackSampler(
             fallback_sampler=self._random_sampler,
-            prior_use_probability=1,
+            always_use_prior=True,
         )
         self._sometimes_priors_sampler = PriorOrFallbackSampler(
-            fallback_sampler=self._random_sampler,
-            prior_use_probability=0.1,
+            fallback_sampler=self._random_sampler
         )
+        self._n_top_trials = 5
 
     def __call__(
         self,
@@ -199,9 +259,9 @@ class NePSComplexRandomSearch:
             )
         )
         if len(successful_trials) > 0:
-            n_top_trials = 5
+            self._n_top_trials = 5
             top_trials = heapq.nsmallest(
-                n_top_trials,
+                self._n_top_trials,
                 successful_trials,
                 key=lambda trial: (
                     float(trial.report.objective_to_minimize)
@@ -209,7 +269,7 @@ class NePSComplexRandomSearch:
                     and isinstance(trial.report.objective_to_minimize, float)
                     else float("inf")
                 ),
-            )  # Will have up to `n_top_trials` items.
+            )  # Will have up to `self._n_top_trials` items.
 
             # Do some mutations.
             for top_trial in top_trials:

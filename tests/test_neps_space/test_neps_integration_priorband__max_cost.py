@@ -65,11 +65,11 @@ class DemoHyperparameterWithFidelitySpace(Pipeline):
     ("optimizer", "optimizer_name"),
     [
         (
-            algorithms.neps_random_search,
+            partial(algorithms.neps_random_search, ignore_fidelity=True),
             "new__RandomSearch",
         ),
         (
-            algorithms.neps_complex_random_search,
+            partial(algorithms.complex_random_search, ignore_fidelity=True),
             "new__ComplexRandomSearch",
         ),
         (

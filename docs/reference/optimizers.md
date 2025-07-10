@@ -46,7 +46,7 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 | :- | :------------: | :----: | :---------: | :-----------------: |
 | `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
 | `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
-| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.neps_complex_random_search]|[✔️*][neps.optimizers.algorithms.neps_complex_random_search]|❌|✅|
+| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|
 | [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
 | [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
 | [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|❌|

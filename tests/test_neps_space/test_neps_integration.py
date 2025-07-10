@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from functools import partial
 
 import pytest
 
 import neps
 import neps.optimizers
-import neps.optimizers.algorithms
+from neps.optimizers import algorithms
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
@@ -155,13 +156,13 @@ class DemoHyperparameterComplexSpace(Pipeline):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.optimizers.algorithms.neps_random_search,
-        neps.optimizers.algorithms.neps_complex_random_search,
+        partial(algorithms.neps_random_search, ignore_fidelity=True),
+        partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
 def test_hyperparameter_demo(optimizer):
     pipeline_space = DemoHyperparameterSpace()
-    root_directory = f"results/hyperparameter_demo__{optimizer.__name__}"
+    root_directory = f"results/hyperparameter_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -178,13 +179,15 @@ def test_hyperparameter_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.optimizers.algorithms.neps_random_search,
-        neps.optimizers.algorithms.neps_complex_random_search,
+        partial(algorithms.neps_random_search, ignore_fidelity=True),
+        partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
 def test_hyperparameter_with_fidelity_demo(optimizer):
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"results/hyperparameter_with_fidelity_demo__{optimizer.__name__}"
+    root_directory = (
+        f"results/hyperparameter_with_fidelity_demo__{optimizer.func.__name__}"
+    )
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -201,13 +204,13 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
 @pytest.mark.parametrize(
     "optimizer",
     [
-        neps.optimizers.algorithms.neps_random_search,
-        neps.optimizers.algorithms.neps_complex_random_search,
+        partial(algorithms.neps_random_search, ignore_fidelity=True),
+        partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
 def test_hyperparameter_complex_demo(optimizer):
     pipeline_space = DemoHyperparameterComplexSpace()
-    root_directory = f"results/hyperparameter_complex_demo__{optimizer.__name__}"
+    root_directory = f"results/hyperparameter_complex_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -327,7 +330,7 @@ class DemoOperationSpace(Pipeline):
     "optimizer",
     [
         neps.optimizers.algorithms.neps_random_search,
-        neps.optimizers.algorithms.neps_complex_random_search,
+        neps.optimizers.algorithms.complex_random_search,
     ],
 )
 def test_operation_demo(optimizer):
