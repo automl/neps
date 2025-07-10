@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 import neps
 import neps.optimizers.algorithms
+import neps.optimizers.neps_bracket_optimizer
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.runtime import _launch_runtime
@@ -334,13 +335,8 @@ def run(  # noqa: PLR0913, C901, PLR0912
         )
 
     if warmstart_configs:
-        logger.info(
-            "Warmstarting neps.run with the provided"
-            f" {len(warmstart_configs)} configurations using root directory"
-            f" {root_directory}."
-        )
         warmstart_neps(
-            working_directory=Path(root_directory),
+            root_directory=Path(root_directory),
             pipeline_space=pipeline_space,
             warmstart_configs=warmstart_configs,
             optimizer=optimizer,
@@ -474,7 +470,7 @@ def run(  # noqa: PLR0913, C901, PLR0912
 
 def warmstart_neps(
     pipeline_space: Pipeline,
-    working_directory: Path | str,
+    root_directory: Path | str,
     warmstart_configs: Sequence[
         tuple[
             dict[str, Any] | Mapping[str, Any],
@@ -500,7 +496,7 @@ def warmstart_neps(
 
     Args:
         pipeline_space: The pipeline space to use for the warmstart.
-        working_directory: The path to the NePS state directory.
+        root_directory: The path to the NePS state directory.
         warmstart_configs: A list of tuples, where each tuple contains a configuration,
             environment values, and the result of the evaluation.
             The configuration is a dictionary of parameter values, the environment values
@@ -512,14 +508,19 @@ def warmstart_neps(
             callable, or a tuple of a callable and a dictionary of parameters.
             If "auto", the optimizer will be chosen based on the pipeline space.
     """
-    working_directory = Path(working_directory)
-    if overwrite_working_directory and working_directory.is_dir():
-        shutil.rmtree(working_directory)
+    logger.info(
+        "Warmstarting neps.run with the provided"
+        f" {len(warmstart_configs)} configurations using root directory"
+        f" {root_directory}."
+    )
+    root_directory = Path(root_directory)
+    if overwrite_working_directory and root_directory.is_dir():
+        shutil.rmtree(root_directory)
     optimizer_ask, optimizer_info = neps.optimizers.load_optimizer(
         optimizer, pipeline_space
     )
     state = NePSState.create_or_load(
-        working_directory,
+        root_directory,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
@@ -535,28 +536,81 @@ def warmstart_neps(
         )
 
         ask_tell = AskAndTell(optimizer=optimizer_ask, worker_id="warmstart_worker")
-        trial = ask_tell.tell_custom(
-            config_id=f"{n_config}{'_0' if pipeline_space.fidelity_attrs else ''}",
-            config=config,
-            result=result,
-        )
-        trial.config = NepsCompatConverter.to_neps_config(resolution_context)
-        if (
-            working_directory
-            / f"configs/config_{n_config}{'_0' if pipeline_space.fidelity_attrs else ''}"
-        ).is_dir():
-            raise ValueError(
-                f"Warmstart config {n_config} already exists in {working_directory}."
-                " Please remove it before running the script again."
+        if pipeline_space.fidelity_attrs:
+            assert isinstance(
+                optimizer_ask,
+                neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer,
+            ), (
+                "The optimizer must be a NePSBracketOptimizer when using fidelity"
+                " attributes."
             )
-        TrialRepo(working_directory / "configs").store_new_trial(trial)
-        assert trial.report
-        assert trial.metadata.evaluating_worker_id
-        state.lock_and_report_trial_evaluation(
-            trial=trial,
-            report=trial.report,
-            worker_id=trial.metadata.evaluating_worker_id,
-        )
+            rung_to_fid = optimizer_ask.rung_to_fid
+            fid_to_rung = {
+                v: max(k for k, val in rung_to_fid.items() if val == v)
+                for v in rung_to_fid.values()
+            }
+            fidelity_value = env[next(iter(pipeline_space.fidelity_attrs.keys()))]
+            highest_rung = max(
+                [
+                    fid_to_rung[small_key]
+                    for small_key in [key for key in fid_to_rung if key <= fidelity_value]
+                ]
+            )
+            for rung in range(highest_rung + 1):
+                # Store the config for each rung
+                config_path = f"{n_config}_{rung}"
+
+                # Check if result is a UserResultDict by checking its structure
+                if isinstance(result, dict) and "cost" in result:
+                    # This is a UserResultDict-like dictionary
+                    rung_result = result.copy()
+                    rung_result["cost"] = rung_result.get("cost", 0) / (highest_rung + 1)  # type: ignore
+                else:
+                    # This is a simple numeric result
+                    rung_result = result  # type: ignore
+                trial = ask_tell.tell_custom(
+                    config_id=config_path,
+                    config=config,
+                    result=rung_result,
+                    previous_trial_id=f"{n_config}_{rung - 1}" if rung > 0 else None,
+                )
+                trial.config = NepsCompatConverter.to_neps_config(resolution_context)
+                if (root_directory / config_path).is_dir():
+                    raise ValueError(
+                        f"Warmstart config {n_config} already exists in"
+                        f" {root_directory}. Please remove it before running the"
+                        " script again."
+                    )
+                TrialRepo(root_directory / "configs").store_new_trial(trial)
+                assert trial.report
+                assert trial.metadata.evaluating_worker_id
+                state.lock_and_report_trial_evaluation(
+                    trial=trial,
+                    report=trial.report,
+                    worker_id=trial.metadata.evaluating_worker_id,
+                )
+
+        else:
+            config_path = f"{n_config}"
+            trial = ask_tell.tell_custom(
+                config_id=config_path,
+                config=config,
+                result=result,
+            )
+            trial.config = NepsCompatConverter.to_neps_config(resolution_context)
+            if (root_directory / config_path).is_dir():
+                raise ValueError(
+                    f"Warmstart config {n_config} already exists in {root_directory}."
+                    " Please remove it before running the script again."
+                )
+            TrialRepo(root_directory / "configs").store_new_trial(trial)
+            assert trial.report
+            assert trial.metadata.evaluating_worker_id
+            state.lock_and_report_trial_evaluation(
+                trial=trial,
+                report=trial.report,
+                worker_id=trial.metadata.evaluating_worker_id,
+            )
 
 
 __all__ = ["run", "warmstart_neps"]
