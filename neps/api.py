@@ -319,6 +319,12 @@ def run(  # noqa: PLR0913, C901
                function, i.e. the objective value to minimize or a dictionary with
                `"objective_to_minimize"` and `"cost"` keys.
 
+            !!! warning "Warmstarting compatibility"
+
+                The warmstarting feature is only compatible with the new NEPS optimizers,
+                such as `neps.algorithms.neps_random_search`, `neps.algorithms.neps_priorband`,
+                and `neps.algorithms.complex_random_search`.
+
     """  # noqa: E501
     if (
         max_evaluations_total is None
@@ -469,6 +475,13 @@ def warmstart_neps(
         optimizer: The optimizer to use for the warmstart. This can be a string, a
             callable, or a tuple of a callable and a dictionary of parameters.
             If "auto", the optimizer will be chosen based on the pipeline space.
+
+            !!! warning "Warmstarting compatibility"
+
+                The warmstarting feature is only compatible with the new NEPS optimizers,
+                such as `neps.algorithms.neps_random_search`,
+                `neps.algorithms.neps_priorband`, and
+                `neps.algorithms.complex_random_search`.
     """
     logger.info(
         "Warmstarting neps.run with the provided"
@@ -498,14 +511,10 @@ def warmstart_neps(
         )
 
         ask_tell = AskAndTell(optimizer=optimizer_ask, worker_id="warmstart_worker")
-        if pipeline_space.fidelity_attrs:
-            assert isinstance(
-                optimizer_ask,
-                neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer,
-            ), (
-                "The optimizer must be a NePSBracketOptimizer when using fidelity"
-                " attributes."
-            )
+        if pipeline_space.fidelity_attrs and isinstance(
+            optimizer_ask,
+            neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer,
+        ):
             rung_to_fid = optimizer_ask.rung_to_fid
             fid_to_rung = {
                 v: max(k for k, val in rung_to_fid.items() if val == v)
