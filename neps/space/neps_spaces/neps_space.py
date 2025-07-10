@@ -1067,7 +1067,7 @@ def check_neps_space_compatibility(
     if only_neps_algorithm:
         return "neps"
     neps_and_classic_algorithm = (
-        optimizer
+        optimizer_to_check
         in (
             algorithms.random_search,
             algorithms.priorband,
