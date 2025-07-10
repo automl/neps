@@ -46,7 +46,13 @@ from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline, Resolvable
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    Float,
+    Integer,
+    Pipeline,
+    Resolvable,
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -1419,6 +1425,7 @@ def neps_random_search(
         parameter.has_prior  # type: ignore
         for parameter in non_fid_parameters
         if isinstance(parameter, Resolvable)
+        and isinstance(parameter, Integer | Float | Categorical)
     ):
         raise ValueError(
             "You have set use_priors=True, but no priors are defined in the search space."
@@ -1563,6 +1570,7 @@ def neps_priorband(
         parameter
         for parameter in parameters
         if parameter not in pipeline_space.fidelity_attrs.values()
+        and isinstance(parameter, Integer | Float | Categorical)
     ]
     if not any(
         parameter.has_prior  # type: ignore

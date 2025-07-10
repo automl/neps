@@ -483,6 +483,12 @@ def warmstart_neps(
                 `neps.algorithms.neps_priorband`, and
                 `neps.algorithms.complex_random_search`.
     """
+    if check_neps_space_compatibility(optimizer) != "neps":
+        raise ValueError(
+            "The provided optimizer is not compatible with the warmstarting feature. "
+            "Please use one that is, such as 'neps_random_search', 'neps_priorband', "
+            "or 'complex_random_search'."
+        )
     logger.info(
         "Warmstarting neps.run with the provided"
         f" {len(warmstart_configs)} configurations using root directory"

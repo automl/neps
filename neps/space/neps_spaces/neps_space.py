@@ -895,7 +895,11 @@ def adjust_evaluation_pipeline_for_neps_space(
 
         for name, value in config.items():
             if isinstance(value, Operation):
-                config[name] = operation_converter(value)
+                # If the operator is a not a string, we convert it to a callable.
+                if not isinstance(value.operator, str):
+                    config[name] = value.operator
+                else:
+                    config[name] = operation_converter(value)
 
         # So that we still pass the kwargs not related to the config,
         # start with the extra kwargs we passed to the converter.
