@@ -109,7 +109,28 @@ class Summary:
     def formatted(
         self, pipeline_space_variables: tuple[Pipeline, list[str]] | None = None
     ) -> str:
-        """Return a formatted string of the summary."""
+        """Return a formatted string of the summary.
+
+        Args:
+            pipeline_space_variables: If provided, this tuple contains the Pipeline and a
+                list of variable names to format the config in the summary. This is useful
+                for pipelines that have a complex configuration structure, allowing for a
+                more readable output.
+
+                !!! Warning:
+
+                    This is only supported when using NePS-only optimizers, such as
+                    `neps.algorithms.neps_random_search`,
+                    `neps.algorithms.complex_random_search`
+                    or `neps.algorithms.neps_priorband`. When the search space is
+                    simple enough, using `neps.algorithms.random_search` or
+                    `neps.algorithms.priorband` is not enough, as it will be transformed
+                    to a simpler HPO framework, which is incompatible with the
+                    `pipeline_space_variables` argument.
+
+        Returns:
+            A formatted string of the summary.
+        """
         state_summary = "\n".join(
             f"    {state.name.lower()}: {len(trials)}"
             for state, trials in self.by_state.items()
