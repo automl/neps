@@ -14,6 +14,8 @@ import pandas as pd
 
 from neps.runtime import get_workers_neps_state
 from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.neps_space import NepsCompatConverter
+from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
 
@@ -132,11 +134,20 @@ class Summary:
             if pipeline_space_variables is None:
                 best_summary += f"\n    config: {best_trial.config}"
             else:
+                best_config_resolve = NepsCompatConverter().from_neps_config(
+                    best_trial.config
+                )
                 pipeline_configs = [
                     neps_space.config_string.ConfigString(
                         neps_space.convert_operation_to_string(
                             getattr(
-                                neps_space.resolve(pipeline_space_variables[0])[0],
+                                neps_space.resolve(
+                                    pipeline_space_variables[0],
+                                    OnlyPredefinedValuesSampler(
+                                        best_config_resolve.predefined_samplings
+                                    ),
+                                    environment_values=best_config_resolve.environment_values,
+                                )[0],
                                 variable,
                             )
                         )
@@ -229,6 +240,17 @@ def status(
             list of variable names to format the config in the summary. This is useful
             for pipelines that have a complex configuration structure, allowing for a
             more readable output.
+
+            !!! Warning:
+
+                This is only supported when using NePS-only optimizers, such as
+                `neps.algorithms.neps_random_search`,
+                `neps.algorithms.complex_random_search`
+                or `neps.algorithms.neps_priorband`. When the search space is
+                simple enough, using `neps.algorithms.random_search` or
+                `neps.algorithms.priorband` is not enough, as it will be transformed to a
+                simpler HPO framework, which is incompatible with the
+                `pipeline_space_variables` argument.
 
     Returns:
         Dataframe of full results and short summary series.
