@@ -509,7 +509,7 @@ def warmstart_neps(
     logger.info(
         "Warmstarting neps.run with the provided"
         f" {len(warmstart_configs)} configurations using root directory"
-        f" {root_directory}."
+        f" {root_directory}"
     )
     root_directory = Path(root_directory)
     if overwrite_working_directory and root_directory.is_dir():
@@ -525,13 +525,20 @@ def warmstart_neps(
         ),
     )
     for n_config, (config, env, result) in enumerate(warmstart_configs):
-        _, resolution_context = neps_space.resolve(
-            pipeline=pipeline_space,
-            domain_sampler=neps_space.OnlyPredefinedValuesSampler(
-                predefined_samplings=config
-            ),
-            environment_values=env,
-        )
+        try:
+            _, resolution_context = neps_space.resolve(
+                pipeline=pipeline_space,
+                domain_sampler=neps_space.OnlyPredefinedValuesSampler(
+                    predefined_samplings=config
+                ),
+                environment_values=env,
+            )
+        except ValueError as e:
+            logger.error(
+                "Failed to resolve the pipeline space with the provided config:"
+                f" {config} and env: {env}.",
+            )
+            raise e
 
         ask_tell = AskAndTell(optimizer=optimizer_ask, worker_id="warmstart_worker")
         if pipeline_space.fidelity_attrs and isinstance(
@@ -584,6 +591,9 @@ def warmstart_neps(
                     report=trial.report,
                     worker_id=trial.metadata.evaluating_worker_id,
                 )
+                logger.info(
+                    f"Warmstarted config {config_path} with result: {rung_result}."
+                )
 
         else:
             config_path = f"{n_config}"
@@ -606,6 +616,7 @@ def warmstart_neps(
                 report=trial.report,
                 worker_id=trial.metadata.evaluating_worker_id,
             )
+            logger.info(f"Warmstarted config {config_path} with result: {result}.")
 
 
 __all__ = ["run", "warmstart_neps"]
