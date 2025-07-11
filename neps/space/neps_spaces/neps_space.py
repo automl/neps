@@ -896,7 +896,7 @@ def adjust_evaluation_pipeline_for_neps_space(
         for name, value in config.items():
             if isinstance(value, Operation):
                 # If the operator is a not a string, we convert it to a callable.
-                if not isinstance(value.operator, str):
+                if isinstance(value.operator, str):
                     config[name] = value.operator
                 else:
                     config[name] = operation_converter(value)

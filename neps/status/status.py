@@ -106,7 +106,7 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(
+    def formatted(  # noqa: PLR0912, C901
         self, pipeline_space_variables: tuple[Pipeline, list[str]] | None = None
     ) -> str:
         """Return a formatted string of the summary.
@@ -158,44 +158,52 @@ class Summary:
                 best_config_resolve = NepsCompatConverter().from_neps_config(
                     best_trial.config
                 )
-                pipeline_configs = [
-                    neps_space.config_string.ConfigString(
-                        neps_space.convert_operation_to_string(
-                            getattr(
-                                neps_space.resolve(
-                                    pipeline_space_variables[0],
-                                    OnlyPredefinedValuesSampler(
-                                        best_config_resolve.predefined_samplings
-                                    ),
-                                    environment_values=best_config_resolve.environment_values,
-                                )[0],
-                                variable,
+                pipeline_configs = []
+                for variable in pipeline_space_variables[1]:
+                    pipeline_configs.append(
+                        neps_space.config_string.ConfigString(
+                            neps_space.convert_operation_to_string(
+                                getattr(
+                                    neps_space.resolve(
+                                        pipeline_space_variables[0],
+                                        OnlyPredefinedValuesSampler(
+                                            best_config_resolve.predefined_samplings
+                                        ),
+                                        environment_values=best_config_resolve.environment_values,
+                                    )[0],
+                                    variable,
+                                )
                             )
-                        )
-                    ).pretty_format()
-                    for variable in pipeline_space_variables[1]
-                ]
-                for pipeline_config in pipeline_configs:
-                    # Replace literal \t and \n with actual formatting
-                    formatted_config = pipeline_config.replace("\\t", "    ").replace(
-                        "\\n", "\n"
+                        ).pretty_format()
                     )
 
-                    # Add proper indentation to each line
-                    lines = formatted_config.split("\n")
-                    indented_lines = []
-                    for i, line in enumerate(lines):
-                        if i == 0:
-                            indented_lines.append(
-                                line
-                            )  # First line gets base indentation
-                        else:
-                            indented_lines.append(
-                                "        " + line
-                            )  # Subsequent lines get extra indentation
+                for n_pipeline, pipeline_config in enumerate(pipeline_configs):
+                    if isinstance(pipeline_config, str):
+                        # Replace literal \t and \n with actual formatting
+                        formatted_config = pipeline_config.replace("\\t", "    ").replace(
+                            "\\n", "\n"
+                        )
 
-                    formatted_config = "\n".join(indented_lines)
-                    best_summary += f"\n    config:\n        {formatted_config}"
+                        # Add proper indentation to each line
+                        lines = formatted_config.split("\n")
+                        indented_lines = []
+                        for i, line in enumerate(lines):
+                            if i == 0:
+                                indented_lines.append(
+                                    line
+                                )  # First line gets base indentation
+                            else:
+                                indented_lines.append(
+                                    "        " + line
+                                )  # Subsequent lines get extra indentation
+
+                        formatted_config = "\n".join(indented_lines)
+                    else:
+                        formatted_config = pipeline_config  # type: ignore
+                    best_summary += (
+                        f"\n    config: {pipeline_space_variables[1][n_pipeline]}\n      "
+                        f"  {formatted_config}"
+                    )
 
             best_summary += f"\n    path: {best_trial.metadata.location}"
 

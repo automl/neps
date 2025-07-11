@@ -348,6 +348,7 @@ def run(  # noqa: PLR0913, C901
             warmstart_configs=warmstart_configs,
             optimizer=optimizer,
             overwrite_working_directory=overwrite_working_directory,
+            inside_neps=True,
         )
         overwrite_working_directory = False
 
@@ -457,6 +458,7 @@ def warmstart_neps(
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
+    inside_neps: bool = False,  # noqa: FBT001, FBT002
 ) -> None:
     """Warmstart the NePS state with given configurations.
     This is useful for testing and debugging purposes, where you want to
@@ -482,8 +484,17 @@ def warmstart_neps(
                 such as `neps.algorithms.neps_random_search`,
                 `neps.algorithms.neps_priorband`, and
                 `neps.algorithms.complex_random_search`.
+        inside_neps: If True, the function is called from within the NEPS runtime.
+            This is used to avoid checking the compatibility of the optimizer with the
+            warmstarting feature, as this is already done in the NEPS runtime.
+            If False, the function will check if the optimizer is compatible with the
+            warmstarting feature and raise an error if it is not.
+
+    Raises:
+        ValueError: If the optimizer is not compatible with the warmstarting feature.
+        ValueError: If the warmstart config already exists in the root directory.
     """
-    if check_neps_space_compatibility(optimizer) != "neps":
+    if not inside_neps and check_neps_space_compatibility(optimizer) != "neps":
         raise ValueError(
             "The provided optimizer is not compatible with the warmstarting feature. "
             "Please use one that is, such as 'neps_random_search', 'neps_priorband', "

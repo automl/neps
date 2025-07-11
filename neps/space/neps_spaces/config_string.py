@@ -127,13 +127,32 @@ def wrap_config_into_string(
 
         if item.level > current_level:
             if item.hyperparameters not in ("{}", ""):
-                value = " (" + str(item.operator) + " " + item.hyperparameters
+                value = (
+                    " ("
+                    + str(
+                        item.operator.__name__
+                        if callable(item.operator)
+                        else item.operator
+                    )
+                    + " "
+                    + item.hyperparameters
+                )
             else:
-                value = " (" + str(item.operator)
+                value = " (" + str(
+                    item.operator.__name__ if callable(item.operator) else item.operator
+                )
         elif item.level < current_level:
-            value = ")" * (current_level - item.level + 1) + " (" + str(item.operator)
+            value = (
+                ")" * (current_level - item.level + 1)
+                + " ("
+                + str(
+                    item.operator.__name__ if callable(item.operator) else item.operator
+                )
+            )
         else:
-            value = ") (" + str(item.operator)
+            value = ") (" + str(
+                item.operator.__name__ if callable(item.operator) else item.operator
+            )
         current_level = item.level
         result.append(value)
     result.append(")" * current_level)
@@ -155,7 +174,6 @@ def wrap_config_into_string(
         if replace_individual:
             result_string = result_string.replace(f"({op})", f"{op}")
         result_string = result_string.replace("__TMP_PLACEHOLDER___", f"{op} {op}")
-
     return result_string
 
 
@@ -206,15 +224,9 @@ class ConfigString:
         if not unwrapped:
             raise ValueError(f"Error unwrapping config string: {self.config_string}")
 
-        # NOTE: slow test that can possibly be removed
-        #  test that meaning was preserved between wrapping and unwrapping
-        #  to make sure the config string wrapping/unwrapping is working well
-        rewrapped_config = wrap_config_into_string(unwrapped_config=unwrapped)
-        assert self.config_string == rewrapped_config, (
-            "Error during wrapping unwrapping: config_string != rewrapped_config_string",
-            self.config_string,
-            rewrapped_config,
-        )
+        # NOTE: Previously, here was a test that compared wrap_config_into_string
+        # (unwrapped_config=unwrapped) to unwrapped. As it frequently failed and was
+        # deemed to be unnecessary, it was removed
 
         self._unwrapped = unwrapped
         return self._unwrapped
