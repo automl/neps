@@ -68,6 +68,7 @@ import os
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from neps.optimizers.optimizer import AskFunction, SampledConfig
@@ -175,6 +176,7 @@ class AskAndTell:
         previous_trial_id: str | None = None,
         worker_id: str | None = None,
         traceback_str: str | None = None,
+        location: Path | None = None,
     ) -> Trial:
         """Report a custom configuration and result to the optimizer.
 
@@ -202,6 +204,8 @@ class AskAndTell:
                 metadata if you need.
             traceback_str: The traceback of any error, only to fill in
                 metadata if you need.
+            location: The location of the configuration, if any. This will be saved
+                in the created trial's metadata.
 
         Returns:
             The trial object that was created. You can find the report
@@ -227,7 +231,7 @@ class AskAndTell:
         # Just go through the motions of the trial life-cycle
         trial = Trial.new(
             trial_id=config_id,
-            location="",
+            location=str(location.resolve()) if location else "",
             config=config,
             previous_trial=previous_trial_id,
             previous_trial_location="",

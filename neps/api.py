@@ -472,8 +472,14 @@ def warmstart_neps(
             The configuration is a dictionary of parameter values, the environment values
             are also a dictionary, and the result is the evaluation result.
         overwrite_working_directory: If True, the working directory will be deleted before
-            starting the warmstart. This is useful for testing and debugging purposes,
-            where you want to start with a clean state.
+            starting the warmstart.
+
+            !!! warning "Repeated warmstarting"
+
+                When not overwriting the working directory, starting multiple NePS
+                instances will result in an error. Instead, use warmstart_neps once
+                on its own and then start the NePS instances.
+
         optimizer: The optimizer to use for the warmstart. This can be a string, a
             callable, or a tuple of a callable and a dictionary of parameters.
             If "auto", the optimizer will be chosen based on the pipeline space.
@@ -561,6 +567,7 @@ def warmstart_neps(
                     config=config,
                     result=rung_result,
                     previous_trial_id=f"{n_config}_{rung - 1}" if rung > 0 else None,
+                    location=root_directory / "configs" / config_path,
                 )
                 trial.config = NepsCompatConverter.to_neps_config(resolution_context)
                 if (root_directory / config_path).is_dir():
