@@ -1427,9 +1427,8 @@ def neps_random_search(
         if isinstance(parameter, Resolvable)
         and isinstance(parameter, Integer | Float | Categorical)
     ):
-        raise ValueError(
+        logger.warning(
             "You have set use_priors=True, but no priors are defined in the search space."
-            "Consider using a different optimizer that supports priors."
         )
 
     return NePSRandomSearch(
