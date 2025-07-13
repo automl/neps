@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 import warnings
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -573,6 +574,9 @@ def warmstart_neps(
                     config_id=config_path,
                     config=config,
                     result=rung_result,
+                    time_sampled=time.time(),
+                    time_started=time.time(),
+                    time_end=time.time(),
                     previous_trial_id=f"{n_config}_{rung - 1}" if rung > 0 else None,
                     location=root_directory / "configs" / config_path,
                 )
@@ -601,6 +605,9 @@ def warmstart_neps(
                 config_id=config_path,
                 config=config,
                 result=result,
+                time_sampled=time.time(),
+                time_started=time.time(),
+                time_end=time.time(),
             )
             trial.config = NepsCompatConverter.to_neps_config(resolution_context)
             if (root_directory / config_path).is_dir():
