@@ -608,6 +608,7 @@ def warmstart_neps(
                 time_sampled=time.time(),
                 time_started=time.time(),
                 time_end=time.time(),
+                location=root_directory / "configs" / config_path,
             )
             trial.config = NepsCompatConverter.to_neps_config(resolution_context)
             if (root_directory / config_path).is_dir():
