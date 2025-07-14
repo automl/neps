@@ -152,6 +152,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     early_stopping_rate: int | None,
     device: torch.device | None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     multi_objective: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
@@ -313,7 +315,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
     encoder = ConfigEncoder.from_parameters(parameters)
 
-    _sampler: Sampler | PriorBandSampler
+    _sampler: Sampler | PriorBandSampler | MOPriorSampler
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
@@ -330,6 +332,15 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
+            )
+        case "mopriorsampler":
+            assert prior_centers is not None
+            assert prior_confidences is not None
+            _sampler = MOPriorSampler.create_sampler(
+                parameters=parameters,
+                prior_centers=prior_centers,
+                confidence_values=prior_confidences,
+                encoder=encoder,
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
