@@ -1,4 +1,4 @@
-from neps.api import run
+from neps.api import run, save_results
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -23,6 +23,7 @@ __all__ = [
     "load_yamls",
     "plot",
     "run",
+    "save_results",
     "status",
     "tblogger",
 ]

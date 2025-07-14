@@ -8,7 +8,7 @@ from pathlib import Path
 import neps
 
 
-def _ask_to_submit_slurm_script(pipeline_directory: Path, script: str):
+def _submit_job(pipeline_directory: Path, script: str):
     script_path = pipeline_directory / "submit.sh"
     logging.info(f"Submitting the script {script_path} (see below): \n\n{script}")
 
@@ -18,13 +18,6 @@ def _ask_to_submit_slurm_script(pipeline_directory: Path, script: str):
         os.system(f"sbatch {script_path}")
     else:
         raise ValueError("We generated a slurm script that should not be submitted.")
-
-
-def _get_validation_error(pipeline_directory: Path):
-    validation_error_file = pipeline_directory / "validation_error_from_slurm_job.txt"
-    if validation_error_file.exists():
-        return float(validation_error_file.read_text())
-    return None
 
 
 def evaluate_pipeline_via_slurm(
@@ -39,16 +32,10 @@ def evaluate_pipeline_via_slurm(
 # Plugin your python script here
 python -c "print('Learning rate {learning_rate} and optimizer {optimizer}')"
 # At the end of training and validation create this file
-echo -10 > {pipeline_directory}/validation_error_from_slurm_job.txt
+python -c "import neps; neps.save_results('{pipeline_directory}', dict(objective_to_minimize=0.5, cost=1.0, learning_curve=[0.1, 0.2, 0.3]))"
 """
 
-    # Now we submit and wait until the job has created validation_error_from_slurm_job.txt
-    _ask_to_submit_slurm_script(pipeline_directory, script)
-    while validation_error := _get_validation_error(pipeline_directory) is None:
-        logging.info("Waiting until the job has finished.")
-        time.sleep(60)  # Adjust to something reasonable
-    return validation_error
-
+    return _submit_job(pipeline_directory, script)
 
 pipeline_space = dict(
     optimizer=neps.Categorical(choices=["sgd", "adam"]),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import pickle
 import warnings
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -463,4 +464,10 @@ def run(  # noqa: PLR0913
         )
 
 
-__all__ = ["run"]
+def save_results(pipeline_directory: str, result: EvaluatePipelineReturn) -> None:
+    """Save the results of the evaluation to a file."""
+    with Path(f"{pipeline_directory}/validation_results.pkl").open("wb") as f:
+        pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+__all__ = ["run", "save_results"]
