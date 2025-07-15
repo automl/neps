@@ -1295,6 +1295,7 @@ PredefinedOptimizers: Mapping[
         moasha,
         async_hb,
         priorband,
+        primo,
     )
 }
 
@@ -1311,4 +1312,5 @@ OptimizerChoice: TypeAlias = Literal[
     "random_search",
     "grid_search",
     "ifbo",
+    "primo",
 ]
