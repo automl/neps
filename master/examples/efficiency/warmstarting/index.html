@@ -9,25 +9,25 @@
       
       
       
-        <link rel="prev" href="../neps_random_search/">
+        <link rel="prev" href="../pytorch_native_fsdp/">
       
       
-        <link rel="next" href="../priorband/">
+        <link rel="next" href="../../experimental/freeze_thaw/">
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
     
     
       
-        <title>Optimizer - NePS</title>
+        <title>Warmstarting - NePS</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.342714a4.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.342714a4.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.06af60db.min.css">
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.06af60db.min.css">
       
       
 
@@ -46,11 +46,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/_mkdocstrings.css">
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
     
-      <link rel="stylesheet" href="../../../../stylesheets/custom.css">
+      <link rel="stylesheet" href="../../../stylesheets/custom.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -75,11 +75,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#neps.optimizers.optimizer.AskFunction" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -96,7 +91,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="NePS" class="md-header__button md-logo" aria-label="NePS" data-md-component="logo">
+    <a href="../../.." title="NePS" class="md-header__button md-logo" aria-label="NePS" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -116,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Optimizer
+              Warmstarting
             
           </span>
         </div>
@@ -228,7 +223,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../.." class="md-tabs__link">
+      <a href="../../.." class="md-tabs__link">
         
   
   
@@ -247,7 +242,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../getting_started/" class="md-tabs__link">
+      <a href="../../../getting_started/" class="md-tabs__link">
         
   
   
@@ -268,7 +263,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../reference/neps_run/" class="md-tabs__link">
+        <a href="../../../reference/neps_run/" class="md-tabs__link">
           
   
   
@@ -284,11 +279,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../../../examples/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
           
   
   
@@ -308,7 +305,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../reference/search_algorithms/landing_page_algo/" class="md-tabs__link">
+        <a href="../../../reference/search_algorithms/landing_page_algo/" class="md-tabs__link">
           
   
   
@@ -324,13 +321,11 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../../" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../../api/" class="md-tabs__link">
           
   
   
@@ -348,7 +343,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../dev_docs/contributing/" class="md-tabs__link">
+      <a href="../../../dev_docs/contributing/" class="md-tabs__link">
         
   
   
@@ -367,7 +362,7 @@
   
   
     <li class="md-tabs__item">
-      <a href="../../../../citations/" class="md-tabs__link">
+      <a href="../../../citations/" class="md-tabs__link">
         
   
   
@@ -410,7 +405,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="NePS" class="md-nav__button md-logo" aria-label="NePS" data-md-component="logo">
+    <a href="../../.." title="NePS" class="md-nav__button md-logo" aria-label="NePS" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -440,7 +435,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -462,7 +457,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../getting_started/" class="md-nav__link">
+      <a href="../../../getting_started/" class="md-nav__link">
         
   
   
@@ -527,7 +522,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/neps_run/" class="md-nav__link">
+      <a href="../../../reference/neps_run/" class="md-nav__link">
         
   
   
@@ -550,7 +545,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/neps_spaces/" class="md-nav__link">
+      <a href="../../../reference/neps_spaces/" class="md-nav__link">
         
   
   
@@ -573,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/evaluate_pipeline/" class="md-nav__link">
+      <a href="../../../reference/evaluate_pipeline/" class="md-nav__link">
         
   
   
@@ -596,7 +591,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/analyse/" class="md-nav__link">
+      <a href="../../../reference/analyse/" class="md-nav__link">
         
   
   
@@ -619,7 +614,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/optimizers/" class="md-nav__link">
+      <a href="../../../reference/optimizers/" class="md-nav__link">
         
   
   
@@ -642,7 +637,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/seeding/" class="md-nav__link">
+      <a href="../../../reference/seeding/" class="md-nav__link">
         
   
   
@@ -669,26 +664,31 @@
       
   
   
+    
   
   
+  
     
     
     
     
+      
+        
+        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
-          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
             
   
   
@@ -701,7 +701,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             Examples
@@ -715,7 +715,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/" class="md-nav__link">
+      <a href="../../" class="md-nav__link">
         
   
   
@@ -744,17 +744,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
         
           
-          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="">
             
   
   
@@ -781,7 +784,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/basic_usage/analyse/" class="md-nav__link">
+      <a href="../../basic_usage/analyse/" class="md-nav__link">
         
   
   
@@ -804,7 +807,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/basic_usage/hyperparameters/" class="md-nav__link">
+      <a href="../../basic_usage/hyperparameters/" class="md-nav__link">
         
   
   
@@ -827,7 +830,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/basic_usage/pytorch_nn_example/" class="md-nav__link">
+      <a href="../../basic_usage/pytorch_nn_example/" class="md-nav__link">
         
   
   
@@ -864,17 +867,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_3" >
         
           
-          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_3" id="__nav_4_3_label" tabindex="">
             
   
   
@@ -901,7 +907,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/convenience/logging_additional_info/" class="md-nav__link">
+      <a href="../../convenience/logging_additional_info/" class="md-nav__link">
         
   
   
@@ -924,7 +930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/convenience/neps_tblogger_tutorial/" class="md-nav__link">
+      <a href="../../convenience/neps_tblogger_tutorial/" class="md-nav__link">
         
   
   
@@ -947,7 +953,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/convenience/running_on_slurm_scripts/" class="md-nav__link">
+      <a href="../../convenience/running_on_slurm_scripts/" class="md-nav__link">
         
   
   
@@ -970,7 +976,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/convenience/working_directory_per_pipeline/" class="md-nav__link">
+      <a href="../../convenience/working_directory_per_pipeline/" class="md-nav__link">
         
   
   
@@ -998,26 +1004,31 @@
                 
   
   
+    
   
   
+  
     
     
     
     
       
       
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" >
         
           
-          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="0">
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_4" id="__nav_4_4_label" tabindex="">
             
   
   
@@ -1030,7 +1041,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_4">
             <span class="md-nav__icon md-icon"></span>
             Efficiency
@@ -1044,7 +1055,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1067,7 +1078,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/expert_priors_for_hyperparameters/" class="md-nav__link">
+      <a href="../expert_priors_for_hyperparameters/" class="md-nav__link">
         
   
   
@@ -1090,7 +1101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/multi_fidelity/" class="md-nav__link">
+      <a href="../multi_fidelity/" class="md-nav__link">
         
   
   
@@ -1113,7 +1124,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/multi_fidelity_and_expert_priors/" class="md-nav__link">
+      <a href="../multi_fidelity_and_expert_priors/" class="md-nav__link">
         
   
   
@@ -1136,7 +1147,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/pytorch_lightning_ddp/" class="md-nav__link">
+      <a href="../pytorch_lightning_ddp/" class="md-nav__link">
         
   
   
@@ -1159,7 +1170,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/pytorch_lightning_fsdp/" class="md-nav__link">
+      <a href="../pytorch_lightning_fsdp/" class="md-nav__link">
         
   
   
@@ -1182,7 +1193,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/pytorch_native_ddp/" class="md-nav__link">
+      <a href="../pytorch_native_ddp/" class="md-nav__link">
         
   
   
@@ -1205,7 +1216,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/pytorch_native_fsdp/" class="md-nav__link">
+      <a href="../pytorch_native_fsdp/" class="md-nav__link">
         
   
   
@@ -1225,10 +1236,17 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../../../examples/efficiency/warmstarting/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1239,6 +1257,7 @@
   
 
       </a>
+      
     </li>
   
 
@@ -1265,17 +1284,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_5" >
         
           
-          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_5" id="__nav_4_5_label" tabindex="">
             
   
   
@@ -1302,7 +1324,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/experimental/freeze_thaw/" class="md-nav__link">
+      <a href="../../experimental/freeze_thaw/" class="md-nav__link">
         
   
   
@@ -1339,17 +1361,20 @@
       
       
         
+          
+          
+        
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_6" >
         
           
-          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_4_6" id="__nav_4_6_label" tabindex="">
             
   
   
@@ -1376,7 +1401,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/real_world/" class="md-nav__link">
+      <a href="../../real_world/" class="md-nav__link">
         
   
   
@@ -1399,7 +1424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../examples/real_world/image_segmentation_hpo/" class="md-nav__link">
+      <a href="../../real_world/image_segmentation_hpo/" class="md-nav__link">
         
   
   
@@ -1480,7 +1505,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/search_algorithms/landing_page_algo/" class="md-nav__link">
+      <a href="../../../reference/search_algorithms/landing_page_algo/" class="md-nav__link">
         
   
   
@@ -1503,7 +1528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/search_algorithms/multifidelity/" class="md-nav__link">
+      <a href="../../../reference/search_algorithms/multifidelity/" class="md-nav__link">
         
   
   
@@ -1526,7 +1551,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/search_algorithms/prior/" class="md-nav__link">
+      <a href="../../../reference/search_algorithms/prior/" class="md-nav__link">
         
   
   
@@ -1549,7 +1574,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/search_algorithms/multifidelity_prior/" class="md-nav__link">
+      <a href="../../../reference/search_algorithms/multifidelity_prior/" class="md-nav__link">
         
   
   
@@ -1572,7 +1597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../reference/search_algorithms/bayesian_optimization/" class="md-nav__link">
+      <a href="../../../reference/search_algorithms/bayesian_optimization/" class="md-nav__link">
         
   
   
@@ -1599,31 +1624,26 @@
       
   
   
-    
   
   
-  
     
     
     
     
-      
-        
-        
       
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
             
   
   
@@ -1636,7 +1656,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             API
@@ -1650,7 +1670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../" class="md-nav__link">
+      <a href="../../../api/" class="md-nav__link">
         
   
   
@@ -1670,31 +1690,26 @@
                 
   
   
-    
   
   
-  
     
     
     
     
       
       
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" >
         
           
-          
-        
-      
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_6_2" id="__nav_6_2_label" tabindex="0">
             
   
   
@@ -1707,7 +1722,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_6_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_2">
             <span class="md-nav__icon md-icon"></span>
             Neps
@@ -1721,7 +1736,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/" class="md-nav__link">
+      <a href="../../../api/neps/api/" class="md-nav__link">
         
   
   
@@ -1744,7 +1759,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../env/" class="md-nav__link">
+      <a href="../../../api/neps/env/" class="md-nav__link">
         
   
   
@@ -1767,7 +1782,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../exceptions/" class="md-nav__link">
+      <a href="../../../api/neps/exceptions/" class="md-nav__link">
         
   
   
@@ -1790,7 +1805,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../runtime/" class="md-nav__link">
+      <a href="../../../api/neps/runtime/" class="md-nav__link">
         
   
   
@@ -1810,8 +1825,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1824,11 +1837,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6_2_5" >
         
           
           <label class="md-nav__link" for="__nav_6_2_5" id="__nav_6_2_5_label" tabindex="0">
@@ -1844,7 +1857,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_2_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_6_2_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_6_2_5">
             <span class="md-nav__icon md-icon"></span>
             Optimizers
@@ -1858,7 +1871,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../algorithms/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/algorithms/" class="md-nav__link">
         
   
   
@@ -1881,7 +1894,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ask_and_tell/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/ask_and_tell/" class="md-nav__link">
         
   
   
@@ -1904,7 +1917,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../bayesian_optimization/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bayesian_optimization/" class="md-nav__link">
         
   
   
@@ -1927,7 +1940,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../bracket_optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/bracket_optimizer/" class="md-nav__link">
         
   
   
@@ -1950,7 +1963,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../grid_search/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/grid_search/" class="md-nav__link">
         
   
   
@@ -1973,7 +1986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../ifbo/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/ifbo/" class="md-nav__link">
         
   
   
@@ -1996,7 +2009,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neps_bracket_optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/neps_bracket_optimizer/" class="md-nav__link">
         
   
   
@@ -2019,7 +2032,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neps_priorband/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/neps_priorband/" class="md-nav__link">
         
   
   
@@ -2042,7 +2055,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../neps_random_search/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/neps_random_search/" class="md-nav__link">
         
   
   
@@ -2062,30 +2075,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Optimizer
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../api/neps/optimizers/optimizer/" class="md-nav__link">
         
   
   
@@ -2096,81 +2089,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#neps.optimizers.optimizer.AskFunction" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;AskFunction
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label=" AskFunction">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.optimizer.AskFunction.__call__" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;__call__
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#neps.optimizers.optimizer.OptimizerInfo" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;OptimizerInfo
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label=" OptimizerInfo">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.optimizer.OptimizerInfo.info" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;info
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.optimizer.OptimizerInfo.name" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;name
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2183,7 +2101,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../priorband/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/priorband/" class="md-nav__link">
         
   
   
@@ -2206,7 +2124,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../random_search/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/random_search/" class="md-nav__link">
         
   
   
@@ -2272,7 +2190,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../acquisition/cost_cooling/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/acquisition/cost_cooling/" class="md-nav__link">
         
   
   
@@ -2295,7 +2213,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../acquisition/pibo/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/acquisition/pibo/" class="md-nav__link">
         
   
   
@@ -2318,7 +2236,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../acquisition/weighted_acquisition/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/acquisition/weighted_acquisition/" class="md-nav__link">
         
   
   
@@ -2392,7 +2310,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models/ftpfn/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/models/ftpfn/" class="md-nav__link">
         
   
   
@@ -2415,7 +2333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models/gp/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/models/gp/" class="md-nav__link">
         
   
   
@@ -2489,7 +2407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../utils/brackets/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/utils/brackets/" class="md-nav__link">
         
   
   
@@ -2512,7 +2430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../utils/grid/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/utils/grid/" class="md-nav__link">
         
   
   
@@ -2535,7 +2453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../utils/initial_design/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/utils/initial_design/" class="md-nav__link">
         
   
   
@@ -2601,7 +2519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../utils/multiobjective/epsnet/" class="md-nav__link">
+      <a href="../../../api/neps/optimizers/utils/multiobjective/epsnet/" class="md-nav__link">
         
   
   
@@ -2691,7 +2609,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plot/plot/" class="md-nav__link">
+      <a href="../../../api/neps/plot/plot/" class="md-nav__link">
         
   
   
@@ -2714,7 +2632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plot/plot3D/" class="md-nav__link">
+      <a href="../../../api/neps/plot/plot3D/" class="md-nav__link">
         
   
   
@@ -2737,7 +2655,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plot/plotting/" class="md-nav__link">
+      <a href="../../../api/neps/plot/plotting/" class="md-nav__link">
         
   
   
@@ -2760,7 +2678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plot/read_results/" class="md-nav__link">
+      <a href="../../../api/neps/plot/read_results/" class="md-nav__link">
         
   
   
@@ -2783,7 +2701,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../plot/tensorboard_eval/" class="md-nav__link">
+      <a href="../../../api/neps/plot/tensorboard_eval/" class="md-nav__link">
         
   
   
@@ -2857,7 +2775,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sampling/distributions/" class="md-nav__link">
+      <a href="../../../api/neps/sampling/distributions/" class="md-nav__link">
         
   
   
@@ -2880,7 +2798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sampling/priors/" class="md-nav__link">
+      <a href="../../../api/neps/sampling/priors/" class="md-nav__link">
         
   
   
@@ -2903,7 +2821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../sampling/samplers/" class="md-nav__link">
+      <a href="../../../api/neps/sampling/samplers/" class="md-nav__link">
         
   
   
@@ -2977,7 +2895,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/domain/" class="md-nav__link">
+      <a href="../../../api/neps/space/domain/" class="md-nav__link">
         
   
   
@@ -3000,7 +2918,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/encoding/" class="md-nav__link">
+      <a href="../../../api/neps/space/encoding/" class="md-nav__link">
         
   
   
@@ -3023,7 +2941,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/parameters/" class="md-nav__link">
+      <a href="../../../api/neps/space/parameters/" class="md-nav__link">
         
   
   
@@ -3046,7 +2964,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/parsing/" class="md-nav__link">
+      <a href="../../../api/neps/space/parsing/" class="md-nav__link">
         
   
   
@@ -3069,7 +2987,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/search_space/" class="md-nav__link">
+      <a href="../../../api/neps/space/search_space/" class="md-nav__link">
         
   
   
@@ -3135,7 +3053,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/neps_spaces/config_string/" class="md-nav__link">
+      <a href="../../../api/neps/space/neps_spaces/config_string/" class="md-nav__link">
         
   
   
@@ -3158,7 +3076,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/neps_spaces/neps_space/" class="md-nav__link">
+      <a href="../../../api/neps/space/neps_spaces/neps_space/" class="md-nav__link">
         
   
   
@@ -3181,7 +3099,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/neps_spaces/parameters/" class="md-nav__link">
+      <a href="../../../api/neps/space/neps_spaces/parameters/" class="md-nav__link">
         
   
   
@@ -3204,7 +3122,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../space/neps_spaces/sampling/" class="md-nav__link">
+      <a href="../../../api/neps/space/neps_spaces/sampling/" class="md-nav__link">
         
   
   
@@ -3286,7 +3204,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/err_dump/" class="md-nav__link">
+      <a href="../../../api/neps/state/err_dump/" class="md-nav__link">
         
   
   
@@ -3309,7 +3227,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/filebased/" class="md-nav__link">
+      <a href="../../../api/neps/state/filebased/" class="md-nav__link">
         
   
   
@@ -3332,7 +3250,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/neps_state/" class="md-nav__link">
+      <a href="../../../api/neps/state/neps_state/" class="md-nav__link">
         
   
   
@@ -3355,7 +3273,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/optimizer/" class="md-nav__link">
+      <a href="../../../api/neps/state/optimizer/" class="md-nav__link">
         
   
   
@@ -3378,7 +3296,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/pipeline_eval/" class="md-nav__link">
+      <a href="../../../api/neps/state/pipeline_eval/" class="md-nav__link">
         
   
   
@@ -3401,7 +3319,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/seed_snapshot/" class="md-nav__link">
+      <a href="../../../api/neps/state/seed_snapshot/" class="md-nav__link">
         
   
   
@@ -3424,7 +3342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/settings/" class="md-nav__link">
+      <a href="../../../api/neps/state/settings/" class="md-nav__link">
         
   
   
@@ -3447,7 +3365,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../state/trial/" class="md-nav__link">
+      <a href="../../../api/neps/state/trial/" class="md-nav__link">
         
   
   
@@ -3521,7 +3439,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../status/status/" class="md-nav__link">
+      <a href="../../../api/neps/status/status/" class="md-nav__link">
         
   
   
@@ -3595,7 +3513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../utils/common/" class="md-nav__link">
+      <a href="../../../api/neps/utils/common/" class="md-nav__link">
         
   
   
@@ -3618,7 +3536,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../utils/files/" class="md-nav__link">
+      <a href="../../../api/neps/utils/files/" class="md-nav__link">
         
   
   
@@ -3664,7 +3582,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../dev_docs/contributing/" class="md-nav__link">
+      <a href="../../../dev_docs/contributing/" class="md-nav__link">
         
   
   
@@ -3686,7 +3604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../citations/" class="md-nav__link">
+      <a href="../../../citations/" class="md-nav__link">
         
   
   
@@ -3717,380 +3635,105 @@
 
 
 
-  <h1>Optimizer</h1>
+  <h1>Warmstarting</h1>
 
-<div class="doc doc-object doc-module">
-
-
-
-
-    <div class="doc doc-contents first">
-
-        <p>Optimizer interface.</p>
-<p>By implementing the <a class="autorefs autorefs-internal" title="            AskFunction" href="#neps.optimizers.optimizer.AskFunction"><code>AskFunction</code></a> protocol,
-you can inject your own optimizer into the neps runtime.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyOpt</span><span class="p">:</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span> <span class="o">...</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n">trials</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Trial</span><span class="p">],</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="n">budget_info</span><span class="p">:</span> <span class="n">BudgetInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SampledConfig</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">SampledConfig</span><span class="p">]:</span> <span class="o">...</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Float</span><span class="p">,</span> <span class="n">Fidelity</span><span class="p">,</span> <span class="n">Operation</span><span class="p">,</span> <span class="n">Categorical</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">neps_space</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">operation</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;A simple operation that can be used in the pipeline.&quot;&quot;&quot;</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="k">return</span> <span class="n">x</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">MyOpt</span><span class="p">)</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="c1"># Or with optimizer hyperparameters</span>
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="p">(</span><span class="n">MyOpt</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;a&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">}))</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="k">class</span><span class="w"> </span><span class="nc">SimpleSpace</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">epochs</span> <span class="o">=</span> <span class="n">Fidelity</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># cat_param = Categorical((float_param, int_param))</span>
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="c1"># op = Operation(operation, args=(float_param, int_param))</span>
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="c1"># op2 = Operation(&quot;Test&quot;)</span>
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="c1"># op3 = Operation(&quot;Test2&quot;, args=(int_param,))</span>
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a><span class="c1"># Sampling a random configuration of the pipeline, which will be used for warmstarting</span>
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="n">pipeline</span> <span class="o">=</span> <span class="n">SimpleSpace</span><span class="p">()</span>
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    <span class="n">pipeline</span><span class="p">,</span> <span class="n">environment_values</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">}</span>
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a><span class="p">)</span>
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a><span class="c1"># for operator in (resolved_pipeline.op, resolved_pipeline.op2, resolved_pipeline.op3):</span>
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a><span class="c1">#     print(&quot;Resolved Pipeline:&quot;, operator)</span>
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a><span class="c1">#     if callable(operator):</span>
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a><span class="c1">#         print(&quot;Callable:&quot;, neps_space.convert_operation_to_callable(operator).__str__())</span>
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a><span class="c1">#     print(neps_space.convert_operation_to_string(resolved_pipeline.op))</span>
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a><span class="c1">#     print(</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a><span class="c1">#         neps_space.config_string.ConfigString(</span>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a><span class="c1">#             neps_space.convert_operation_to_string(operator)</span>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a><span class="c1">#         ).pretty_format()</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a><span class="c1">#     )</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a><span class="c1">#     print(</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a><span class="c1">#         neps_space.config_string.ConfigString(</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a><span class="c1">#             neps_space.convert_operation_to_string(operator)</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a><span class="c1">#         )</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a><span class="c1">#     )</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a><span class="c1">#     print(</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a><span class="c1">#         neps_space.config_string.ConfigString(</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a><span class="c1">#             neps_space.convert_operation_to_string(operator)</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a><span class="c1">#         ).unwrapped</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46" href="#__codelineno-0-46"></a><span class="c1">#     )</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47" href="#__codelineno-0-47"></a>
+<a id="__codelineno-0-48" name="__codelineno-0-48" href="#__codelineno-0-48"></a>
+<a id="__codelineno-0-49" name="__codelineno-0-49" href="#__codelineno-0-49"></a><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_pipeline</span><span class="p">(</span><span class="n">int_param</span><span class="p">,</span> <span class="n">float_param</span><span class="p">,</span> <span class="n">epochs</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50" href="#__codelineno-0-50"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;objective_to_minimize&quot;</span><span class="p">:</span> <span class="o">-</span><span class="p">(</span><span class="n">int_param</span> <span class="o">+</span> <span class="n">float_param</span><span class="p">)</span> <span class="o">*</span> <span class="n">epochs</span><span class="p">,</span> <span class="s2">&quot;cost&quot;</span><span class="p">:</span> <span class="n">epochs</span><span class="p">}</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51" href="#__codelineno-0-51"></a>
+<a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a>
+<a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="n">wanted_config</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">samplings_made</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a><span class="n">wanted_env</span> <span class="o">=</span> <span class="n">resolution_context</span><span class="o">.</span><span class="n">environment_values</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a><span class="n">wanted_result</span> <span class="o">=</span> <span class="n">evaluate_pipeline</span><span class="p">(</span><span class="o">**</span><span class="n">resolved_pipeline</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">())</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a><span class="n">warmstarting_configs</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    <span class="p">(</span><span class="n">wanted_config</span><span class="p">,</span> <span class="n">wanted_env</span><span class="p">,</span> <span class="n">wanted_result</span><span class="p">),</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a>    <span class="c1"># (wanted_config, {&quot;epochs&quot;: 2}, wanted_result),</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59" href="#__codelineno-0-59"></a><span class="p">]</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60" href="#__codelineno-0-60"></a>
+<a id="__codelineno-0-61" name="__codelineno-0-61" href="#__codelineno-0-61"></a><span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62" href="#__codelineno-0-62"></a>
+<a id="__codelineno-0-63" name="__codelineno-0-63" href="#__codelineno-0-63"></a><span class="c1"># Running the NEPS pipeline with warmstarting</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64" href="#__codelineno-0-64"></a><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65" href="#__codelineno-0-65"></a><span class="n">neps</span><span class="o">.</span><span class="n">warmstart_neps</span><span class="p">(</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66" href="#__codelineno-0-66"></a>    <span class="n">pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67" href="#__codelineno-0-67"></a>    <span class="s2">&quot;results/warmstart_example/&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68" href="#__codelineno-0-68"></a>    <span class="n">warmstarting_configs</span><span class="p">,</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69" href="#__codelineno-0-69"></a>    <span class="n">overwrite_working_directory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70" href="#__codelineno-0-70"></a>    <span class="n">optimizer</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71" href="#__codelineno-0-71"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">neps_random_search</span><span class="p">,</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72" href="#__codelineno-0-72"></a>        <span class="n">use_priors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73" href="#__codelineno-0-73"></a>        <span class="n">ignore_fidelity</span><span class="o">=</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74" href="#__codelineno-0-74"></a>    <span class="p">),</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75" href="#__codelineno-0-75"></a><span class="p">)</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76" href="#__codelineno-0-76"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77" href="#__codelineno-0-77"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">evaluate_pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78" href="#__codelineno-0-78"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">SimpleSpace</span><span class="p">(),</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79" href="#__codelineno-0-79"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/warmstart_example/&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80" href="#__codelineno-0-80"></a>    <span class="n">max_evaluations_per_run</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81" href="#__codelineno-0-81"></a>    <span class="n">optimizer</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82" href="#__codelineno-0-82"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">algorithms</span><span class="o">.</span><span class="n">neps_random_search</span><span class="p">,</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83" href="#__codelineno-0-83"></a>        <span class="n">use_priors</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84" href="#__codelineno-0-84"></a>        <span class="n">ignore_fidelity</span><span class="o">=</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85" href="#__codelineno-0-85"></a>    <span class="p">),</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86" href="#__codelineno-0-86"></a>    <span class="c1"># warmstart_configs=warmstarting_configs,</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87" href="#__codelineno-0-87"></a>    <span class="n">overwrite_working_directory</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88" href="#__codelineno-0-88"></a><span class="p">)</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89" href="#__codelineno-0-89"></a><span class="n">neps</span><span class="o">.</span><span class="n">status</span><span class="p">(</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90" href="#__codelineno-0-90"></a>    <span class="s2">&quot;results/warmstart_example&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91" href="#__codelineno-0-91"></a>    <span class="n">print_summary</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92" href="#__codelineno-0-92"></a>    <span class="n">pipeline_space_variables</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93" href="#__codelineno-0-93"></a>        <span class="n">SimpleSpace</span><span class="p">(),</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94" href="#__codelineno-0-94"></a>        <span class="p">[</span><span class="s2">&quot;int_param&quot;</span><span class="p">,</span> <span class="s2">&quot;float_param&quot;</span><span class="p">,</span> <span class="s2">&quot;epochs&quot;</span><span class="p">],</span>  <span class="c1"># , &quot;op&quot;, &quot;op2&quot;, &quot;op3&quot;, &quot;cat_param&quot;],</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95" href="#__codelineno-0-95"></a>    <span class="p">),</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96" href="#__codelineno-0-96"></a><span class="p">)</span>
 </code></pre></div>
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.optimizers.optimizer.AskFunction" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">AskFunction</span>
-
-
-<a href="#neps.optimizers.optimizer.AskFunction" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-external" title="typing.Protocol" href="https://docs.python.org/3/library/typing.html#typing.Protocol">Protocol</a></code></p>
-
-
-        <p>Interface to implement the ask of optimizer.</p>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-
-
-<div class="doc doc-object doc-function">
-
-
-<h3 id="neps.optimizers.optimizer.AskFunction.__call__" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">__call__</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
-  </span>
-
-<a href="#neps.optimizers.optimizer.AskFunction.__call__" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">__call__</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">trials</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            Trial
-
-
-  
-      dataclass
-   (neps.state.trial.Trial)" href="../../state/trial/#neps.state.trial.Trial">Trial</a></span><span class="p">],</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">budget_info</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            BudgetInfo
-
-
-  
-      dataclass
-   (neps.state.optimizer.BudgetInfo)" href="../../state/optimizer/#neps.state.optimizer.BudgetInfo">BudgetInfo</a></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">n</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.optimizers.optimizer.SampledConfig">SampledConfig</span></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a></span><span class="p">[</span><span class="n"><span title="neps.optimizers.optimizer.SampledConfig">SampledConfig</span></span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Sample a new configuration.</p>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>trials</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>All of the trials that are known about.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-internal" title="            Trial
-
-
-  
-      dataclass
-   (neps.state.trial.Trial)" href="../../state/trial/#neps.state.trial.Trial">Trial</a>]</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>budget_info</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>information about the budget constraints.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            BudgetInfo
-
-
-  
-      dataclass
-   (neps.state.optimizer.BudgetInfo)" href="../../state/optimizer/#neps.state.optimizer.BudgetInfo">BudgetInfo</a> | None</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>n</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The number of configurations to sample. If you do not support
-sampling multiple configurations at once, you should raise
-a <code>ValueError</code>.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | None</code>
-                  </span>
-                  <span class="doc-param-default">
-                    <b>DEFAULT:</b>
-                      <code>None</code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <span class="doc-returns-annotation">
-                    <code><span title="neps.optimizers.optimizer.SampledConfig">SampledConfig</span> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<span title="neps.optimizers.optimizer.SampledConfig">SampledConfig</span>]</code>
-                </span>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>The sampled configuration(s)</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="quote">
-              <summary>Source code in <code>neps\optimizers\optimizer.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-60">60</a></span>
-<span class="normal"><a href="#__codelineno-0-61">61</a></span>
-<span class="normal"><a href="#__codelineno-0-62">62</a></span>
-<span class="normal"><a href="#__codelineno-0-63">63</a></span>
-<span class="normal"><a href="#__codelineno-0-64">64</a></span>
-<span class="normal"><a href="#__codelineno-0-65">65</a></span>
-<span class="normal"><a href="#__codelineno-0-66">66</a></span>
-<span class="normal"><a href="#__codelineno-0-67">67</a></span>
-<span class="normal"><a href="#__codelineno-0-68">68</a></span>
-<span class="normal"><a href="#__codelineno-0-69">69</a></span>
-<span class="normal"><a href="#__codelineno-0-70">70</a></span>
-<span class="normal"><a href="#__codelineno-0-71">71</a></span>
-<span class="normal"><a href="#__codelineno-0-72">72</a></span>
-<span class="normal"><a href="#__codelineno-0-73">73</a></span>
-<span class="normal"><a href="#__codelineno-0-74">74</a></span>
-<span class="normal"><a href="#__codelineno-0-75">75</a></span>
-<span class="normal"><a href="#__codelineno-0-76">76</a></span>
-<span class="normal"><a href="#__codelineno-0-77">77</a></span>
-<span class="normal"><a href="#__codelineno-0-78">78</a></span>
-<span class="normal"><a href="#__codelineno-0-79">79</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-60" name="__codelineno-0-60"></a><span class="nd">@abstractmethod</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>    <span class="bp">self</span><span class="p">,</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>    <span class="n">trials</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Trial</span><span class="p">],</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="n">budget_info</span><span class="p">:</span> <span class="n">BudgetInfo</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SampledConfig</span> <span class="o">|</span> <span class="nb">list</span><span class="p">[</span><span class="n">SampledConfig</span><span class="p">]:</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a new configuration.</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a><span class="sd">        trials: All of the trials that are known about.</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a><span class="sd">        budget_info: information about the budget constraints.</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a><span class="sd">        n: The number of configurations to sample. If you do not support</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a><span class="sd">            sampling multiple configurations at once, you should raise</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a><span class="sd">            a `ValueError`.</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a><span class="sd">        The sampled configuration(s)</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>    <span class="o">...</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-class">
-
-
-
-<h2 id="neps.optimizers.optimizer.OptimizerInfo" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">OptimizerInfo</span>
-
-
-<a href="#neps.optimizers.optimizer.OptimizerInfo" class="headerlink" title="Permanent link">#</a></h2>
-
-
-    <div class="doc doc-contents ">
-            <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-external" title="typing.TypedDict" href="https://docs.python.org/3/library/typing.html#typing.TypedDict">TypedDict</a></code></p>
-
-
-        <p>Information about the optimizer, usually used for serialization.</p>
-
-
-
-
-
-
-
-
-
-
-  <div class="doc doc-children">
-
-
-
-
-
-
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="neps.optimizers.optimizer.OptimizerInfo.info" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">info</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#neps.optimizers.optimizer.OptimizerInfo.info" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">info</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Additional information about the optimizer.</p>
-<p>Usually this will be the keyword arguments used to initialize the optimizer.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="neps.optimizers.optimizer.OptimizerInfo.name" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">name</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#neps.optimizers.optimizer.OptimizerInfo.name" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">name</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>The name of the optimizer.</p>
-
-    </div>
-
-</div>
-
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
-
-
-
-
-  </div>
-
-    </div>
-
-</div>
 
 
 
@@ -4120,7 +3763,7 @@ a <code>ValueError</code>.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../neps_random_search/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Neps random search">
+          <a href="../pytorch_native_fsdp/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Pytorch native fsdp">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -4130,20 +3773,20 @@ a <code>ValueError</code>.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Neps random search
+                Pytorch native fsdp
               </div>
             </div>
           </a>
         
         
           
-          <a href="../priorband/" class="md-footer__link md-footer__link--next" aria-label="Next: Priorband">
+          <a href="../../experimental/freeze_thaw/" class="md-footer__link md-footer__link--next" aria-label="Next: Freeze thaw">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Priorband
+                Freeze thaw
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -4179,12 +3822,12 @@ a <code>ValueError</code>.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.56ea9cef.min.js"></script>
       
-        <script src="../../../../javascripts/mathjax.js"></script>
+        <script src="../../../javascripts/mathjax.js"></script>
       
         <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
       
