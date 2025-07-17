@@ -464,6 +464,7 @@ def run(  # noqa: C901, D417, PLR0913
         "priorband",
         "moasha",
         "mo_hyperband",
+        "primo",
     }
 
     is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
