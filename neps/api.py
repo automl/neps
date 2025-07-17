@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913
+def run(  # noqa: C901, D417, PLR0913
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: (
         Mapping[str, dict | str | int | float | Parameter]
@@ -422,8 +422,8 @@ def run(  # noqa: PLR0913
 
     if max_evaluations_total is not None:
         warnings.warn(
-            "`max_evaluations_total` is deprecated and will be removed in a future release. "
-            "Please use `evaluations_to_spend` instead.",
+            "`max_evaluations_total` is deprecated and will be removed in"
+            " a future release. Please use `evaluations_to_spend` instead.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -462,17 +462,22 @@ def run(  # noqa: PLR0913
         "async_hb",
         "ifbo",
         "priorband",
+        "moasha",
+        "mo_hyperband",
     }
 
     is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
 
     if is_multi_fidelity:
         if evaluations_to_spend is not None:
-            raise ValueError("`evaluations_to_spend` is not allowed for multi-fidelity optimizers. Only `fidelities_to_spend` or `cost_to_spend`")
-    else:
-        if fidelities_to_spend is not None:
-            raise ValueError("`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers.")
-
+            raise ValueError(
+                "`evaluations_to_spend` is not allowed for multi-fidelity optimizers. "
+                "Only `fidelities_to_spend` or `cost_to_spend`"
+            )
+    elif fidelities_to_spend is not None:
+        raise ValueError(
+            "`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers."
+        )
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
@@ -512,13 +517,15 @@ def run(  # noqa: PLR0913
     post_run_csv(root_directory)
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
-    if write_summary_to_disk==False:
+    if not write_summary_to_disk:
         trajectory_of_improvements(root_directory)
         logger.info(
-            "The summary folder has been created, which contains csv and txt files with the "
-            "output of all data in the run (short.csv - only the best; full.csv - all runs"
-            "; best_config_trajectory.txt for incumbent trajectory; and best_config.txt for final incumbent)."
+            "The summary folder has been created, which contains csv and txt files with"
+            "the output of all data in the run (short.csv - only the best; full.csv - "
+            "all runs; best_config_trajectory.txt for incumbent trajectory; and "
+            "best_config.txt for final incumbent)."
             f"\nYou can find summary folder at: {summary_dir}."
         )
+
 
 __all__ = ["run"]
