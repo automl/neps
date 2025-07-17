@@ -96,8 +96,6 @@ REQUIRES_FIDELITY = [
     "async_hb",
     "ifbo",
     "priorband",
-    "moasha",
-    "mo_hyperband",
 ]
 NO_DEFAULT_FIDELITY_SUPPORT = [
     "random_search",
@@ -114,12 +112,20 @@ NO_DEFAULT_PRIOR_SUPPORT = [
     "hyperband",
     "async_hb",
     "random_search",
-    "moasha",
-    "mo_hyperband",
 ]
 REQUIRES_PRIOR = [
     "pibo",
     "priorband",
+]
+
+REQUIRES_FIDELITY_MO = [
+    "moasha",
+    "mo_hyperband",
+    "primo",
+]
+
+REQUIRES_PRIOR_MO = [
+    "primo",
 ]
 
 
@@ -147,6 +153,14 @@ def optimizer_and_key_and_search_space(
         parameter.prior is None for parameter in search_space.searchables.values()
     ):
         pytest.xfail(f"{key} requires a prior")
+
+    if key in REQUIRES_FIDELITY_MO and search_space.fidelity is None:
+        pytest.xfail(f"Multi-objective optimizer {key} requires a fidelity parameter")
+
+    if key in REQUIRES_PRIOR_MO and all(
+        parameter.prior is None for parameter in search_space.searchables.values()
+    ):
+        pytest.xfail(f"Multi-objective optimizer {key} requires a prior")
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
@@ -226,4 +240,7 @@ def test_optimizers_work_roughly(
 
     for _ in range(20):
         trial = ask_and_tell.ask()
-        ask_and_tell.tell(trial, 1.0)
+        if key in (REQUIRES_FIDELITY_MO + REQUIRES_PRIOR_MO):
+            ask_and_tell.tell(trial, [1.0, 2.0])
+        else:
+            ask_and_tell.tell(trial, 1.0)

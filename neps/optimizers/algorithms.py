@@ -32,11 +32,14 @@ from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
+from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
+from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
+from neps.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -137,7 +140,10 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband"] | PriorBandSampler | Sampler,
+    sampler: Literal["uniform", "prior", "priorband", "mopriorsampler"]
+    | PriorBandSampler
+    | MOPriorSampler
+    | Sampler,
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
@@ -146,6 +152,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     early_stopping_rate: int | None,
     device: torch.device | None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     multi_objective: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
@@ -307,7 +315,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
     encoder = ConfigEncoder.from_parameters(parameters)
 
-    _sampler: Sampler | PriorBandSampler
+    _sampler: Sampler | PriorBandSampler | MOPriorSampler
     match sampler:
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
@@ -324,6 +332,15 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
+            )
+        case "mopriorsampler":
+            assert prior_centers is not None
+            assert prior_confidences is not None
+            _sampler = MOPriorSampler.create_sampler(
+                parameters=parameters,
+                prior_centers=prior_centers,
+                confidence_values=prior_confidences,
+                encoder=encoder,
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
@@ -1149,6 +1166,76 @@ def pibo(
     )
 
 
+def primo(
+    space: SearchSpace,
+    *,
+    sampler: Literal["uniform", "mopriorsampler"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
+    eta: int = 3,
+    epsilon: float = 0.25,
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+    initial_design_size: int | Literal["ndim"] = "ndim",
+    cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
+    device: torch.device | str | None = None,
+    bo_scalar_weights: dict[str, float] | None = None,
+) -> PriMO:
+    """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
+    BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
+    _moasha = _bracket_optimizer(
+        pipeline_space=space,
+        bracket_type="asha",
+        eta=eta,
+        sampler=sampler,
+        multi_objective=True,
+        mo_selector=mo_selector,
+        bayesian_optimization_kick_in_point=None,
+        sample_prior_first=False,
+        early_stopping_rate=0,
+        device=device,
+    )
+
+    parameters = space.searchables
+
+    assert space.fidelity is not None
+    fidelity_name, fidelity = space.fidelity
+
+    match initial_design_size:
+        case "ndim":
+            n_initial_design_size = len(parameters)
+        case int():
+            if initial_design_size < 1:
+                raise ValueError("initial_design_size should be greater than 0")
+
+            n_initial_design_size = initial_design_size
+        case _:
+            raise ValueError(
+                "initial_design_size should be either 'ndim' or a positive integer"
+            )
+
+    _priors = None
+    if prior_confidences and prior_centers:
+        _priors = MOPriorSampler.dists_from_centers_and_confidences(
+            parameters=parameters,
+            prior_centers=prior_centers,
+            confidence_values=prior_confidences,
+        )
+
+    return PriMO(
+        space=convert_mapping({**space.elements}),
+        encoder=ConfigEncoder.from_parameters(parameters),
+        bracket_optimizer=_moasha,
+        initial_design_size=n_initial_design_size,
+        fid_max=fidelity.upper,
+        fid_name=fidelity_name,
+        scalarization_weights=bo_scalar_weights,
+        device=device,
+        priors=_priors,
+        epsilon=epsilon,
+    )
+
+
 @dataclass
 class CustomOptimizer:
     """Custom optimizer that allows you to define your own optimizer function.
@@ -1208,6 +1295,7 @@ PredefinedOptimizers: Mapping[
         moasha,
         async_hb,
         priorband,
+        primo,
     )
 }
 
@@ -1224,4 +1312,5 @@ OptimizerChoice: TypeAlias = Literal[
     "random_search",
     "grid_search",
     "ifbo",
+    "primo",
 ]
