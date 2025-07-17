@@ -325,22 +325,12 @@ class DefaultWorker:
     ) -> str | Literal[False]:
         if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                if self.optimizer.space.fidelities:
-                    count = sum(
-                        trial.report.cost
-                        for _, trial in trials.items()
-                        if trial.report is not None and trial.report.cost is not None
-                    )
-                    for name, fidelity_param in self.optimizer.space.fidelities.items():
-                        count = math.ceil(count / fidelity_param.upper)
-                else:
-                    count = sum(
-                        1
-                        for _, trial in trials.items()
-                        if trial.metadata.state
-                        not in (Trial.State.PENDING, Trial.State.SUBMITTED)
-                    )
-                    
+                count = sum(
+                    1
+                    for _, trial in trials.items()
+                    if trial.metadata.state
+                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                )   
             else:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
