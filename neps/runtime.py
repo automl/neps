@@ -545,7 +545,7 @@ class DefaultWorker:
             _trace_lock_path.touch(exist_ok=True)
 
             all_best_configs = []
-            logger.info("Summary files of evaluations can be found in folder `Summary` in the main directory: %s", main_dir)
+            logger.info("Summary files can be found in the “summary” folder inside the root directory: %s", summary_dir)
 
         _best_score_so_far = float("inf")
 
@@ -685,7 +685,7 @@ class DefaultWorker:
                 if new_score < _best_score_so_far:
                     _best_score_so_far = new_score
                     logger.info(
-                        "Evaluated trial: %s with objective %s is the new best trial.",
+                        "New best: trial %s with objective %s",
                         evaluated_trial.id,
                         new_score,
                     )
