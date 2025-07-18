@@ -384,7 +384,7 @@ class NePSState:
 
             id_str = sampled_config.id
             config_name = f"{sampled_config.id}"
-            parts = id_str.split('_rung_')
+            parts = id_str.split("_rung_")
             if len(parts) == 2 and all(p.isdigit() for p in parts):
                 config_id, rung_id = map(int, parts)
                 config_name = f"{config_id}_rung_{rung_id}"

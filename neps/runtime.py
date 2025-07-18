@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import datetime
 import logging
-import math
 import os
 import shutil
 import time
@@ -318,27 +317,18 @@ class DefaultWorker:
 
         return False
 
-    def _check_global_stopping_criterion(  # noqa: C901, PLR0912
+    def _check_global_stopping_criterion(
         self,
         trials: Mapping[str, Trial],
     ) -> str | Literal[False]:
         if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                if hasattr(self.optimizer, "space") and self.optimizer.space.fidelities:
-                    count = sum(
-                        trial.report.cost
-                        for _, trial in trials.items()
-                        if trial.report is not None and trial.report.cost is not None
-                    )
-                    for name, fidelity_param in self.optimizer.space.fidelities.items():  # noqa: B007
-                        count = math.ceil(count / fidelity_param.upper)
-                else:
-                    count = sum(
-                        1
-                        for _, trial in trials.items()
-                        if trial.metadata.state
-                        not in (Trial.State.PENDING, Trial.State.SUBMITTED)
-                    )
+                count = sum(
+                    1
+                    for _, trial in trials.items()
+                    if trial.metadata.state
+                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                )
 
             else:
                 # This indicates they have completed.
@@ -547,11 +537,10 @@ class DefaultWorker:
 
             all_best_configs = []
             logger.info(
-                "Summary files of evaluations can be found in folder"
-                "`Summary` in the main directory: %s",
-                main_dir,
+                "Summary files can be found in the “summary” folder inside"
+                "the root directory: %s",
+                summary_dir,
             )
-
         _best_score_so_far = float("inf")
 
         optimizer_name = self.state._optimizer_info["name"]
@@ -693,11 +682,12 @@ class DefaultWorker:
                 new_score = report.objective_to_minimize
                 if new_score < _best_score_so_far:
                     _best_score_so_far = new_score
-                    logger.info(
-                        "Evaluated trial: %s with objective %s is the new best trial.",
-                        evaluated_trial.id,
-                        new_score,
-                    )
+                    # This was a bug
+                    # logger.info(
+                    #     "New best: trial %s with objective %s",  # noqa: ERA001
+                    #     evaluated_trial.id,
+                    #     new_score,
+                    # )
 
                     if self.settings.write_summary_to_disk:
                         # Store in memory for later file re-writing
