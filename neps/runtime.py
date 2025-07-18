@@ -684,7 +684,7 @@ class DefaultWorker:
                     _best_score_so_far = new_score
                     # This was a bug
                     # logger.info(
-                    #     "New best: trial %s with objective %s",  # noqa: ERA001
+                    #     "New best: trial %s with objective %s",
                     #     evaluated_trial.id,
                     #     new_score,
                     # )
