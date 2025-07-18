@@ -1173,7 +1173,7 @@ def primo(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
     eta: int = 3,
     epsilon: float = 0.25,
-    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    prior_centers: Mapping[str, Mapping[str, Any]],
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     initial_design_size: int | Literal["ndim"] = "ndim",
