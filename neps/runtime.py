@@ -10,9 +10,9 @@ import time
 import math
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal, List, Any, Dict
 
 from portalocker import portalocker
 from pathlib import Path
@@ -534,10 +534,15 @@ class DefaultWorker:
             _trace_lock_path = Path(str(_trace_lock.lock_file))
             _trace_lock_path.touch(exist_ok=True)
 
-            all_best_configs = []
             logger.info("Summary files can be found in the “summary” folder inside the root directory: %s", summary_dir)
 
+        previous_trials = self.state.lock_and_read_trials()
+        if len(previous_trials):
+            load_incumbent_trace(previous_trials, _trace_lock, self.state, self.settings, improvement_trace_path, best_config_path)
+
         _best_score_so_far = float("inf")
+        if self.state.new_score != _best_score_so_far:
+            _best_score_so_far = self.state.new_score
 
         optimizer_name = self.state._optimizer_info["name"]
         logger.info("Using optimizer: %s", optimizer_name)
@@ -669,28 +674,28 @@ class DefaultWorker:
                 # This is mostly for `tblogger`
                 for _key, callback in _TRIAL_END_CALLBACKS.items():
                     callback(trial_to_eval)
-
+            
             if report.objective_to_minimize is not None and report.err is None:
-                new_score = report.objective_to_minimize
-                if new_score < _best_score_so_far:
-                    _best_score_so_far = new_score
+                self.state.new_score = report.objective_to_minimize
+                if self.state.new_score < _best_score_so_far:
+                    _best_score_so_far = self.state.new_score
                     logger.info(
                         "New best: trial %s with objective %s",
                         evaluated_trial.id,
-                        new_score,
+                        self.state.new_score,
                     )
                     
                     if self.settings.write_summary_to_disk:
                         # Store in memory for later file re-writing
-                        all_best_configs.append({
-                            "score": new_score,
+                        self.state.all_best_configs.append({
+                            "score": self.state.new_score,
                             "trial_id": evaluated_trial.id,
                             "config": evaluated_trial.config
                         })
 
                         # Build trace text and best config text
                         trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
-                        for best in all_best_configs:
+                        for best in self.state.all_best_configs:
                             trace_text += (
                                 f"Objective to minimize: {best['score']}\n"
                                 f"Config ID: {best['trial_id']}\n"
@@ -698,7 +703,7 @@ class DefaultWorker:
                                 + "-" * 80 + "\n"
                             )
 
-                        best_config = all_best_configs[-1]  # Latest best
+                        best_config = self.state.all_best_configs[-1]  # Latest best
                         best_config_text = (
                             f"# Best config:"
                             f"\n\n    Config ID: {best_config['trial_id']}"
@@ -710,7 +715,6 @@ class DefaultWorker:
                         with _trace_lock:
                             with open(improvement_trace_path, mode='w') as f:
                                 f.write(trace_text)
-
                             with open(best_config_path, mode='w') as f:
                                 f.write(best_config_text)
 
@@ -726,6 +730,49 @@ class DefaultWorker:
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
+
+def load_incumbent_trace(
+    previous_trials: dict[str, Trial],
+    _trace_lock: FileLock,
+    state: NePSState,
+    settings: WorkerSettings,
+    improvement_trace_path: Path,
+    best_config_path: Path
+) -> None:
+    _best_score_so_far = float("inf")
+
+    for evaluated_trial in previous_trials.values():
+        state.new_score = evaluated_trial.report.objective_to_minimize
+        if state.new_score < _best_score_so_far:
+            _best_score_so_far = state.new_score
+            state.all_best_configs.append({
+                "score": state.new_score,
+                "trial_id": evaluated_trial.metadata.id,
+                "config": evaluated_trial.config
+            })
+
+    trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    for best in state.all_best_configs:
+        trace_text += (
+            f"Objective to minimize: {best['score']}\n"
+            f"Config ID: {best['trial_id']}\n"
+            f"Config: {best['config']}\n"
+            + "-" * 80 + "\n"
+        )
+
+    best_config = state.all_best_configs[-1]  # Latest best
+    best_config_text = (
+        f"# Best config:"
+        f"\n\n    Config ID: {best_config['trial_id']}"
+        f"\n    Objective to minimize: {best_config['score']}"
+        f"\n    Config: {best_config['config']}"
+    )
+
+    with _trace_lock:
+        with open(improvement_trace_path, mode='w') as f:
+            f.write(trace_text)
+        with open(best_config_path, mode='w') as f:
+            f.write(best_config_text)
 
 
 def _launch_ddp_runtime(

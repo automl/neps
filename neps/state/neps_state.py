@@ -251,6 +251,12 @@ class NePSState:
     _shared_errors_path: Path = field(repr=False)
     _shared_errors: ErrDump = field(repr=False)
 
+    new_score: float = float("inf")
+    """Tracking of the new incumbent"""
+
+    all_best_configs: list = field(default_factory=list)
+    """Trajectory to the newest incbumbent"""
+
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
         with self._trial_lock.lock():
