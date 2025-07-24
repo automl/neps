@@ -43,6 +43,7 @@ def test_max_evaluations_total_stopping_criterion(
         evaluations_to_spend=3,  # <- Highlight
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -95,6 +96,7 @@ def test_worker_evaluations_total_stopping_criterion(
         evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=2,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -156,6 +158,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         evaluations_to_spend=2,  # <- Highlight, only 2 maximum evaluations allowed
         include_in_progress_evaluations_towards_maximum=True,  # <- inprogress trial
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -210,6 +213,7 @@ def test_max_cost_total(neps_state: NePSState) -> None:
         evaluations_to_spend=10,  # Safety incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=2,  # <- Highlight, only 2 maximum evaluations allowed
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -258,6 +262,7 @@ def test_worker_cost_total(neps_state: NePSState) -> None:
         evaluations_to_spend=10,  # Safety incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -314,6 +319,7 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
         evaluations_to_spend=1000,  # Incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=1,  # <- highlight, 1 second
@@ -369,6 +375,7 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
         evaluations_to_spend=10,  # Safety incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -425,6 +432,7 @@ def test_max_evaluation_time_global(neps_state: NePSState) -> None:
         evaluations_to_spend=10,  # Safety incase it doesn't work that we eventually stop
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=0.5,  # <- Highlight
         max_wallclock_time_for_worker_seconds=None,

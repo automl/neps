@@ -402,8 +402,12 @@ def _eval_trial(
     else:
         duration = time.monotonic() - start
         time_end = time.time()
-        filtered_data = {k: v for k, v in user_result.items() if k != 'info_dict'}
-        logger.info(f"Successful evaluation of '{trial.id}': {filtered_data}.")
+        match user_result:
+            case dict():
+                filtered_data = {k: v for k, v in user_result.items() if k != "info_dict"}
+                logger.info(f"Successful evaluation of '{trial.id}': {filtered_data}.")
+            case _:  # TODO: Revisit this and check all possible cases
+                logger.info(f"Successful evaluation of '{trial.id}': {user_result}.")
 
         result = UserResult.parse(
             user_result,

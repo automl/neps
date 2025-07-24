@@ -541,7 +541,7 @@ class DefaultWorker:
             load_incumbent_trace(previous_trials, _trace_lock, self.state, self.settings, improvement_trace_path, best_config_path)
 
         _best_score_so_far = float("inf")
-        if self.state.new_score != _best_score_so_far:
+        if self.state.new_score is not None and self.state.new_score != _best_score_so_far:
             _best_score_so_far = self.state.new_score
 
         optimizer_name = self.state._optimizer_info["name"]
@@ -742,14 +742,15 @@ def load_incumbent_trace(
     _best_score_so_far = float("inf")
 
     for evaluated_trial in previous_trials.values():
-        state.new_score = evaluated_trial.report.objective_to_minimize
-        if state.new_score < _best_score_so_far:
-            _best_score_so_far = state.new_score
-            state.all_best_configs.append({
-                "score": state.new_score,
-                "trial_id": evaluated_trial.metadata.id,
-                "config": evaluated_trial.config
-            })
+        if evaluated_trial.report is not None and evaluated_trial.report.objective_to_minimize is not None:
+            state.new_score = evaluated_trial.report.objective_to_minimize
+            if state.new_score is not None and state.new_score < _best_score_so_far:
+                _best_score_so_far = state.new_score
+                state.all_best_configs.append({
+                    "score": state.new_score,
+                    "trial_id": evaluated_trial.metadata.id,
+                    "config": evaluated_trial.config
+                })
 
     trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
     for best in state.all_best_configs:
@@ -760,13 +761,19 @@ def load_incumbent_trace(
             + "-" * 80 + "\n"
         )
 
-    best_config = state.all_best_configs[-1]  # Latest best
-    best_config_text = (
-        f"# Best config:"
-        f"\n\n    Config ID: {best_config['trial_id']}"
-        f"\n    Objective to minimize: {best_config['score']}"
-        f"\n    Config: {best_config['config']}"
-    )
+    best_config_text = ""
+    if state.all_best_configs:
+        best_config = state.all_best_configs[-1]
+        best_config_text = (
+            f"# Best config:"
+            f"\n\n    Config ID: {best_config['trial_id']}"
+            f"\n    Objective to minimize: {best_config['score']}"
+            f"\n    Config: {best_config['config']}"
+        )
+    else:
+        best_config = None
+
+        
 
     with _trace_lock:
         with open(improvement_trace_path, mode='w') as f:
