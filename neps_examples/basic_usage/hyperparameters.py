@@ -12,7 +12,7 @@ def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
         np.sum([float1, float2, int(categorical), integer1, integer2])
     )
     return objective_to_minimize
-
+    
 
 pipeline_space = dict(
     float1=neps.Float(lower=0, upper=1),
@@ -27,6 +27,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
-    post_run_summary=True,
     evaluations_to_spend=30,
 )
