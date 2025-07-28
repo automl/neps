@@ -3712,7 +3712,7 @@
 
 
 <h1 id="neps-spaces">NePS Spaces<a class="headerlink" href="#neps-spaces" title="Permanent link">#</a></h1>
-<p><strong>NePS Spaces</strong> provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including hyperparameters, architecture search and more.</p>
+<p><strong>NePS Spaces</strong> provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including <a href="#1-constructing-hyperparameter-spaces">hyperparameters</a>, <a href="#3-architectures">architecture search</a> and <a href="#4-general-structures">more</a>.</p>
 <h2 id="1-constructing-hyperparameter-spaces">1. Constructing Hyperparameter Spaces<a class="headerlink" href="#1-constructing-hyperparameter-spaces" title="Permanent link">#</a></h2>
 <p><strong>NePS spaces</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:</p>
 <ul>
@@ -3730,7 +3730,7 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title"><strong>Fidelity Parameters</strong></p>
-<p>Wrapping a <a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>neps.Integer</code></a> or <a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>neps.Float</code></a> in a <a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>neps.Fidelity</code></a> allows you to employ <a href="../search_algorithms/multifidelity/">multi-fidelity optimization</a> strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs).</p>
+<p>Passing a <a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>neps.Integer</code></a> or <a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>neps.Float</code></a> to a <a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>neps.Fidelity</code></a> allows you to employ <a href="../search_algorithms/multifidelity/">multi-fidelity optimization</a> strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">epochs</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Fidelity</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span>
 </code></pre></div>
 </div>
