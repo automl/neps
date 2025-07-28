@@ -83,7 +83,7 @@ def evaluate_pipeline(
     )
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     learning_rate = neps.Float(min_value=1e-4, max_value=1e0, log=True)
     epoch = neps.Fidelity(neps.Integer(min_value=1, max_value=10))
 
@@ -91,7 +91,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/multi_fidelity_example",
     # Optional: Do not start another evaluation after <=50 epochs, corresponds to cost
     # field above.

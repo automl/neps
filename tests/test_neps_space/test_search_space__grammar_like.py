@@ -4,10 +4,15 @@ import pytest
 
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import config_string, neps_space
-from neps.space.neps_spaces.parameters import Categorical, Operation, Pipeline, Resampled
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    Operation,
+    PipelineSpace,
+    Resampled,
+)
 
 
-class GrammarLike(Pipeline):
+class GrammarLike(PipelineSpace):
     _id = Operation(operator="Identity")
     _three = Operation(operator="Conv2D-3")
     _one = Operation(operator="Conv2D-1")
@@ -99,7 +104,7 @@ class GrammarLike(Pipeline):
     )
 
 
-class GrammarLikeAlt(Pipeline):
+class GrammarLikeAlt(PipelineSpace):
     _id = Operation(operator="Identity")
     _three = Operation(operator="Conv2D-3")
     _one = Operation(operator="Conv2D-1")

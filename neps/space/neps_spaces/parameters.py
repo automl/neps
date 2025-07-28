@@ -131,7 +131,7 @@ class Fidelity(Resolvable, Generic[T]):
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
 
-class Pipeline(Resolvable):
+class PipelineSpace(Resolvable):
     """A class representing a pipeline in NePS spaces."""
 
     @property
@@ -170,7 +170,7 @@ class Pipeline(Resolvable):
 
         return attrs
 
-    def from_attrs(self, attrs: Mapping[str, Any]) -> Pipeline:
+    def from_attrs(self, attrs: Mapping[str, Any]) -> PipelineSpace:
         """Create a new Pipeline instance from the given attributes.
 
         Args:
@@ -183,7 +183,7 @@ class Pipeline(Resolvable):
         Raises:
             ValueError: If the attributes do not match the pipeline's expected structure.
         """
-        new_pipeline = Pipeline()
+        new_pipeline = PipelineSpace()
         for name, value in attrs.items():
             setattr(new_pipeline, name, value)
         return new_pipeline
@@ -758,7 +758,7 @@ class Integer(Domain[int]):
         min_value: int,
         max_value: int,
         log: bool = False,  # noqa: FBT001, FBT002
-        prior: int | _Unset = _UNSET,
+        prior: float | int | _Unset = _UNSET,
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,

@@ -9,7 +9,7 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.space.parameters import (
     HPOCategorical,
     HPOConstant,
@@ -304,9 +304,9 @@ def convert_to_space(
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
         | ConfigurationSpace
-        | Pipeline
+        | PipelineSpace
     ),
-) -> SearchSpace | Pipeline:
+) -> SearchSpace | PipelineSpace:
     """Converts a search space to a SearchSpace object.
 
     Args:
@@ -329,7 +329,7 @@ def convert_to_space(
             return space
         case Mapping():
             return convert_mapping(space)
-        case Pipeline():
+        case PipelineSpace():
             return space
         case _:
             raise ValueError(

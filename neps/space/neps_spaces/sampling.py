@@ -17,11 +17,11 @@ from neps.space.neps_spaces.parameters import (
     Domain,
     Float,
     Integer,
-    Pipeline,
+    PipelineSpace,
 )
 
 T = TypeVar("T")
-P = TypeVar("P", bound="Pipeline")
+P = TypeVar("P", bound="PipelineSpace")
 
 
 @runtime_checkable

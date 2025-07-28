@@ -18,7 +18,7 @@ def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
     return objective_to_minimize
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     float1 = neps.Float(min_value=0, max_value=1)
     categorical = neps.Categorical(choices=(0, 1))
     integer1 = neps.Integer(min_value=0, max_value=1)
@@ -27,7 +27,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/working_directory_per_pipeline",
     max_evaluations_total=5,
 )

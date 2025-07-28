@@ -26,14 +26,14 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
-    Pipeline,
+    PipelineSpace,
 )
 from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
 
 
 @case
-def case_search_space_no_fid() -> Pipeline:
-    class Space(Pipeline):
+def case_search_space_no_fid() -> PipelineSpace:
+    class Space(PipelineSpace):
         a = Float(0, 1)
         b = Categorical(("a", "b", "c"))
         c = "a"
@@ -43,8 +43,8 @@ def case_search_space_no_fid() -> Pipeline:
 
 
 @case
-def case_search_space_with_fid() -> Pipeline:
-    class SpaceFid(Pipeline):
+def case_search_space_with_fid() -> PipelineSpace:
+    class SpaceFid(PipelineSpace):
         a = Float(0, 1)
         b = Categorical(("a", "b", "c"))
         c = "a"
@@ -55,8 +55,8 @@ def case_search_space_with_fid() -> Pipeline:
 
 
 @case
-def case_search_space_no_fid_with_prior() -> Pipeline:
-    class SpacePrior(Pipeline):
+def case_search_space_no_fid_with_prior() -> PipelineSpace:
+    class SpacePrior(PipelineSpace):
         a = Float(0, 1, prior=0.5, prior_confidence="medium")
         b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
         c = "a"
@@ -66,8 +66,8 @@ def case_search_space_no_fid_with_prior() -> Pipeline:
 
 
 @case
-def case_search_space_fid_with_prior() -> Pipeline:
-    class SpaceFidPrior(Pipeline):
+def case_search_space_fid_with_prior() -> PipelineSpace:
+    class SpaceFidPrior(PipelineSpace):
         a = Float(0, 1, prior=0.5, prior_confidence="medium")
         b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
         c = "a"
@@ -136,8 +136,8 @@ REQUIRES_NEPS_SPACE = [
 @parametrize("key", list(PredefinedOptimizers.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
 def optimizer_and_key_and_search_space(
-    key: str, search_space: Pipeline
-) -> tuple[AskFunction, str, Pipeline | SearchSpace]:
+    key: str, search_space: PipelineSpace
+) -> tuple[AskFunction, str, PipelineSpace | SearchSpace]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
@@ -169,9 +169,11 @@ def optimizer_and_key_and_search_space(
     return (
         opt,
         key,
-        converted_space
-        if converted_space and key not in REQUIRES_NEPS_SPACE
-        else search_space,
+        (
+            converted_space
+            if converted_space and key not in REQUIRES_NEPS_SPACE
+            else search_space
+        ),
     )
 
 
@@ -199,7 +201,9 @@ def case_neps_state_filebased(
 @parametrize_with_cases("neps_state", cases=".", prefix="case_neps_state")
 def test_sample_trial(
     neps_state: NePSState,
-    optimizer_and_key_and_search_space: tuple[AskFunction, str, Pipeline | SearchSpace],
+    optimizer_and_key_and_search_space: tuple[
+        AskFunction, str, PipelineSpace | SearchSpace
+    ],
     capsys,
 ) -> None:
     optimizer, key, search_space = optimizer_and_key_and_search_space
@@ -273,7 +277,9 @@ def test_sample_trial(
 
 
 def test_optimizers_work_roughly(
-    optimizer_and_key_and_search_space: tuple[AskFunction, str, Pipeline | SearchSpace],
+    optimizer_and_key_and_search_space: tuple[
+        AskFunction, str, PipelineSpace | SearchSpace
+    ],
 ) -> None:
     opt, key, search_space = optimizer_and_key_and_search_space
     ask_and_tell = AskAndTell(opt)

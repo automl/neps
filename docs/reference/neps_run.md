@@ -17,15 +17,15 @@ import neps
 
 def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     # Your code here
-
     return loss
+
+class ExamplePipeline(neps.PipelineSpace):
+    learning_rate = neps.Float(1e-3, 1e-1, log=True)
+    epochs = neps.Fidelity(neps.Integer(10, 100))
 
 neps.run(
     evaluate_pipeline=evaluate_pipeline, # (1)!
-    pipeline_space={, # (2)!
-        "learning_rate": neps.Float(1e-3, 1e-1, log=True),
-        "epochs": neps.Integer(10, 100)
-    },
+    pipeline_space=ExamplePipeline(), # (2)!
     root_directory="path/to/result_dir" # (3)!
 )
 ```
@@ -33,7 +33,7 @@ neps.run(
 1.  The objective function, targeted by NePS for minimization, by evaluation various configurations.
     It requires these configurations as input and should return either a dictionary or a sole loss value as the output.
 2.  This defines the search space for the configurations from which the optimizer samples.
-    It accepts either a dictionary with the configuration names as keys, a path to a YAML configuration file, or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
+    It accepts a class instance inheriting from `neps.PipelineSpace` or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
     For comprehensive information and examples, please refer to the detailed guide available [here](../reference/neps_spaces.md)
 3.  The directory path where the information about the optimization and its progress gets stored.
     This is also used to synchronize multiple calls to `neps.run()` for parallelization.

@@ -18,7 +18,7 @@ from neps.optimizers.utils.initial_design import make_initial_design
 from neps.sampling import Prior, Sampler
 from neps.space import ConfigEncoder, Domain, HPOFloat, HPOInteger, SearchSpace
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
@@ -104,7 +104,7 @@ class IFBO:
     * Github: https://github.com/automl/ifBO/tree/main
     """
 
-    space: SearchSpace | Pipeline
+    space: SearchSpace | PipelineSpace
     """The entire search space for the pipeline."""
 
     encoder: ConfigEncoder
@@ -137,7 +137,7 @@ class IFBO:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        if isinstance(self.space, Pipeline):
+        if isinstance(self.space, PipelineSpace):
             converted_space = convert_neps_to_classic_search_space(self.space)
             if converted_space is not None:
                 self.space = converted_space

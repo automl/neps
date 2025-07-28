@@ -10,11 +10,11 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
 )
 
 
-class ActPipelineSimple(Pipeline):
+class ActPipelineSimple(PipelineSpace):
     prelu = Operation(
         operator="prelu",
         kwargs={"init": 0.1},
@@ -26,7 +26,7 @@ class ActPipelineSimple(Pipeline):
     )
 
 
-class ActPipelineComplex(Pipeline):
+class ActPipelineComplex(PipelineSpace):
     prelu_init_value: float = Float(min_value=0.1, max_value=0.9)
     prelu = Operation(
         operator="prelu",
@@ -37,7 +37,7 @@ class ActPipelineComplex(Pipeline):
     )
 
 
-class FixedPipeline(Pipeline):
+class FixedPipeline(PipelineSpace):
     prelu_init_value: float = 0.5
     prelu = Operation(
         operator="prelu",
@@ -55,7 +55,7 @@ _conv_choices_prior_confidence_choices = (
 )
 
 
-class ConvPipeline(Pipeline):
+class ConvPipeline(PipelineSpace):
     conv_choices_prior_index: int = Integer(
         min_value=0,
         max_value=1,
@@ -91,7 +91,7 @@ class ConvPipeline(Pipeline):
     )
 
 
-class CellPipeline(Pipeline):
+class CellPipeline(PipelineSpace):
     _act = Operation(operator="relu")
     _conv = Operation(operator="conv3x3")
     _norm = Operation(operator="batch")

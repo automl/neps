@@ -42,7 +42,7 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#hierarchies-and-architectures) |
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#3-architectures) |
 | :- | :------------: | :----: | :---------: | :-----------------: |
 | `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
 | `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|

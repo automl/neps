@@ -22,7 +22,7 @@ def evaluate_pipeline(some_float, some_integer, some_cat):
 
 # neps uses the default values and a confidence in this default value to construct a prior
 # that speeds up the search
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     some_float = (
         neps.Float(
             min_value=1,
@@ -52,7 +52,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/user_priors_example",
     max_evaluations_total=15,
 )

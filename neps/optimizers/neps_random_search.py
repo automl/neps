@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     import neps.state.optimizer as optimizer_state
     import neps.state.trial as trial_state
     from neps.optimizers import optimizer
-    from neps.space.neps_spaces.parameters import Pipeline
+    from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.state.trial import Trial
 
 
@@ -43,7 +43,7 @@ class NePSRandomSearch:
 
     def __init__(
         self,
-        pipeline: Pipeline,
+        pipeline: PipelineSpace,
         use_priors: bool = False,  # noqa: FBT001, FBT002
         ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
     ):
@@ -151,7 +151,7 @@ class NePSComplexRandomSearch:
 
     def __init__(
         self,
-        pipeline: Pipeline,
+        pipeline: PipelineSpace,
         ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
     ):
         """Initialize the ComplexRandomSearch optimizer with a pipeline.

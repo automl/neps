@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from neps.optimizers.optimizer import SampledConfig
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 
 if TYPE_CHECKING:
     from neps.sampling import Sampler
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class RandomSearch:
     """A simple random search optimizer."""
 
-    space: SearchSpace | Pipeline
+    space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
 
@@ -28,7 +28,7 @@ class RandomSearch:
         budget_info: BudgetInfo | None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        if isinstance(self.space, Pipeline):
+        if isinstance(self.space, PipelineSpace):
             converted_space = convert_neps_to_classic_search_space(self.space)
             if converted_space is not None:
                 self.space = converted_space

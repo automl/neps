@@ -8,12 +8,12 @@ from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 
 
-class HNASLikePipeline(Pipeline):
+class HNASLikePipeline(PipelineSpace):
     """Based on the `hierarchical+shared` variant (cell block is shared everywhere).
     Across _CONVBLOCK items, _ACT and _CONV also shared. Only the _NORM changes.
 

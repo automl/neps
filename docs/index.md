@@ -69,7 +69,7 @@ def evaluate_pipeline(hyperparameter_a: float, hyperparameter_b: int, architectu
 
 
 # 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
-class PipelineSpace(neps.Pipeline):
+class ExampleSpace(neps.PipelineSpace):
     hyperparameter_a = neps.Float(min_value=0.001, max_value=0.1, log=True)  # Log scale parameter
     hyperparameter_b = neps.Integer(min_value=1, max_value=42)
     architecture_parameter = neps.Categorical(choices=("option_a", "option_b"))
@@ -78,7 +78,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=ExampleSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
     max_evaluations_total=100,
 )

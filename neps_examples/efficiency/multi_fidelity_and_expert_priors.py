@@ -12,7 +12,7 @@ def evaluate_pipeline(float1, float2, integer1, fidelity):
     return objective_to_minimize
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     float1 = neps.Float(
         min_value=1,
         max_value=1000,
@@ -38,7 +38,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/multifidelity_priors",
     max_evaluations_total=25,  # For an alternate stopping method see multi_fidelity.py
 )

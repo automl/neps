@@ -50,7 +50,7 @@ from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
     Integer,
-    Pipeline,
+    PipelineSpace,
     Resolvable,
 )
 
@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 
 
 def _bo(  # noqa: C901, PLR0912
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     initial_design_size: int | Literal["ndim"] = "ndim",
     use_priors: bool,
@@ -102,7 +102,7 @@ def _bo(  # noqa: C901, PLR0912
         ValueError: if initial_design_size < 1
         ValueError: if fidelity is not None and ignore_fidelity is False
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -159,7 +159,7 @@ def _bo(  # noqa: C901, PLR0912
 
 
 def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
@@ -231,7 +231,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
         multi_objective: Whether to use multi-objective promotion strategies.
             Only used in case of multi-objective multi-fidelity algorithms.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -408,8 +408,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     )
 
 
-def determine_optimizer_automatically(space: SearchSpace | Pipeline) -> str:
-    if isinstance(space, Pipeline):
+def determine_optimizer_automatically(space: SearchSpace | PipelineSpace) -> str:
+    if isinstance(space, PipelineSpace):
         if space.fidelity_attrs:
             return "neps_priorband"
         return "complex_random_search"
@@ -432,7 +432,7 @@ def determine_optimizer_automatically(space: SearchSpace | Pipeline) -> str:
 
 
 def random_search(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest fidelity"] = False,
@@ -448,7 +448,7 @@ def random_search(
         ignore_fidelity: Whether to ignore fidelity when sampling.
             In this case, the max fidelity is always used.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -511,7 +511,7 @@ def random_search(
 
 
 def grid_search(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     ignore_fidelity: bool = False,
 ) -> GridSearch:
@@ -525,7 +525,7 @@ def grid_search(
     """
     from neps.optimizers.utils.grid import make_grid
 
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -551,7 +551,7 @@ def grid_search(
 
 
 def ifbo(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     step_size: int | float = 1,
     use_priors: bool = False,
@@ -601,7 +601,7 @@ def ifbo(
         surrogate_path: Path to the surrogate model to use
         surrogate_version: Version of the surrogate model to use
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -679,7 +679,7 @@ def ifbo(
 
 
 def successive_halving(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     sampler: Literal["uniform", "prior"] = "uniform",
     eta: int = 3,
@@ -747,7 +747,7 @@ def successive_halving(
         sample_prior_first: Whether to sample the prior configuration first,
             and if so, should it be at the highest fidelity level.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -770,7 +770,7 @@ def successive_halving(
 
 
 def hyperband(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
@@ -820,7 +820,7 @@ def hyperband(
         sample_prior_first: Whether to sample the prior configuration first,
             and if so, should it be at the highest fidelity level.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -843,7 +843,7 @@ def hyperband(
 
 
 def mo_hyperband(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
@@ -853,7 +853,7 @@ def mo_hyperband(
     """Multi-objective version of hyperband using the same
     candidate selection method as MOASHA.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -878,7 +878,7 @@ def mo_hyperband(
 
 
 def asha(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     early_stopping_rate: int = 0,
@@ -927,7 +927,7 @@ def asha(
         sample_prior_first: Whether to sample the prior configuration first,
             and if so, should it be at the highest fidelity.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -950,7 +950,7 @@ def asha(
 
 
 def moasha(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     early_stopping_rate: int = 0,
@@ -958,7 +958,7 @@ def moasha(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
 ) -> BracketOptimizer:
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -983,7 +983,7 @@ def moasha(
 
 
 def async_hb(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
@@ -1029,7 +1029,7 @@ def async_hb(
 
         sample_prior_first: Whether to sample the prior configuration first.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -1052,7 +1052,7 @@ def async_hb(
 
 
 def priorband(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
@@ -1096,7 +1096,7 @@ def priorband(
             `N` * `maximum_fidelity` worth of fidelity has been evaluated,
             proceed with bayesian optimization when sampling a new configuration.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -1188,7 +1188,7 @@ def bayesian_optimization(
             optimization. If `None`, the reference point will be calculated
             automatically.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -1236,7 +1236,7 @@ def bayesian_optimization(
 
 
 def pibo(
-    pipeline_space: SearchSpace | Pipeline,
+    pipeline_space: SearchSpace | PipelineSpace,
     *,
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,
@@ -1275,7 +1275,7 @@ def pibo(
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             In this case, the max fidelity is always used.
     """
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
@@ -1319,7 +1319,7 @@ class CustomOptimizer:
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     initialized: bool = False
 
-    def create(self, space: SearchSpace | Pipeline) -> AskFunction:
+    def create(self, space: SearchSpace | PipelineSpace) -> AskFunction:
         assert not self.initialized, "Custom optimizer already initialized."
         return self.optimizer(space, **self.kwargs)  # type: ignore
 
@@ -1348,7 +1348,7 @@ def custom(
 
 
 def complex_random_search(
-    pipeline_space: Pipeline,
+    pipeline_space: PipelineSpace,
     *,
     ignore_fidelity: bool | Literal["highest fidelity"] = False,
 ) -> NePSComplexRandomSearch:
@@ -1356,7 +1356,7 @@ def complex_random_search(
     but allows for more complex sampling strategies.
 
     Args:
-        pipeline: The search space to sample from.
+        pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
             If set to `"highest fidelity"`, it will always sample at the highest fidelity.
@@ -1384,7 +1384,7 @@ def complex_random_search(
 
 
 def neps_random_search(
-    pipeline_space: Pipeline,
+    pipeline_space: PipelineSpace,
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest fidelity"] = False,
@@ -1437,7 +1437,7 @@ def neps_random_search(
 
 
 def _neps_bracket_optimizer(
-    pipeline_space: Pipeline,
+    pipeline_space: PipelineSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
@@ -1542,7 +1542,7 @@ def _neps_bracket_optimizer(
 
 
 def neps_priorband(
-    pipeline_space: Pipeline,
+    pipeline_space: PipelineSpace,
     *,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
@@ -1593,8 +1593,8 @@ def neps_priorband(
 PredefinedOptimizers: Mapping[
     str,
     Callable[Concatenate[SearchSpace, ...], AskFunction]
-    | Callable[Concatenate[Pipeline, ...], AskFunction]
-    | Callable[Concatenate[SearchSpace, Pipeline, ...], AskFunction],
+    | Callable[Concatenate[PipelineSpace, ...], AskFunction]
+    | Callable[Concatenate[SearchSpace, PipelineSpace, ...], AskFunction],
 ] = {
     f.__name__: f
     for f in (

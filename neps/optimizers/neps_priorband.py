@@ -20,14 +20,14 @@ from neps.space.neps_spaces import neps_space
 if TYPE_CHECKING:
     import pandas as pd
 
-    from neps.space.neps_spaces.parameters import Pipeline
+    from neps.space.neps_spaces.parameters import PipelineSpace
 
 
 @dataclass
 class NePSPriorBandSampler:
     """Implement a sampler based on PriorBand."""
 
-    space: Pipeline
+    space: PipelineSpace
     """The pipeline space to optimize over."""
 
     eta: int

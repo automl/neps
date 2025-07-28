@@ -11,11 +11,11 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
-    Pipeline,
+    PipelineSpace,
 )
 
 
-class DemoHyperparametersWithFidelitySpace(Pipeline):
+class DemoHyperparametersWithFidelitySpace(PipelineSpace):
     constant1: int = 42
     float1 = Float(
         min_value=0,

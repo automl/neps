@@ -16,7 +16,7 @@ pip install neural-pipeline-search
 1. **Establish a [`pipeline_space=`](reference/neps_spaces.md)**:
 
 ```python
-class PipelineSpace(neps.Pipeline):
+class ExampleSpace(neps.PipelineSpace):
     # Define the parameters of your search space
     some_parameter = neps.Float(min_value=0.0, max_value=1.0)       # float
     another_parameter = neps.Integer(min_value=0, max_value=10)     # integer
@@ -41,7 +41,7 @@ def evaluate_pipeline(some_parameter: float,
 3. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
 ```python
-neps.run(evaluate_pipeline, PipelineSpace())
+neps.run(evaluate_pipeline, ExampleSpace())
 ```
 
 ---

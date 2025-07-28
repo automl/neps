@@ -85,7 +85,7 @@ def evaluate_pipeline(lr=0.1, epoch=20):
     return trainer.logged_metrics["val_loss"].item()
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     lr = neps.Float(min_value=0.001, max_value=0.1, log=True, prior=0.01)
     epoch = neps.Fidelity(neps.Integer(min_value=1, max_value=3))
 
@@ -93,7 +93,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/pytorch_lightning_ddp",
     max_evaluations_total=5,
 )

@@ -23,7 +23,7 @@ from neps.optimizers.models.gp import (
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 
 if TYPE_CHECKING:
     from neps.sampling import Prior
@@ -65,7 +65,7 @@ def _pibo_exp_term(
 class BayesianOptimization:
     """Uses `botorch` as an engine for doing bayesian optimiziation."""
 
-    space: SearchSpace | Pipeline
+    space: SearchSpace | PipelineSpace
     """The search space to use."""
 
     encoder: ConfigEncoder
@@ -95,7 +95,7 @@ class BayesianOptimization:
         budget_info: BudgetInfo | None = None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        if isinstance(self.space, Pipeline):
+        if isinstance(self.space, PipelineSpace):
             converted_space = convert_neps_to_classic_search_space(self.space)
             if converted_space is not None:
                 self.space = converted_space

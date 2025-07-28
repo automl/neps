@@ -7,9 +7,9 @@ from neps.space.neps_spaces import neps_space
 
 
 def generate_possible_config_strings(
-    pipeline: neps.space.neps_spaces.parameters.Pipeline,
+    pipeline: neps.space.neps_spaces.parameters.PipelineSpace,
     resolved_pipeline_attr_getter: Callable[
-        [neps.space.neps_spaces.parameters.Pipeline],
+        [neps.space.neps_spaces.parameters.PipelineSpace],
         neps.space.neps_spaces.parameters.Operation,
     ],
     num_resolutions: int = 50_000,

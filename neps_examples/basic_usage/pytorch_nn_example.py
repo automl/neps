@@ -11,8 +11,14 @@ import numpy as np
 import torch
 import torch.nn as nn
 import neps
-from neps.space.neps_spaces.parameters import Pipeline, Operation, Categorical, Resampled
+from neps.space.neps_spaces.parameters import (
+    PipelineSpace,
+    Operation,
+    Categorical,
+    Resampled,
+)
 from neps.space.neps_spaces import neps_space
+
 
 # Define the neural network architecture using PyTorch as usual
 class ReLUConvBN(nn.Module):
@@ -46,11 +52,32 @@ class Identity(nn.Module):
 
 
 # Define the NEPS space for the neural network architecture
-class NN_Space(Pipeline):
+class NN_Space(PipelineSpace):
     _id = Operation(operator=Identity)
-    _three = Operation(operator=nn.Conv2d,kwargs={"in_channels":3, "out_channels":3, "kernel_size":3, "stride":1, "padding":1})
-    _one = Operation(operator=nn.Conv2d,kwargs={"in_channels":3, "out_channels":3, "kernel_size":1, "stride":1, "padding":0})
-    _reluconvbn = Operation(operator=ReLUConvBN, kwargs={"out_channels":3, "kernel_size":3, "stride":1, "padding":1})
+    _three = Operation(
+        operator=nn.Conv2d,
+        kwargs={
+            "in_channels": 3,
+            "out_channels": 3,
+            "kernel_size": 3,
+            "stride": 1,
+            "padding": 1,
+        },
+    )
+    _one = Operation(
+        operator=nn.Conv2d,
+        kwargs={
+            "in_channels": 3,
+            "out_channels": 3,
+            "kernel_size": 1,
+            "stride": 1,
+            "padding": 0,
+        },
+    )
+    _reluconvbn = Operation(
+        operator=ReLUConvBN,
+        kwargs={"out_channels": 3, "kernel_size": 3, "stride": 1, "padding": 1},
+    )
 
     _O = Categorical(choices=(_three, _one, _id))
 
@@ -91,6 +118,7 @@ class NN_Space(Pipeline):
         args=Resampled(_model_ARGS),
     )
 
+
 # Sampling and printing one random configuration of the pipeline
 pipeline = NN_Space()
 resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
@@ -105,6 +133,7 @@ print(s_callable)
 
 print("\n\nConfig string:\n")
 print(pretty_config)
+
 
 # Defining the pipeline, using the model from the NN_space space as callable
 def evaluate_pipeline(model: nn.Sequential):
@@ -124,4 +153,8 @@ neps.run(
     max_evaluations_total=5,
     overwrite_working_directory=True,
 )
-neps.status("results/neps_spaces_nn_example", print_summary=True, pipeline_space_variables=(pipeline_space, ["model"]))
+neps.status(
+    "results/neps_spaces_nn_example",
+    print_summary=True,
+    pipeline_space_variables=(pipeline_space, ["model"]),
+)

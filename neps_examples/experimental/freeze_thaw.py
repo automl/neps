@@ -149,7 +149,7 @@ def training_pipeline(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    class PipelineSpace(neps.Pipeline):
+    class ModelSpace(neps.PipelineSpace):
         learning_rate = neps.Float(1e-5, 1e-1, log=True)
         num_layers = neps.Integer(1, 5)
         num_neurons = neps.Integer(64, 128)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         epochs = neps.Fidelity(neps.Integer(1, 10))
 
     neps.run(
-        pipeline_space=PipelineSpace(),
+        pipeline_space=ModelSpace(),
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
         max_evaluations_total=50,

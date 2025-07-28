@@ -23,7 +23,7 @@ from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
     convert_neps_to_classic_search_space,
 )
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
 from neps.state.neps_state import TrialRepo
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def run(  # noqa: PLR0913, C901
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: ConfigurationSpace | Pipeline,
+    pipeline_space: ConfigurationSpace | PipelineSpace,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_working_directory: bool = False,
@@ -61,8 +61,8 @@ def run(  # noqa: PLR0913, C901
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
         | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
-        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
-        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
@@ -96,7 +96,7 @@ def run(  # noqa: PLR0913, C901
         validation_error = -some_parameter
         return validation_error
 
-    PipelineSpace(Pipeline):
+    MySpace(PipelineSpace):
         dataset = "mnist"               # constant
         nlayers = neps.Integer(2,10)    # integer
         alpha = neps.Float(0.1, 1.0)    # float
@@ -118,7 +118,7 @@ def run(  # noqa: PLR0913, C901
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=PipelineSpace(),
+        pipeline_space=MySpace(),
         root_directory="usage_example",
         max_evaluations_total=5,
     )
@@ -152,7 +152,7 @@ def run(  # noqa: PLR0913, C901
             This most direct way to specify the search space is as follows:
 
             ```python
-            PipelineSpace(Pipeline):
+            MySpace(PipelineSpace):
                 dataset = "mnist"               # constant
                 nlayers = neps.Integer(2,10)    # integer
                 alpha = neps.Float(0.1, 1.0)    # float
@@ -173,7 +173,7 @@ def run(  # noqa: PLR0913, C901
                 )
 
             neps.run(
-                pipeline_space=PipelineSpace()
+                pipeline_space=MySpace()
             )
             ```
 
@@ -371,7 +371,7 @@ def run(  # noqa: PLR0913, C901
     # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
     # algorithm, we raise an error, as the optimizer is not compatible.
     if (
-        isinstance(pipeline_space, Pipeline)
+        isinstance(pipeline_space, PipelineSpace)
         and neps_classic_space_compatibility == "classic"
     ):
         raise ValueError(
@@ -380,7 +380,7 @@ def run(  # noqa: PLR0913, C901
             "'priorband', or 'complex_random_search'."
         )
 
-    if isinstance(pipeline_space, Pipeline):
+    if isinstance(pipeline_space, PipelineSpace):
         assert not isinstance(evaluate_pipeline, str)
         evaluate_pipeline = adjust_evaluation_pipeline_for_neps_space(
             evaluate_pipeline, pipeline_space
@@ -439,7 +439,7 @@ def run(  # noqa: PLR0913, C901
 
 
 def warmstart_neps(
-    pipeline_space: Pipeline,
+    pipeline_space: PipelineSpace,
     root_directory: Path | str,
     warmstart_configs: Sequence[
         tuple[
@@ -454,8 +454,8 @@ def warmstart_neps(
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
         | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
-        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
-        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",

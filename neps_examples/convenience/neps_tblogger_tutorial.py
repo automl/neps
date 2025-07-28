@@ -210,13 +210,13 @@ def training(
 # Design the pipeline search spaces.
 
 
-def pipeline_space() -> neps.Pipeline:
-    class PipelineSpace(neps.Pipeline):
+def pipeline_space() -> neps.PipelineSpace:
+    class HPOSpace(neps.PipelineSpace):
         lr = neps.Float(min_value=1e-5, max_value=1e-1, log=True)
         optim = neps.Categorical(choices=("Adam", "SGD"))
         weight_decay = neps.Float(min_value=1e-4, max_value=1e-1, log=True)
 
-    return PipelineSpace()
+    return HPOSpace()
 
 
 #############################################################

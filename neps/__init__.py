@@ -19,7 +19,7 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 from neps.state import BudgetInfo, Trial
@@ -39,7 +39,7 @@ __all__ = [
     "HPOInteger",
     "Integer",
     "Operation",
-    "Pipeline",
+    "PipelineSpace",
     "Resampled",
     "SampledConfig",
     "SearchSpace",

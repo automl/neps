@@ -106,7 +106,7 @@ def evaluate_pipeline(learning_rate, epochs):
     return {"loss": loss}
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     learning_rate = neps.Float(min_value=10e-7, max_value=10e-3, log=True)
     epochs = neps.Integer(min_value=1, max_value=3)
 
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=PipelineSpace(),
+        pipeline_space=HPOSpace(),
         root_directory="results/pytorch_ddp",
         max_evaluations_total=25,
     )

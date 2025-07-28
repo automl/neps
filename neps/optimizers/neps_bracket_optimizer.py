@@ -27,7 +27,7 @@ from neps.space.neps_spaces.sampling import (
 if TYPE_CHECKING:
     from neps.optimizers.neps_priorband import NePSPriorBandSampler
     from neps.optimizers.utils.brackets import Bracket
-    from neps.space.neps_spaces.parameters import Pipeline
+    from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.state.optimizer import BudgetInfo
     from neps.state.trial import Trial
 
@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 class _NePSBracketOptimizer:
     """The pipeline space to optimize over."""
 
-    space: Pipeline
+    space: PipelineSpace
 
     """Whether or not to sample the prior first.
 

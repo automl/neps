@@ -21,7 +21,7 @@ def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     }
 
 
-class PipelineSpace(neps.Pipeline):
+class HPOSpace(neps.PipelineSpace):
     float1 = neps.Float(min_value=0, max_value=1)
     float2 = neps.Float(min_value=-10, max_value=10)
     categorical = neps.Categorical(choices=(0, 1))
@@ -32,7 +32,7 @@ class PipelineSpace(neps.Pipeline):
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=PipelineSpace(),
+    pipeline_space=HPOSpace(),
     root_directory="results/logging_additional_info",
     max_evaluations_total=5,
 )

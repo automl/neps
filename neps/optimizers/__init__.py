@@ -15,12 +15,12 @@ from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
-    from neps.space.neps_spaces.parameters import Pipeline
+    from neps.space.neps_spaces.parameters import PipelineSpace
 
 
 def _load_optimizer_from_string(
     optimizer: OptimizerChoice | Literal["auto"],
-    space: SearchSpace | Pipeline,
+    space: SearchSpace | PipelineSpace,
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[AskFunction, OptimizerInfo]:
@@ -50,12 +50,12 @@ def load_optimizer(
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
         | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
-        | Callable[Concatenate[Pipeline, ...], AskFunction]  # from SearchSpace to
-        | Callable[Concatenate[SearchSpace | Pipeline, ...], AskFunction]  # Pipeline
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ),
-    space: SearchSpace | Pipeline,
+    space: SearchSpace | PipelineSpace,
 ) -> tuple[AskFunction, OptimizerInfo]:
     match optimizer:
         # Predefined string (including "auto")

@@ -21,7 +21,7 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
     Resolvable,
 )
@@ -35,7 +35,7 @@ from neps.space.parsing import convert_mapping
 if TYPE_CHECKING:
     from neps.space import SearchSpace
 
-P = TypeVar("P", bound="Pipeline")
+P = TypeVar("P", bound="PipelineSpace")
 
 
 class SamplingResolutionContext:
@@ -353,7 +353,7 @@ class SamplingResolver:
     @_resolver_dispatch.register
     def _(
         self,
-        pipeline_obj: Pipeline,
+        pipeline_obj: PipelineSpace,
         context: SamplingResolutionContext,
     ) -> Any:
         if context.was_already_resolved(pipeline_obj):
@@ -829,7 +829,7 @@ class NepsCompatConverter:
 
 
 def _prepare_sampled_configs(
-    chosen_pipelines: list[tuple[Pipeline, SamplingResolutionContext]],
+    chosen_pipelines: list[tuple[PipelineSpace, SamplingResolutionContext]],
     n_prev_trials: int,
     return_single: bool,  # noqa: FBT001
 ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
@@ -912,7 +912,7 @@ def adjust_evaluation_pipeline_for_neps_space(
     return inner
 
 
-def convert_neps_to_classic_search_space(space: Pipeline) -> SearchSpace | None:
+def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | None:
     """Convert a NePS space to a classic SearchSpace if possible.
     This function checks if the NePS space can be converted to a classic SearchSpace
     by ensuring that it does not contain any complex types like Operation or Resampled,
@@ -1000,10 +1000,10 @@ def check_neps_space_compatibility(
             Concatenate[SearchSpace, ...], optimizer.AskFunction
         ]  # Hack, while we transit
         | Callable[
-            Concatenate[Pipeline, ...], optimizer.AskFunction
+            Concatenate[PipelineSpace, ...], optimizer.AskFunction
         ]  # from SearchSpace to
         | Callable[
-            Concatenate[SearchSpace | Pipeline, ...], optimizer.AskFunction
+            Concatenate[SearchSpace | PipelineSpace, ...], optimizer.AskFunction
         ]  # Pipeline
         | algorithms.CustomOptimizer
         | Literal["auto"]

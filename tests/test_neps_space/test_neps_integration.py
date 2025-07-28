@@ -15,7 +15,7 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 
@@ -39,7 +39,7 @@ def hyperparameter_pipeline_to_optimize(
     return objective_to_minimize
 
 
-class DemoHyperparameterSpace(Pipeline):
+class DemoHyperparameterSpace(PipelineSpace):
     float1 = Float(
         min_value=0,
         max_value=1,
@@ -71,7 +71,7 @@ class DemoHyperparameterSpace(Pipeline):
     )
 
 
-class DemoHyperparameterWithFidelitySpace(Pipeline):
+class DemoHyperparameterWithFidelitySpace(PipelineSpace):
     float1 = Float(
         min_value=0,
         max_value=1,
@@ -103,7 +103,7 @@ class DemoHyperparameterWithFidelitySpace(Pipeline):
     )
 
 
-class DemoHyperparameterComplexSpace(Pipeline):
+class DemoHyperparameterComplexSpace(PipelineSpace):
     _small_float = Float(
         min_value=0,
         max_value=1,
@@ -278,7 +278,7 @@ def operation_pipeline_to_optimize(model: Model, some_hp: str):
     return objective_to_minimize
 
 
-class DemoOperationSpace(Pipeline):
+class DemoOperationSpace(PipelineSpace):
     """A demonstration of how to use operations in a search space.
     This space defines a model that can be optimized using different inner functions
     and a factor. The model can be used to evaluate a set of values and return an objective to minimize.

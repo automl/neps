@@ -7,12 +7,12 @@ from neps.space.neps_spaces.parameters import (
     Categorical,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 
 
-class NosBench(Pipeline):
+class NosBench(PipelineSpace):
     _UNARY_FUN = Categorical(
         choices=(
             Operation(operator="Square"),

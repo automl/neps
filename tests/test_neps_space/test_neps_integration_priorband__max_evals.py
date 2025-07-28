@@ -12,7 +12,7 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
-    Pipeline,
+    PipelineSpace,
 )
 
 
@@ -20,7 +20,7 @@ def evaluate_pipeline(float1, float2, integer1, fidelity):
     return -float(np.sum([float1, float2, integer1])) * fidelity
 
 
-class DemoHyperparameterWithFidelitySpace(Pipeline):
+class DemoHyperparameterWithFidelitySpace(PipelineSpace):
     float1 = Float(
         min_value=1,
         max_value=1000,

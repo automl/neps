@@ -9,12 +9,12 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Integer,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 
 
-class ActPipelineSimpleFloat(Pipeline):
+class ActPipelineSimpleFloat(PipelineSpace):
     prelu_init_value = Float(
         min_value=0,
         max_value=1000000,
@@ -52,7 +52,7 @@ class ActPipelineSimpleFloat(Pipeline):
     )
 
 
-class ActPipelineComplexInteger(Pipeline):
+class ActPipelineComplexInteger(PipelineSpace):
     prelu_init_value = Integer(min_value=0, max_value=1000000)
 
     prelu_shared1 = Operation(
@@ -102,7 +102,7 @@ class ActPipelineComplexInteger(Pipeline):
     )
 
 
-class CellPipelineCategorical(Pipeline):
+class CellPipelineCategorical(PipelineSpace):
     conv_block = Categorical(
         choices=(
             Operation(operator="conv1"),

@@ -7,7 +7,7 @@ from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
     Operation,
-    Pipeline,
+    PipelineSpace,
     Resampled,
 )
 
@@ -37,7 +37,7 @@ class Sum:
         return sum(values)
 
 
-class DemoRecursiveOperationSpace(Pipeline):
+class DemoRecursiveOperationSpace(PipelineSpace):
     # The way to sample `factor` values
     _factor = Float(min_value=0, max_value=1)
 

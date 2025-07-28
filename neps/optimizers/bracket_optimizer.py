@@ -22,7 +22,7 @@ from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.sampling.samplers import Sampler
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
-from neps.space.neps_spaces.parameters import Pipeline
+from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -214,7 +214,7 @@ class BracketOptimizer:
     `"successive_halving"`, `"asha"`, `"hyperband"`, etc.
     """
 
-    space: SearchSpace | Pipeline
+    space: SearchSpace | PipelineSpace
     """The pipeline space to optimize over."""
 
     encoder: ConfigEncoder
@@ -259,7 +259,7 @@ class BracketOptimizer:
         budget_info: BudgetInfo | None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
-        if isinstance(self.space, Pipeline):
+        if isinstance(self.space, PipelineSpace):
             converted_space = convert_neps_to_classic_search_space(self.space)
             if converted_space is not None:
                 self.space = converted_space

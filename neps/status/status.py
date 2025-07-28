@@ -20,7 +20,7 @@ from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
 
 if TYPE_CHECKING:
-    from neps.space.neps_spaces.parameters import Pipeline
+    from neps.space.neps_spaces.parameters import PipelineSpace
 
 
 @dataclass
@@ -107,7 +107,7 @@ class Summary:
         return len(self.by_state[State.PENDING])
 
     def formatted(  # noqa: PLR0912, C901
-        self, pipeline_space_variables: tuple[Pipeline, list[str]] | None = None
+        self, pipeline_space_variables: tuple[PipelineSpace, list[str]] | None = None
     ) -> str:
         """Return a formatted string of the summary.
 
@@ -258,7 +258,7 @@ def status(
     root_directory: str | Path,
     *,
     print_summary: bool = False,
-    pipeline_space_variables: tuple[Pipeline, list[str]] | None = None,
+    pipeline_space_variables: tuple[PipelineSpace, list[str]] | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Print status information of a neps run and return results.
 
