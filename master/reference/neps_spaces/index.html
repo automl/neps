@@ -3765,16 +3765,11 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">_sigmoid</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">)</span>
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
 <a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># We can then search of these operations and use them in the evaluation function</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">activation_function</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>        <span class="n">choices</span><span class="o">=</span><span class="p">(</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>            <span class="n">_relu</span><span class="p">,</span>
-<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>            <span class="n">_sigmoid</span><span class="p">,</span>
-<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>        <span class="p">)</span>
-<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="p">)</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">activation_function</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">_relu</span><span class="p">,</span> <span class="n">_sigmoid</span><span class="p">))</span>
 </code></pre></div>
 <div class="admonition info">
 <p class="admonition-title">Intermediate parameters</p>
-<p>When defining parameters that should not be passed to the evaluation function and instead are used in other parameters, prefix them with an underscore <code>_</code>.</p>
+<p>When defining parameters that should not be passed to the evaluation function and instead are used in other parameters, prefix them with an underscore, like here in <code>_layer_size</code>.</p>
 </div>
 <p>Operation also allow for (keyword-)arguments to be defined</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    <span class="n">_layer_size</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
@@ -3807,12 +3802,21 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </code></pre></div>
 <details class="info">
 <summary>Self- and future references</summary>
-<p>When referencing itself or a not yet defined parameter use a string of that parameters name:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;next_param&quot;</span><span class="p">)))</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="n">next_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<p>When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">choices</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">)),</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;future_param&quot;</span><span class="p">),),</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">)</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">future_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </code></pre></div>
 </details>
-<p>Together, <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled">Resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allow you to define complex search spaces akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>.</p>
+<p>.</p>
+<div class="admonition tip">
+<p class="admonition-title">Complex structural spaces</p>
+<p>Together, <a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled">Resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allow you to define complex search spaces across the whole ML-pipeline akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>, exceeding architecture search.</p>
+</div>
 <h2 id="inspecting-configurations">Inspecting Configurations<a class="headerlink" href="#inspecting-configurations" title="Permanent link">#</a></h2>
 <p>NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration from the <code>results</code> directory using the <a class="autorefs autorefs-internal" title="            NepsCompatConverter" href="../../api/neps/space/neps_spaces/neps_space/#neps.space.neps_spaces.neps_space.NepsCompatConverter"><code>NepsCompatConverter</code></a> class, which converts the configuration such that it can be used with the NePS Spaces API:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">neps_space</span>
