@@ -623,9 +623,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-structural-spaces-and-architectures" class="md-nav__link">
+  <a href="#3-architectures" class="md-nav__link">
     <span class="md-ellipsis">
-      3. Structural Spaces and Architectures
+      3. Architectures
     </span>
   </a>
   
@@ -3750,7 +3750,7 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span>
 </code></pre></div>
 <p>For more details on how to use the <code>neps.run()</code> function, see the <a href="../neps_run/">NePS Run Reference</a>.</p>
-<h2 id="3-structural-spaces-and-architectures">3. Structural Spaces and Architectures<a class="headerlink" href="#3-structural-spaces-and-architectures" title="Permanent link">#</a></h2>
+<h2 id="3-architectures">3. Architectures<a class="headerlink" href="#3-architectures" title="Permanent link">#</a></h2>
 <p>Additionally, <strong>NePS spaces</strong> can describe <strong>complex (hierarchical) architectures</strong> using:</p>
 <ul>
 <li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
@@ -3781,6 +3781,7 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="c1"># args=(_layer_size,)</span>
 <a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="p">)</span>
 </code></pre></div>
+<p>This can be used for efficient architecture search by defining cells and blocks of operations, that make up a neural network.</p>
 <details class="abstract">
 <summary>Structural Space-compatible optimizers</summary>
 <p>Currently, NePS Spaces is compatible with these optimizers, which can be imported from <a class="autorefs autorefs-internal" title="NePS Algorithms" href="../../api/neps/optimizers/algorithms/#neps.optimizers.algorithms--neps-algorithms">neps.algorithms</a>:</p>
@@ -3791,25 +3792,47 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </ul>
 </details>
 <h2 id="4-general-structures">4. General Structures<a class="headerlink" href="#4-general-structures" title="Permanent link">#</a></h2>
+<p>One caveat of the previously mentioned operations is that they are sampled once and reused for all occurrences of this operation. This section describes how resampling allows reusing parameters in different contexts, using:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
+<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>neps.Resampled</code></a>: Resample other parameters</li>
 </ul>
-<p>With <code>Resampled</code> you can reuse parameters in for other parameters, even themselves recursively:</p>
+<p>With <code>neps.Resampled</code> you can reuse parameters in for other parameters, even themselves recursively:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="c1"># independently, so it can take different values than its source</span>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">resampled_float</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
 </code></pre></div>
+<p>This is especially useful for defining complex architectures, where e.g. a cell block is defined and then resampled multiple times to create a neural network architecture:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>    <span class="n">_kernel_size</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="c1"># Define a cell block that can be resampled</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="c1"># It will resample a new kernel size from _kernel_size each time</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">_cell_block</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Operation</span><span class="p">(</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>        <span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;kernel_size&quot;</span><span class="p">:</span> <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">_kernel_size</span><span class="p">)}</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>    <span class="p">)</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="c1"># Resample the cell block multiple times to create a convolutional neural network</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="n">cnn</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">_cell_block</span><span class="p">),</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">_cell_block</span><span class="p">),</span>
+<a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">_cell_block</span><span class="p">),</span>
+<a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a>    <span class="p">)</span>
+</code></pre></div>
 <details class="info">
 <summary>Self- and future references</summary>
 <p>When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">choices</span><span class="o">=</span><span class="p">(</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">)),</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;future_param&quot;</span><span class="p">),),</span>
-<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="p">)</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">)</span>
-<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="n">future_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="n">self_reference</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    <span class="n">choices</span><span class="o">=</span><span class="p">(</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>        <span class="c1"># It will either choose to resample itself twice</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">),</span> <span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;self_reference&quot;</span><span class="p">)),</span>
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>        <span class="c1"># Or it will sample the future parameter</span>
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>        <span class="p">(</span><span class="n">Resampled</span><span class="p">(</span><span class="s2">&quot;future_param&quot;</span><span class="p">),),</span>
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>    <span class="p">)</span>
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="p">)</span>
+<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># This results in a (possibly infinite) tuple of resampled future_params</span>
+<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a>
+<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a><span class="n">future_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
 </code></pre></div>
 </details>
 <p>.</p>
@@ -3819,36 +3842,36 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </div>
 <h2 id="inspecting-configurations">Inspecting Configurations<a class="headerlink" href="#inspecting-configurations" title="Permanent link">#</a></h2>
 <p>NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration from the <code>results</code> directory using the <a class="autorefs autorefs-internal" title="            NepsCompatConverter" href="../../api/neps/space/neps_spaces/neps_space/#neps.space.neps_spaces.neps_space.NepsCompatConverter"><code>NepsCompatConverter</code></a> class, which converts the configuration such that it can be used with the NePS Spaces API:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">neps_space</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;Path/to/config.yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    <span class="n">conf_dict</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">conf_dict</span><span class="p">)</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="c1"># Use the resolution context to sample the configuration using a</span>
-<a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="c1"># Sampler that follows the instructions in the configuration</span>
-<a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pipeline</span><span class="o">=</span><span class="n">NN_Space</span><span class="p">(),</span>
-<a id="__codelineno-8-11" name="__codelineno-8-11" href="#__codelineno-8-11"></a>    <span class="c1"># Predefined samplings are the decisions made at each sampling step</span>
-<a id="__codelineno-8-12" name="__codelineno-8-12" href="#__codelineno-8-12"></a>    <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">),</span>
-<a id="__codelineno-8-13" name="__codelineno-8-13" href="#__codelineno-8-13"></a>    <span class="c1"># Environment values are the fidelities and any arguments of the evaluation function not part of the search space</span>
-<a id="__codelineno-8-14" name="__codelineno-8-14" href="#__codelineno-8-14"></a>    <span class="n">environment_values</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">environment_values</span><span class="p">)</span>
-<a id="__codelineno-8-15" name="__codelineno-8-15" href="#__codelineno-8-15"></a>
-<a id="__codelineno-8-16" name="__codelineno-8-16" href="#__codelineno-8-16"></a><span class="c1"># The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model</span>
-<a id="__codelineno-8-17" name="__codelineno-8-17" href="#__codelineno-8-17"></a><span class="n">model_callable</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="n">resolved_pipeline</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces</span><span class="w"> </span><span class="kn">import</span> <span class="n">neps_space</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;Path/to/config.yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    <span class="n">conf_dict</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">conf_dict</span><span class="p">)</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="c1"># Use the resolution context to sample the configuration using a</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="c1"># Sampler that follows the instructions in the configuration</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="n">resolved_pipeline</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">pipeline</span><span class="o">=</span><span class="n">NN_Space</span><span class="p">(),</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>    <span class="c1"># Predefined samplings are the decisions made at each sampling step</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a>    <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span><span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">predefined_samplings</span><span class="p">),</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>    <span class="c1"># Environment values are the fidelities and any arguments of the evaluation function not part of the search space</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a>    <span class="n">environment_values</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">environment_values</span><span class="p">)</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="c1"># The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="n">model_callable</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">convert_operation_to_callable</span><span class="p">(</span><span class="n">operation</span><span class="o">=</span><span class="n">resolved_pipeline</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
 </code></pre></div>
 <h2 id="using-configspace">Using ConfigSpace<a class="headerlink" href="#using-configspace" title="Permanent link">#</a></h2>
 <p>For users familiar with the <a href="https://automl.github.io/ConfigSpace/main/"><code>ConfigSpace</code></a> library,
 can also define the <code>pipeline_space</code> through <code>ConfigurationSpace()</code></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">configspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationSpace</span><span class="p">,</span> <span class="n">Float</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">configspace</span> <span class="o">=</span> <span class="n">ConfigurationSpace</span><span class="p">(</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="p">{</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>        <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="n">Float</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-1</span><span class="p">),</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;adam&quot;</span><span class="p">,</span> <span class="s2">&quot;sgd&quot;</span><span class="p">,</span> <span class="s2">&quot;rmsprop&quot;</span><span class="p">],</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>        <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>    <span class="p">}</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">configspace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationSpace</span><span class="p">,</span> <span class="n">Float</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">configspace</span> <span class="o">=</span> <span class="n">ConfigurationSpace</span><span class="p">(</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>    <span class="p">{</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>        <span class="s2">&quot;learning_rate&quot;</span><span class="p">:</span> <span class="n">Float</span><span class="p">(</span><span class="s2">&quot;learning_rate&quot;</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mf">1e-4</span><span class="p">,</span> <span class="mf">1e-1</span><span class="p">),</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>        <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;adam&quot;</span><span class="p">,</span> <span class="s2">&quot;sgd&quot;</span><span class="p">,</span> <span class="s2">&quot;rmsprop&quot;</span><span class="p">],</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>        <span class="s2">&quot;dropout_rate&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    <span class="p">}</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="p">)</span>
 </code></pre></div>
 
 
