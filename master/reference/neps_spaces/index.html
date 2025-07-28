@@ -3723,10 +3723,12 @@
 </ul>
 <p>Using these types, you can define the parameters that NePS will optimize during the search process.
 A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs autorefs-internal" title="            PipelineSpace" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace"><code>PipelineSpace</code></a>. Here we define the hyperparameters that make up the space, like so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MySpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">cat_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">))</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">MySpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">cat_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">))</span>
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title"><strong><a href="../search_algorithms/landing_page_algo/#what-is-multi-fidelity-optimization">Fidelity</a> Parameters</strong></p>
@@ -3743,19 +3745,18 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </code></pre></div>
 <p>For more details on how to use priors, see the <a href="../search_algorithms/landing_page_algo/#what-are-priors">Priors</a> section.</p>
 </div>
-<h2 id="2-using-neps-spaces">2. Using NePS Spaces<a class="headerlink" href="#2-using-neps-spaces" title="Permanent link">#</a></h2>
-<p>To search a NePS space, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="o">...</span><span class="p">,</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">MySpace</span><span class="p">()</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">)</span>
+<h2 id="2-using-neps-spaces">2. Using <strong>NePS Spaces</strong><a class="headerlink" href="#2-using-neps-spaces" title="Permanent link">#</a></h2>
+<p>To search a <strong>NePS space</strong>, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="o">...</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">MySpace</span><span class="p">()</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="p">)</span>
 </code></pre></div>
 <p>For more details on how to use the <code>neps.run()</code> function, see the <a href="../neps_run/">NePS Run Reference</a>.</p>
 <h2 id="3-architectures">3. Architectures<a class="headerlink" href="#3-architectures" title="Permanent link">#</a></h2>
 <p>Additionally, <strong>NePS spaces</strong> can describe <strong>complex (hierarchical) architectures</strong> using:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
+<li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations and their arguments</li>
 </ul>
 <p>Operations can be Callables, (e.g. pytorch objects) which will be passed to the evaluation function as such:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span>
@@ -3766,23 +3767,24 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">_relu</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">)</span>
 <a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">_sigmoid</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">)</span>
 <a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># We can then search of these operations and use them in the evaluation function</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>    <span class="c1"># We can then search over these operations and use them in the evaluation function</span>
 <a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>    <span class="n">activation_function</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="n">_relu</span><span class="p">,</span> <span class="n">_sigmoid</span><span class="p">))</span>
 </code></pre></div>
 <div class="admonition info">
 <p class="admonition-title">Intermediate parameters</p>
-<p>When defining parameters that should not be passed to the evaluation function and instead are used in other parameters, prefix them with an underscore, like here in <code>_layer_size</code>.</p>
+<p>When defining parameters that should not be passed to the evaluation function and instead are used in other parameters, prefix them with an underscore, like here in <code>_layer_size</code>. Otherwise this might lead to <code>unexpected arguments</code> errors.</p>
 </div>
-<p>Operation also allow for (keyword-)arguments to be defined</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    <span class="n">_layer_size</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<p>Operation also allow for (keyword-)arguments to be defined, including other parameters of the space:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>    <span class="n">_layer_size</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">hidden_layer</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Operation</span><span class="p">(</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">,</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;output_size&quot;</span><span class="p">:</span> <span class="n">_layer_size</span><span class="p">},</span>    <span class="c1"># Using the previously defined parameter</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="c1"># Or for non-keyword arguments:</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">activation_function</span><span class="p">,)</span>
-<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;input_size&quot;</span><span class="p">:</span> <span class="mi">64</span><span class="p">,</span>               <span class="c1"># Fixed input size</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>                <span class="s2">&quot;output_size&quot;</span><span class="p">:</span> <span class="n">_layer_size</span><span class="p">},</span>    <span class="c1"># Using the previously defined parameter</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="c1"># Or for non-keyword arguments:</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">activation_function</span><span class="p">,)</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="p">)</span>
 </code></pre></div>
 <p>This can be used for efficient architecture search by defining cells and blocks of operations, that make up a neural network.</p>
 <details class="abstract">
@@ -3795,15 +3797,16 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 </ul>
 </details>
 <h2 id="4-general-structures">4. General Structures<a class="headerlink" href="#4-general-structures" title="Permanent link">#</a></h2>
-<p>One caveat of the previously mentioned operations is that they are sampled once and reused for all occurrences of this operation. This section describes how resampling allows reusing parameters in different contexts, using:</p>
+<p>Until now all parameters are sampled once and their value used for all occurrences. This section describes how to resample parameters in different contexts using:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>neps.Resampled</code></a>: Resample other parameters</li>
+<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>neps.Resampled</code></a>: Resample from an existing parameters range</li>
 </ul>
-<p>With <code>neps.Resampled</code> you can reuse parameters in for other parameters, even themselves recursively:</p>
+<p>With <code>neps.Resampled</code> you can reuse a parameter, even themselves recursively, but with a new value each time:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="c1"># independently, so it can take different values than its source</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">resampled_float</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="c1"># The resampled parameter will have the same range but will be sampled</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="c1"># independently, so it can take a different value than its source</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">resampled_float</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Resampled</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">float_param</span><span class="p">)</span>
 </code></pre></div>
 <p>This is especially useful for defining complex architectures, where e.g. a cell block is defined and then resampled multiple times to create a neural network architecture:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>    <span class="n">_kernel_size</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
