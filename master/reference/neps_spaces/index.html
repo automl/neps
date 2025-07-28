@@ -3744,7 +3744,7 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <p>For more details on how to use priors, see the <a href="../search_algorithms/landing_page_algo/#what-are-priors">Priors</a> section.</p>
 </div>
 <h2 id="2-using-neps-spaces">2. Using NePS Spaces<a class="headerlink" href="#2-using-neps-spaces" title="Permanent link">#</a></h2>
-<p>To use a NePS space, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
+<p>To search a NePS space, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="o">...</span><span class="p">,</span>
@@ -3778,10 +3778,11 @@ A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs aut
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
 <a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">hidden_layer</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Operation</span><span class="p">(</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">operator</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">,</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;output_size&quot;</span><span class="p">:</span> <span class="n">_layer_size</span><span class="p">}</span>  <span class="c1"># Use the previously defined parameter</span>
-<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="c1"># Or for an non-keyword args using `args=`</span>
-<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="c1"># args=(_layer_size,)</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="p">)</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;output_size&quot;</span><span class="p">:</span> <span class="n">_layer_size</span><span class="p">},</span>    <span class="c1"># Using the previously defined parameter</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>        <span class="c1"># Or for non-keyword arguments:</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">activation_function</span><span class="p">,)</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="p">)</span>
 </code></pre></div>
 <p>This can be used for efficient architecture search by defining cells and blocks of operations, that make up a neural network.</p>
 <details class="abstract">
