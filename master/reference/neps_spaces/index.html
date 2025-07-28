@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#neps-spaces-joint-architecture-and-hyperparameter-search" class="md-skip">
+        <a href="#neps-spaces" class="md-skip">
           Skip to content
         </a>
       
@@ -605,23 +605,14 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#constructing-neps-spaces" class="md-nav__link">
+  <a href="#constructing-hyperparameter-spaces" class="md-nav__link">
     <span class="md-ellipsis">
-      Constructing NePS Spaces
+      Constructing Hyperparameter Spaces
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Constructing NePS Spaces">
+    <nav class="md-nav" aria-label="Constructing Hyperparameter Spaces">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#hpo-search-spaces" class="md-nav__link">
-    <span class="md-ellipsis">
-      HPO Search Spaces
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#hierarchies-and-architectures" class="md-nav__link">
@@ -3717,33 +3708,26 @@
 
 
 
-<h1 id="neps-spaces-joint-architecture-and-hyperparameter-search">NePS Spaces: Joint Architecture and Hyperparameter Search<a class="headerlink" href="#neps-spaces-joint-architecture-and-hyperparameter-search" title="Permanent link">#</a></h1>
-<p>NePS Spaces provides a powerful framework for defining and optimizing complex search spaces, enabling both and joint architecture and hyperparameter search (JAHS).</p>
-<h2 id="constructing-neps-spaces">Constructing NePS Spaces<a class="headerlink" href="#constructing-neps-spaces" title="Permanent link">#</a></h2>
-<p><strong>NePS spaces</strong> include all the necessary components to define a <a href="#hpo-search-spaces">Hyperparameter Optimization (HPO) search space</a> like:</p>
+<h1 id="neps-spaces">NePS Spaces<a class="headerlink" href="#neps-spaces" title="Permanent link">#</a></h1>
+<p><strong>NePS Spaces</strong> provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including hyperparameters, architecture search and more.</p>
+<h2 id="constructing-hyperparameter-spaces">Constructing Hyperparameter Spaces<a class="headerlink" href="#constructing-hyperparameter-spaces" title="Permanent link">#</a></h2>
+<p><strong>NePS spaces</strong> include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:</p>
 <ul>
-<li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a>: Discrete integer values</li>
-<li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a>: Continuous float values</li>
-<li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>Categorical</code></a>: Discrete categorical values</li>
-<li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
+<li><a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>neps.Integer</code></a>: Discrete integer values</li>
+<li><a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>neps.Float</code></a>: Continuous float values</li>
+<li><a class="autorefs autorefs-internal" title="            Categorical" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Categorical"><code>neps.Categorical</code></a>: Discrete categorical values</li>
+<li><a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>neps.Fidelity</code></a>: Special type for float or integer, <a href="../search_algorithms/multifidelity/">multi-fidelity</a> parameters (e.g., epochs, dataset size)</li>
 </ul>
 <p>Using these types, you can define the parameters that NePS will optimize during the search process.
-Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-and-architectures">complex (hierarchical) architectures</a> using:</p>
-<ul>
-<li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
-<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
-</ul>
-<h3 id="hpo-search-spaces">HPO Search Spaces<a class="headerlink" href="#hpo-search-spaces" title="Permanent link">#</a></h3>
-<p>A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs autorefs-internal" title="            Pipeline" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline"><code>Pipeline</code></a>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps</span><span class="w"> </span><span class="kn">import</span> <span class="n">Pipeline</span><span class="p">,</span> <span class="n">Float</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">Categorical</span><span class="p">,</span> <span class="n">Fidelity</span><span class="p">,</span> <span class="n">Resampled</span><span class="p">,</span> <span class="n">Operation</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">pipeline_space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
+A <strong>NePS space</strong> is defined as a subclass of <a class="autorefs autorefs-internal" title="            PipelineSpace" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace"><code>PipelineSpace</code></a>. Here we define the hyperparameters that make up the space, like so:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MySpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">cat_param</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">))</span>
 </code></pre></div>
-<p>Here we define the hyperparameters that make up the space, like so:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>    <span class="n">float_param</span> <span class="o">=</span> <span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">int_param</span> <span class="o">=</span> <span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">cat_param</span> <span class="o">=</span> <span class="n">Categorical</span><span class="p">(</span><span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;C&quot;</span><span class="p">))</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">epochs</span> <span class="o">=</span> <span class="n">Fidelity</span><span class="p">(</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span>
+<p>!!! ### Multi-Fidelity Parameters</p>
+<p>Wrapping an <a class="autorefs autorefs-internal" title="            Integer" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Integer"><code>Integer</code></a> or <a class="autorefs autorefs-internal" title="            Float" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Float"><code>Float</code></a> in a <a class="autorefs autorefs-internal" title="            Fidelity" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Fidelity"><code>Fidelity</code></a> allows you to employ <a href="../search_algorithms/multifidelity/">multi-fidelity optimization</a> strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>    <span class="n">epochs</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Fidelity</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">))</span>
 </code></pre></div>
 <div class="admonition tip">
 <p class="admonition-title"><strong>Using your knowledge, providing a Prior</strong></p>
@@ -3755,6 +3739,11 @@ Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-an
 </div>
 <h3 id="hierarchies-and-architectures">Hierarchies and Architectures<a class="headerlink" href="#hierarchies-and-architectures" title="Permanent link">#</a></h3>
 <p><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled">Resampling</a> and <a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation">operations</a> allow you to define complex architectures akin to <a href="https://en.wikipedia.org/wiki/Context-free_grammar">Context-Free Grammars (CFGs)</a>.</p>
+<p>Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-and-architectures">complex (hierarchical) architectures</a> using:</p>
+<ul>
+<li><a class="autorefs autorefs-internal" title="            Operation" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Operation"><code>Operation</code></a>: Define operations (e.g., convolution, pooling, activation) with arguments</li>
+<li><a class="autorefs autorefs-internal" title="            Resampled" href="../../api/neps/space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Resampled"><code>Resampled</code></a>: Resample other parameters</li>
+</ul>
 <p>With <code>Resampled</code> you can reuse parameters in for other parameters, even themselves recursively:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>    <span class="c1"># The new parameter will have the same range but will be resampled</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="c1"># independently, so it can take different values than its source</span>
@@ -3775,7 +3764,7 @@ Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-an
 <p>Operations can be Callables, (e.g. pytorch objects) whose arguments can themselves be parameters:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sequential</span><span class="p">,</span> <span class="n">Conv2d</span><span class="p">,</span> <span class="n">ReLU</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">NN_Space</span><span class="p">(</span><span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">NNSpace</span><span class="p">(</span><span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="c1"># Define an operation for a ReLU activation</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">_relu</span> <span class="o">=</span> <span class="n">Operation</span><span class="p">(</span><span class="n">operator</span><span class="o">=</span><span class="n">ReLU</span><span class="p">)</span>
@@ -3805,16 +3794,12 @@ Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-an
 <a id="__codelineno-5-30" name="__codelineno-5-30" href="#__codelineno-5-30"></a>        <span class="n">args</span><span class="o">=</span><span class="n">_model_args</span>
 <a id="__codelineno-5-31" name="__codelineno-5-31" href="#__codelineno-5-31"></a>    <span class="p">)</span>
 </code></pre></div>
-<details class="warning">
-<summary>Tuples as choice</summary>
-<p>When using a tuple as one of the choices in a <code>Categorical</code>, all choices must be tuples, as in the example above with <code>(_relu,)</code>.</p>
-</details>
 <h2 id="using-neps-spaces">Using NePS Spaces<a class="headerlink" href="#using-neps-spaces" title="Permanent link">#</a></h2>
 <p>To use a NePS space, pass it as the <code>pipeline_space</code> argument to the <code>neps.run()</code> function:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>    <span class="o">...</span><span class="p">,</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">NN_Space</span><span class="p">()</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">MySpace</span><span class="p">()</span>
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p">)</span>
 </code></pre></div>
 <div class="admonition abstract">
@@ -3833,7 +3818,7 @@ Additionally, <strong>NePS spaces</strong> can describe <a href="#hierarchies-an
 <a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>
 <a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;Path/to/config.yaml&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
 <a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">conf_dict</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">safe_load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
-<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">resolution_context</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">conf_dict</span><span class="p">)</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">from_neps_config</span><span class="p">(</span><span class="n">conf_dict</span><span class="p">)</span>
 <a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>
 <a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="c1"># Use the resolution context to sample the configuration using a</span>
 <a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># Sampler that follows the instructions in the configuration</span>

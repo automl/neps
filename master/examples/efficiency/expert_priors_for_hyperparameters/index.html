@@ -3661,7 +3661,7 @@
 <a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>
 <a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a><span class="c1"># neps uses the default values and a confidence in this default value to construct a prior</span>
 <a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a><span class="c1"># that speeds up the search</span>
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="k">class</span><span class="w"> </span><span class="nc">PipelineSpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a><span class="k">class</span><span class="w"> </span><span class="nc">HPOSpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    <span class="n">some_float</span> <span class="o">=</span> <span class="p">(</span>
 <a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>        <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span>
 <a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>            <span class="n">min_value</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
@@ -3691,7 +3691,7 @@
 <a id="__codelineno-0-52" name="__codelineno-0-52" href="#__codelineno-0-52"></a><span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
 <a id="__codelineno-0-53" name="__codelineno-0-53" href="#__codelineno-0-53"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
 <a id="__codelineno-0-54" name="__codelineno-0-54" href="#__codelineno-0-54"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">evaluate_pipeline</span><span class="p">,</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">PipelineSpace</span><span class="p">(),</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55" href="#__codelineno-0-55"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">HPOSpace</span><span class="p">(),</span>
 <a id="__codelineno-0-56" name="__codelineno-0-56" href="#__codelineno-0-56"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/user_priors_example&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-57" name="__codelineno-0-57" href="#__codelineno-0-57"></a>    <span class="n">max_evaluations_total</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span>
 <a id="__codelineno-0-58" name="__codelineno-0-58" href="#__codelineno-0-58"></a><span class="p">)</span>

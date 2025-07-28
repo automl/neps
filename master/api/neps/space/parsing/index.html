@@ -4465,14 +4465,14 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
       dataclass
    (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="o">|</span> <span class="n"><span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span></span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="p">),</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            SearchSpace
 
 
   
       dataclass
-   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span>
+   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -4509,7 +4509,7 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 
   
       dataclass
-   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <span title="ConfigSpace.ConfigurationSpace">ConfigurationSpace</span> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -4534,7 +4534,7 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 
   
       dataclass
-   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.search_space.SearchSpace)" href="../search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -4589,9 +4589,9 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 <a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Parameter</span><span class="p">]</span>
 <a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="o">|</span> <span class="n">SearchSpace</span>
 <a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="o">|</span> <span class="n">ConfigurationSpace</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="o">|</span> <span class="n">Pipeline</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="o">|</span> <span class="n">PipelineSpace</span>
 <a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="p">),</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">:</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">:</span>
 <a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Converts a search space to a SearchSpace object.</span>
 <a id="__codelineno-0-311" name="__codelineno-0-311"></a>
 <a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">    Args:</span>
@@ -4614,7 +4614,7 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 <a id="__codelineno-0-329" name="__codelineno-0-329"></a>            <span class="k">return</span> <span class="n">space</span>
 <a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="k">case</span> <span class="n">Mapping</span><span class="p">():</span>
 <a id="__codelineno-0-331" name="__codelineno-0-331"></a>            <span class="k">return</span> <span class="n">convert_mapping</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="k">case</span> <span class="n">Pipeline</span><span class="p">():</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="k">case</span> <span class="n">PipelineSpace</span><span class="p">():</span>
 <a id="__codelineno-0-333" name="__codelineno-0-333"></a>            <span class="k">return</span> <span class="n">space</span>
 <a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
 <a id="__codelineno-0-335" name="__codelineno-0-335"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>

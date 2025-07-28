@@ -3682,7 +3682,7 @@ You can install it via <code>pip</code> or from <a href="https://github.com/auto
 <ol>
 <li><strong>Establish a <a href="../reference/neps_spaces/"><code>pipeline_space=</code></a></strong>:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">PipelineSpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">):</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ExampleSpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="c1"># Define the parameters of your search space</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">some_parameter</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>       <span class="c1"># float</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">another_parameter</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Integer</span><span class="p">(</span><span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>     <span class="c1"># integer</span>
@@ -3705,7 +3705,7 @@ You can install it via <code>pip</code> or from <a href="https://github.com/auto
 <ol>
 <li><strong>Execute with <a href="../reference/neps_run/"><code>neps.run()</code></a></strong>:</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">())</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="n">ExampleSpace</span><span class="p">())</span>
 </code></pre></div>
 <hr />
 <h2 id="whats-next">What's Next?<a class="headerlink" href="#whats-next" title="Permanent link">#</a></h2>

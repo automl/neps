@@ -3683,17 +3683,17 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Pipeline" class="md-nav__link">
+  <a href="#neps.space.neps_spaces.parameters.PipelineSpace" class="md-nav__link">
     <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;Pipeline
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;PipelineSpace
     </span>
   </a>
   
-    <nav class="md-nav" aria-label=" Pipeline">
+    <nav class="md-nav" aria-label=" PipelineSpace">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Pipeline.fidelity_attrs" class="md-nav__link">
+  <a href="#neps.space.neps_spaces.parameters.PipelineSpace.fidelity_attrs" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;fidelity_attrs
     </span>
@@ -3702,7 +3702,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Pipeline.from_attrs" class="md-nav__link">
+  <a href="#neps.space.neps_spaces.parameters.PipelineSpace.from_attrs" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;from_attrs
     </span>
@@ -3711,7 +3711,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#neps.space.neps_spaces.parameters.Pipeline.get_attrs" class="md-nav__link">
+  <a href="#neps.space.neps_spaces.parameters.PipelineSpace.get_attrs" class="md-nav__link">
     <span class="md-ellipsis">
       <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;get_attrs
     </span>
@@ -7929,7 +7929,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">log</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">prior</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></span> <span class="o">=</span> <span class="n"><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">prior</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="n"><span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></span> <span class="o">=</span> <span class="n"><span title="neps.space.neps_spaces.parameters._UNSET">_UNSET</span></span><span class="p">,</span>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="p">(</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">]</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfidenceLevel (neps.space.neps_spaces.parameters.ConfidenceLevel)" href="#neps.space.neps_spaces.parameters.ConfidenceLevel">ConfidenceLevel</a></span>
@@ -8120,7 +8120,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | <span title="neps.space.neps_spaces.parameters._Unset">_Unset</span></code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -8196,7 +8196,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 <a id="__codelineno-0-758" name="__codelineno-0-758"></a>    <span class="n">min_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <a id="__codelineno-0-759" name="__codelineno-0-759"></a>    <span class="n">max_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
 <a id="__codelineno-0-760" name="__codelineno-0-760"></a>    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
-<a id="__codelineno-0-761" name="__codelineno-0-761"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
+<a id="__codelineno-0-761" name="__codelineno-0-761"></a>    <span class="n">prior</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">_Unset</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
 <a id="__codelineno-0-762" name="__codelineno-0-762"></a>    <span class="n">prior_confidence</span><span class="p">:</span> <span class="p">(</span>
 <a id="__codelineno-0-763" name="__codelineno-0-763"></a>        <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;low&quot;</span><span class="p">,</span> <span class="s2">&quot;medium&quot;</span><span class="p">,</span> <span class="s2">&quot;high&quot;</span><span class="p">]</span> <span class="o">|</span> <span class="n">ConfidenceLevel</span> <span class="o">|</span> <span class="n">_Unset</span>
 <a id="__codelineno-0-764" name="__codelineno-0-764"></a>    <span class="p">)</span> <span class="o">=</span> <span class="n">_UNSET</span><span class="p">,</span>
@@ -9839,11 +9839,11 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
 
 
-<h2 id="neps.space.neps_spaces.parameters.Pipeline" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">Pipeline</span>
+<h2 id="neps.space.neps_spaces.parameters.PipelineSpace" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">PipelineSpace</span>
 
 
-<a href="#neps.space.neps_spaces.parameters.Pipeline" class="headerlink" title="Permanent link">#</a></h2>
+<a href="#neps.space.neps_spaces.parameters.PipelineSpace" class="headerlink" title="Permanent link">#</a></h2>
 
 
     <div class="doc doc-contents ">
@@ -9874,7 +9874,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
 
 
 
-<h3 id="neps.space.neps_spaces.parameters.Pipeline.fidelity_attrs" class="doc doc-heading">
+<h3 id="neps.space.neps_spaces.parameters.PipelineSpace.fidelity_attrs" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">fidelity_attrs</span>
 
 
@@ -9882,7 +9882,7 @@ excluding private attributes and methods, and returns them as a dictionary.</p>
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#neps.space.neps_spaces.parameters.Pipeline.fidelity_attrs" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#neps.space.neps_spaces.parameters.PipelineSpace.fidelity_attrs" class="headerlink" title="Permanent link">#</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">fidelity_attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            Fidelity (neps.space.neps_spaces.parameters.Fidelity)" href="#neps.space.neps_spaces.parameters.Fidelity">Fidelity</a></span><span class="p">]</span>
 </code></pre></div>
 
@@ -9924,12 +9924,12 @@ attributes that represent the fidelity of the pipeline.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="neps.space.neps_spaces.parameters.Pipeline.from_attrs" class="doc doc-heading">
+<h3 id="neps.space.neps_spaces.parameters.PipelineSpace.from_attrs" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">from_attrs</span>
 
 
-<a href="#neps.space.neps_spaces.parameters.Pipeline.from_attrs" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span>
+<a href="#neps.space.neps_spaces.parameters.PipelineSpace.from_attrs" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -9976,7 +9976,7 @@ attributes that represent the fidelity of the pipeline.</p>
           <tr class="doc-section-item">
             <td>
                 <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                    <code><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                 </span>
             </td>
             <td class="doc-returns-details">
@@ -10031,7 +10031,7 @@ attributes that represent the fidelity of the pipeline.</p>
 <span class="normal"><a href="#__codelineno-0-186">186</a></span>
 <span class="normal"><a href="#__codelineno-0-187">187</a></span>
 <span class="normal"><a href="#__codelineno-0-188">188</a></span>
-<span class="normal"><a href="#__codelineno-0-189">189</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Pipeline</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-189">189</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-173" name="__codelineno-0-173"></a><span class="k">def</span><span class="w"> </span><span class="nf">from_attrs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attrs</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">PipelineSpace</span><span class="p">:</span>
 <a id="__codelineno-0-174" name="__codelineno-0-174"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a new Pipeline instance from the given attributes.</span>
 <a id="__codelineno-0-175" name="__codelineno-0-175"></a>
 <a id="__codelineno-0-176" name="__codelineno-0-176"></a><span class="sd">    Args:</span>
@@ -10044,7 +10044,7 @@ attributes that represent the fidelity of the pipeline.</p>
 <a id="__codelineno-0-183" name="__codelineno-0-183"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-184" name="__codelineno-0-184"></a><span class="sd">        ValueError: If the attributes do not match the pipeline&#39;s expected structure.</span>
 <a id="__codelineno-0-185" name="__codelineno-0-185"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-186" name="__codelineno-0-186"></a>    <span class="n">new_pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">()</span>
+<a id="__codelineno-0-186" name="__codelineno-0-186"></a>    <span class="n">new_pipeline</span> <span class="o">=</span> <span class="n">PipelineSpace</span><span class="p">()</span>
 <a id="__codelineno-0-187" name="__codelineno-0-187"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
 <a id="__codelineno-0-188" name="__codelineno-0-188"></a>        <span class="nb">setattr</span><span class="p">(</span><span class="n">new_pipeline</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 <a id="__codelineno-0-189" name="__codelineno-0-189"></a>    <span class="k">return</span> <span class="n">new_pipeline</span>
@@ -10057,11 +10057,11 @@ attributes that represent the fidelity of the pipeline.</p>
 <div class="doc doc-object doc-function">
 
 
-<h3 id="neps.space.neps_spaces.parameters.Pipeline.get_attrs" class="doc doc-heading">
+<h3 id="neps.space.neps_spaces.parameters.PipelineSpace.get_attrs" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">get_attrs</span>
 
 
-<a href="#neps.space.neps_spaces.parameters.Pipeline.get_attrs" class="headerlink" title="Permanent link">#</a></h3>
+<a href="#neps.space.neps_spaces.parameters.PipelineSpace.get_attrs" class="headerlink" title="Permanent link">#</a></h3>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">get_attrs</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span>
 </code></pre></div>
 

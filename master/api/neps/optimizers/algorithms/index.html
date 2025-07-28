@@ -3956,7 +3956,7 @@ if you like, otherwise you may also refer to them by their string name.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">early_stopping_rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -4023,7 +4023,7 @@ as this algorithm could be considered an extension of it.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -4172,7 +4172,7 @@ and if so, should it be at the highest fidelity.</p>
 <span class="normal"><a href="#__codelineno-0-947">947</a></span>
 <span class="normal"><a href="#__codelineno-0-948">948</a></span>
 <span class="normal"><a href="#__codelineno-0-949">949</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-880" name="__codelineno-0-880"></a><span class="k">def</span><span class="w"> </span><span class="nf">asha</span><span class="p">(</span>
-<a id="__codelineno-0-881" name="__codelineno-0-881"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-881" name="__codelineno-0-881"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-882" name="__codelineno-0-882"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-883" name="__codelineno-0-883"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-884" name="__codelineno-0-884"></a>    <span class="n">early_stopping_rate</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
@@ -4221,7 +4221,7 @@ and if so, should it be at the highest fidelity.</p>
 <a id="__codelineno-0-927" name="__codelineno-0-927"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first,</span>
 <a id="__codelineno-0-928" name="__codelineno-0-928"></a><span class="sd">            and if so, should it be at the highest fidelity.</span>
 <a id="__codelineno-0-929" name="__codelineno-0-929"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-930" name="__codelineno-0-930"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-930" name="__codelineno-0-930"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-931" name="__codelineno-0-931"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-932" name="__codelineno-0-932"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-933" name="__codelineno-0-933"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -4261,7 +4261,7 @@ and if so, should it be at the highest fidelity.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -4325,7 +4325,7 @@ takes elements from each.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -4470,7 +4470,7 @@ takes elements from each.</p>
 <span class="normal"><a href="#__codelineno-0-1049">1049</a></span>
 <span class="normal"><a href="#__codelineno-0-1050">1050</a></span>
 <span class="normal"><a href="#__codelineno-0-1051">1051</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-985" name="__codelineno-0-985"></a><span class="k">def</span><span class="w"> </span><span class="nf">async_hb</span><span class="p">(</span>
-<a id="__codelineno-0-986" name="__codelineno-0-986"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-986" name="__codelineno-0-986"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-987" name="__codelineno-0-987"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-988" name="__codelineno-0-988"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-989" name="__codelineno-0-989"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -4516,7 +4516,7 @@ takes elements from each.</p>
 <a id="__codelineno-0-1029" name="__codelineno-0-1029"></a>
 <a id="__codelineno-0-1030" name="__codelineno-0-1030"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first.</span>
 <a id="__codelineno-0-1031" name="__codelineno-0-1031"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-1032" name="__codelineno-0-1032"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-1033" name="__codelineno-0-1033"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-1034" name="__codelineno-0-1034"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-1035" name="__codelineno-0-1035"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -4907,7 +4907,7 @@ automatically.</p>
 <a id="__codelineno-0-1188" name="__codelineno-0-1188"></a><span class="sd">            optimization. If `None`, the reference point will be calculated</span>
 <a id="__codelineno-0-1189" name="__codelineno-0-1189"></a><span class="sd">            automatically.</span>
 <a id="__codelineno-0-1190" name="__codelineno-0-1190"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1191" name="__codelineno-0-1191"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-1191" name="__codelineno-0-1191"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-1192" name="__codelineno-0-1192"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-1193" name="__codelineno-0-1193"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-1194" name="__codelineno-0-1194"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -4967,7 +4967,7 @@ automatically.</p>
 
 <a href="#neps.optimizers.algorithms.complex_random_search" class="headerlink" title="Permanent link">#</a></h2>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">complex_random_search</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="p">(</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>        <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">]</span>
@@ -4996,13 +4996,17 @@ but allows for more complex sampling strategies.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
-                <code>pipeline</code>
+                <code>pipeline_space</code>
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The search space to sample from.</p>
               </div>
               <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
+                  </span>
               </p>
             </td>
           </tr>
@@ -5071,7 +5075,7 @@ If set to <code>"highest fidelity"</code>, it will always sample at the highest 
 <span class="normal"><a href="#__codelineno-0-1381">1381</a></span>
 <span class="normal"><a href="#__codelineno-0-1382">1382</a></span>
 <span class="normal"><a href="#__codelineno-0-1383">1383</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1350" name="__codelineno-0-1350"></a><span class="k">def</span><span class="w"> </span><span class="nf">complex_random_search</span><span class="p">(</span>
-<a id="__codelineno-0-1351" name="__codelineno-0-1351"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-1351" name="__codelineno-0-1351"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-1352" name="__codelineno-0-1352"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-1353" name="__codelineno-0-1353"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-1354" name="__codelineno-0-1354"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NePSComplexRandomSearch</span><span class="p">:</span>
@@ -5079,7 +5083,7 @@ If set to <code>"highest fidelity"</code>, it will always sample at the highest 
 <a id="__codelineno-0-1356" name="__codelineno-0-1356"></a><span class="sd">    but allows for more complex sampling strategies.</span>
 <a id="__codelineno-0-1357" name="__codelineno-0-1357"></a>
 <a id="__codelineno-0-1358" name="__codelineno-0-1358"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1359" name="__codelineno-0-1359"></a><span class="sd">        pipeline: The search space to sample from.</span>
+<a id="__codelineno-0-1359" name="__codelineno-0-1359"></a><span class="sd">        pipeline_space: The search space to sample from.</span>
 <a id="__codelineno-0-1360" name="__codelineno-0-1360"></a><span class="sd">        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.</span>
 <a id="__codelineno-0-1361" name="__codelineno-0-1361"></a><span class="sd">            If `True`, the algorithm will sample the fidelity like a normal parameter.</span>
 <a id="__codelineno-0-1362" name="__codelineno-0-1362"></a><span class="sd">            If set to `&quot;highest fidelity&quot;`, it will always sample at the highest fidelity.</span>
@@ -5297,7 +5301,7 @@ If set to <code>"highest fidelity"</code>, it will always sample at the highest 
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            GridSearch
@@ -5338,7 +5342,7 @@ space and evaluates all possible configurations.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -5408,7 +5412,7 @@ In this case, the max fidelity is always used.</p>
 <span class="normal"><a href="#__codelineno-0-548">548</a></span>
 <span class="normal"><a href="#__codelineno-0-549">549</a></span>
 <span class="normal"><a href="#__codelineno-0-550">550</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-513" name="__codelineno-0-513"></a><span class="k">def</span><span class="w"> </span><span class="nf">grid_search</span><span class="p">(</span>
-<a id="__codelineno-0-514" name="__codelineno-0-514"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-514" name="__codelineno-0-514"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-515" name="__codelineno-0-515"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-516" name="__codelineno-0-516"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-517" name="__codelineno-0-517"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GridSearch</span><span class="p">:</span>
@@ -5422,7 +5426,7 @@ In this case, the max fidelity is always used.</p>
 <a id="__codelineno-0-525" name="__codelineno-0-525"></a><span class="sd">    &quot;&quot;&quot;</span>
 <a id="__codelineno-0-526" name="__codelineno-0-526"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">neps.optimizers.utils.grid</span><span class="w"> </span><span class="kn">import</span> <span class="n">make_grid</span>
 <a id="__codelineno-0-527" name="__codelineno-0-527"></a>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-530" name="__codelineno-0-530"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -5465,7 +5469,7 @@ In this case, the max fidelity is always used.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -5531,7 +5535,7 @@ as this algorithm could be considered an extension of it.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -5681,7 +5685,7 @@ and if so, should it be at the highest fidelity level.</p>
 <span class="normal"><a href="#__codelineno-0-840">840</a></span>
 <span class="normal"><a href="#__codelineno-0-841">841</a></span>
 <span class="normal"><a href="#__codelineno-0-842">842</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-772" name="__codelineno-0-772"></a><span class="k">def</span><span class="w"> </span><span class="nf">hyperband</span><span class="p">(</span>
-<a id="__codelineno-0-773" name="__codelineno-0-773"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-773" name="__codelineno-0-773"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-774" name="__codelineno-0-774"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-775" name="__codelineno-0-775"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-776" name="__codelineno-0-776"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -5731,7 +5735,7 @@ and if so, should it be at the highest fidelity level.</p>
 <a id="__codelineno-0-820" name="__codelineno-0-820"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first,</span>
 <a id="__codelineno-0-821" name="__codelineno-0-821"></a><span class="sd">            and if so, should it be at the highest fidelity level.</span>
 <a id="__codelineno-0-822" name="__codelineno-0-822"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-824" name="__codelineno-0-824"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-825" name="__codelineno-0-825"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-826" name="__codelineno-0-826"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -5771,7 +5775,7 @@ and if so, should it be at the highest fidelity level.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">step_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -5842,7 +5846,7 @@ to do next.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -6100,7 +6104,7 @@ to do next.</p>
 <span class="normal"><a href="#__codelineno-0-676">676</a></span>
 <span class="normal"><a href="#__codelineno-0-677">677</a></span>
 <span class="normal"><a href="#__codelineno-0-678">678</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="k">def</span><span class="w"> </span><span class="nf">ifbo</span><span class="p">(</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-555" name="__codelineno-0-555"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-556" name="__codelineno-0-556"></a>    <span class="n">step_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
 <a id="__codelineno-0-557" name="__codelineno-0-557"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -6150,7 +6154,7 @@ to do next.</p>
 <a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">        surrogate_path: Path to the surrogate model to use</span>
 <a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">        surrogate_version: Version of the surrogate model to use</span>
 <a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-605" name="__codelineno-0-605"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-606" name="__codelineno-0-606"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-607" name="__codelineno-0-607"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -6245,7 +6249,7 @@ to do next.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -6302,7 +6306,7 @@ candidate selection method as MOASHA.</p>
 <span class="normal"><a href="#__codelineno-0-875">875</a></span>
 <span class="normal"><a href="#__codelineno-0-876">876</a></span>
 <span class="normal"><a href="#__codelineno-0-877">877</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-845" name="__codelineno-0-845"></a><span class="k">def</span><span class="w"> </span><span class="nf">mo_hyperband</span><span class="p">(</span>
-<a id="__codelineno-0-846" name="__codelineno-0-846"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-846" name="__codelineno-0-846"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-847" name="__codelineno-0-847"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-848" name="__codelineno-0-848"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-849" name="__codelineno-0-849"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
@@ -6312,7 +6316,7 @@ candidate selection method as MOASHA.</p>
 <a id="__codelineno-0-853" name="__codelineno-0-853"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-objective version of hyperband using the same</span>
 <a id="__codelineno-0-854" name="__codelineno-0-854"></a><span class="sd">    candidate selection method as MOASHA.</span>
 <a id="__codelineno-0-855" name="__codelineno-0-855"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-856" name="__codelineno-0-856"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-856" name="__codelineno-0-856"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-857" name="__codelineno-0-857"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-858" name="__codelineno-0-858"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-859" name="__codelineno-0-859"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -6349,7 +6353,7 @@ candidate selection method as MOASHA.</p>
 
 <a href="#neps.optimizers.algorithms.neps_priorband" class="headerlink" title="Permanent link">#</a></h2>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">neps_priorband</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="p">(</span>
@@ -6388,7 +6392,7 @@ candidate selection method as MOASHA.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                      <code><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -6514,7 +6518,7 @@ highest fidelity, otherwise at the lowest fidelity.</p>
 <span class="normal"><a href="#__codelineno-0-1588">1588</a></span>
 <span class="normal"><a href="#__codelineno-0-1589">1589</a></span>
 <span class="normal"><a href="#__codelineno-0-1590">1590</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1544" name="__codelineno-0-1544"></a><span class="k">def</span><span class="w"> </span><span class="nf">neps_priorband</span><span class="p">(</span>
-<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-1546" name="__codelineno-0-1546"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-1547" name="__codelineno-0-1547"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-1548" name="__codelineno-0-1548"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -6575,7 +6579,7 @@ highest fidelity, otherwise at the lowest fidelity.</p>
 
 <a href="#neps.optimizers.algorithms.neps_random_search" class="headerlink" title="Permanent link">#</a></h2>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">neps_random_search</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="p">(</span>
@@ -6613,7 +6617,7 @@ highest fidelity, otherwise at the lowest fidelity.</p>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+                      <code><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -6722,7 +6726,7 @@ If set to <code>"highest fidelity"</code>, it will always sample at the highest 
 <span class="normal"><a href="#__codelineno-0-1434">1434</a></span>
 <span class="normal"><a href="#__codelineno-0-1435">1435</a></span>
 <span class="normal"><a href="#__codelineno-0-1436">1436</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1386" name="__codelineno-0-1386"></a><span class="k">def</span><span class="w"> </span><span class="nf">neps_random_search</span><span class="p">(</span>
-<a id="__codelineno-0-1387" name="__codelineno-0-1387"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-1387" name="__codelineno-0-1387"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-1388" name="__codelineno-0-1388"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-1389" name="__codelineno-0-1389"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-1390" name="__codelineno-0-1390"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -6792,7 +6796,7 @@ If set to <code>"highest fidelity"</code>, it will always sample at the highest 
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">initial_design_size</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;ndim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ndim&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">cost_aware</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;log&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -6846,7 +6850,7 @@ has.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -7036,7 +7040,7 @@ In this case, the max fidelity is always used.</p>
 <span class="normal"><a href="#__codelineno-0-1304">1304</a></span>
 <span class="normal"><a href="#__codelineno-0-1305">1305</a></span>
 <span class="normal"><a href="#__codelineno-0-1306">1306</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1238" name="__codelineno-0-1238"></a><span class="k">def</span><span class="w"> </span><span class="nf">pibo</span><span class="p">(</span>
-<a id="__codelineno-0-1239" name="__codelineno-0-1239"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-1239" name="__codelineno-0-1239"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-1240" name="__codelineno-0-1240"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-1241" name="__codelineno-0-1241"></a>    <span class="n">initial_design_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;ndim&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;ndim&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-1242" name="__codelineno-0-1242"></a>    <span class="n">cost_aware</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;log&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -7075,7 +7079,7 @@ In this case, the max fidelity is always used.</p>
 <a id="__codelineno-0-1275" name="__codelineno-0-1275"></a><span class="sd">        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.</span>
 <a id="__codelineno-0-1276" name="__codelineno-0-1276"></a><span class="sd">            In this case, the max fidelity is always used.</span>
 <a id="__codelineno-0-1277" name="__codelineno-0-1277"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1278" name="__codelineno-0-1278"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-1278" name="__codelineno-0-1278"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-1279" name="__codelineno-0-1279"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-1280" name="__codelineno-0-1280"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-1281" name="__codelineno-0-1281"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -7124,7 +7128,7 @@ In this case, the max fidelity is always used.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="p">(</span>
@@ -7199,7 +7203,7 @@ risk at lower fidelities, which is factored into the sampling procedure.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -7368,7 +7372,7 @@ proceed with bayesian optimization when sampling a new configuration.</p>
 <span class="normal"><a href="#__codelineno-0-1127">1127</a></span>
 <span class="normal"><a href="#__codelineno-0-1128">1128</a></span>
 <span class="normal"><a href="#__codelineno-0-1129">1129</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1054" name="__codelineno-0-1054"></a><span class="k">def</span><span class="w"> </span><span class="nf">priorband</span><span class="p">(</span>
-<a id="__codelineno-0-1055" name="__codelineno-0-1055"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-1055" name="__codelineno-0-1055"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-1056" name="__codelineno-0-1056"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-1057" name="__codelineno-0-1057"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
 <a id="__codelineno-0-1058" name="__codelineno-0-1058"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -7412,7 +7416,7 @@ proceed with bayesian optimization when sampling a new configuration.</p>
 <a id="__codelineno-0-1096" name="__codelineno-0-1096"></a><span class="sd">            `N` * `maximum_fidelity` worth of fidelity has been evaluated,</span>
 <a id="__codelineno-0-1097" name="__codelineno-0-1097"></a><span class="sd">            proceed with bayesian optimization when sampling a new configuration.</span>
 <a id="__codelineno-0-1098" name="__codelineno-0-1098"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1099" name="__codelineno-0-1099"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-1099" name="__codelineno-0-1099"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-1100" name="__codelineno-0-1100"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-1101" name="__codelineno-0-1101"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-1102" name="__codelineno-0-1102"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -7463,7 +7467,7 @@ proceed with bayesian optimization when sampling a new configuration.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="p">(</span>
@@ -7513,7 +7517,7 @@ priors.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -7642,7 +7646,7 @@ In this case, the max fidelity is always used.</p>
 <span class="normal"><a href="#__codelineno-0-508">508</a></span>
 <span class="normal"><a href="#__codelineno-0-509">509</a></span>
 <span class="normal"><a href="#__codelineno-0-510">510</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-434" name="__codelineno-0-434"></a><span class="k">def</span><span class="w"> </span><span class="nf">random_search</span><span class="p">(</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-436" name="__codelineno-0-436"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-437" name="__codelineno-0-437"></a>    <span class="n">use_priors</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
 <a id="__codelineno-0-438" name="__codelineno-0-438"></a>    <span class="n">ignore_fidelity</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -7658,7 +7662,7 @@ In this case, the max fidelity is always used.</p>
 <a id="__codelineno-0-448" name="__codelineno-0-448"></a><span class="sd">        ignore_fidelity: Whether to ignore fidelity when sampling.</span>
 <a id="__codelineno-0-449" name="__codelineno-0-449"></a><span class="sd">            In this case, the max fidelity is always used.</span>
 <a id="__codelineno-0-450" name="__codelineno-0-450"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-452" name="__codelineno-0-452"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-453" name="__codelineno-0-453"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-454" name="__codelineno-0-454"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
@@ -7738,7 +7742,7 @@ In this case, the max fidelity is always used.</p>
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></span><span class="p">,</span>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
@@ -7819,7 +7823,7 @@ or <code class="highlight"><span class="n">sampler</span><span class="o">=</span
 
   
       dataclass
-   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            Pipeline (neps.space.neps_spaces.parameters.Pipeline)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.Pipeline">Pipeline</a></code>
+   (neps.space.SearchSpace)" href="../../space/search_space/#neps.space.search_space.SearchSpace">SearchSpace</a> | <a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></code>
                   </span>
               </p>
             </td>
@@ -8008,7 +8012,7 @@ and if so, should it be at the highest fidelity level.</p>
 <span class="normal"><a href="#__codelineno-0-767">767</a></span>
 <span class="normal"><a href="#__codelineno-0-768">768</a></span>
 <span class="normal"><a href="#__codelineno-0-769">769</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-681" name="__codelineno-0-681"></a><span class="k">def</span><span class="w"> </span><span class="nf">successive_halving</span><span class="p">(</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">Pipeline</span><span class="p">,</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-683" name="__codelineno-0-683"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-684" name="__codelineno-0-684"></a>    <span class="n">sampler</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;uniform&quot;</span><span class="p">,</span> <span class="s2">&quot;prior&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;uniform&quot;</span><span class="p">,</span>
 <a id="__codelineno-0-685" name="__codelineno-0-685"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
@@ -8076,7 +8080,7 @@ and if so, should it be at the highest fidelity level.</p>
 <a id="__codelineno-0-747" name="__codelineno-0-747"></a><span class="sd">        sample_prior_first: Whether to sample the prior configuration first,</span>
 <a id="__codelineno-0-748" name="__codelineno-0-748"></a><span class="sd">            and if so, should it be at the highest fidelity level.</span>
 <a id="__codelineno-0-749" name="__codelineno-0-749"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-750" name="__codelineno-0-750"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-750" name="__codelineno-0-750"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-0-751" name="__codelineno-0-751"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
 <a id="__codelineno-0-752" name="__codelineno-0-752"></a>        <span class="k">if</span> <span class="n">converted_space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
 <a id="__codelineno-0-753" name="__codelineno-0-753"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
