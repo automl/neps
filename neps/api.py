@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
-from neps.runtime import _launch_runtime
+from neps.runtime import _launch_runtime, _save_results
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
@@ -547,4 +547,42 @@ def run(  # noqa: C901, D417, PLR0913
         )
 
 
-__all__ = ["run"]
+def save_pipeline_results(
+    user_result: dict,
+    pipeline_id: str,
+    root_directory: Path,
+) -> None:
+    """Persist the outcome of one pipeline evaluation.
+
+    Parameters
+    ----------
+    user_result : dict
+        Dictionary returned by ``evaluate_pipeline``.
+        Must contain at least the keys required by
+        :pyfunc:`_save_results` (e.g. ``"cost"``,
+        ``"objective_to_minimize"`` and optional ``"learning_curve"``,
+        ``"exception"``, ``"info_dict"``).
+
+    pipeline_id : str
+        Unique identifier of the pipeline/trial whose result is being
+        stored.  This ID is used to locate the corresponding
+        :class:`neps.core.trial.Trial` object inside the optimisation
+        state.
+
+    root_directory : pathlib.Path
+        Root directory of the NePS run (the folder that contains
+        ``optimizer_info.yaml`` and the ``configs/`` subdirectory).  *Not* the
+        per trial subfolder.
+
+    Returns:
+    -------
+    None
+    """
+    return _save_results(
+        user_result=user_result,
+        trial_id=pipeline_id,
+        root_directory=root_directory,
+    )
+
+
+__all__ = ["run", "save_pipeline_results"]
