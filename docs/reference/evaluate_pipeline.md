@@ -1,151 +1,148 @@
-# The evaluate function
+# The `evaluate_pipeline` function
 
-## Introduction
+> **TL;DR**
+> *Sync*: return a scalar or a dict ⟶ NePS records it automatically.
+> *Async*: return `None`, launch a job, and call `neps.save_callback()` when the job finishes.
 
-The `evaluate_pipeline=` function is crucial for NePS. It encapsulates the objective function to be minimized, which could range from a regular equation to a full training and evaluation pipeline for a neural network.
+---
 
-This function receives the configuration to be utilized from the parameters defined in the search space. Consequently, it executes the same set of instructions or equations based on the provided configuration to minimize the objective function.
+## 1  Return types
 
-We will show some basic usages and some functionalites this function would require for successful implementation.
+| Allowed return | When to use                                 | Minimal example                              |
+| -------------- | ------------------------------------------- | -------------------------------------------- |
+| **Scalar**     | simple objective, single fidelity           | `return loss`                                |
+| **Dict**       | need cost/extra metrics                     | `{"objective_to_minimize": loss, "cost": 3}` |
+| **`None`**     | you launch the job elsewhere (SLURM, k8s …) | *see § 3 Async*                              |
 
-## Types of Returns
+All other values raise a `TypeError` inside NePS.
 
-### 1. Single Value
+## 2  Result dictionary keys
 
-Assuming the `pipeline_space=` was already created (have a look at [pipeline space](./pipeline_space.md) for more details).
-A `evaluate_pipeline=` function with an objective of minimizing the loss will resemble the following:
+| key                     | purpose                                                                      | required?                     |
+| ----------------------- | ---------------------------------------------------------------------------- | ----------------------------- |
+| `objective_to_minimize` | scalar NePS will minimise                                                    | **yes**                       |
+| `cost`                  | wall‑clock, GPU‑hours, … — only if you passed `cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
+| `learning_curve`        | list/np.array of intermediate objectives                                     | optional                      |
+| `extra`                 | any JSON‑serialisable blob                                                   | optional                      |
+| `exception`                 | any Exception illustrating the error in evaluation                                                   | optional                      |
 
-```python
-def evaluate_pipeline(
-    **config,   # The hyperparameters to be used in the pipeline
-):
-    element_1 = config["element_1"]
-    element_2 = config["element_2"]
-    element_3 = config["element_3"]
+> **Tip**  Return exactly what you need; extra keys are preserved in the trial’s `report.yaml`.
 
-    loss = element_1 - element_2 + element_3
+---
 
-    return loss
-```
+## 3  Asynchronous evaluation (advanced)
 
-### 2. Dictionary
+### 3.1 Design
 
-In this section, we will outline the special variables that are expected to be returned when the `evaluate_pipeline=` function returns a dictionary.
+1. **The Python side** (your `evaluate_pipeline` function)
 
-#### Loss
+   * **creates & submits** a job script.
+   * returns `None` so the worker thread isn’t blocked.
+2. **The submit script** or **the job** must call
 
-One crucial return variable is the `loss`. This metric serves as a fundamental indicator for the optimizer. One option is to return a dictionary with the `loss` as a key, along with other user-chosen metrics.
+   ```python
+   neps.save_pipeline_results(
+       user_result=result_dict,
+       pipeline_id=pipeline_id,
+       root_directory=root_directory,
+   )
+   ```
 
-!!! note
+   when it finishes.
+   This writes `report.yaml` and marks the trial *SUCCESS* / *CRASHED*.
 
-    Loss can be any value that is to be minimized by the objective function.
+### 3.2 Code walk‑through
 
-```python
-def evaluate_pipeline(
-    **config,   # The hyperparameters to be used in the pipeline
-):
-
-    element_1 = config["element_1"]
-    element_2 = config["element_2"]
-    element_3 = config["element_3"]
-
-    loss = element_1 - element_2 + element_3
-    reverse_loss = -loss
-
-    return {
-        "objective_to_minimize": loss,
-        "info_dict": {
-            "reverse_loss": reverse_loss
-            ...
-        }
-    }
-```
-
-#### Cost
-
-Along with the return of the `loss`, the `evaluate_pipeline=` function would optionally need to return a `cost` in certain cases. Specifically when the `cost_to_spend` parameter is being utilized in the `neps.run` function.
-
-
-!!! note
-
-    `cost_to_spend` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
+`submit.py` – called by NePS synchronously
 
 ```python
+from pathlib import Path
+import subprocess
 import neps
-import logging
-
 
 def evaluate_pipeline(
-    **config,   # The hyperparameters to be used in the pipeline
+    pipeline_directory: Path,
+    pipeline_id: str,          # NePS injects this automatically
+    root_directory: Path,      # idem
+    learning_rate: float,
+    optimizer: str,
 ):
+    # 1) write a Slurm script into the trial dir
+    sh = pipeline_directory / "run.sh"
+    sh.write_text(f"""#!/bin/bash
+#SBATCH --time=0-00:10
+#SBATCH --job-name=trial_{pipeline_id}
+#SBATCH --partition=bosch_cpu-cascadelake
+#SBATCH --output={pipeline_directory}/%j.out
+#SBATCH --error={pipeline_directory}/%j.err
 
-    element_1 = config["element_1"]
-    element_2 = config["element_2"]
-    element_3 = config["element_3"]
+python run_pipeline.py \
+       --learning_rate {learning_rate} \
+       --optimizer {optimizer} \
+       --pipeline_id {pipeline_id} \
+       --root_dir {root_directory}
+""")
+    sh.chmod(0o755)
 
-    loss = element_1 - element_2 + element_3
-    cost = 2
-
-    return {
-        "objective_to_minimize": loss,
-        "cost": cost,
-    }
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    neps.run(
-        evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=pipeline_space, # Assuming the pipeline space is defined
-        root_directory="results/bo",
-        cost_to_spend=10,
-        optimizer="bayesian_optimization",
-    )
+    # 2) submit and RETURN None (async)
+    subprocess.check_call(["sbatch", str(sh)])
+    return None  # ⟵ signals async mode
 ```
 
-Each evaluation carries a cost of 2. Hence in this example, the Bayesian optimization search is set to perform 5 evaluations.
-
-## Arguments for Convenience
-
-NePS also provides the `pipeline_directory` and the `previous_pipeline_directory` as arguments in the `evaluate_pipeline=` function for user convenience.
-
-Regard an example to be run with a multi-fidelity optimizer, some checkpointing would be advantageous such that one does not have to train the configuration from scratch when the configuration qualifies to higher fidelity brackets.
+`run_pipeline.py` – executed on the compute node
 
 ```python
-def evaluate_pipeline(
-    pipeline_directory,           # The directory where the config is saved
-    previous_pipeline_directory,  # The directory of the immediate lower fidelity config
-    **config,                     # The hyperparameters to be used in the pipeline
-):
-    # Assume the third element is our fidelity element
-    element_1 = config["element_1"]
-    element_2 = config["element_2"]
-    fidelity = config["fidelity"]
+import argparse, json, time, neps
+from pathlib import Path
 
-    # Load any saved checkpoints
-    checkpoint_name = "checkpoint.pth"
-    start_fidelity = 0
+parser = argparse.ArgumentParser()
+parser.add_argument("--learning_rate", type=float)
+parser.add_argument("--optimizer")
+parser.add_argument("--pipeline_id")
+parser.add_argument("--root_dir")
+args = parser.parse_args()
 
-    if previous_pipeline_directory is not None:
-        # Read in state of the model after the previous fidelity rung
-        checkpoint = torch.load(previous_pipeline_directory / checkpoint_name)
-        prev_fidelity = checkpoint["fidelity"]
-    else:
-        prev_fidelity = 0
+# … do heavy training …
+val_loss = 0.1234
+wall_clock_cost = 180  # seconds
 
-    start_fidelity += prev_fidelity
+result = {
+    "objective_to_minimize": val_loss,
+    "cost": wall_clock_cost,
+}
 
-    loss = 0
-    for i in range(start_fidelity, fidelity):
-        loss += element_1 - element_2
-
-    torch.save(
-        {
-            "fidelity": fidelity,
-        },
-        pipeline_directory / checkpoint_name,
-    )
-
-    return loss
+neps.save_callback(
+    user_result=result,
+    pipeline_id=args.pipeline_id,
+    root_directory=Path(args.root_dir),
+)
 ```
 
-This could allow the proper navigation to the trained models and further train them on higher fidelities without repeating the entire training process.
+### 3.3 Why this matters
+
+* No worker idles while your job is in the queue ➜ better throughput.
+* Crashes inside the job still mark the trial *CRASHED* instead of hanging.
+* Compatible with Successive‑Halving/ASHA — NePS just waits for `report.yaml`.
+
+---
+
+## 4  Extra injected arguments
+
+| name                          | provided when           | description                                                |
+| ----------------------------- | ----------------------- | ---------------------------------------------------------- |
+| `pipeline_directory`          | always                  | per‑trial working dir (`…/trials/<id>/`)                   |
+| `previous_pipeline_directory` | only for multi‑fidelity | directory of the lower‑fidelity checkpoint. Can be `None`. |
+| `pipeline_id`                 | async only              | trial id string you pass to `save_evaluation_results`                |
+| `root_directory`              | async only              | optimisation root folder, same to pass back                |
+
+Use them to handle warm‑starts, logging and result persistence.
+
+---
+
+## 5  Checklist
+
+* [x] Return scalar **or** dict **or** `None`.
+* [x] Include `cost` when using cost budgets.
+* [x] When returning `None`, make sure **exactly one** call to `neps.save_callback` happens.
+* [x] Save checkpoints and artefacts in `pipeline_directory`.
+* [x] Handle resume via `previous_pipeline_directory`.
