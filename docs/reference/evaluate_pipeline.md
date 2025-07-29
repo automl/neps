@@ -2,7 +2,7 @@
 
 > **TL;DR**
 > *Sync*: return a scalar or a dict ⟶ NePS records it automatically.
-> *Async*: return `None`, launch a job, and call `neps.save_callback()` when the job finishes.
+> *Async*: return `None`, launch a job, and call `neps.save_pipeline_results()` when the job finishes.
 
 ---
 
@@ -57,7 +57,6 @@ All other values raise a `TypeError` inside NePS.
 
 ```python
 from pathlib import Path
-import subprocess
 import neps
 
 def evaluate_pipeline(
@@ -67,9 +66,8 @@ def evaluate_pipeline(
     learning_rate: float,
     optimizer: str,
 ):
-    # 1) write a Slurm script into the trial dir
-    sh = pipeline_directory / "run.sh"
-    sh.write_text(f"""#!/bin/bash
+    # 1) write a Slurm script
+    script = f"""#!/bin/bash
 #SBATCH --time=0-00:10
 #SBATCH --job-name=trial_{pipeline_id}
 #SBATCH --partition=bosch_cpu-cascadelake
@@ -82,10 +80,9 @@ python run_pipeline.py \
        --pipeline_id {pipeline_id} \
        --root_dir {root_directory}
 """)
-    sh.chmod(0o755)
 
     # 2) submit and RETURN None (async)
-    subprocess.check_call(["sbatch", str(sh)])
+    sumit_job(script)
     return None  # ⟵ signals async mode
 ```
 
@@ -101,17 +98,22 @@ parser.add_argument("--optimizer")
 parser.add_argument("--pipeline_id")
 parser.add_argument("--root_dir")
 args = parser.parse_args()
+try:
+    # … do heavy training …
+    val_loss = 0.1234
+    wall_clock_cost = 180  # seconds
+    result = {
+        "objective_to_minimize": val_loss,
+        "cost": wall_clock_cost,
+    }
+except Exception as e:
+    result = {
+        "objective_to_minimize": val_loss,
+        "cost": wall_clock_cost,
+        "exception": e
+    }
 
-# … do heavy training …
-val_loss = 0.1234
-wall_clock_cost = 180  # seconds
-
-result = {
-    "objective_to_minimize": val_loss,
-    "cost": wall_clock_cost,
-}
-
-neps.save_callback(
+neps.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
@@ -131,9 +133,8 @@ neps.save_callback(
 | name                          | provided when           | description                                                |
 | ----------------------------- | ----------------------- | ---------------------------------------------------------- |
 | `pipeline_directory`          | always                  | per‑trial working dir (`…/trials/<id>/`)                   |
-| `previous_pipeline_directory` | only for multi‑fidelity | directory of the lower‑fidelity checkpoint. Can be `None`. |
-| `pipeline_id`                 | async only              | trial id string you pass to `save_evaluation_results`                |
-| `root_directory`              | async only              | optimisation root folder, same to pass back                |
+| `previous_pipeline_directory` | always                  | directory of the lower‑fidelity checkpoint. Can be `None`. |
+| `pipeline_id`                 | always                  | trial id string you pass to `save_evaluation_results`      |
 
 Use them to handle warm‑starts, logging and result persistence.
 
@@ -143,6 +144,6 @@ Use them to handle warm‑starts, logging and result persistence.
 
 * [x] Return scalar **or** dict **or** `None`.
 * [x] Include `cost` when using cost budgets.
-* [x] When returning `None`, make sure **exactly one** call to `neps.save_callback` happens.
+* [x] When returning `None`, make sure **exactly one** call to `neps.save_pipeline_results` happens.
 * [x] Save checkpoints and artefacts in `pipeline_directory`.
 * [x] Handle resume via `previous_pipeline_directory`.

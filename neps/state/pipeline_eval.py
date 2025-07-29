@@ -378,7 +378,7 @@ def _eval_trial(
     default_report_values: DefaultReportValues,
     fn: Callable[..., Any],
     **kwargs: Any,
-) -> Report:
+) -> Report | None:
     start = time.monotonic()
     try:
         user_result = fn(**kwargs, **trial.config)

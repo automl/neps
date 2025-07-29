@@ -38,8 +38,8 @@ from neps.state import (
     OnErrorPossibilities,
     OptimizationState,
     SeedSnapshot,
-    State,
     Trial,
+    UserResult,
     WorkerSettings,
     evaluate_trial,
     UserResult,
@@ -850,9 +850,9 @@ def _save_results(
         raise RuntimeError(f"Trial '{trial_id}' not found in '{root_directory}'")
 
     report = trial.set_complete(
-        report_as=State.SUCCESS.value
+        report_as=Trial.State.SUCCESS.value
         if result.exception is None
-        else State.CRASHED.value,
+        else Trial.State.CRASHED.value,
         objective_to_minimize=result.objective_to_minimize,
         cost=result.cost,
         learning_curve=result.learning_curve,
