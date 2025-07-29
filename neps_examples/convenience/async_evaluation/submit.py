@@ -8,12 +8,8 @@ def _submit_job(pipeline_directory: Path, script: str):
     print(f"Submitting the script {script_path} (see below): \n\n{script}")
 
     # You may want to remove the below check and not ask before submitting every time
-    if input("Ok to submit? [Y|n] -- ").lower() in {"y", ""}:
-        script_path.write_text(script)
-        os.system(f"sbatch {script_path}")
-    else:
-        raise ValueError("We generated a slurm script that should not be submitted.")
-
+    script_path.write_text(script)
+    os.system(f"sbatch {script_path}")
 
 def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, lr, optimizer):
     print(f"{pipeline_id} optimization_dir")
@@ -28,7 +24,7 @@ def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, lr, optimizer):
 
 python run_pipeline.py --learning_rate {lr} \\
                        --optimizer {optimizer} \\
-                       --root_directory {"results/slurm_script_example"} \\
+                       --root_directory {"results"} \\
                        --pipeline_id {pipeline_id}
 """
 
@@ -43,7 +39,7 @@ pipeline_space = dict(
 neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
-    root_directory="results/slurm_script_example",
-    max_evaluations_total=1,
-    post_run_summary=False,
+    root_directory="results",
+    max_evaluations_total=3,
+    post_run_summary=True,
 )

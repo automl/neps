@@ -551,6 +551,8 @@ def save_pipeline_results(
     user_result: dict,
     pipeline_id: str,
     root_directory: Path,
+    *,
+    post_run_summary: bool = True,
 ) -> None:
     """Persist the outcome of one pipeline evaluation.
 
@@ -574,15 +576,27 @@ def save_pipeline_results(
         ``optimizer_info.yaml`` and the ``configs/`` subdirectory).  *Not* the
         per trial subfolder.
 
+    post_run_summary: If True, creates a csv file after trial completion,
+        holding summary information about the configs and results.
+
     Returns:
     -------
     None
     """
-    return _save_results(
+    _save_results(
         user_result=user_result,
         trial_id=pipeline_id,
         root_directory=root_directory,
     )
+
+    if post_run_summary:
+        full_frame_path, short_path = post_run_csv(root_directory)
+        logger.info(
+            "The post run summary has been created, which is a csv file with the "
+            "output of all data in the run."
+            f"\nYou can find a full dataframe at: {full_frame_path}."
+            f"\nYou can find a quick summary at: {short_path}."
+        )
 
 
 __all__ = ["run", "save_pipeline_results"]
