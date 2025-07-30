@@ -616,7 +616,7 @@ class SamplingResolver:
     def _(
         self,
         resolvable_obj: tuple,
-        context: SamplingResolutionContext,  # noqa: ARG002
+        context: SamplingResolutionContext,
     ) -> Any:
         return tuple(self._resolve_collection(resolvable_obj, context))
 
@@ -624,14 +624,14 @@ class SamplingResolver:
     def _(
         self,
         resolvable_obj: list,
-        context: SamplingResolutionContext,  # noqa: ARG002
+        context: SamplingResolutionContext,
     ) -> Any:
         return self._resolve_collection(resolvable_obj, context)
 
     def _resolve_collection(
         self,
         resolvable_obj: tuple | list,
-        context: SamplingResolutionContext,  # noqa: ARG002
+        context: SamplingResolutionContext,
     ) -> list[Any]:
         result = []
         for idx, item in enumerate(resolvable_obj):
@@ -707,19 +707,43 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
     """
     operator = cast(Callable, operation.operator)
 
-    operation_args = []
+    operation_args: list[Any] = []
     for arg in operation.args:
-        operation_args.append(
-            convert_operation_to_callable(arg) if isinstance(arg, Operation) else arg
-        )
+        if isinstance(arg, tuple | list):
+            arg_sequence: list[Any] = []
+            for a in arg:
+                converted_arg = (
+                    convert_operation_to_callable(a) if isinstance(a, Operation) else a
+                )
+                arg_sequence.append(converted_arg)
+            if isinstance(arg, tuple):
+                operation_args.append(tuple(arg_sequence))
+            else:
+                operation_args.append(arg_sequence)
+        else:
+            operation_args.append(
+                convert_operation_to_callable(arg) if isinstance(arg, Operation) else arg
+            )
 
-    operation_kwargs = {}
+    operation_kwargs: dict[str, Any] = {}
     for kwarg_name, kwarg_value in operation.kwargs.items():
-        operation_kwargs[kwarg_name] = (
-            convert_operation_to_callable(kwarg_value)
-            if isinstance(kwarg_value, Operation)
-            else kwarg_value
-        )
+        if isinstance(kwarg_value, tuple | list):
+            kwarg_sequence: list[Any] = []
+            for a in kwarg_value:
+                converted_kwarg = (
+                    convert_operation_to_callable(a) if isinstance(a, Operation) else a
+                )
+                kwarg_sequence.append(converted_kwarg)
+            if isinstance(kwarg_value, tuple):
+                operation_kwargs[kwarg_name] = tuple(kwarg_sequence)
+            else:
+                operation_kwargs[kwarg_name] = kwarg_sequence
+        else:
+            operation_kwargs[kwarg_name] = (
+                convert_operation_to_callable(kwarg_value)
+                if isinstance(kwarg_value, Operation)
+                else kwarg_value
+            )
 
     return cast(Callable, operator(*operation_args, **operation_kwargs))
 
