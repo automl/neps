@@ -612,6 +612,32 @@ class SamplingResolver:
     @_resolver_dispatch.register
     def _(
         self,
+        resolvable_obj: tuple,
+        context: SamplingResolutionContext,  # noqa: ARG002
+    ) -> Any:
+        return tuple(self._resolve_collection(resolvable_obj, context))
+
+    @_resolver_dispatch.register
+    def _(
+        self,
+        resolvable_obj: list,
+        context: SamplingResolutionContext,  # noqa: ARG002
+    ) -> Any:
+        return self._resolve_collection(resolvable_obj, context)
+
+    def _resolve_collection(
+        self,
+        resolvable_obj: tuple | list,
+        context: SamplingResolutionContext,  # noqa: ARG002
+    ) -> list[Any]:
+        result = []
+        for idx, item in enumerate(resolvable_obj):
+            result.append(self._resolve(item, f"collection[{idx}]", context))
+        return result
+
+    @_resolver_dispatch.register
+    def _(
+        self,
         resolvable_obj: Resolvable,
         context: SamplingResolutionContext,  # noqa: ARG002
     ) -> Any:
