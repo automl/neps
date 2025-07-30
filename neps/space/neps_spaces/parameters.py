@@ -399,7 +399,7 @@ class Categorical(Domain[int], Generic[T]):
 
     def __init__(
         self,
-        choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T],
+        choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T] | Resolvable,
         prior: int | Domain[int] | _Unset = _UNSET,
         prior_confidence: (
             ConfidenceLevel | Literal["low", "medium", "high"] | _Unset

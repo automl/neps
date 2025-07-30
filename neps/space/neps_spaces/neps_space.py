@@ -440,17 +440,19 @@ class SamplingResolver:
                 # We don't want the resolution process to directly go inside
                 # the tuple of provided choices that gets picked from the provider,
                 # since that would lead to potentially exponential growth
-                # and in resolving stuff what will ultimately be useless to us.
+                # and in resolving stuff that will ultimately be useless to us.
 
                 # For this reason, if we haven't already sampled this categorical
                 # (the choice provider), we make sure to wrap each of the choices
-                # inside it the provider in a `Lazy` resolvable.
+                # inside it in a lazy resolvable.
                 # This ensures that the resolving process stops directly after
                 # the provider has made its choice.
 
-                # Since we may be manually creating new objects that get resolved,
-                # it's important that we manually add to the context
-                # the original objects, because they can be possibly reused elsewhere.
+                # Since we may be manually creating a new categorical object
+                # for the provider, which is what will then get resolved,
+                # it's important that we manually store
+                # in the context that resolved value for the original object.
+                # The original object can possibly be reused elsewhere.
 
                 if (
                     isinstance(initial_attr_value, Categorical)
@@ -467,7 +469,10 @@ class SamplingResolver:
                         and isinstance(initial_attr_value.source, Categorical)
                     )
                 ):
-                    # We have a previously unseen provider. Adjust its internals.
+                    # We have a previously unseen provider.
+                    # Create a new object where the choices are lazy,
+                    # and then sample from it, manually tracking the context.
+
                     choice_provider_final_attrs = {**initial_attr_value.get_attrs()}
                     choice_provider_choices = choice_provider_final_attrs["choices"]
                     if isinstance(choice_provider_choices, (tuple, list)):
@@ -482,12 +487,11 @@ class SamplingResolver:
                     resolved_attr_value = self._resolve(
                         choice_provider_adjusted, "choice_provider", context
                     )
-
                     if not isinstance(initial_attr_value, Resampled):
-                        # It's important that we manually add this here,
+                        # It's important that we handle filling the context here,
                         # as we manually created a different object from the original.
                         # In case the original categorical is used again,
-                        # it will need to be reused with the final value we got here.
+                        # it will need to be reused with the final value we resolved.
                         context.add_resolved(initial_attr_value, resolved_attr_value)
                 else:
                     # We have "choices" which are ready to use.
@@ -528,13 +532,6 @@ class SamplingResolver:
         if context.was_already_resolved(operation_obj):
             return context.get_resolved(operation_obj)
 
-        # It is possible that the `operation_obj` will require two runs to be fully
-        # resolved. For example if `operation_obj.args` is not defined as a tuple of
-        # args, but is a Resolvable that needs to be resolved first itself,
-        # for us to have the actual tuple of args.
-
-        # First run.
-
         initial_attrs = operation_obj.get_attrs()
         final_attrs = {}
         needed_resolving = False
@@ -546,30 +543,9 @@ class SamplingResolver:
                 initial_attr_value is not resolved_attr_value
             )
 
-        operation_obj_first_run = operation_obj
+        result = operation_obj
         if needed_resolving:
-            operation_obj_first_run = operation_obj.from_attrs(final_attrs)
-
-        # Second run.
-        # It is possible the first run was enough,
-        # in this case what we do below won't lead to any changes.
-
-        initial_attrs = operation_obj_first_run.get_attrs()
-        final_attrs = {}
-        needed_resolving = False
-
-        for attr_name, initial_attr_value in initial_attrs.items():
-            resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
-            final_attrs[attr_name] = resolved_attr_value
-            needed_resolving = needed_resolving or (
-                initial_attr_value is not resolved_attr_value
-            )
-
-        operation_obj_second_run = operation_obj_first_run
-        if needed_resolving:
-            operation_obj_second_run = operation_obj_first_run.from_attrs(final_attrs)
-
-        result = operation_obj_second_run
+            result = operation_obj.from_attrs(final_attrs)
 
         context.add_resolved(operation_obj, result)
         return result
@@ -672,27 +648,38 @@ class SamplingResolver:
     @_resolver_dispatch.register
     def _(
         self,
+        resolvable_obj: dict,
+        context: SamplingResolutionContext,
+    ) -> dict[Any, Any]:
+        result = {}
+        for k, v in resolvable_obj.items():
+            result[k] = self._resolve(v, f"mapping_value{{{k}}}", context)
+        return result
+
+    @_resolver_dispatch.register
+    def _(
+        self,
         resolvable_obj: tuple,
         context: SamplingResolutionContext,
-    ) -> Any:
-        return tuple(self._resolve_collection(resolvable_obj, context))
+    ) -> tuple[Any]:
+        return tuple(self._resolve_sequence(resolvable_obj, context))
 
     @_resolver_dispatch.register
     def _(
         self,
         resolvable_obj: list,
         context: SamplingResolutionContext,
-    ) -> Any:
-        return self._resolve_collection(resolvable_obj, context)
+    ) -> list[Any]:
+        return self._resolve_sequence(resolvable_obj, context)
 
-    def _resolve_collection(
+    def _resolve_sequence(
         self,
         resolvable_obj: tuple | list,
         context: SamplingResolutionContext,
     ) -> list[Any]:
         result = []
         for idx, item in enumerate(resolvable_obj):
-            result.append(self._resolve(item, f"collection[{idx}]", context))
+            result.append(self._resolve(item, f"sequence[{idx}]", context))
         return result
 
     @_resolver_dispatch.register
