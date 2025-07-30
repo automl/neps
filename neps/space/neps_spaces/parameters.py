@@ -1126,4 +1126,60 @@ class Resampled(Resolvable):
             raise ValueError(
                 f"Source should be a resolvable object. Is: {self._source!r}."
             )
+
+        # It's okay that we return this directly, since it will be a new object.
         return self._source.from_attrs(attrs)
+
+
+class _Lazy(Resolvable):
+    """A class representing a lazy operation in a NePS space.
+
+    The purpose is to have the resolution process
+    stop at the moment it gets to this object,
+    preventing the resolution of the object it wraps.
+
+    Attributes:
+        content: The content held, which can be a resolvable object or a
+            tuple or a string.
+    """
+
+    def __init__(self, content: Resolvable | tuple[Any] | str):
+        self._content = content
+
+    @property
+    def content(self) -> Resolvable | tuple[Any] | str:
+        """Get the content being held.
+
+        Returns:
+            The content of the lazy resolvable, which can be a resolvable object
+            or a tuple or a string.
+        """
+        return self._content
+
+    def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the lazy resolvable as a mapping.
+
+        Raises:
+          ValueError: Always, since this operation does not make sense here.
+        """
+        raise ValueError(
+            f"This is a lazy resolvable. Can't get attrs from it: {self.content!r}."
+        )
+
+    def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
+        """Create a new resolvable object from the given attributes.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new resolvable object created from the specified attributes.
+
+        Raises:
+          ValueError: Always, since this operation does not make sense here.
+
+
+        """
+        raise ValueError(
+            f"This is a lazy resolvable. Can't create object for it: {self.content!r}."
+        )

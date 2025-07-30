@@ -24,6 +24,7 @@ from neps.space.neps_spaces.parameters import (
     PipelineSpace,
     Resampled,
     Resolvable,
+    _Lazy,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -430,23 +431,66 @@ class SamplingResolver:
 
         for attr_name, initial_attr_value in initial_attrs.items():
             if attr_name == "choices":
-                if isinstance(initial_attr_value, Resolvable):
-                    # Resolving here like below works fine since the expectation
-                    # is that we will get back a tuple of choices.
-                    # Any element in that tuple can be a Resolvable,
-                    # but will not be resolved from the call directly below,
-                    # as the tuple is returned as is,
-                    # without going into resolving its elements.
-                    # If we add a `_resolve_tuple` functionality to go into tuples
-                    # and resolve their contents, the call below will likely
-                    # lead to too much work being done or issues.
-                    # TODO: since we added resolving for tuples/lists, it can be
-                    #  that the assumptions from the above comment do not apply
-                    #  and the behavior is now broken
-                    resolved_attr_value = self._resolve(
-                        initial_attr_value, attr_name, context
+                # We need special handling if we are dealing with a "choice provider",
+                # which will select a tuple of choices from its own choices,
+                # from which then this original categorical will pick.
+
+                # Ideally, from the choices provided, we want to first pick one,
+                # and then only resolve that picked item.
+                # We don't want the resolution process to directly go inside
+                # the tuple of provided choices that gets picked from the provider,
+                # since that would lead to potentially exponential growth
+                # and in resolving stuff what will ultimately be useless to us.
+
+                # For this reason, if we haven't already sampled this categorical
+                # (the choice provider), we make sure to wrap each of the choices
+                # inside it the provider in a `Lazy` resolvable.
+                # This ensures that the resolving process stops directly after
+                # the provider has made its choice.
+
+                # Since we may be manually creating new objects that get resolved,
+                # it's important that we manually add to the context
+                # the original objects, because they can be possibly reused elsewhere.
+
+                if (
+                    isinstance(initial_attr_value, Categorical)
+                    and context.was_already_resolved(initial_attr_value)
+                ):
+                    # Before making adjustments, we make sure we haven't
+                    # already chosen a value for the provider.
+                    # Otherwise, we already have the final answer for it.
+                    resolved_attr_value = context.get_resolved(initial_attr_value)
+                elif (
+                    isinstance(initial_attr_value, Categorical) or
+                    (
+                        isinstance(initial_attr_value, Resampled)
+                        and isinstance(initial_attr_value.source, Categorical)
                     )
+                ):
+                    # We have a previously unseen provider. Adjust its internals.
+                    choice_provider_final_attrs = {**initial_attr_value.get_attrs()}
+                    choice_provider_choices = choice_provider_final_attrs["choices"]
+                    if isinstance(choice_provider_choices, (tuple, list)):
+                        choice_provider_choices = tuple(
+                            _Lazy(content=choice) for choice in choice_provider_choices
+                        )
+                    choice_provider_final_attrs["choices"] = choice_provider_choices
+                    choice_provider_adjusted = initial_attr_value.from_attrs(
+                        choice_provider_final_attrs
+                    )
+
+                    resolved_attr_value = self._resolve(
+                        choice_provider_adjusted, "choice_provider", context
+                    )
+
+                    if not isinstance(initial_attr_value, Resampled):
+                        # It's important that we manually add this here,
+                        # as we manually created a different object from the original.
+                        # In case the original categorical is used again,
+                        # it will need to be reused with the final value we got here.
+                        context.add_resolved(initial_attr_value, resolved_attr_value)
                 else:
+                    # We have "choices" which are ready to use.
                     resolved_attr_value = initial_attr_value
             else:
                 resolved_attr_value = self._resolve(
@@ -611,6 +655,19 @@ class SamplingResolver:
 
         context.add_resolved(fidelity_obj, result)
         return result
+
+    @_resolver_dispatch.register
+    def _(
+        self,
+        resolvable_obj: _Lazy,
+        context: SamplingResolutionContext,  # noqa: ARG002
+    ) -> Any:
+        # When resolving a lazy resolvable,
+        # just directly return the content it's holding.
+        # The purpose of the lazy resolvable is to stop
+        # the resolver from going deeper into the process.
+        # In this case, to stop the resolution of `resolvable_obj.content`.
+        return resolvable_obj.content
 
     @_resolver_dispatch.register
     def _(
