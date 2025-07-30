@@ -327,63 +327,172 @@ def test_resolve_context():
 def test_resolve_context_alt():
     samplings_to_make = {
         "Resolvable.S.args.resampled_categorical::categorical__6": 3,
-        "Resolvable.S.args[0].resampled_operation.args.resampled_categorical::categorical__6": (
-            0
-        ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__4": (
-            1
-        ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args[0].resampled_categorical::categorical__3": (
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
             2
         ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args.resampled_categorical::categorical__6": (
-            3
-        ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__6": (
-            1
-        ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[1].resampled_operation.args.resampled_categorical::categorical__4": (
-            0
-        ),
-        "Resolvable.S.args[0].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[1].resampled_operation.args[0].resampled_categorical::categorical__3": (
-            0
-        ),
-        "Resolvable.S.args[1].resampled_operation.args.resampled_categorical::categorical__4": (
-            3
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__6": (
-            3
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__6": (
-            0
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[0].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__4": (
-            0
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[0].resampled_operation.args[0].resampled_operation.args[0].resampled_categorical::categorical__3": (
-            0
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args.resampled_categorical::categorical__4": (
-            3
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[0].resampled_operation.args.resampled_categorical::categorical__6": (
-            4
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[0].resampled_operation.args[0].resampled_categorical::categorical__3": (
-            1
-        ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_categorical::categorical__3": (
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
             2
         ),
-        "Resolvable.S.args[1].resampled_operation.args[0].resampled_operation.args[1].resampled_operation.args[0].resampled_operation.args[2].resampled_categorical::categorical__3": (
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            5
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__4": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[2].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[3].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[4].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[5].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[6].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[7].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__4": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            5
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            5
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            3
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__4": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[2].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[3].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[4].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[5].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[6].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[7].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            5
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__6": (
+            3
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__6": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical::categorical__4": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical::categorical__4": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[0].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[2].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[3].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[4].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[5].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[6].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[7].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[2].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[3].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[4].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[5].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[6].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.S.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[1].resampled_operation.args.resampled_categorical.sampled_value.collection[7].resampled_categorical::categorical__3": (
             0
         ),
     }
     expected_s_config_string = (
-        "(Sequential (Sequential (Sequential (Identity) (Sequential (Sequential"
-        " (ReLUConvBN)) (Sequential (Conv2D-3))) (ReLUConvBN))) (Sequential (Sequential"
-        " (Sequential (Sequential (Conv2D-3))) (Sequential (Sequential (Conv2D-1)"
-        " (Identity) (Conv2D-3))))))"
+        "(Sequential (Sequential (Sequential (Sequential (Sequential "
+        "(Sequential (Conv2D-3) (Sequential (ReLUConvBN)))) (Sequential "
+        "(ReLUConvBN)) (Identity) (Conv2D-3) (Conv2D-3) (Conv2D-1) (Conv2D-3) "
+        "(Identity)))) (Sequential (Conv2D-3) (Sequential (Sequential "
+        "(Sequential (Sequential (Sequential (ReLUConvBN)) (Sequential "
+        "(Conv2D-1))) (Sequential (Sequential (ReLUConvBN))) (Conv2D-1) "
+        "(Conv2D-1) (Identity) (Conv2D-1) (Conv2D-3) (Conv2D-3))) "
+        "(Sequential (Sequential (ReLUConvBN)) (Sequential (Sequential "
+        "(Sequential (Identity))) (Sequential (Conv2D-3))) (Conv2D-1) "
+        "(Identity) (Conv2D-1) (Conv2D-1) (Conv2D-1) (Identity)) (Identity) "
+        "(Identity) (Identity) (Conv2D-1) (Conv2D-1) (Conv2D-3)) (ReLUConvBN)))"
     )
 
     pipeline = GrammarLikeAlt()
