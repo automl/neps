@@ -440,6 +440,9 @@ class SamplingResolver:
                     # If we add a `_resolve_tuple` functionality to go into tuples
                     # and resolve their contents, the call below will likely
                     # lead to too much work being done or issues.
+                    # TODO: since we added resolving for tuples/lists, it can be
+                    #  that the assumptions from the above comment do not apply
+                    #  and the behavior is now broken
                     resolved_attr_value = self._resolve(
                         initial_attr_value, attr_name, context
                     )
