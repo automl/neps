@@ -123,6 +123,10 @@ REQUIRES_FIDELITY_MO = [
     "mo_hyperband",
 ]
 
+REQUIRES_MO_PRIOR = [
+    "primo",
+]
+
 
 @fixture
 @parametrize("key", list(PredefinedOptimizers.keys()))
@@ -151,6 +155,9 @@ def optimizer_and_key_and_search_space(
 
     if key in REQUIRES_FIDELITY_MO and search_space.fidelity is None:
         pytest.xfail(f"Multi-objective optimizer {key} requires a fidelity parameter")
+
+    if key in REQUIRES_MO_PRIOR:
+        pytest.xfail("No tests defined for PriMO yet")
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
