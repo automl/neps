@@ -141,6 +141,7 @@ class Summary:
         # make decisions based on the state
         try:
             from neps.runtime import get_workers_neps_state
+
             shared_state = get_workers_neps_state()
         except RuntimeError:
             shared_state = NePSState.create_or_load(root_directory, load_only=True)
@@ -250,7 +251,7 @@ def trajectory_of_improvements(
 
     for trial_id, row in df.iterrows():
         if "objective_to_minimize" not in row or pd.isna(row["objective_to_minimize"]):
-            continue  
+            continue
 
         score = row["objective_to_minimize"]
         if score < best_score:
@@ -271,20 +272,19 @@ def trajectory_of_improvements(
             trace_text += (
                 f"Objective to minimize: {best['score']}\n"
                 f"Config ID: {best['trial_id']}\n"
-                f"Config: {best['config']}\n"
-                + "-" * 80 + "\n"
+                f"Config: {best['config']}\n" + "-" * 80 + "\n"
             )
 
     summary_dir = root_directory / "summary"
     summary_dir.mkdir(parents=True, exist_ok=True)
     output_path = summary_dir / "best_config_trajectory.txt"
-    with open(output_path, "w") as f:
+    with output_path.open("w") as f:
         f.write(trace_text)
 
     if all_best_configs:
         final_best = all_best_configs[-1]
         best_path = summary_dir / "best_config.txt"
-        with open(best_path, "w") as f:
+        with best_path.open("w") as f:
             f.write(
                 f"Objective to minimize: {final_best['score']}\n"
                 f"Config ID: {final_best['trial_id']}\n"
@@ -336,4 +336,3 @@ def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
         short.to_frame().to_csv(short_path)
 
     return full_df_path, short_path
-
