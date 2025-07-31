@@ -7,16 +7,14 @@ import logging
 import os
 import shutil
 import time
-import math
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal, List, Any, Dict
+from typing import TYPE_CHECKING, ClassVar, Literal
 
-from portalocker import portalocker
-from pathlib import Path
 from filelock import FileLock
+from portalocker import portalocker
 
 from neps.env import (
     FS_SYNC_GRACE_BASE,
@@ -44,7 +42,7 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.status.status import post_run_csv, _initiate_summary_csv, status
+from neps.status.status import _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
@@ -330,7 +328,7 @@ class DefaultWorker:
                     for _, trial in trials.items()
                     if trial.metadata.state
                     not in (Trial.State.PENDING, Trial.State.SUBMITTED)
-                )   
+                )
             else:
                 # This indicates they have completed.
                 count = sum(1 for _, trial in trials.items() if trial.report is not None)
@@ -342,9 +340,11 @@ class DefaultWorker:
                     " To allow more evaluations, increase this value or use a different"
                     " stopping criterion."
                 )
-            
-        if self.settings.fidelities_to_spend is not None:
-            fidelity_name = list(self.optimizer.space.fidelities.keys())[0]
+
+        if self.settings.fidelities_to_spend is not None and hasattr(
+            self.optimizer, "space"
+        ):
+            fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
             count = sum(
                 trial.config[fidelity_name]
                 for _, trial in trials.items()
@@ -352,8 +352,8 @@ class DefaultWorker:
             )
             if count >= self.settings.fidelities_to_spend:
                 return (
-                    "The total number of fidelity evaluations has reached the maximum allowed of"
-                    f" `{self.settings.fidelities_to_spend=}`."
+                    "The total number of fidelity evaluations has reached the maximum"
+                    f" allowed of `{self.settings.fidelities_to_spend=}`."
                     " To allow more evaluations, increase this value or use a different"
                     " stopping criterion."
                 )
@@ -534,14 +534,28 @@ class DefaultWorker:
             _trace_lock_path = Path(str(_trace_lock.lock_file))
             _trace_lock_path.touch(exist_ok=True)
 
-            logger.info("Summary files can be found in the “summary” folder inside the root directory: %s", summary_dir)
+            logger.info(
+                "Summary files can be found in the “summary” folder inside"
+                "the root directory: %s",
+                summary_dir,
+            )
 
         previous_trials = self.state.lock_and_read_trials()
         if len(previous_trials):
-            load_incumbent_trace(previous_trials, _trace_lock, self.state, self.settings, improvement_trace_path, best_config_path)
+            load_incumbent_trace(
+                previous_trials,
+                _trace_lock,
+                self.state,
+                self.settings,
+                improvement_trace_path,
+                best_config_path,
+            )
 
         _best_score_so_far = float("inf")
-        if self.state.new_score is not None and self.state.new_score != _best_score_so_far:
+        if (
+            self.state.new_score is not None
+            and self.state.new_score != _best_score_so_far
+        ):
             _best_score_so_far = self.state.new_score
 
         optimizer_name = self.state._optimizer_info["name"]
@@ -674,8 +688,12 @@ class DefaultWorker:
                 # This is mostly for `tblogger`
                 for _key, callback in _TRIAL_END_CALLBACKS.items():
                     callback(trial_to_eval)
-            
-            if report.objective_to_minimize is not None and report.err is None:
+
+            if (
+                report.objective_to_minimize is not None
+                and report.err is None
+                and not isinstance(report.objective_to_minimize, list)
+            ):
                 self.state.new_score = report.objective_to_minimize
                 if self.state.new_score < _best_score_so_far:
                     _best_score_so_far = self.state.new_score
@@ -684,23 +702,28 @@ class DefaultWorker:
                         evaluated_trial.id,
                         self.state.new_score,
                     )
-                    
+
                     if self.settings.write_summary_to_disk:
                         # Store in memory for later file re-writing
-                        self.state.all_best_configs.append({
-                            "score": self.state.new_score,
-                            "trial_id": evaluated_trial.id,
-                            "config": evaluated_trial.config
-                        })
+                        self.state.all_best_configs.append(
+                            {
+                                "score": self.state.new_score,
+                                "trial_id": evaluated_trial.id,
+                                "config": evaluated_trial.config,
+                            }
+                        )
 
                         # Build trace text and best config text
-                        trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+                        trace_text = (
+                            "Best configs and their objectives across evaluations:\n"
+                            + "-" * 80
+                            + "\n"
+                        )
                         for best in self.state.all_best_configs:
                             trace_text += (
                                 f"Objective to minimize: {best['score']}\n"
                                 f"Config ID: {best['trial_id']}\n"
-                                f"Config: {best['config']}\n"
-                                + "-" * 80 + "\n"
+                                f"Config: {best['config']}\n" + "-" * 80 + "\n"
                             )
 
                         best_config = self.state.all_best_configs[-1]  # Latest best
@@ -713,9 +736,10 @@ class DefaultWorker:
 
                         # Write files from scratch
                         with _trace_lock:
-                            with open(improvement_trace_path, mode='w') as f:
+                            with improvement_trace_path.open(mode="w") as f:
                                 f.write(trace_text)
-                            with open(best_config_path, mode='w') as f:
+
+                            with best_config_path.open(mode="w") as f:
                                 f.write(best_config_text)
 
                 if self.settings.write_summary_to_disk:
@@ -731,34 +755,41 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-def load_incumbent_trace(
+
+def load_incumbent_trace(  # noqa: D103
     previous_trials: dict[str, Trial],
     _trace_lock: FileLock,
     state: NePSState,
-    settings: WorkerSettings,
+    settings: WorkerSettings,  # noqa: ARG001
     improvement_trace_path: Path,
-    best_config_path: Path
+    best_config_path: Path,
 ) -> None:
     _best_score_so_far = float("inf")
 
     for evaluated_trial in previous_trials.values():
-        if evaluated_trial.report is not None and evaluated_trial.report.objective_to_minimize is not None:
+        if (
+            evaluated_trial.report is not None
+            and evaluated_trial.report.objective_to_minimize is not None
+        ):
             state.new_score = evaluated_trial.report.objective_to_minimize
             if state.new_score is not None and state.new_score < _best_score_so_far:
                 _best_score_so_far = state.new_score
-                state.all_best_configs.append({
-                    "score": state.new_score,
-                    "trial_id": evaluated_trial.metadata.id,
-                    "config": evaluated_trial.config
-                })
+                state.all_best_configs.append(
+                    {
+                        "score": state.new_score,
+                        "trial_id": evaluated_trial.metadata.id,
+                        "config": evaluated_trial.config,
+                    }
+                )
 
-    trace_text = "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    trace_text = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
     for best in state.all_best_configs:
         trace_text += (
             f"Objective to minimize: {best['score']}\n"
             f"Config ID: {best['trial_id']}\n"
-            f"Config: {best['config']}\n"
-            + "-" * 80 + "\n"
+            f"Config: {best['config']}\n" + "-" * 80 + "\n"
         )
 
     best_config_text = ""
@@ -773,12 +804,10 @@ def load_incumbent_trace(
     else:
         best_config = None
 
-        
-
     with _trace_lock:
-        with open(improvement_trace_path, mode='w') as f:
+        with improvement_trace_path.open(mode="w") as f:
             f.write(trace_text)
-        with open(best_config_path, mode='w') as f:
+        with best_config_path.open(mode="w") as f:
             f.write(best_config_text)
 
 
@@ -932,7 +961,7 @@ def _launch_runtime(  # noqa: PLR0913
         max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_cost_for_worker=None,  # TODO: User can't specify yet
-        write_summary_to_disk=write_summary_to_disk
+        write_summary_to_disk=write_summary_to_disk,
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.

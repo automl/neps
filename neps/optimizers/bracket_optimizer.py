@@ -26,6 +26,7 @@ from neps.utils.common import disable_warnings
 if TYPE_CHECKING:
     from gpytorch.models.approximate_gp import Any
 
+    from neps.optimizers.mopriors import MOPriorSampler
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
@@ -234,7 +235,7 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandSampler
+    sampler: Sampler | PriorBandSampler | MOPriorSampler
     """The sampler used to generate new trials."""
 
     gp_sampler: GPSampler | None
