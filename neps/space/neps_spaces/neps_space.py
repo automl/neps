@@ -700,7 +700,7 @@ class SamplingResolver:
         self,
         resolvable_obj: tuple | list,
         context: SamplingResolutionContext,
-    ) -> list[Any] | tuple[Any]:
+    ) -> tuple[Any] | list[Any]:
         # The logic below is done so that if the original sequence
         # had only things that didn't need resolving,
         # we return the original object.
