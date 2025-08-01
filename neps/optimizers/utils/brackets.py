@@ -620,11 +620,11 @@ class Hyperband:
                 case PromoteAction(new_rung=new_rung):
                     return 0, new_rung
                 case SampleAction(sample_at_rung):
-                    return 0, sample_at_rung
+                    return 1, sample_at_rung
                 case "pending":
-                    return 1, 0
-                case "done":
                     return 2, 0
+                case "done":
+                    return 3, 0
                 case _:
                     raise RuntimeError("This is a bug!")
 
