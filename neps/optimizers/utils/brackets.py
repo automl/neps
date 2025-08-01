@@ -422,20 +422,24 @@ class Async:
     def next(self) -> BracketAction:
         # Starting from the highest rung going down, check if any configs to promote
         for lower, upper in reversed(list(pairwise(self.rungs))):
-            k = len(lower) // self.eta
-            if k == 0:
-                continue  # Not enough configs to promote yet
+            import copy
 
-            if self.is_multi_objective:
-                best_k = lower.mo_selector(selector=self.mo_selector, k=k)
-            else:
-                best_k = lower.top_k(k)
-            candidates = best_k.drop(
+            lower_dropped = copy.deepcopy(lower)
+            lower_dropped.table = lower_dropped.table.drop(
                 upper.config_ids,
                 axis="index",
                 level="id",
                 errors="ignore",
             )
+            k = len(lower_dropped) // self.eta
+            if k == 0:
+                continue  # Not enough configs to promote yet
+
+            if self.is_multi_objective:
+                best_k = lower_dropped.mo_selector(selector=self.mo_selector, k=k)
+            else:
+                best_k = lower_dropped.top_k(k)
+            candidates = best_k.copy(deep=True)
             if candidates.empty:
                 continue  # No configs that aren't already promoted
 
