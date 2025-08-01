@@ -709,15 +709,15 @@ class SamplingResolver:
         new_list = []
         needed_resolving = False
 
-        for idx, item in enumerate(original_sequence):
-            resolved_item = self._resolve(item, f"sequence[{idx}]", context)
+        for idx, initial_item in enumerate(original_sequence):
+            resolved_item = self._resolve(initial_item, f"sequence[{idx}]", context)
             new_list.append(resolved_item)
-            needed_resolving = needed_resolving or (item is not resolved_item)
+            needed_resolving = needed_resolving or (initial_item is not resolved_item)
 
         result = original_sequence
         if needed_resolving:
             # We also want to return a result of the same type
-            # as the original received value.
+            # as the original received sequence.
             original_type = type(original_sequence)
             result = original_type(new_list)
 
