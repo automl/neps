@@ -1003,20 +1003,7 @@ class Operation(Resolvable):
             A mapping of attribute names to their values.
 
         """
-        # TODO: [lum] simplify this. We know the fields. Maybe other places too.
-        result: dict[str, Any] = {}
-        for name, value in vars(self).items():
-            stripped_name = name.lstrip("_")
-            if isinstance(value, dict):
-                for k, v in value.items():
-                    # Multiple {{}} needed to escape surrounding '{' and '}'.
-                    result[f"{stripped_name}{{{k}}}"] = v
-            elif isinstance(value, tuple):
-                for i, v in enumerate(value):
-                    result[f"{stripped_name}[{i}]"] = v
-            else:
-                result[stripped_name] = value
-        return result
+        return {k.lstrip("_"): v for k, v in vars(self).items()}
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Operation:
         """Create a new Operation instance from the given attributes.
@@ -1031,20 +1018,7 @@ class Operation(Resolvable):
             ValueError: If the attributes do not match the operation's expected structure.
 
         """
-        # TODO: [lum] simplify this. We know the fields. Maybe other places too.
-        final_attrs: dict[str, Any] = {}
-        for name, value in attrs.items():
-            if "{" in name and "}" in name:
-                base, key = name.split("{")
-                key = key.rstrip("}")
-                final_attrs.setdefault(base, {})[key] = value
-            elif "[" in name and "]" in name:
-                base, idx_str = name.split("[")
-                idx = int(idx_str.rstrip("]"))
-                final_attrs.setdefault(base, []).insert(idx, value)
-            else:
-                final_attrs[name] = value
-        return type(self)(**final_attrs)
+        return type(self)(**attrs)
 
 
 class Resampled(Resolvable):
@@ -1126,8 +1100,6 @@ class Resampled(Resolvable):
             raise ValueError(
                 f"Source should be a resolvable object. Is: {self._source!r}."
             )
-
-        # It's okay that we return this directly, since it will be a new object.
         return self._source.from_attrs(attrs)
 
 

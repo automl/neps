@@ -281,10 +281,6 @@ def test_resampled_categorical():
 
     cell_args1 = cell.args[0]
     cell_args2 = cell.args[1]
-    cell.args[2]
-    cell.args[3]
-    cell.args[4]
-    cell.args[5]
 
     assert cell_args1 is op1
     assert cell_args2 is op2

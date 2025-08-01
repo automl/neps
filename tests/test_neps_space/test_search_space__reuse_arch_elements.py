@@ -15,14 +15,18 @@ from neps.space.neps_spaces.parameters import (
 
 
 class ActPipelineSimple(PipelineSpace):
-    prelu = Operation(
-        operator="prelu",
+    prelu_with_args = Operation(
+        operator="prelu_with_args",
+        args=(0.1, 0.2),
+    )
+    prelu_with_kwargs = Operation(
+        operator="prelu_with_kwargs",
         kwargs={"init": 0.1},
     )
     relu = Operation(operator="relu")
 
     act: Operation = Categorical(
-        choices=(prelu, relu),
+        choices=(prelu_with_args, prelu_with_kwargs, relu),
     )
 
 
@@ -130,17 +134,30 @@ def test_nested_simple():
     resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     assert resolved_pipeline is not None
-    assert tuple(resolved_pipeline.get_attrs().keys()) == ("prelu", "relu", "act")
+    assert tuple(resolved_pipeline.get_attrs().keys()) == (
+        "prelu_with_args",
+        "prelu_with_kwargs",
+        "relu",
+        "act",
+    )
 
-    assert resolved_pipeline.prelu is pipeline.prelu
+    assert resolved_pipeline.prelu_with_kwargs is pipeline.prelu_with_kwargs
+    assert resolved_pipeline.prelu_with_args is pipeline.prelu_with_args
     assert resolved_pipeline.relu is pipeline.relu
+
+    assert resolved_pipeline.act in (
+        resolved_pipeline.prelu_with_kwargs,
+        resolved_pipeline.prelu_with_args,
+        resolved_pipeline.relu,
+    )
 
 
 @pytest.mark.repeat(50)
 def test_nested_simple_string():
     possible_cell_config_strings = {
         "(relu)",
-        "(prelu {'init': 0.1})",
+        "(prelu_with_args (0.1) (0.2))",
+        "(prelu_with_kwargs {'init': 0.1})",
     }
 
     pipeline = ActPipelineSimple()
@@ -393,7 +410,7 @@ def test_shared_complex_context():
     samplings_to_make = {
         "Resolvable.op1::categorical__3": 2,
         "Resolvable.op2::categorical__3": 1,
-        "Resolvable.cell.kwargs{float_hp}::float__0.5_0.5_False": 0.5,
+        "Resolvable.cell.kwargs.mapping_value{float_hp}::float__0.5_0.5_False": 0.5,
     }
 
     pipeline = CellPipeline()

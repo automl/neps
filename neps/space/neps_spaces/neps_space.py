@@ -573,6 +573,16 @@ class SamplingResolver:
         initial_attrs = resampled_obj.get_attrs()
         resolvable_to_resample_obj = resampled_obj.from_attrs(initial_attrs)
 
+        if resolvable_to_resample_obj is resampled_obj.source:
+            # The final resolvable we are resolving needs to be a different
+            # instance from the original wrapped object.
+            # Otherwise, it's possible we'll be taking its result
+            # from the context cache, instead of resampling it.
+            raise ValueError(
+                "The final object must be a different instance from the original: "
+                f"{resolvable_to_resample_obj!r}"
+            )
+
         type_name = type(resolvable_to_resample_obj).__name__.lower()
         return self._resolve(
             resolvable_to_resample_obj, f"resampled_{type_name}", context
@@ -651,9 +661,23 @@ class SamplingResolver:
         resolvable_obj: dict,
         context: SamplingResolutionContext,
     ) -> dict[Any, Any]:
-        result = {}
-        for k, v in resolvable_obj.items():
-            result[k] = self._resolve(v, f"mapping_value{{{k}}}", context)
+        # The logic below is done so that if the original dict
+        # had only things that didn't need resolving,
+        # we return the original object.
+        # That is important for the rest of the resolving process.
+        original_dict = resolvable_obj
+        new_dict = {}
+        needed_resolving = False
+
+        for k, initial_v in original_dict.items():
+            resolved_v = self._resolve(initial_v, f"mapping_value{{{k}}}", context)
+            new_dict[k] = resolved_v
+            needed_resolving = needed_resolving or (resolved_v is not initial_v)
+
+        result = original_dict
+        if needed_resolving:
+            result = new_dict
+
         return result
 
     @_resolver_dispatch.register
@@ -662,7 +686,7 @@ class SamplingResolver:
         resolvable_obj: tuple,
         context: SamplingResolutionContext,
     ) -> tuple[Any]:
-        return tuple(self._resolve_sequence(resolvable_obj, context))
+        return self._resolve_sequence(resolvable_obj, context)
 
     @_resolver_dispatch.register
     def _(
@@ -676,10 +700,27 @@ class SamplingResolver:
         self,
         resolvable_obj: tuple | list,
         context: SamplingResolutionContext,
-    ) -> list[Any]:
-        result = []
-        for idx, item in enumerate(resolvable_obj):
-            result.append(self._resolve(item, f"sequence[{idx}]", context))
+    ) -> list[Any] | tuple[Any]:
+        # The logic below is done so that if the original sequence
+        # had only things that didn't need resolving,
+        # we return the original object.
+        # That is important for the rest of the resolving process.
+        original_sequence = resolvable_obj
+        new_list = []
+        needed_resolving = False
+
+        for idx, item in enumerate(original_sequence):
+            resolved_item = self._resolve(item, f"sequence[{idx}]", context)
+            new_list.append(resolved_item)
+            needed_resolving = needed_resolving or (item is not resolved_item)
+
+        result = original_sequence
+        if needed_resolving:
+            # We also want to return a result of the same type
+            # as the original received value.
+            original_type = type(original_sequence)
+            result = original_type(new_list)
+
         return result
 
     @_resolver_dispatch.register

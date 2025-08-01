@@ -231,46 +231,46 @@ def test_hnas_like_string():
 
 def test_hnas_like_context():
     samplings_to_make = {
-        "Resolvable.CL.args[0].resampled_categorical::categorical__4": 3,
-        "Resolvable.CL.args[0].resampled_categorical.sampled_value.resampled_operation.args[0].resampled_operation.args[0]::categorical__4": (
+        "Resolvable.CL.args.sequence[0].resampled_categorical::categorical__4": 3,
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[0]::categorical__4": (
             0
         ),
-        "Resolvable.CL.args[0].resampled_categorical.sampled_value.resampled_operation.args[0].resampled_operation.args[1]::categorical__3": (
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[1]::categorical__3": (
             2
         ),
-        "Resolvable.CL.args[0].resampled_categorical.sampled_value.resampled_operation.args[0].resampled_operation.args[2].resampled_categorical::categorical__3": (
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[2].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.CL.args[1].resampled_categorical::categorical__4": 0,
-        "Resolvable.CL.args[2].resampled_categorical::categorical__4": 1,
-        "Resolvable.CL.args[3].resampled_categorical::categorical__4": 2,
-        "Resolvable.CL.args[4].resampled_categorical::categorical__4": 3,
-        "Resolvable.CL.args[4].resampled_categorical.sampled_value.resampled_operation.args[0].resampled_operation.args[2].resampled_categorical::categorical__3": (
+        "Resolvable.CL.args.sequence[1].resampled_categorical::categorical__4": 0,
+        "Resolvable.CL.args.sequence[2].resampled_categorical::categorical__4": 1,
+        "Resolvable.CL.args.sequence[3].resampled_categorical::categorical__4": 2,
+        "Resolvable.CL.args.sequence[4].resampled_categorical::categorical__4": 3,
+        "Resolvable.CL.args.sequence[4].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[2].resampled_categorical::categorical__3": (
             2
         ),
-        "Resolvable.CL.args[5].resampled_categorical::categorical__4": 0,
+        "Resolvable.CL.args.sequence[5].resampled_categorical::categorical__4": 0,
         "Resolvable.ARCH::categorical__3": 1,
-        "Resolvable.ARCH.sampled_value.args[0].resampled_categorical::categorical__3": 2,
-        "Resolvable.ARCH.sampled_value.args[0].resampled_categorical.sampled_value.args[0].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
             2
         ),
-        "Resolvable.ARCH.sampled_value.args[0].resampled_categorical.sampled_value.args[1].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.ARCH.sampled_value.args[1].resampled_categorical::categorical__3": 2,
-        "Resolvable.ARCH.sampled_value.args[1].resampled_categorical.sampled_value.args[0].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.ARCH.sampled_value.args[1].resampled_categorical.sampled_value.args[1].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.ARCH.sampled_value.args[1].resampled_categorical.sampled_value.args[2].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[2].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.ARCH.sampled_value.args[1].resampled_categorical.sampled_value.args[3].resampled_categorical::categorical__3": (
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[3].resampled_categorical::categorical__3": (
             1
         ),
-        "Resolvable.ARCH.sampled_value.args[2].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[2].resampled_categorical::categorical__3": 2,
     }
 
     expected_cl_config_string = (
