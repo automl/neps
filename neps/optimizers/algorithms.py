@@ -158,6 +158,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     incumbent_type: Literal["hypervolume", "scalarized"] = "scalarized",
+    mix_random: bool = False,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -316,6 +317,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 prior_centers=prior_centers,
                 confidence_values=prior_confidences,
                 encoder=encoder,
+                mix_random=mix_random,
             )
         case "mopriorband":
             assert prior_centers is not None
@@ -816,6 +818,7 @@ def priormoasha(
     eta: int = 3,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+    mix_random: bool = False,
 ) -> BracketOptimizer:
     """MOASHA with the ability to sample from a prior distribution"""
     return _bracket_optimizer(
@@ -823,6 +826,7 @@ def priormoasha(
         bracket_type="asha",
         eta=eta,
         sampler="mopriorsampler",
+        mix_random=mix_random,
         multi_objective=True,
         mo_selector=mo_selector,
         prior_centers=prior_centers,

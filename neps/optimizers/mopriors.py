@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from neps.sampling import Uniform
 from neps.sampling.priors import Prior
 
 if TYPE_CHECKING:
@@ -23,6 +24,8 @@ class MOPriorSampler:
     parameters: Mapping[str, Parameter]
 
     encoder: ConfigEncoder
+
+    mix_random: bool = False
 
     @classmethod
     def dists_from_centers_and_confidences(
@@ -64,6 +67,8 @@ class MOPriorSampler:
         prior_centers: Mapping[str, Mapping[str, float]],
         confidence_values: Mapping[str, Mapping[str, float]],
         encoder: ConfigEncoder,
+        *,
+        mix_random: bool = False,
     ) -> MOPriorSampler:
         """Creates a MOPriorSampler instance.
 
@@ -73,6 +78,7 @@ class MOPriorSampler:
             confidence_values: The confidence values for the priors.
             encoder: The encoder to use for encoding and decoding configurations
                 into tensors.
+            mix_random: If True, interweaves random sampling with 50% probability.
 
         Returns:
             The MOPriorSampler instance.
@@ -87,6 +93,7 @@ class MOPriorSampler:
             prior_dists=_priors,
             parameters=parameters,
             encoder=encoder,
+            mix_random=mix_random,
         )
 
     def sample_config(self) -> dict[str, Any]:
@@ -95,9 +102,26 @@ class MOPriorSampler:
         Returns:
             The sampled configuration.
         """
-        _prior_choice: Prior = np.random.choice(
-            list(self.prior_dists.values()),
-        )
+        _sampler = "prior"
+        if self.mix_random:
+            _sampler = np.random.choice(
+                ["random", "prior"],
+            )
 
-        # Sample a configuration from the chosen prior
-        return _prior_choice.sample_config(to=self.encoder)
+        match _sampler:
+            case "random":
+                # If mixing random sampling, sample a random configuration
+                return Uniform(ndim=len(self.parameters)).sample_config(to=self.encoder)
+
+            case "prior":
+                # If not mixing random sampling, sample from the priors
+                # Randomly choose one of the prior distributions
+                _prior_choice: Prior = np.random.choice(
+                    list(self.prior_dists.values()),
+                )
+
+                # Sample a configuration from the chosen prior
+                return _prior_choice.sample_config(to=self.encoder)
+
+            case _:
+                raise ValueError("Shouldn't reach here!")
