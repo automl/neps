@@ -24,7 +24,8 @@ from neps.space.neps_spaces.parameters import (
     PipelineSpace,
     Resampled,
     Resolvable,
-    _Lazy,
+    Repeated,
+    Lazy,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -477,7 +478,7 @@ class SamplingResolver:
                     choice_provider_choices = choice_provider_final_attrs["choices"]
                     if isinstance(choice_provider_choices, (tuple, list)):
                         choice_provider_choices = tuple(
-                            _Lazy(content=choice) for choice in choice_provider_choices
+                            Lazy(content=choice) for choice in choice_provider_choices
                         )
                     choice_provider_final_attrs["choices"] = choice_provider_choices
                     choice_provider_adjusted = initial_attr_value.from_attrs(
@@ -645,7 +646,39 @@ class SamplingResolver:
     @_resolver_dispatch.register
     def _(
         self,
-        resolvable_obj: _Lazy,
+        repeated_resolvable_obj: Repeated,
+        context: SamplingResolutionContext,
+    ) -> tuple[Any]:
+        if context.was_already_resolved(repeated_resolvable_obj):
+            return context.get_resolved(repeated_resolvable_obj)
+
+        # First figure out how many times we need to resolvable repeated,
+        # then do that many resolves of that object.
+        # It does not matter what type the content is.
+        # Return all the results as a tuple.
+
+        unresolved_count = repeated_resolvable_obj.count
+        resolved_count = self._resolve(unresolved_count, "repeat_count", context)
+
+        if not isinstance(resolved_count, int):
+            raise ValueError(
+                f"The resolved count value for {repeated_resolvable_obj!r} is not an int."
+                f" Resolved to {resolved_count!r}"
+            )
+
+        obj_to_repeat = repeated_resolvable_obj.content
+        result = []
+        for i in range(resolved_count):
+            result.append(self._resolve(obj_to_repeat, f"repeated_item[{i}]", context))
+        result = tuple(result)
+
+        context.add_resolved(repeated_resolvable_obj, result)
+        return result
+
+    @_resolver_dispatch.register
+    def _(
+        self,
+        resolvable_obj: Lazy,
         context: SamplingResolutionContext,  # noqa: ARG002
     ) -> Any:
         # When resolving a lazy resolvable,
@@ -653,6 +686,7 @@ class SamplingResolver:
         # The purpose of the lazy resolvable is to stop
         # the resolver from going deeper into the process.
         # In this case, to stop the resolution of `resolvable_obj.content`.
+        # No need to add it in the resolved cache.
         return resolvable_obj.content
 
     @_resolver_dispatch.register
@@ -678,6 +712,9 @@ class SamplingResolver:
         if needed_resolving:
             result = new_dict
 
+        # IMPORTANT: Dicts are not stored in the resolved cache.
+        # Otherwise, we won't go inside them the next time
+        # and will ignore any resampled things inside.
         return result
 
     @_resolver_dispatch.register
@@ -721,6 +758,9 @@ class SamplingResolver:
             original_type = type(original_sequence)
             result = original_type(new_list)
 
+        # IMPORTANT: Sequences are not stored in the resolved cache.
+        # Otherwise, we won't go inside them the next time
+        # and will ignore any resampled things inside.
         return result
 
     @_resolver_dispatch.register

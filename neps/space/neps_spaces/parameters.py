@@ -1103,7 +1103,67 @@ class Resampled(Resolvable):
         return self._source.from_attrs(attrs)
 
 
-class _Lazy(Resolvable):
+class Repeated(Resolvable):
+    """A class representing a sequence where a resolvable
+    is repeated a variable number of times.
+
+    Attributes:
+        count: The count how many times the content should be repeated.
+        content: The content which will be repeated.
+    """
+
+    def __init__(
+        self,
+        count: int | Domain[int] | Resolvable,
+        content: Resolvable | Any,
+    ):
+        if isinstance(count, int) and count < 0:
+            raise ValueError(
+                f"The received repeat count is negative. Received {count!r}"
+            )
+
+        self._count = count
+        self._content = content
+
+    @property
+    def count(self) -> int | Domain[int] | Resolvable:
+        """Get the count how many times the content should be repeated.
+
+        Returns:
+            The count how many times the content will be repeated.
+        """
+        return self._count
+
+    @property
+    def content(self) -> Resolvable | Any:
+        """Get the content which will be repeated.
+
+        Returns:
+            The content which will be repeated.
+        """
+        return self._content
+
+    def get_attrs(self) -> Mapping[str, Any]:
+        """Get the attributes of the resolvable as a mapping.
+
+        Returns:
+          A mapping of attribute names to their values.
+        """
+        return {"count": self.count, "content": self.content}
+
+    def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
+        """Create a new resolvable object from the given attributes.
+
+        Args:
+            attrs: A mapping of attribute names to their values.
+
+        Returns:
+            A new resolvable object created from the specified attributes.
+        """
+        return Repeated(count=attrs["count"], content=attrs["content"])
+
+
+class Lazy(Resolvable):
     """A class representing a lazy operation in a NePS space.
 
     The purpose is to have the resolution process
@@ -1155,3 +1215,10 @@ class _Lazy(Resolvable):
         raise ValueError(
             f"This is a lazy resolvable. Can't create object for it: {self.content!r}."
         )
+
+# TODO [lum]: all the `get_attrs` and `from_attrs` MUST NOT raise.
+#  They should return the best representation of themselves that they can.
+#  This is because all resolvable objects can be nested content of other
+#  resolvable objects that in general will interact with them
+#  through these two methods.
+#  When they raise, then the traversal will not be possible.
