@@ -1021,6 +1021,10 @@ class Operation(Resolvable):
         return type(self)(**attrs)
 
 
+# TODO: [lum] For tuples, lists and dicts,
+#  should we make the behavior similar to other resolvables,
+#  in that they will be cached and then we also need to use Resampled for them?
+
 class Resampled(Resolvable):
     """A class representing a resampling operation in a NePS space.
 
@@ -1216,7 +1220,7 @@ class Lazy(Resolvable):
             f"This is a lazy resolvable. Can't create object for it: {self.content!r}."
         )
 
-# TODO [lum]: all the `get_attrs` and `from_attrs` MUST NOT raise.
+# TODO: [lum] all the `get_attrs` and `from_attrs` MUST NOT raise.
 #  They should return the best representation of themselves that they can.
 #  This is because all resolvable objects can be nested content of other
 #  resolvable objects that in general will interact with them

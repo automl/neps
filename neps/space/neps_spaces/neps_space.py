@@ -712,6 +712,8 @@ class SamplingResolver:
         if needed_resolving:
             result = new_dict
 
+        # TODO: [lum] reconsider this below. We likely should cache them,
+        #  similarly to other things.
         # IMPORTANT: Dicts are not stored in the resolved cache.
         # Otherwise, we won't go inside them the next time
         # and will ignore any resampled things inside.
@@ -758,6 +760,8 @@ class SamplingResolver:
             original_type = type(original_sequence)
             result = original_type(new_list)
 
+        # TODO: [lum] reconsider this below. We likely should cache them,
+        #  similarly to other things.
         # IMPORTANT: Sequences are not stored in the resolved cache.
         # Otherwise, we won't go inside them the next time
         # and will ignore any resampled things inside.
