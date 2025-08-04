@@ -1444,6 +1444,7 @@ def _neps_bracket_optimizer(
     sampler: Literal["priorband"],
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
+    inc_ratio: float = 0.9,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
@@ -1527,6 +1528,7 @@ def _neps_bracket_optimizer(
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                inc_ratio=inc_ratio,
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
@@ -1544,6 +1546,7 @@ def _neps_bracket_optimizer(
 def neps_priorband(
     pipeline_space: PipelineSpace,
     *,
+    inc_ratio: float = 0.9,
     eta: int = 3,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
@@ -1587,6 +1590,7 @@ def neps_priorband(
         sampler="priorband",
         sample_prior_first=sample_prior_first,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
+        inc_ratio=inc_ratio,
     )
 
 

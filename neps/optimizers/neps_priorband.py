@@ -39,6 +39,9 @@ class NePSPriorBandSampler:
     fid_bounds: tuple[int, int] | tuple[float, float]
     """The fidelity bounds."""
 
+    inc_ratio: float = 0.9
+    """The ratio of the incumbent (vs. prior) in the sampling distribution."""
+
     def sample_config(self, table: pd.DataFrame, rung: int) -> dict[str, Any]:
         """Sample a configuration based on the PriorBand algorithm.
 
@@ -121,8 +124,8 @@ class NePSPriorBandSampler:
         # TODO: [lum]: Here I am simply using fixed values.
         #  Will maybe have to come up with a way to approximate the pdf for the top
         # configs.
-        inc_ratio = 0.9
-        prior_ratio = 0.1
+        inc_ratio = self.inc_ratio
+        prior_ratio = 1 - self.inc_ratio
 
         # 4. And finally, we distribute the original w_prior according to this ratio
         w_inc = w_prior * inc_ratio
