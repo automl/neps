@@ -209,6 +209,12 @@ class PriMO:
                 config = Uniform(ndim=len(self.space.searchables)).sample_config(
                     to=self.encoder,
                 )
+                config.update(
+                    {
+                        self.fid_name: self.fid_max,
+                        **self.space.constants,
+                    }
+                )
                 return SampledConfig(
                     id=str(len(trials) + 1),
                     config=config,
