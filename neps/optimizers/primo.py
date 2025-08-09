@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
@@ -17,6 +17,7 @@ from neps.optimizers.models.gp import (
     make_default_single_obj_gp,
 )
 from neps.optimizers.optimizer import SampledConfig
+from neps.sampling import Uniform
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -48,6 +49,10 @@ class PriMO:
 
     fid_name: str
     """The name of the fidelity in the BracketOptimizer's search space."""
+
+    initial_design_type: Literal["multifidelity", "random"] = "multifidelity"
+    """The type of initial design to use. If 'multifidelity', uses MOASHA.
+    If 'random', uses random sampling."""
 
     scalarization_weights: dict[str, float] | None = None
     """The scalarization weights to use for the objectives for BO."""
@@ -193,11 +198,23 @@ class PriMO:
         assert n is None, "TODO"
 
         # Sample new configurations using the initial design
-        return self.bracket_optimizer(
-            trials=trials,
-            budget_info=budget_info,
-            n=n,
-        )
+        match self.initial_design_type:
+            case "multifidelity":
+                return self.bracket_optimizer(
+                    trials=trials,
+                    budget_info=budget_info,
+                    n=n,
+                )
+            case "random":
+                config = Uniform(ndim=len(self.space.searchables)).sample_config(
+                    to=self.encoder,
+                )
+                return SampledConfig(
+                    id=str(len(trials) + 1),
+                    config=config,
+                )
+            case _:
+                raise ValueError("Wut")
 
     def sample_using_bo(
         self,

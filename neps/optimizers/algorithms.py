@@ -1001,6 +1001,7 @@ def primo(
     cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
     device: torch.device | str | None = None,
     bo_scalar_weights: dict[str, float] | None = None,
+    init_design_type: Literal["multifidelity", "random"] = "multifidelity",
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
@@ -1049,6 +1050,7 @@ def primo(
         space=convert_mapping({**space.elements}),
         encoder=ConfigEncoder.from_parameters(parameters),
         bracket_optimizer=_moasha,
+        initial_design_type=init_design_type,
         initial_design_size=n_initial_design_size,
         fid_max=fidelity.upper,
         fid_name=fidelity_name,
