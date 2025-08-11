@@ -282,14 +282,10 @@ class Domain(Generic[V]):
             x = torch.round(x)
 
         if (x > upper).any():
-            import warnings
-
-            warnings.warn(  # noqa: B028
-                "Decoded value is above the upper bound of the domain. "
-                "Clipping to the upper bound. "
-                "This is likely due floating point precision in `torch.exp(x)` "
-                "with torch.float64."
-            )
+            # Decoded value is above the upper bound of the domain.
+            # Clipping to the upper bound.
+            # This is likely due floating point precision in `torch.exp(x)`
+            # with torch.float64.
             x = torch.clip(x, max=self.upper)
 
         return x.type(dtype)
