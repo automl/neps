@@ -11,7 +11,7 @@ def _submit_job(pipeline_directory: Path, script: str):
     script_path.write_text(script)
     os.system(f"sbatch {script_path}")
 
-def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, lr, optimizer):
+def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, previous_pipeline_directory, lr, optimizer):
     print(f"{pipeline_id} optimization_dir")
     out_dir = Path('output_dir')
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -22,10 +22,12 @@ def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, lr, optimizer):
 #SBATCH --output={out_dir}/%j.out
 #SBATCH --error={out_dir}/%j.err
 
-python run_pipeline.py --learning_rate {lr} \\
+python run_pipeline.py --learning-rate {lr} \\
                        --optimizer {optimizer} \\
-                       --root_directory {"results"} \\
-                       --pipeline_id {pipeline_id}
+                       --root-directory {"results"} \\
+                       --pipeline-id {pipeline_id} \\
+                       --pipeline-directory {pipeline_directory} \\
+                       --previous-pipeline-directory {previous_pipeline_directory} \\
 """
 
     return _submit_job(pipeline_directory, script)
@@ -40,6 +42,6 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
     root_directory="results",
-    max_evaluations_total=3,
+    max_evaluations_total=10,
     post_run_summary=True,
 )

@@ -1,4 +1,4 @@
-"""The tblogger module provides a simplified interface for logging to TensorBoard."""
+"""The tblogger module provides a simplified interface for logging NePS trials to TensorBoard."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from neps.runtime import (
     get_in_progress_trial,
     get_workers_neps_state,
     register_notify_trial_end,
+    is_in_progress_trial_set,
 )
 from neps.status.status import status
 from neps.utils.common import get_initial_directory
@@ -25,10 +26,8 @@ logger = logging.getLogger(__name__)
 
 
 class tblogger:  # noqa: N801
-    """The tblogger class provides a simplified interface for logging to tensorboard."""
+    """Provides a simplified interface for logging NePS trials to TensorBoard."""
 
-    config_id: ClassVar[str | None] = None
-    config: ClassVar[Mapping[str, Any] | None] = None
     config_working_directory: ClassVar[Path | None] = None
     optimizer_dir: ClassVar[Path | None] = None
     config_previous_directory: ClassVar[Path | None] = None
@@ -38,136 +37,147 @@ class tblogger:  # noqa: N801
     config_writer: ClassVar[SummaryWriter | None] = None
     summary_writer: ClassVar[SummaryWriter | None] = None
 
-    @staticmethod
-    def _initiate_internal_configurations() -> None:
-        """Track the Configuration space data from the way handled by neps runtime
-        '_sample_config' to keep in sync with config ids and directories NePS is
-        operating on.
-        """
-        trial = get_in_progress_trial()
-        neps_state = get_workers_neps_state()
+    @classmethod
+    def initiate_internal_configurations(
+        cls,
+        root_directory: Path | str | None = None,
+        pipeline_directory: Path | str | None = None,
+        previous_pipeline_directory: Path | str | None = None,
+    ) -> None:
+        """Initialize internal directories and configuration for TensorBoard logging.
 
-        register_notify_trial_end("NEPS_TBLOGGER", tblogger.end_of_config)
-
-        # We are assuming that neps state is all filebased here
-        root_dir = Path(neps_state.path)
-        assert root_dir.exists()
-
-        tblogger.config_working_directory = Path(trial.metadata.location)
-        tblogger.config_previous_directory = (
-            Path(trial.metadata.previous_trial_location)
-            if trial.metadata.previous_trial_location is not None
-            else None
-        )
-        tblogger.config_id = trial.metadata.id
-        tblogger.optimizer_dir = root_dir
-        tblogger.config = trial.config
-
-    @staticmethod
-    def WriteIncumbent() -> None:  # noqa: N802
-        """Allows for writing the incumbent of the current search."""
-        tblogger._initiate_internal_configurations()
-        tblogger.write_incumbent = True
-
-    @staticmethod
-    def ConfigWriter(*, write_summary_incumbent: bool = True) -> SummaryWriter:  # noqa: N802
-        """Creates and returns a TensorBoard SummaryWriter configured to write logs
-        to the appropriate directory for NePS.
+        This function determines the working and previous trial directories either
+        from an in-progress trial or from provided arguments.
 
         Args:
-            write_summary_incumbent (bool): Determines whether to write summaries
-                                            for the incumbent configurations.
-                                            Defaults to True.
+            root_directory (Path | str | None): The root optimization directory.
+            pipeline_directory (Path | str | None): Current trial directory.
+            previous_pipeline_directory (Path | str | None): Previous trial directory.
+        """
+        if not is_in_progress_trial_set():
+            if not (root_directory and pipeline_directory):
+                raise RuntimeError(
+                    "Cannot determine directories for TensorBoard logging. "
+                    "Provide `root_directory`, `pipeline_directory`, and optionally "
+                    "`previous_pipeline_directory`."
+                )
+
+        if is_in_progress_trial_set():
+            trial = get_in_progress_trial()
+            neps_state = get_workers_neps_state()
+            root_directory = Path(neps_state.path)
+            assert root_directory.exists()
+            pipeline_directory = Path(trial.metadata.location)
+            previous_pipeline_directory = (
+                Path(trial.metadata.previous_trial_location)
+                if trial.metadata.previous_trial_location
+                else None
+            )
+        else:
+            # Convert str paths to Path objects
+            root_directory = Path(root_directory) if isinstance(root_directory, str) else root_directory
+            pipeline_directory = Path(pipeline_directory) if isinstance(pipeline_directory, str) else pipeline_directory
+            previous_pipeline_directory = (
+                Path(previous_pipeline_directory)
+                if isinstance(previous_pipeline_directory, str)
+                else previous_pipeline_directory
+            )
+
+            if previous_pipeline_directory and not previous_pipeline_directory.exists():
+                previous_pipeline_directory = None
+
+        register_notify_trial_end("NEPS_TBLOGGER", cls.end_of_config)
+
+        cls.config_working_directory = pipeline_directory
+        cls.config_previous_directory = previous_pipeline_directory
+        cls.optimizer_dir = root_directory
+
+    @classmethod
+    def write_incumbent(cls) -> None:
+        """Enable logging of the incumbent (best) configuration for the current search."""
+        cls.initiate_internal_configurations()
+        cls.write_incumbent = True
+
+    @classmethod
+    def config_writer(
+        cls,
+        *,
+        write_summary_incumbent: bool = True,
+        root_directory: Path | None = None,
+        pipeline_directory: Path | None = None,
+        previous_pipeline_directory: Path | None = None,
+    ) -> SummaryWriter | None:
+        """Create and return a TensorBoard SummaryWriter for NePS logging.
+
+        Args:
+            write_summary_incumbent (bool): Whether to write summaries for the incumbent.
+            root_directory (Path | None): Root directory for NePS optimization.
+            pipeline_directory (Path | None): Directory for current trial.
+            previous_pipeline_directory (Path | None): Directory for previous trial.
 
         Returns:
-            SummaryWriter: An instance of TensorBoard SummaryWriter pointing to the
-                        designated NePS directory.
+            SummaryWriter | None: TensorBoard writer pointing to the NePS directory,
+            or None if a writer cannot be initialized.
         """
-        tblogger.write_incumbent = write_summary_incumbent
-        tblogger._initiate_internal_configurations()
-        # This code runs only once per config, to assign that config a config_writer.
-        if (
-            tblogger.config_previous_directory is None
-            and tblogger.config_working_directory is not None
-        ):
-            # If no fidelities are there yet, define the writer via the config_id
-            tblogger.config_id = str(tblogger.config_working_directory).rsplit(
-                "/", maxsplit=1
-            )[-1]
-            tblogger.config_writer = SummaryWriter(
-                tblogger.config_working_directory / "tbevents"
-            )
-            return tblogger.config_writer
+        cls.write_incumbent = write_summary_incumbent
+        cls.initiate_internal_configurations(root_directory, pipeline_directory, previous_pipeline_directory)
 
-        # Searching for the initial directory where tensorboard events are stored.
-        if tblogger.config_working_directory is not None:
-            init_dir = get_initial_directory(
-                pipeline_directory=tblogger.config_working_directory
-            )
-            tblogger.config_id = str(init_dir).rsplit("/", maxsplit=1)[-1]
+        if cls.config_previous_directory is None and cls.config_working_directory is not None:
+            cls.config_writer = SummaryWriter(cls.config_working_directory / "tbevents")
+            return cls.config_writer
+
+        if cls.config_working_directory is not None:
+            init_dir = get_initial_directory(pipeline_directory=cls.config_working_directory)
             if (init_dir / "tbevents").exists():
-                tblogger.config_writer = SummaryWriter(init_dir / "tbevents")
-                return tblogger.config_writer
+                cls.config_writer = SummaryWriter(init_dir / "tbevents")
+                return cls.config_writer
 
             raise FileNotFoundError(
-                "'tbevents' was not found in the initial directory of the configuration."
+                "'tbevents' directory not found in the initial configuration directory."
             )
+
         return None
 
-    @staticmethod
-    def end_of_config(trial: Trial) -> None:  # noqa: ARG004
-        """Closes the writer."""
-        if tblogger.config_writer:
-            # Close and reset previous config writers for consistent logging.
-            # Prevent conflicts by reinitializing writers when logging ongoing.
-            tblogger.config_writer.close()
-            tblogger.config_writer = None
+    @classmethod
+    def end_of_config(cls, trial: Trial) -> None:  # noqa: ARG004
+        """Close the TensorBoard writer at the end of a configuration."""
+        if cls.config_writer:
+            cls.config_writer.close()
+            cls.config_writer = None
 
-        if tblogger.write_incumbent:
-            tblogger._tracking_incumbent_api()
+        if cls.write_incumbent:
+            cls._tracking_incumbent_api()
 
-    @staticmethod
-    def _tracking_incumbent_api() -> None:
-        """Track the incumbent (best) objective_to_minimize and log it in the TensorBoard
-            summary.
+    @classmethod
+    def _tracking_incumbent_api(cls) -> None:
+        """Track the incumbent (best) configuration and log it to TensorBoard.
 
-        Note:
-            The function relies on the following global variables:
-                - tblogger.optimizer_dir
-                - tblogger.summary_writer
-
-            The function logs the incumbent trajectory in TensorBoard.
+        Logs the best objective value over completed trials. Flushes and closes
+        the writer to avoid conflicts in parallel execution.
         """
-        assert tblogger.optimizer_dir is not None
+        assert cls.optimizer_dir is not None
         try:
-            _, short = status(tblogger.optimizer_dir, print_summary=False)
+            _, short = status(cls.optimizer_dir, print_summary=False)
 
             incum_tracker = short["num_success"] - 1
             incum_val = short["best_objective_to_minimize"]
 
-            if tblogger.summary_writer is None and tblogger.optimizer_dir is not None:
-                tblogger.summary_writer = SummaryWriter(
-                    tblogger.optimizer_dir / "summary_tb"
-                )
+            if cls.summary_writer is None and cls.optimizer_dir is not None:
+                cls.summary_writer = SummaryWriter(cls.optimizer_dir / "summary_tb")
 
-            assert tblogger.summary_writer is not None
-            tblogger.summary_writer.add_scalar(
+            assert cls.summary_writer is not None
+            cls.summary_writer.add_scalar(
                 tag="Summary/Incumbent_graph",
                 scalar_value=incum_val,
                 global_step=incum_tracker,
             )
 
-            # Frequent writer open/close creates new 'tfevent' files due to
-            # parallelization needs. Simultaneous open writers risk conflicts,
-            # so they're flushed and closed after use.
-
-            tblogger.summary_writer.flush()
-            tblogger.summary_writer.close()
+            cls.summary_writer.flush()
+            cls.summary_writer.close()
             time.sleep(0.5)
 
-        except:  # noqa: E722
+        except Exception as e:
             logger.warning(
-                "Incumbent tracking for TensorBoard with NePS has failed. "
-                "This feature is now permanently disabled for the entire run."
+                "Incumbent tracking for TensorBoard failed and is now disabled: %s", e
             )
-            tblogger.write_incumbent = False
+            cls.write_incumbent = False
