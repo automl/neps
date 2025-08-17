@@ -253,7 +253,7 @@ def evaluate_pipeline(lr, optim, weight_decay):
 
     # Substitute the Tensorboard SummaryWriter with ConfigWriter from NePS
     # writer = SummaryWriter()
-    writer = tblogger.ConfigWriter(write_summary_incumbent=True)
+    writer = tblogger.config_writer(write_summary_incumbent=True)
 
     for i in range(max_epochs):
         objective_to_minimize = training(
