@@ -135,7 +135,7 @@ class Domain(Generic[V]):
 
         mid = self.from_unit(torch.tensor(0.5)).item()
         if is_int:
-            mid = int(round(mid))
+            mid = round(mid)
 
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
@@ -193,8 +193,8 @@ class Domain(Generic[V]):
             A domain for a range of integer values.
         """
         return Domain(
-            lower=int(round(lower)),
-            upper=int(round(upper)),
+            lower=round(lower),
+            upper=round(upper),
             log_bounds=(math.log(lower), math.log(upper)) if log else None,
             round=True,
             bins=bins,
