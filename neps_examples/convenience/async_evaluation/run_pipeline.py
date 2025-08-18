@@ -42,7 +42,7 @@ if __name__ == "__main__":
             batch_size=1024,
         )
 
-        writer = tblogger.config_writer(write_summary_incumbent=True, 
+        writer = tblogger.ConfigWriter(write_summary_incumbent=True, 
                                        root_directory=args.root_directory,
                                        pipeline_directory=args.pipeline_directory,
                                        previous_pipeline_directory=args.previous_pipeline_directory)
