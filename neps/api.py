@@ -556,32 +556,19 @@ def save_pipeline_results(
 ) -> None:
     """Persist the outcome of one pipeline evaluation.
 
-    Parameters
-    ----------
-    user_result : dict
-        Dictionary returned by ``evaluate_pipeline``.
-        Must contain at least the keys required by
-        :pyfunc:`_save_results` (e.g. ``"cost"``,
-        ``"objective_to_minimize"`` and optional ``"learning_curve"``,
-        ``"exception"``, ``"info_dict"``).
+    Args:
+        user_result (dict): Dictionary returned by evaluate_pipeline. Must
+            contain keys required by _save_results (e.g. "cost",
+            "objective_to_minimize", optional "learning_curve", "exception",
+            "info_dict").
+        pipeline_id (str): Unique identifier of the pipeline/trial whose
+            result is being stored. Used to locate the corresponding
+            neps.core.trial.Trial object inside the optimisation state.
+        root_directory (Path): Root directory of the NePS run (contains
+            optimizer_info.yaml and configs/ folder).
+        post_run_summary (bool, optional): If True, creates a CSV file after
+            trial completion, holding summary info about configs and results.
 
-    pipeline_id : str
-        Unique identifier of the pipeline/trial whose result is being
-        stored.  This ID is used to locate the corresponding
-        :class:`neps.core.trial.Trial` object inside the optimisation
-        state.
-
-    root_directory : pathlib.Path
-        Root directory of the NePS run (the folder that contains
-        ``optimizer_info.yaml`` and the ``configs/`` subdirectory).  *Not* the
-        per trial subfolder.
-
-    post_run_summary: If True, creates a csv file after trial completion,
-        holding summary information about the configs and results.
-
-    Returns:
-    -------
-    None
     """
     _save_results(
         user_result=user_result,
