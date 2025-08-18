@@ -108,9 +108,11 @@ def _set_workers_neps_state(state: NePSState) -> None:
     global _WORKER_NEPS_STATE  # noqa: PLW0603
     _WORKER_NEPS_STATE = state
 
+
 def is_in_progress_trial_set() -> bool:
     """Check if the currently running trial in this process is set."""
     return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None
+
 
 def get_in_progress_trial() -> Trial:
     """Get the currently running trial in this process."""
