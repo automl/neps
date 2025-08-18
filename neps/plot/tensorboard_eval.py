@@ -39,9 +39,9 @@ class tblogger:  # noqa: N801
     @classmethod
     def initiate_internal_configurations(
         cls,
-        root_directory: Path | None = None,
-        pipeline_directory: Path | None = None,
-        previous_pipeline_directory: Path | None = None,
+        root_directory: Path | str | None = None,
+        pipeline_directory: Path | str | None = None,
+        previous_pipeline_directory: Path | str | None = None,
     ) -> None:
         """Initialize internal directories and configuration for TensorBoard logging.
 
@@ -71,6 +71,26 @@ class tblogger:  # noqa: N801
                 if trial.metadata.previous_trial_location
                 else None
             )
+        else:
+            # Convert str paths to Path objects
+            root_directory = (
+                Path(root_directory)
+                if isinstance(root_directory, str)
+                else root_directory
+            )
+            pipeline_directory = (
+                Path(pipeline_directory)
+                if isinstance(pipeline_directory, str)
+                else pipeline_directory
+            )
+            previous_pipeline_directory = (
+                Path(previous_pipeline_directory)
+                if isinstance(previous_pipeline_directory, str)
+                else previous_pipeline_directory
+            )
+
+            if previous_pipeline_directory and not previous_pipeline_directory.exists():
+                previous_pipeline_directory = None
 
         register_notify_trial_end("NEPS_TBLOGGER", cls.end_of_config)
 
