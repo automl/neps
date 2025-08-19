@@ -75,7 +75,24 @@ class PriMO:
     acquisition function.
     """
 
-    def __call__(  # noqa: C901, PLR0912
+    bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo"
+    """The type of Bayesian optimization to use. Defaults to "epsbo"."""
+
+    def __post_init__(self) -> None:
+        match self.bo_type:
+            case "pibo":
+                self.epsilon = 0.0
+            case "epsbo":
+                pass
+            case "vanilla":
+                self.epsilon = 1.0
+            case _:
+                raise ValueError(
+                    f"Unknown bo_type: {self.bo_type}. "
+                    "Must be one of 'pibo', 'epsbo', or 'vanilla'."
+                )
+
+    def __call__(
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None = None,
@@ -93,6 +110,28 @@ class PriMO:
                 budget_info=budget_info,
                 n=n,
             )
+
+        sampled_config, nxt_id = self.scalarize_and_run_bo(
+            trials=trials,
+            budget_info=budget_info,
+            n=n,
+        )
+
+        sampled_config.update(
+            {
+                self.fid_name: self.fid_max,
+                **self.space.constants,
+            }
+        )
+        return SampledConfig(id=nxt_id, config=sampled_config)
+
+    def scalarize_and_run_bo(  # noqa: C901, PLR0912
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None = None,
+        n: int | None = None,
+    ) -> tuple[dict[str, Any], str]:
+        """Scarlarizes the objectives and runs PriMO's Bayesian optimization."""
 
         num_objectives = None
         for trial in trials.values():
@@ -118,7 +157,6 @@ class PriMO:
                             "of floats."
                         )
 
-        # Set scalarization weights if not set
         if self.scalarization_weights is None:
             self.scalarization_weights = np.random.uniform(size=num_objectives)
             self.scalarization_weights /= np.sum(self.scalarization_weights)
@@ -175,18 +213,11 @@ class PriMO:
             self.n_init_used = len(_trials)
 
         # Sample new configurations using the Bayesian optimization
-        sampled_config = self.sample_using_bo(
+        return self.sample_using_bo(
             trials=_trials,
             budget_info=budget_info,
             n=n,
-        )
-        sampled_config.update(
-            {
-                self.fid_name: self.fid_max,
-                **self.space.constants,
-            }
-        )
-        return SampledConfig(id=str(nxt_id), config=sampled_config)
+        ), str(nxt_id)
 
     def sample_using_initial_design(
         self,
@@ -252,12 +283,17 @@ class PriMO:
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
-        pibo_exp_term = None
+        primo_exp_term = None
         prior = None
         if selected_prior:
-            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_init_used)
+            if self.bo_type != "pibo":
+                primo_exp_term = _primo_exp_term(
+                    n_sampled, encoder.ndim, self.n_init_used
+                )
+            else:
+                primo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_init_used)
             # If the exp term is insignificant, skip prior acq. weighting
-            prior = None if pibo_exp_term < 1e-4 else selected_prior
+            prior = None if primo_exp_term < 1e-4 else selected_prior
 
         n_to_acquire = 1
 
@@ -282,7 +318,7 @@ class PriMO:
             acquisition=acquisition,
             prior=prior,
             n_candidates_required=n_to_acquire,
-            pibo_exp_term=pibo_exp_term,
+            pibo_exp_term=primo_exp_term,
             hide_warnings=True,
         )
 
@@ -298,6 +334,17 @@ class PriMO:
         ]
         fidelity_units_used = sum(used_fidelity) / self.fid_max
         return fidelity_units_used >= threshold
+
+
+def _primo_exp_term(
+    n_sampled_already: int,
+    ndims: int,
+    initial_design_size: int,
+) -> float:
+    import math
+
+    n_bo_samples = n_sampled_already - initial_design_size
+    return math.exp(-(n_bo_samples**2) / ndims)
 
 
 def _pibo_exp_term(
@@ -329,4 +376,4 @@ def _pibo_exp_term(
     import math
 
     n_bo_samples = n_sampled_already - initial_design_size
-    return math.exp(-(n_bo_samples**2) / ndims)
+    return math.exp(-n_bo_samples / ndims)

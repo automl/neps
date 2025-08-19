@@ -28,6 +28,7 @@ from neps.utils.common import disable_warnings
 if TYPE_CHECKING:
     from gpytorch.models.approximate_gp import Any
 
+    from neps.optimizers.primo import PriMO
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
@@ -244,6 +245,11 @@ class BracketOptimizer:
     fidelity units has been reached.
     """
 
+    primo_sampler: PriMO | None
+    """If set, uses PriMO's BO for sampling configurations once it's threshold for
+    fidelity units has been reached.
+    """
+
     fid_min: int | float
     """The minimum fidelity value."""
 
@@ -358,6 +364,25 @@ class BracketOptimizer:
 
             # We need to sample for a new rung, with either no gp or it has
             # not yet kicked in.
+            case SampleAction(rung=rung) if (
+                self.primo_sampler is not None
+                and self.primo_sampler.threshold_reached(
+                    trials, self.primo_sampler.initial_design_size
+                )
+            ):
+                target_fidelity = self.rung_to_fid[rung]
+                config, _ = self.primo_sampler.scalarize_and_run_bo(
+                    trials=trials,
+                    budget_info=budget_info,
+                    n=n,
+                )
+                config.update(
+                    {
+                        self.fid_name: target_fidelity,
+                        **space.constants,
+                    }
+                )
+                return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
             case SampleAction(rung=rung):
                 # Otherwise, we proceed with the original sampler
                 match self.sampler:

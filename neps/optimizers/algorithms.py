@@ -158,7 +158,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     incumbent_type: Literal["hypervolume", "scalarized"] = "scalarized",
-    mix_random: bool = False,
+    mopriors_sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors",
+    primo_initial_design_size: int | None = None,
 ) -> BracketOptimizer:
     """Initialise a bracket optimizer.
 
@@ -208,6 +209,21 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
 
         sample_prior_first: Whether to sample the prior configuration first.
         device: If using Bayesian Optimization, the device to use for the optimization.
+        mo_selector: The multi-objective selector to use. Can be one of:
+            * "nsga2": NSGA-II selector
+            * "epsnet": Epsilon-net selector
+        multi_objective: Whether the optimization is multi-objective.
+        prior_centers: The centers of the priors to use for sampling.
+        prior_confidences: The confidence values for the priors.
+        incumbent_type: The type of incumbent to use. Can be one of:
+            * "hypervolume": Use the hypervolume as the incumbent
+            * "scalarized": Use the scalarized value as the incumbent
+        mopriors_sampler_type: The type of MOPriorSampler to use. Can be one of:
+            * "mopriors": Use the MOPriorSampler
+            * "mix_random": Mix between random and prior sampling
+            * "etaprior": Use the MOPriors with 1/eta probability
+        primo_initial_design_size: If set, this will use PriMO's MO-Priors BO as a sampler
+        after the initial design phase.
     """
     assert pipeline_space.fidelity is not None
     fidelity_name, fidelity = pipeline_space.fidelity
@@ -317,7 +333,8 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 prior_centers=prior_centers,
                 confidence_values=prior_confidences,
                 encoder=encoder,
-                mix_random=mix_random,
+                sampler_type=mopriors_sampler_type,
+                eta=eta,
             )
         case "mopriorband":
             assert prior_centers is not None
@@ -372,9 +389,20 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     else:
         gp_sampler = None
 
+    primo_sampler: PriMO | None = None
+
+    if primo_initial_design_size is not None:
+        primo_sampler = primo(
+            space=pipeline_space,
+            prior_centers=prior_centers,
+            prior_confidences=prior_confidences,
+            initial_design_size=primo_initial_design_size,
+        )
+
     return BracketOptimizer(
         space=pipeline_space,
         gp_sampler=gp_sampler,
+        primo_sampler=primo_sampler,
         encoder=encoder,
         eta=eta,
         rung_to_fid=rung_to_fidelity,
@@ -795,7 +823,9 @@ def moasha(
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    primo_initial_design_size: int | None = None,
 ) -> BracketOptimizer:
+    """Multi-objective version of ASHA."""
     return _bracket_optimizer(
         pipeline_space=space,
         bracket_type="asha",
@@ -808,6 +838,7 @@ def moasha(
         device=None,
         multi_objective=True,
         mo_selector=mo_selector,
+        primo_initial_design_size=primo_initial_design_size,
     )
 
 
@@ -818,7 +849,8 @@ def priormoasha(
     eta: int = 3,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
-    mix_random: bool = False,
+    sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors",
+    primo_initial_design_size: int | None = None,
 ) -> BracketOptimizer:
     """MOASHA with the ability to sample from a prior distribution"""
     return _bracket_optimizer(
@@ -826,7 +858,7 @@ def priormoasha(
         bracket_type="asha",
         eta=eta,
         sampler="mopriorsampler",
-        mix_random=mix_random,
+        mopriors_sampler_type=sampler_type,
         multi_objective=True,
         mo_selector=mo_selector,
         prior_centers=prior_centers,
@@ -835,6 +867,7 @@ def priormoasha(
         sample_prior_first=False,
         early_stopping_rate=0,
         device=None,
+        primo_initial_design_size=primo_initial_design_size,
     )
 
 
@@ -991,6 +1024,7 @@ def primo(
     space: SearchSpace,
     *,
     sampler: Literal["uniform", "mopriorsampler", "mopriorband"] = "uniform",
+    mopriors_sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
     eta: int = 3,
     epsilon: float = 0.25,
@@ -1002,6 +1036,7 @@ def primo(
     device: torch.device | str | None = None,
     bo_scalar_weights: dict[str, float] | None = None,
     init_design_type: Literal["multifidelity", "random"] = "multifidelity",
+    bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo",
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
@@ -1018,6 +1053,7 @@ def primo(
         sample_prior_first=False,
         early_stopping_rate=0,
         device=device,
+        mopriors_sampler_type=mopriors_sampler_type,
     )
 
     parameters = space.searchables
@@ -1058,6 +1094,7 @@ def primo(
         device=device,
         priors=_priors,
         epsilon=epsilon,
+        bo_type=bo_type,
     )
 
 

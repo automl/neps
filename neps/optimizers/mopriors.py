@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -25,7 +25,13 @@ class MOPriorSampler:
 
     encoder: ConfigEncoder
 
-    mix_random: bool = False
+    sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors"
+
+    eta: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.sampler_type == "etaprior":
+            assert self.eta is not None, "Eta must be set for `sampler_type='etaprior'`"
 
     @classmethod
     def dists_from_centers_and_confidences(
@@ -68,7 +74,8 @@ class MOPriorSampler:
         confidence_values: Mapping[str, Mapping[str, float]],
         encoder: ConfigEncoder,
         *,
-        mix_random: bool = False,
+        sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors",
+        eta: int | None = None,
     ) -> MOPriorSampler:
         """Creates a MOPriorSampler instance.
 
@@ -78,7 +85,9 @@ class MOPriorSampler:
             confidence_values: The confidence values for the priors.
             encoder: The encoder to use for encoding and decoding configurations
                 into tensors.
-            mix_random: If True, interweaves random sampling with 50% probability.
+            sampler_type: The type of sampler to create. Defaults to "mopriors".
+            eta: The eta value to use for the SH bracket. Only used if
+                `sampler_type` is "etaprior".
 
         Returns:
             The MOPriorSampler instance.
@@ -93,7 +102,8 @@ class MOPriorSampler:
             prior_dists=_priors,
             parameters=parameters,
             encoder=encoder,
-            mix_random=mix_random,
+            sampler_type=sampler_type,
+            eta=eta,
         )
 
     def sample_config(self) -> dict[str, Any]:
@@ -102,11 +112,23 @@ class MOPriorSampler:
         Returns:
             The sampled configuration.
         """
-        _sampler = "prior"
-        if self.mix_random:
-            _sampler = np.random.choice(
-                ["random", "prior"],
-            )
+        match self.sampler_type:
+            case "mopriors":
+                # If using MOPriors, sample from the priors
+                _sampler = "prior"
+            case "mix_random":
+                _sampler = np.random.choice(
+                    ["random", "prior"],
+                )
+            case "etaprior":
+                # If using EtaPrior, sample from the priors by 1/eta probability
+                assert self.eta is not None, (
+                    "Eta must be set for `sampler_type='etaprior'`"
+                )
+                _sampler = np.random.choice(
+                    ["prior", "random"],
+                    p=[1 / self.eta, 1 - (1 / self.eta)],
+                )
 
         match _sampler:
             case "random":
