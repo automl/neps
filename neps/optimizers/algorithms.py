@@ -824,6 +824,8 @@ def moasha(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     primo_initial_design_size: int | None = None,
+    primo_prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
+    primo_prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
 ) -> BracketOptimizer:
     """Multi-objective version of ASHA."""
     return _bracket_optimizer(
@@ -839,6 +841,8 @@ def moasha(
         multi_objective=True,
         mo_selector=mo_selector,
         primo_initial_design_size=primo_initial_design_size,
+        prior_centers=primo_prior_centers,
+        prior_confidences=primo_prior_confidences,
     )
 
 
