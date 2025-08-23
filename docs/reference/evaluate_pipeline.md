@@ -59,6 +59,7 @@ All other values raise a `TypeError` inside NePS.
 ```python
 from pathlib import Path
 import neps
+import os
 
 def evaluate_pipeline(
     pipeline_directory: Path,
@@ -83,7 +84,10 @@ python run_pipeline.py \
 """)
 
     # 2) submit and RETURN None (async)
-    sumit_job(script)
+    script_path = pipeline_directory / "submit.sh"
+    script_path.write_text(script)
+    os.system(f"sbatch {script_path}")
+
     return None  # ⟵ signals async mode
 ```
 

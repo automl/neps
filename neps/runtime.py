@@ -1,4 +1,9 @@
-"""TODO."""
+"""Worker runtime implementation for NePS.
+
+This module defines the default worker logic for running optimization trials in NePS.
+It manages trial assignment, evaluation, stopping criteria, error handling, and
+integration with distributed setups (e.g., PyTorch DDP).
+"""
 
 from __future__ import annotations
 
@@ -840,7 +845,7 @@ def _save_results(
         default_objective_to_minimize_value=default_report_values.objective_value_on_error,
         default_learning_curve=default_report_values.learning_curve_if_not_provided,
     )
-    if not result.cost:
+    if result.exception is None and result.cost is None:
         logger.warning(
             "The return value of `evaluate_pipeline` "
             "must be a dictionary that includes a 'cost' key."
