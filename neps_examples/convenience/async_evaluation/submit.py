@@ -3,7 +3,7 @@ import subprocess
 import neps
 import os
 
-def _submit_job(pipeline_directory: Path, script: str):
+def _submit_job(pipeline_directory: Path, script: str) -> None:
     script_path = pipeline_directory / "submit.sh"
     print(f"Submitting the script {script_path} (see below): \n\n{script}")
 
@@ -30,7 +30,8 @@ python run_pipeline.py --learning-rate {lr} \\
                        --previous-pipeline-directory {previous_pipeline_directory} \\
 """
 
-    return _submit_job(pipeline_directory, script)
+    _submit_job(pipeline_directory, script)
+    return None
 
 
 pipeline_space = dict(
@@ -42,6 +43,6 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
     root_directory="results",
-    max_evaluations_total=10,
+    max_evaluations_total=2,
     post_run_summary=True,
 )
