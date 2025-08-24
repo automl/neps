@@ -13,10 +13,11 @@ if TYPE_CHECKING:
 class BudgetInfo:
     """Information about the budget of an optimizer."""
 
-    max_cost_total: float | None = None
+    cost_to_spend: float | None = None
     used_cost_budget: float = 0.0
     max_evaluations: int | None = None
     used_evaluations: int = 0
+    fidelities_to_spend: int | None = None
 
     def clone(self) -> BudgetInfo:
         """Create a copy of the budget info."""

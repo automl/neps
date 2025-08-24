@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime
 from neps.space.parsing import convert_to_space
-from neps.status.status import post_run_csv
+from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913
+def run(  # noqa: C901, D417, PLR0913
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: (
         Mapping[str, dict | str | int | float | Parameter]
@@ -33,12 +33,15 @@ def run(  # noqa: PLR0913
     ),
     *,
     root_directory: str | Path = "neps_results",
-    overwrite_working_directory: bool = False,
-    post_run_summary: bool = True,
+    overwrite_root_directory: bool = False,
+    evaluations_to_spend: int | None = None,
+    write_summary_to_disk: bool = True,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
+    cost_to_spend: int | float | None = None,
     max_cost_total: int | float | None = None,
+    fidelities_to_spend: int | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -96,7 +99,7 @@ def run(  # noqa: PLR0913
             )
         },
         root_directory="usage_example",
-        max_evaluations_total=5,
+        evaluations_to_spend=5,
     )
     ```
 
@@ -189,26 +192,29 @@ def run(  # noqa: PLR0913
 
         root_directory: The directory to save progress to.
 
-        overwrite_working_directory: If true, delete the working directory at the start of
+        overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
-        post_run_summary: If True, creates a csv file after each worker is done,
+        write_summary_to_disk: If True, creates a csv and txt files after each worker is done,
             holding summary information about the configs and results.
 
         max_evaluations_per_run: Number of evaluations this specific call should do.
 
-        max_evaluations_total: Number of evaluations after which to terminate.
+        evaluations_to_spend: Number of evaluations after which to terminate.
             This is shared between all workers operating in the same `root_directory`.
 
         continue_until_max_evaluation_completed:
-            If true, only stop after max_evaluations_total have been completed.
+            If true, only stop after evaluations_to_spend have been completed.
             This is only relevant in the parallel setting.
 
-        max_cost_total: No new evaluations will start when this cost is exceeded. Requires
+        cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
+
+        fidelities_to_spend: Number of evaluations in case of multi-fidelity after which to terminate.
+
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
-            an error. Error configs still count towards max_evaluations_total.
+            an error. Error configs still count towards evaluations_to_spend.
         objective_value_on_error: Setting this and cost_value_on_error to any float will
             supress any error and will use given objective_to_minimize value instead. default: None
         cost_value_on_error: Setting this and objective_value_on_error to any float will
@@ -396,23 +402,83 @@ def run(  # noqa: PLR0913
 
     """  # noqa: E501
     if (
-        max_evaluations_total is None
+        evaluations_to_spend is None
+        and max_evaluations_total is None
         and max_evaluations_per_run is None
+        and cost_to_spend is None
         and max_cost_total is None
+        and fidelities_to_spend is None
     ):
         warnings.warn(
             "None of the following were set, this will run idefinitely until the worker"
             " process is stopped."
-            f"\n * {max_evaluations_total=}"
+            f"\n * {evaluations_to_spend=}"
             f"\n * {max_evaluations_per_run=}"
-            f"\n * {max_cost_total=}",
+            f"\n * {cost_to_spend=}"
+            f"\n * {fidelities_to_spend}",
             UserWarning,
             stacklevel=2,
+        )
+
+    if max_evaluations_total is not None:
+        warnings.warn(
+            "`max_evaluations_total` is deprecated and will be removed in"
+            " a future release. Please use `evaluations_to_spend` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        evaluations_to_spend = max_evaluations_total
+
+    if max_cost_total is not None:
+        warnings.warn(
+            "`max_cost_total` is deprecated and will be removed in a future release. "
+            "Please use `cost_to_spend` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        cost_to_spend = max_cost_total
+
+    criteria = {
+        "evaluations_to_spend": evaluations_to_spend,
+        "max_evaluations_per_run": max_evaluations_per_run,
+        "cost_to_spend": cost_to_spend,
+        "fidelities_to_spend": fidelities_to_spend,
+    }
+    set_criteria = [k for k, v in criteria.items() if v is not None]
+    if len(set_criteria) > 1:
+        raise ValueError(
+            f"Multiple stopping criteria specified: {', '.join(set_criteria)}. "
+            "Only one is allowed."
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+
+    multi_fidelity_optimizers = {
+        "successive_halving",
+        "asha",
+        "hyperband",
+        "async_hb",
+        "ifbo",
+        "priorband",
+        "moasha",
+        "mo_hyperband",
+        "primo",
+    }
+
+    is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
+
+    if is_multi_fidelity:
+        if evaluations_to_spend is not None:
+            raise ValueError(
+                "`evaluations_to_spend` is not allowed for multi-fidelity optimizers. "
+                "Only `fidelities_to_spend` or `cost_to_spend`"
+            )
+    elif fidelities_to_spend is not None:
+        raise ValueError(
+            "`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers."
+        )
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
@@ -435,31 +501,31 @@ def run(  # noqa: PLR0913
         evaluation_fn=_eval,  # type: ignore
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
-        max_cost_total=max_cost_total,
+        cost_to_spend=cost_to_spend,
+        fidelities_to_spend=fidelities_to_spend,
         optimization_dir=Path(root_directory),
-        max_evaluations_total=max_evaluations_total,
+        evaluations_to_spend=evaluations_to_spend,
         max_evaluations_for_worker=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,
         ignore_errors=ignore_errors,
-        overwrite_optimization_dir=overwrite_working_directory,
+        overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
+        write_summary_to_disk=write_summary_to_disk,
     )
 
-    if post_run_summary:
-        full_frame_path, short_path = post_run_csv(root_directory)
+    post_run_csv(root_directory)
+    root_directory = Path(root_directory)
+    summary_dir = root_directory / "summary"
+    if not write_summary_to_disk:
+        trajectory_of_improvements(root_directory)
         logger.info(
-            "The post run summary has been created, which is a csv file with the "
-            "output of all data in the run."
-            f"\nYou can find a full dataframe at: {full_frame_path}."
-            f"\nYou can find a quick summary at: {short_path}."
-        )
-    else:
-        logger.info(
-            "Skipping the creation of the post run summary, which is a csv file with the "
-            " output of all data in the run."
-            "\nSet `post_run_summary=True` to enable it."
+            "The summary folder has been created, which contains csv and txt files with"
+            "the output of all data in the run (short.csv - only the best; full.csv - "
+            "all runs; best_config_trajectory.txt for incumbent trajectory; and "
+            "best_config.txt for final incumbent)."
+            f"\nYou can find summary folder at: {summary_dir}."
         )
 
 

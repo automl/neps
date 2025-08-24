@@ -87,7 +87,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="path/to/save/results",  # Replace with the actual path.
-    max_evaluations_total=100,
+    evaluations_to_spend=100,
 )
 ```
 

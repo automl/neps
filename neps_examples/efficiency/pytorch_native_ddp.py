@@ -112,4 +112,4 @@ if __name__ == '__main__':
     neps.run(evaluate_pipeline=evaluate_pipeline,
              pipeline_space=pipeline_space,
              root_directory="results/pytorch_ddp",
-             max_evaluations_total=25)
+             evaluations_to_spend=25)

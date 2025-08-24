@@ -251,6 +251,12 @@ class NePSState:
     _shared_errors_path: Path = field(repr=False)
     _shared_errors: ErrDump = field(repr=False)
 
+    new_score: float = float("inf")
+    """Tracking of the new incumbent"""
+
+    all_best_configs: list = field(default_factory=list)
+    """Trajectory to the newest incbumbent"""
+
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
         with self._trial_lock.lock():
@@ -382,9 +388,16 @@ class NePSState:
             else:
                 previous_trial_location = None
 
+            id_str = sampled_config.id
+            config_name = f"{sampled_config.id}"
+            parts = id_str.split("_rung_")
+            if len(parts) == 2 and all(p.isdigit() for p in parts):
+                config_id, rung_id = map(int, parts)
+                config_name = f"{config_id}_rung_{rung_id}"
+
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
+                location=str(self._trial_repo.directory / f"config_{config_name}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,

@@ -63,12 +63,12 @@ def evaluate_pipeline(
 
 #### Cost
 
-Along with the return of the `loss`, the `evaluate_pipeline=` function would optionally need to return a `cost` in certain cases. Specifically when the `max_cost_total` parameter is being utilized in the `neps.run` function.
+Along with the return of the `loss`, the `evaluate_pipeline=` function would optionally need to return a `cost` in certain cases. Specifically when the `cost_to_spend` parameter is being utilized in the `neps.run` function.
 
 
 !!! note
 
-    `max_cost_total` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
+    `cost_to_spend` sums the cost from all returned configuration results and checks whether the maximum allowed cost has been reached (if so, the search will come to an end).
 
 ```python
 import neps
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space, # Assuming the pipeline space is defined
         root_directory="results/bo",
-        max_cost_total=10,
+        cost_to_spend=10,
         optimizer="bayesian_optimization",
     )
 ```

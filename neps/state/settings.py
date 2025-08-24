@@ -78,7 +78,7 @@ class WorkerSettings:
     """The number of configurations to sample in a single batch."""
 
     # --------- Global Stopping Criterion ---------
-    max_evaluations_total: int | None
+    evaluations_to_spend: int | None
     """The maximum number of evaluations to run in total.
 
     Once this evaluation total is reached, **all** workers will stop evaluating
@@ -95,10 +95,10 @@ class WorkerSettings:
     include_in_progress_evaluations_towards_maximum: bool
     """Whether to include currently evaluating configurations towards the
     stopping criterion
-    [`max_evaluations_total`][neps.state.settings.WorkerSettings.max_evaluations_total]
+    [`evaluations_to_spend`][neps.state.settings.WorkerSettings.evaluations_to_spend]
     """
 
-    max_cost_total: float | None
+    cost_to_spend: float | None
     """The maximum cost to run in total.
 
     Once this cost total is reached, **all** workers will stop evaluating new
@@ -109,6 +109,20 @@ class WorkerSettings:
 
     If `None`, there is no limit and workers will continue to evaluate
     indefinitely or until another stopping criterion is met.
+    """
+
+    fidelities_to_spend: int | None
+    """The maximum number of evaluations to run in case of multi-fidelity.
+
+    Once this evaluation total is reached, **all** workers will stop evaluating
+    new configurations.
+
+    To control whether currently evaluating configurations are included in this
+    total, see
+    [`include_in_progress_evaluations_towards_maximum`][neps.state.settings.WorkerSettings.include_in_progress_evaluations_towards_maximum].
+
+    If `None`, there is no limit and workers will continue to evaluate
+    indefinitely.
     """
 
     max_evaluation_time_total_seconds: float | None
@@ -173,4 +187,9 @@ class WorkerSettings:
 
     If `None`, there is no limit and this worker will continue to evaluate
     indefinitely or until another stopping criterion is met.
+    """
+
+    write_summary_to_disk: bool = True
+    """If True, creates a csv and txt files after each worker is done,
+            holding summary information about the configs and results.
     """

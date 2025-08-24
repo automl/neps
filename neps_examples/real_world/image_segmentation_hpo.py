@@ -125,5 +125,5 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         root_directory="results/hpo_image_segmentation",
-        max_evaluations_total=500
+        fidelities_to_spend=500
     )

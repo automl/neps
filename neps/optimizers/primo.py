@@ -155,7 +155,7 @@ class PriMO:
 
             # Get the next ID for the sampled configuration
             if "_" in trial_id:
-                config_id_str, _ = trial_id.split("_")
+                config_id_str, _, _ = trial_id.split("_")
             else:
                 config_id_str = trial_id
 

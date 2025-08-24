@@ -29,7 +29,7 @@ class MOPriorSampler:
         cls,
         parameters: Mapping[str, Parameter],
         prior_centers: Mapping[str, Mapping[str, float]],
-        confidence_values: Mapping[str, Mapping[str, float]],
+        confidence_values: Mapping[str, Mapping[str, float]] | None = None,
     ) -> Mapping[str, Prior]:
         """Creates a mapping of prior distributions from the given centers and
         confidence values.
@@ -41,19 +41,17 @@ class MOPriorSampler:
             A mapping of prior distributions.
         """
         _priors = {}
-
         for key, _prior_center in prior_centers.items():
             assert isinstance(_prior_center, dict), (
                 f"Expected prior center values to be a dict, got {type(_prior_center)}"
             )
-            assert key in confidence_values, (
-                f"Expected confidence values to contain {key}, "
-                f"got {confidence_values.keys()}"
-            )
+            _default_confidence = dict.fromkeys(prior_centers.keys(), 0.25)
             _priors[key] = Prior.from_parameters(
                 parameters=parameters,
                 center_values=_prior_center,
-                confidence_values=confidence_values[key],
+                confidence_values=(
+                    confidence_values[key] if confidence_values else _default_confidence
+                ),
             )
         return _priors
 
