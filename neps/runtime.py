@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import datetime
 import logging
 import os
 import shutil
@@ -50,11 +49,6 @@ if TYPE_CHECKING:
     from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
-
-
-def _default_worker_name() -> str:
-    isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    return f"{os.getpid()}-{isoformat}"
 
 
 _DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"
@@ -197,12 +191,13 @@ class DefaultWorker:
         worker_id: str | None = None,
     ) -> DefaultWorker:
         """Create a new worker."""
+        worker_id = state.lock_and_set_new_worker_id(worker_id)
         return DefaultWorker(
             state=state,
             optimizer=optimizer,
             settings=settings,
             evaluation_fn=evaluation_fn,
-            worker_id=worker_id if worker_id is not None else _default_worker_name(),
+            worker_id=worker_id,
         )
 
     def _check_worker_local_settings(
@@ -882,6 +877,7 @@ def _launch_runtime(  # noqa: PLR0913
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
     write_summary_to_disk: bool = True,
+    worker_id: str | None = None,
 ) -> None:
     default_report_values = DefaultReportValues(
         objective_value_on_error=objective_value_on_error,
@@ -926,6 +922,7 @@ def _launch_runtime(  # noqa: PLR0913
                         )
                     ),
                     shared_state=None,  # TODO: Unused for the time being...
+                    worker_ids=None,
                 ),
             )
             break
@@ -990,5 +987,6 @@ def _launch_runtime(  # noqa: PLR0913
         optimizer=optimizer,
         evaluation_fn=evaluation_fn,
         settings=settings,
+        worker_id=worker_id,
     )
     worker.run()

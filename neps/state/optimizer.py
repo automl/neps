@@ -47,3 +47,5 @@ class OptimizationState:
     Please reach out to @eddiebergman if you have a use case for this so we can make
     it more robust.
     """
+    worker_ids: list[str] | None = None
+    """The list of workers that have been created so far."""
