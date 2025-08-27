@@ -28,4 +28,5 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     evaluations_to_spend=30,
+    worker_id="test_worker",
 )

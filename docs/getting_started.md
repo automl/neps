@@ -13,7 +13,7 @@ pip install neural-pipeline-search
 
 ## The 3 Main Components
 
-1. **Establish a [`pipeline_space=`](reference/pipeline_space.md)**:
+1. **Establish a [`pipeline_space`](reference/pipeline_space.md)**:
 
 ```python
 pipeline_space={
