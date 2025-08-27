@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
-from neps.runtime import _launch_runtime
+from neps.runtime import _launch_runtime, _save_results
 from neps.space.parsing import convert_to_space
 from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
@@ -529,4 +529,43 @@ def run(  # noqa: C901, D417, PLR0913
         )
 
 
-__all__ = ["run"]
+def save_pipeline_results(
+    user_result: dict,
+    pipeline_id: str,
+    root_directory: Path,
+    *,
+    post_run_summary: bool = True,
+) -> None:
+    """Persist the outcome of one pipeline evaluation.
+
+    Args:
+        user_result (dict): Dictionary returned by evaluate_pipeline. Must
+            contain keys required by _save_results (e.g. "cost",
+            "objective_to_minimize", optional "learning_curve", "exception",
+            "info_dict").
+        pipeline_id (str): Unique identifier of the pipeline/trial whose
+            result is being stored. Used to locate the corresponding
+            neps.core.trial.Trial object inside the optimisation state.
+        root_directory (Path): Root directory of the NePS run (contains
+            optimizer_info.yaml and configs/ folder).
+        post_run_summary (bool, optional): If True, creates a CSV file after
+            trial completion, holding summary info about configs and results.
+
+    """
+    _save_results(
+        user_result=user_result,
+        trial_id=pipeline_id,
+        root_directory=root_directory,
+    )
+
+    if post_run_summary:
+        full_frame_path, short_path = post_run_csv(root_directory)
+        logger.info(
+            "The post run summary has been created, which is a csv file with the "
+            "output of all data in the run."
+            f"\nYou can find a full dataframe at: {full_frame_path}."
+            f"\nYou can find a quick summary at: {short_path}."
+        )
+
+
+__all__ = ["run", "save_pipeline_results"]

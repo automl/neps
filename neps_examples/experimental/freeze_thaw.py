@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import neps
-from neps import tblogger
 from neps.plot.plot3D import Plotter3D
 
 
