@@ -47,7 +47,6 @@ from neps.state import (
     UserResult,
     WorkerSettings,
     evaluate_trial,
-    UserResult,
 )
 from neps.status.status import _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
