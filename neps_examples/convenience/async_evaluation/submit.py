@@ -43,6 +43,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=pipeline_space,
     root_directory="results",
-    max_evaluations_total=2,
-    post_run_summary=True,
+    max_evaluations_per_run=2,
 )

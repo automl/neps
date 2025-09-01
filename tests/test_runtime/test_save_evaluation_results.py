@@ -38,15 +38,16 @@ def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
         default_report_values=DefaultReportValues(
             cost_if_not_provided=1.2,
         ),
-        max_evaluations_total=None,
-        include_in_progress_evaluations_towards_maximum=False,
-        max_cost_total=None,
+        cost_to_spend=None,
         max_evaluations_for_worker=2,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
         batch_size=None,
+        fidelities_to_spend=None,
+        evaluations_to_spend=1,
+        include_in_progress_evaluations_towards_maximum=False,
     )
 
     callback_holder: list[callable] = []
