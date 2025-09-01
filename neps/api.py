@@ -101,6 +101,7 @@ def run(  # noqa: C901, D417, PLR0913
         },
         root_directory="usage_example",
         evaluations_to_spend=5,
+        max_evaluations_per_run=10,
     )
     ```
 
@@ -200,6 +201,10 @@ def run(  # noqa: C901, D417, PLR0913
             holding summary information about the configs and results.
 
         max_evaluations_per_run: Number of evaluations this specific call should do.
+        ??? note "Limitation on Async mode"
+            Currently, there is no specific number to control number of parallel evaluations running with
+            the same worker, so in case you want to limit the number of parallel evaluations,
+            it's crucial to limit the number of evaluations per run.
 
         evaluations_to_spend: Number of evaluations after which to terminate.
             This is shared between all workers operating in the same `root_directory`.
