@@ -251,19 +251,20 @@ def run(  # noqa: C901, D417, PLR0913
                 quickly.
 
         worker_id: An optional string to identify the worker (run instance).
-            If not provided, a `worker_id` will be automatically generated which follows this pattern:
-            `worker_<N>` where `<N>` is a unique integer for each worker and increnements with each new worker.
-            List of all workers that have been created so far is stored in
-            `root_directory/optimizer_state.pkl` in the attribute `worker_ids`.
+            If not provided, a `worker_id` will be automatically generated using the pattern:
+            `worker_<N>`, where `<N>` is a unique integer for each worker and increments with each new worker.
+            A list of all workers created so far is stored in
+            `root_directory/optimizer_state.pkl` under the attribute `worker_ids`.
 
             ??? tip "Why specify a `worker_id`?"
-                This is useful when you want to keep track of which worker did what in the
-                results, e.g., when debugging or running on a cluster.
+                Specifying a `worker_id` is useful for tracking which worker performed specific tasks
+                in the results. For example, when debugging or running on a cluster, you can include
+                the process ID and machine name in the `worker_id` for better traceability.
 
-            ??? warning "Douplication of `worker_id`"
-                Make sure that each worker has a unique `worker_id`, in case of duplication,
-                for protecting against overwriting results of other workers, the optimization
-                will be stopped with an error.
+            ??? warning "Duplication of `worker_id`"
+                Ensure that each worker has a unique `worker_id`. If a duplicate `worker_id` is detected,
+                the optimization process will be stopped with an error to prevent overwriting the results
+                of other workers.
 
         optimizer: Which optimizer to use.
 

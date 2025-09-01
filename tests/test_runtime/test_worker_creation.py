@@ -31,15 +31,16 @@ def test_create_worker_manual_id(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=1,
+        evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=True,
-        max_cost_total=None,
+        cost_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
         batch_size=None,
+        fidelities_to_spend=None,
     )
 
     def eval_fn(config: dict) -> float:
@@ -64,15 +65,16 @@ def test_create_worker_auto_id(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        max_evaluations_total=1,
+        evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=True,
-        max_cost_total=None,
+        cost_to_spend=None,
         max_evaluations_for_worker=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
         max_evaluation_time_for_worker_seconds=None,
         max_cost_for_worker=None,
         batch_size=None,
+        fidelities_to_spend=None,
     )
 
     def eval_fn(config: dict) -> float:
@@ -87,5 +89,5 @@ def test_create_worker_auto_id(neps_state: NePSState) -> None:
         evaluation_fn=eval_fn,
     )
 
-    assert worker.worker_id.startswith("worker_0")
+    assert worker.worker_id == "worker_0"
     assert neps_state.lock_and_get_optimizer_state().worker_ids == [worker.worker_id]

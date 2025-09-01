@@ -12,9 +12,7 @@ from __future__ import annotations
 
 import io
 import logging
-import os
 import pickle
-import socket
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -727,4 +725,4 @@ def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
 
 
 def _get_worker_name(idx: int) -> str:
-    return f"worker_{idx}-{socket.gethostname()}-{os.getpid()}"
+    return f"worker_{idx}"
