@@ -183,11 +183,11 @@ class MFBO:
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.
-        pibo_exp_term = None
+        primo_exp_term = None
         if prior:
-            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_init_used)
+            primo_exp_term = _primo_exp_term(n_sampled, encoder.ndim, self.n_init_used)
             # If the exp term is insignificant, skip prior acq. weighting
-            prior = None if pibo_exp_term < 1e-4 else prior
+            prior = None if primo_exp_term < 1e-4 else prior
 
         n_to_acquire = 1
 
@@ -212,7 +212,7 @@ class MFBO:
             acquisition=acquisition,
             prior=prior,
             n_candidates_required=n_to_acquire,
-            pibo_exp_term=pibo_exp_term,
+            pibo_exp_term=primo_exp_term,
             hide_warnings=True,
         )
 
@@ -230,7 +230,7 @@ class MFBO:
         return fidelity_units_used >= threshold
 
 
-def _pibo_exp_term(
+def _primo_exp_term(
     n_sampled_already: int,
     ndims: int,
     initial_design_size: int,
