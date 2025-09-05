@@ -16,7 +16,7 @@
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.16">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.18">
     
     
       
@@ -3838,7 +3838,9 @@ if you like, otherwise you may also refer to them by their string name.</p>
 
 
 
+
   <div class="doc doc-children">
+
 
 
 
@@ -3923,7 +3925,9 @@ if you like, otherwise you may also refer to them by their string name.</p>
 
 
 
+
   <div class="doc doc-children">
+
 
 
 
@@ -6355,17 +6359,18 @@ candidate selection method as MOASHA.</p>
 <div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">neps_priorband</span><span class="p">(</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="p">(</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>        <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="p">)</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">base</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        <span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="s2">&quot;asha&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="s2">&quot;async_hb&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hyperband&quot;</span>
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer">_NePSBracketOptimizer</span></span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">inc_ratio</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>        <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="p">)</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>    <span class="n">base</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        <span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        <span class="s2">&quot;asha&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        <span class="s2">&quot;async_hb&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hyperband&quot;</span>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer">_NePSBracketOptimizer</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -6471,9 +6476,7 @@ highest fidelity, otherwise at the lowest fidelity.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\optimizers\algorithms.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1544">1544</a></span>
-<span class="normal"><a href="#__codelineno-0-1545">1545</a></span>
-<span class="normal"><a href="#__codelineno-0-1546">1546</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-1546">1546</a></span>
 <span class="normal"><a href="#__codelineno-0-1547">1547</a></span>
 <span class="normal"><a href="#__codelineno-0-1548">1548</a></span>
 <span class="normal"><a href="#__codelineno-0-1549">1549</a></span>
@@ -6517,53 +6520,59 @@ highest fidelity, otherwise at the lowest fidelity.</p>
 <span class="normal"><a href="#__codelineno-0-1587">1587</a></span>
 <span class="normal"><a href="#__codelineno-0-1588">1588</a></span>
 <span class="normal"><a href="#__codelineno-0-1589">1589</a></span>
-<span class="normal"><a href="#__codelineno-0-1590">1590</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1544" name="__codelineno-0-1544"></a><span class="k">def</span><span class="w"> </span><span class="nf">neps_priorband</span><span class="p">(</span>
-<a id="__codelineno-0-1545" name="__codelineno-0-1545"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
-<a id="__codelineno-0-1546" name="__codelineno-0-1546"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-1547" name="__codelineno-0-1547"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
-<a id="__codelineno-0-1548" name="__codelineno-0-1548"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-0-1549" name="__codelineno-0-1549"></a>    <span class="n">base</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span> <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span> <span class="s2">&quot;asha&quot;</span><span class="p">,</span> <span class="s2">&quot;async_hb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-1550" name="__codelineno-0-1550"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_NePSBracketOptimizer</span><span class="p">:</span>
-<a id="__codelineno-0-1551" name="__codelineno-0-1551"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a PriorBand optimizer for the given pipeline space.</span>
-<a id="__codelineno-0-1552" name="__codelineno-0-1552"></a>
-<a id="__codelineno-0-1553" name="__codelineno-0-1553"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-1554" name="__codelineno-0-1554"></a><span class="sd">        pipeline_space: The pipeline space to optimize over.</span>
-<a id="__codelineno-0-1555" name="__codelineno-0-1555"></a><span class="sd">        eta: The eta parameter for the algorithm.</span>
-<a id="__codelineno-0-1556" name="__codelineno-0-1556"></a><span class="sd">        sample_prior_first: Whether to sample the prior first.</span>
-<a id="__codelineno-0-1557" name="__codelineno-0-1557"></a><span class="sd">            If set to `&quot;highest_fidelity&quot;`, the prior will be sampled at the</span>
-<a id="__codelineno-0-1558" name="__codelineno-0-1558"></a><span class="sd">            highest fidelity, otherwise at the lowest fidelity.</span>
-<a id="__codelineno-0-1559" name="__codelineno-0-1559"></a><span class="sd">        base: The type of bracket optimizer to use. One of:</span>
-<a id="__codelineno-0-1560" name="__codelineno-0-1560"></a><span class="sd">            - &quot;successive_halving&quot;</span>
-<a id="__codelineno-0-1561" name="__codelineno-0-1561"></a><span class="sd">            - &quot;hyperband&quot;</span>
-<a id="__codelineno-0-1562" name="__codelineno-0-1562"></a><span class="sd">            - &quot;asha&quot;</span>
-<a id="__codelineno-0-1563" name="__codelineno-0-1563"></a><span class="sd">            - &quot;async_hb&quot;</span>
-<a id="__codelineno-0-1564" name="__codelineno-0-1564"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-1565" name="__codelineno-0-1565"></a><span class="sd">        An instance of _BracketOptimizer configured for PriorBand sampling.</span>
-<a id="__codelineno-0-1566" name="__codelineno-0-1566"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-1567" name="__codelineno-0-1567"></a>    <span class="n">parameters</span> <span class="o">=</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-<a id="__codelineno-0-1568" name="__codelineno-0-1568"></a>    <span class="n">non_fid_parameters</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-1569" name="__codelineno-0-1569"></a>        <span class="n">parameter</span>
-<a id="__codelineno-0-1570" name="__codelineno-0-1570"></a>        <span class="k">for</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">parameters</span>
-<a id="__codelineno-0-1571" name="__codelineno-0-1571"></a>        <span class="k">if</span> <span class="n">parameter</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-<a id="__codelineno-0-1572" name="__codelineno-0-1572"></a>        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">Integer</span> <span class="o">|</span> <span class="n">Float</span> <span class="o">|</span> <span class="n">Categorical</span><span class="p">)</span>
-<a id="__codelineno-0-1573" name="__codelineno-0-1573"></a>    <span class="p">]</span>
-<a id="__codelineno-0-1574" name="__codelineno-0-1574"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
-<a id="__codelineno-0-1575" name="__codelineno-0-1575"></a>        <span class="n">parameter</span><span class="o">.</span><span class="n">has_prior</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-1576" name="__codelineno-0-1576"></a>        <span class="k">for</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">non_fid_parameters</span>
-<a id="__codelineno-0-1577" name="__codelineno-0-1577"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">)</span>
-<a id="__codelineno-0-1578" name="__codelineno-0-1578"></a>    <span class="p">):</span>
-<a id="__codelineno-0-1579" name="__codelineno-0-1579"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-<a id="__codelineno-0-1580" name="__codelineno-0-1580"></a>            <span class="s2">&quot;Warning: No priors are defined in the search space, priorband will sample&quot;</span>
-<a id="__codelineno-0-1581" name="__codelineno-0-1581"></a>            <span class="s2">&quot; uniformly. Consider using hyperband instead.&quot;</span>
-<a id="__codelineno-0-1582" name="__codelineno-0-1582"></a>        <span class="p">)</span>
-<a id="__codelineno-0-1583" name="__codelineno-0-1583"></a>    <span class="k">return</span> <span class="n">_neps_bracket_optimizer</span><span class="p">(</span>
-<a id="__codelineno-0-1584" name="__codelineno-0-1584"></a>        <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-0-1585" name="__codelineno-0-1585"></a>        <span class="n">bracket_type</span><span class="o">=</span><span class="n">base</span><span class="p">,</span>
-<a id="__codelineno-0-1586" name="__codelineno-0-1586"></a>        <span class="n">eta</span><span class="o">=</span><span class="n">eta</span><span class="p">,</span>
-<a id="__codelineno-0-1587" name="__codelineno-0-1587"></a>        <span class="n">sampler</span><span class="o">=</span><span class="s2">&quot;priorband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-1588" name="__codelineno-0-1588"></a>        <span class="n">sample_prior_first</span><span class="o">=</span><span class="n">sample_prior_first</span><span class="p">,</span>
-<a id="__codelineno-0-1589" name="__codelineno-0-1589"></a>        <span class="n">early_stopping_rate</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span> <span class="s2">&quot;asha&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-1590" name="__codelineno-0-1590"></a>    <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-1590">1590</a></span>
+<span class="normal"><a href="#__codelineno-0-1591">1591</a></span>
+<span class="normal"><a href="#__codelineno-0-1592">1592</a></span>
+<span class="normal"><a href="#__codelineno-0-1593">1593</a></span>
+<span class="normal"><a href="#__codelineno-0-1594">1594</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-1546" name="__codelineno-0-1546"></a><span class="k">def</span><span class="w"> </span><span class="nf">neps_priorband</span><span class="p">(</span>
+<a id="__codelineno-0-1547" name="__codelineno-0-1547"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
+<a id="__codelineno-0-1548" name="__codelineno-0-1548"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-1549" name="__codelineno-0-1549"></a>    <span class="n">inc_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span><span class="p">,</span>
+<a id="__codelineno-0-1550" name="__codelineno-0-1550"></a>    <span class="n">eta</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<a id="__codelineno-0-1551" name="__codelineno-0-1551"></a>    <span class="n">sample_prior_first</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;highest_fidelity&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-0-1552" name="__codelineno-0-1552"></a>    <span class="n">base</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span> <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span> <span class="s2">&quot;asha&quot;</span><span class="p">,</span> <span class="s2">&quot;async_hb&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-1553" name="__codelineno-0-1553"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">_NePSBracketOptimizer</span><span class="p">:</span>
+<a id="__codelineno-0-1554" name="__codelineno-0-1554"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a PriorBand optimizer for the given pipeline space.</span>
+<a id="__codelineno-0-1555" name="__codelineno-0-1555"></a>
+<a id="__codelineno-0-1556" name="__codelineno-0-1556"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-1557" name="__codelineno-0-1557"></a><span class="sd">        pipeline_space: The pipeline space to optimize over.</span>
+<a id="__codelineno-0-1558" name="__codelineno-0-1558"></a><span class="sd">        eta: The eta parameter for the algorithm.</span>
+<a id="__codelineno-0-1559" name="__codelineno-0-1559"></a><span class="sd">        sample_prior_first: Whether to sample the prior first.</span>
+<a id="__codelineno-0-1560" name="__codelineno-0-1560"></a><span class="sd">            If set to `&quot;highest_fidelity&quot;`, the prior will be sampled at the</span>
+<a id="__codelineno-0-1561" name="__codelineno-0-1561"></a><span class="sd">            highest fidelity, otherwise at the lowest fidelity.</span>
+<a id="__codelineno-0-1562" name="__codelineno-0-1562"></a><span class="sd">        base: The type of bracket optimizer to use. One of:</span>
+<a id="__codelineno-0-1563" name="__codelineno-0-1563"></a><span class="sd">            - &quot;successive_halving&quot;</span>
+<a id="__codelineno-0-1564" name="__codelineno-0-1564"></a><span class="sd">            - &quot;hyperband&quot;</span>
+<a id="__codelineno-0-1565" name="__codelineno-0-1565"></a><span class="sd">            - &quot;asha&quot;</span>
+<a id="__codelineno-0-1566" name="__codelineno-0-1566"></a><span class="sd">            - &quot;async_hb&quot;</span>
+<a id="__codelineno-0-1567" name="__codelineno-0-1567"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-1568" name="__codelineno-0-1568"></a><span class="sd">        An instance of _BracketOptimizer configured for PriorBand sampling.</span>
+<a id="__codelineno-0-1569" name="__codelineno-0-1569"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-1570" name="__codelineno-0-1570"></a>    <span class="n">parameters</span> <span class="o">=</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">get_attrs</span><span class="p">()</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<a id="__codelineno-0-1571" name="__codelineno-0-1571"></a>    <span class="n">non_fid_parameters</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-1572" name="__codelineno-0-1572"></a>        <span class="n">parameter</span>
+<a id="__codelineno-0-1573" name="__codelineno-0-1573"></a>        <span class="k">for</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">parameters</span>
+<a id="__codelineno-0-1574" name="__codelineno-0-1574"></a>        <span class="k">if</span> <span class="n">parameter</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<a id="__codelineno-0-1575" name="__codelineno-0-1575"></a>        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">Integer</span> <span class="o">|</span> <span class="n">Float</span> <span class="o">|</span> <span class="n">Categorical</span><span class="p">)</span>
+<a id="__codelineno-0-1576" name="__codelineno-0-1576"></a>    <span class="p">]</span>
+<a id="__codelineno-0-1577" name="__codelineno-0-1577"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span>
+<a id="__codelineno-0-1578" name="__codelineno-0-1578"></a>        <span class="n">parameter</span><span class="o">.</span><span class="n">has_prior</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-1579" name="__codelineno-0-1579"></a>        <span class="k">for</span> <span class="n">parameter</span> <span class="ow">in</span> <span class="n">non_fid_parameters</span>
+<a id="__codelineno-0-1580" name="__codelineno-0-1580"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameter</span><span class="p">,</span> <span class="n">Resolvable</span><span class="p">)</span>
+<a id="__codelineno-0-1581" name="__codelineno-0-1581"></a>    <span class="p">):</span>
+<a id="__codelineno-0-1582" name="__codelineno-0-1582"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+<a id="__codelineno-0-1583" name="__codelineno-0-1583"></a>            <span class="s2">&quot;Warning: No priors are defined in the search space, priorband will sample&quot;</span>
+<a id="__codelineno-0-1584" name="__codelineno-0-1584"></a>            <span class="s2">&quot; uniformly. Consider using hyperband instead.&quot;</span>
+<a id="__codelineno-0-1585" name="__codelineno-0-1585"></a>        <span class="p">)</span>
+<a id="__codelineno-0-1586" name="__codelineno-0-1586"></a>    <span class="k">return</span> <span class="n">_neps_bracket_optimizer</span><span class="p">(</span>
+<a id="__codelineno-0-1587" name="__codelineno-0-1587"></a>        <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
+<a id="__codelineno-0-1588" name="__codelineno-0-1588"></a>        <span class="n">bracket_type</span><span class="o">=</span><span class="n">base</span><span class="p">,</span>
+<a id="__codelineno-0-1589" name="__codelineno-0-1589"></a>        <span class="n">eta</span><span class="o">=</span><span class="n">eta</span><span class="p">,</span>
+<a id="__codelineno-0-1590" name="__codelineno-0-1590"></a>        <span class="n">sampler</span><span class="o">=</span><span class="s2">&quot;priorband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-1591" name="__codelineno-0-1591"></a>        <span class="n">sample_prior_first</span><span class="o">=</span><span class="n">sample_prior_first</span><span class="p">,</span>
+<a id="__codelineno-0-1592" name="__codelineno-0-1592"></a>        <span class="n">early_stopping_rate</span><span class="o">=</span><span class="mi">0</span> <span class="k">if</span> <span class="n">base</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span> <span class="s2">&quot;asha&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-1593" name="__codelineno-0-1593"></a>        <span class="n">inc_ratio</span><span class="o">=</span><span class="n">inc_ratio</span><span class="p">,</span>
+<a id="__codelineno-0-1594" name="__codelineno-0-1594"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8201,10 +8210,10 @@ and if so, should it be at the highest fidelity level.</p>
     
     
       
-      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"base": "../../../..", "features": ["content.code.annotate", "content.code.copy", "navigation.footer", "navigation.sections", "toc.follow", "toc.integrate", "navigation.tabs", "navigation.tabs.sticky", "header.autohide", "search.suggest", "search.highlight", "search.share"], "search": "../../../../assets/javascripts/workers/search.973d3a69.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.50899def.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.92b07e13.min.js"></script>
       
         <script src="../../../../javascripts/mathjax.js"></script>
       
