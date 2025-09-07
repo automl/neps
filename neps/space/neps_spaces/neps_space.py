@@ -1296,7 +1296,6 @@ def check_neps_space_compatibility(
                 algorithms.complex_random_search,
             )
         )
-        or optimizer_to_check == "auto"
         or (
             optimizer_to_check[0]
             in (
