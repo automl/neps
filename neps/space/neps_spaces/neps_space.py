@@ -20,12 +20,12 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
+    Lazy,
     Operation,
     PipelineSpace,
+    Repeated,
     Resampled,
     Resolvable,
-    Repeated,
-    Lazy,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -455,20 +455,16 @@ class SamplingResolver:
                 # in the context that resolved value for the original object.
                 # The original object can possibly be reused elsewhere.
 
-                if (
-                    isinstance(initial_attr_value, Categorical)
-                    and context.was_already_resolved(initial_attr_value)
-                ):
+                if isinstance(
+                    initial_attr_value, Categorical
+                ) and context.was_already_resolved(initial_attr_value):
                     # Before making adjustments, we make sure we haven't
                     # already chosen a value for the provider.
                     # Otherwise, we already have the final answer for it.
                     resolved_attr_value = context.get_resolved(initial_attr_value)
-                elif (
-                    isinstance(initial_attr_value, Categorical) or
-                    (
-                        isinstance(initial_attr_value, Resampled)
-                        and isinstance(initial_attr_value.source, Categorical)
-                    )
+                elif isinstance(initial_attr_value, Categorical) or (
+                    isinstance(initial_attr_value, Resampled)
+                    and isinstance(initial_attr_value.source, Categorical)
                 ):
                     # We have a previously unseen provider.
                     # Create a new object where the choices are lazy,
@@ -476,7 +472,7 @@ class SamplingResolver:
 
                     choice_provider_final_attrs = {**initial_attr_value.get_attrs()}
                     choice_provider_choices = choice_provider_final_attrs["choices"]
-                    if isinstance(choice_provider_choices, (tuple, list)):
+                    if isinstance(choice_provider_choices, tuple | list):
                         choice_provider_choices = tuple(
                             Lazy(content=choice) for choice in choice_provider_choices
                         )
@@ -670,10 +666,10 @@ class SamplingResolver:
         result = []
         for i in range(resolved_count):
             result.append(self._resolve(obj_to_repeat, f"repeated_item[{i}]", context))
-        result = tuple(result)
+        result = tuple(result)  # type: ignore[assignment]
 
         context.add_resolved(repeated_resolvable_obj, result)
-        return result
+        return result  # type: ignore[return-value]
 
     @_resolver_dispatch.register
     def _(
@@ -725,7 +721,7 @@ class SamplingResolver:
         resolvable_obj: tuple,
         context: SamplingResolutionContext,
     ) -> tuple[Any]:
-        return self._resolve_sequence(resolvable_obj, context)
+        return self._resolve_sequence(resolvable_obj, context)  # type: ignore[return-value]
 
     @_resolver_dispatch.register
     def _(
@@ -733,7 +729,7 @@ class SamplingResolver:
         resolvable_obj: list,
         context: SamplingResolutionContext,
     ) -> list[Any]:
-        return self._resolve_sequence(resolvable_obj, context)
+        return self._resolve_sequence(resolvable_obj, context)  # type: ignore[return-value]
 
     def _resolve_sequence(
         self,

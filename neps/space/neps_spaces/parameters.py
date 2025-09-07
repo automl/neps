@@ -424,7 +424,7 @@ class Categorical(Domain[int], Generic[T]):
                     for choice in self._choices
                 )
         else:
-            self._choices = choices
+            self._choices = choices  # type: ignore[assignment]
         self._prior = prior
         self._prior_confidence = (
             convert_confidence_level(prior_confidence)
@@ -1025,6 +1025,7 @@ class Operation(Resolvable):
 #  should we make the behavior similar to other resolvables,
 #  in that they will be cached and then we also need to use Resampled for them?
 
+
 class Resampled(Resolvable):
     """A class representing a resampling operation in a NePS space.
 
@@ -1121,10 +1122,14 @@ class Repeated(Resolvable):
         count: int | Domain[int] | Resolvable,
         content: Resolvable | Any,
     ):
+        """Initialize the Repeated object with a count and content.
+
+        Args:
+            count: The count how many times the content should be repeated.
+            content: The content which will be repeated.
+        """
         if isinstance(count, int) and count < 0:
-            raise ValueError(
-                f"The received repeat count is negative. Received {count!r}"
-            )
+            raise ValueError(f"The received repeat count is negative. Received {count!r}")
 
         self._count = count
         self._content = content
@@ -1180,6 +1185,12 @@ class Lazy(Resolvable):
     """
 
     def __init__(self, content: Resolvable | tuple[Any] | str):
+        """Initialize the Lazy object with content.
+
+        Args:
+            content: The content being held, which can be a resolvable object
+                or a tuple or a string.
+        """
         self._content = content
 
     @property
@@ -1202,7 +1213,7 @@ class Lazy(Resolvable):
             f"This is a lazy resolvable. Can't get attrs from it: {self.content!r}."
         )
 
-    def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
+    def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:  # noqa: ARG002
         """Create a new resolvable object from the given attributes.
 
         Args:
@@ -1219,6 +1230,7 @@ class Lazy(Resolvable):
         raise ValueError(
             f"This is a lazy resolvable. Can't create object for it: {self.content!r}."
         )
+
 
 # TODO: [lum] all the `get_attrs` and `from_attrs` MUST NOT raise.
 #  They should return the best representation of themselves that they can.

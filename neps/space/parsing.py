@@ -217,7 +217,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     return SearchSpace(parameters)
 
 
-def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
+def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:  # noqa: C901
     """Constructs a [`SearchSpace`][neps.space.SearchSpace]
     from a [`ConfigurationSpace`](https://automl.github.io/ConfigSpace/latest/).
 
@@ -230,11 +230,12 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
     import ConfigSpace as CS
 
     space: dict[str, Parameter | HPOConstant] = {}
-    if any(configspace.conditions) or any(configspace.forbidden_clauses):
-        raise NotImplementedError(
-            "The ConfigurationSpace has conditions or forbidden clauses, "
-            "which are not supported by neps."
-        )
+    if hasattr(configspace, "conditions") and hasattr(configspace, "forbidden_clauses"):  # noqa: SIM102
+        if any(configspace.conditions) or any(configspace.forbidden_clauses):
+            raise NotImplementedError(
+                "The ConfigurationSpace has conditions or forbidden clauses, "
+                "which are not supported by neps."
+            )
 
     for name, hyperparameter in configspace.items():
         match hyperparameter:
