@@ -15,6 +15,7 @@ import neps
 from neps.optimizers import algorithms, optimizer
 from neps.space.neps_spaces import config_string
 from neps.space.neps_spaces.parameters import (
+    _UNSET,
     Categorical,
     Domain,
     Fidelity,
@@ -1167,6 +1168,75 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                     classic_space[key] = neps.HPOConstant(value)
             return convert_mapping(classic_space)
     return None
+
+
+def convert_classic_to_neps_search_space(
+    space: SearchSpace,
+) -> PipelineSpace:
+    """Convert a classic SearchSpace to a NePS PipelineSpace if possible.
+    This function converts a classic SearchSpace to a NePS PipelineSpace.
+
+    Args:
+        space: The classic SearchSpace to convert.
+
+    Returns:
+        A NePS PipelineSpace.
+    """
+
+    class NEPSSpace(PipelineSpace):
+        """A NePS-specific PipelineSpace."""
+
+    for parameter_name, parameter in space.elements.items():
+        if isinstance(parameter, neps.HPOCategorical):
+            setattr(
+                NEPSSpace,
+                parameter_name,
+                Categorical(
+                    choices=tuple(parameter.choices),
+                    prior=(
+                        parameter.choices.index(parameter.prior)
+                        if parameter.prior
+                        else _UNSET
+                    ),
+                    prior_confidence=(
+                        parameter.prior_confidence
+                        if parameter.prior_confidence
+                        else _UNSET
+                    ),
+                ),
+            )
+        elif isinstance(parameter, neps.HPOConstant):
+            setattr(NEPSSpace, parameter_name, parameter.value)
+        elif isinstance(parameter, neps.HPOInteger):
+            new_integer = Integer(
+                min_value=parameter.lower,
+                max_value=parameter.upper,
+                prior=parameter.prior if parameter.prior else _UNSET,
+                prior_confidence=(
+                    parameter.prior_confidence if parameter.prior_confidence else _UNSET
+                ),
+            )
+            setattr(
+                NEPSSpace,
+                parameter_name,
+                (Fidelity(domain=new_integer) if parameter.is_fidelity else new_integer),
+            )
+        elif isinstance(parameter, neps.HPOFloat):
+            new_float = Float(
+                min_value=parameter.lower,
+                max_value=parameter.upper,
+                prior=parameter.prior if parameter.prior else _UNSET,
+                prior_confidence=(
+                    parameter.prior_confidence if parameter.prior_confidence else _UNSET
+                ),
+            )
+            setattr(
+                NEPSSpace,
+                parameter_name,
+                (Fidelity(domain=new_float) if parameter.is_fidelity else new_float),
+            )
+
+    return NEPSSpace()
 
 
 def check_neps_space_compatibility(
