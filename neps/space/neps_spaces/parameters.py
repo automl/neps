@@ -456,11 +456,7 @@ class Categorical(Domain[int], Generic[T]):
 
     def __str__(self) -> str:
         """Get a string representation of the categorical domain."""
-        string = f"Categorical(choices={
-            self._choices.__str__()
-            if hasattr(self._choices, '__str__')
-            else self._choices
-        }"
+        string = f"Categorical(choices={self._choices!s}"
         if self.has_prior:
             string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
         string += ")"
