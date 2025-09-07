@@ -188,6 +188,20 @@ class PipelineSpace(Resolvable):
             setattr(new_pipeline, name, value)
         return new_pipeline
 
+    def __str__(self) -> str:
+        """Get a string representation of the pipeline.
+
+        Returns:
+            A string representation of the pipeline, including its class name and
+            attributes.
+        """
+        attrs = "\n\t".join(
+            f"{k} = {v!r}"
+            for k, v in self.get_attrs().items()
+            if not k.startswith("_") and not callable(v)
+        )
+        return f"PipelineSpace {self.__class__.__name__} with parameters:\n\t{attrs}"
+
 
 class ConfidenceLevel(enum.Enum):
     """Enum representing confidence levels for sampling."""
