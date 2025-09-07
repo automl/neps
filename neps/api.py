@@ -363,7 +363,11 @@ def run(  # noqa: PLR0913, C901
     # If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space
 
     neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
-    if neps_classic_space_compatibility in ["both", "classic"] and not warmstart_configs:
+    if (
+        neps_classic_space_compatibility in ["both", "classic"]
+        and isinstance(pipeline_space, PipelineSpace)
+        and not warmstart_configs
+    ):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
             pipeline_space = converted_space
