@@ -82,6 +82,12 @@ class Fidelity(Resolvable, Generic[T]):
             )
         self._domain = domain
 
+    def __str__(self) -> str:
+        """Get a string representation of the fidelity."""
+        return f"Fidelity({
+            self._domain.__str__() if hasattr(self._domain, '__str__') else self._domain!r
+        })"
+
     @property
     def min_value(self) -> int | float:
         """Get the minimum value of the fidelity domain.
@@ -196,7 +202,7 @@ class PipelineSpace(Resolvable):
             attributes.
         """
         attrs = "\n\t".join(
-            f"{k} = {v!r}"
+            f"{k} = {v.__str__() if hasattr(v, '__str__') else v!r}"
             for k, v in self.get_attrs().items()
             if not k.startswith("_") and not callable(v)
         )
@@ -450,6 +456,18 @@ class Categorical(Domain[int], Generic[T]):
                 "If prior is set, prior_confidence must also be set to a valid value."
             )
 
+    def __str__(self) -> str:
+        """Get a string representation of the categorical domain."""
+        string = f"Categorical(choices={
+            self._choices.__str__()
+            if hasattr(self._choices, '__str__')
+            else self._choices
+        }"
+        if self.has_prior:
+            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
+        string += ")"
+        return string
+
     @property
     def min_value(self) -> int:
         """Get the minimum value of the categorical domain.
@@ -626,6 +644,16 @@ class Float(Domain[float]):
                 "If prior is set, prior_confidence must also be set to a valid value."
             )
 
+    def __str__(self) -> str:
+        """Get a string representation of the floating-point domain."""
+        string = f"Float({self._min_value}, {self._max_value}"
+        if self._log:
+            string += ", log"
+        if self.has_prior:
+            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
+        string += ")"
+        return string
+
     @property
     def min_value(self) -> float:
         """Get the minimum value of the floating-point domain.
@@ -800,6 +828,16 @@ class Integer(Domain[int]):
                 "If prior is set, prior_confidence must also be set to a valid value."
             )
 
+    def __str__(self) -> str:
+        """Get a string representation of the integer domain."""
+        string = f"Integer({self._min_value}, {self._max_value}"
+        if self._log:
+            string += ", log"
+        if self.has_prior:
+            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
+        string += ")"
+        return string
+
     @property
     def min_value(self) -> int:
         """Get the minimum value of the integer domain.
@@ -969,6 +1007,13 @@ class Operation(Resolvable):
         else:
             self._kwargs = kwargs
 
+    def __str__(self) -> str:
+        """Get a string representation of the operation."""
+        return (
+            f"Operation(operator={self._operator!r}, args={self._args!r},"
+            f" kwargs={self._kwargs!r})"
+        )
+
     @property
     def operator(self) -> Callable | str:
         """Get the operator of the operation.
@@ -1055,6 +1100,9 @@ class Resampled(Resolvable):
             source: The source of the resampling, can be a resolvable object or a string.
         """
         self._source = source
+
+    def __str__(self) -> str:
+        return f"Resampled({self._source!r})"
 
     @property
     def source(self) -> Resolvable | str:
