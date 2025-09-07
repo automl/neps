@@ -12,21 +12,25 @@ evaluate both configurations in parallel, and then
 [`tell()`][neps.optimizers.ask_and_tell.AskAndTell.tell] results back to the optimizer.
 
 ```python
-from neps import AskAndTell
+import neps
 
 # Wrap an optimizer
-my_optimizer = AskAndTell(MyOptimizer(space, ...))
+space = neps.SearchSpace({"a": neps.Float(0, 1), "b": neps.Integer(1, 10)})
+my_optimizer = neps.AskAndTell(optimizer=neps.algorithms.random_search(space))
 
 # Ask for a new configuration
 trial = my_optimizer.ask()
 
 # The things you would normally get into `evaluate_pipeline`
-config_id = trial.config_id
+config_id = trial.metadata.id
 config = trial.config
-previous_config_id = trial.metadata.previous_trial_id
-previous_trial_path = trial.metadata.previous_trial_location
+# other metadata you might want to use:
+# trial.metadata.previous_trial_id, trial.metadata.previous_trial_location
 
 # Evaluate the configuration
+def evaluate(config):
+    # Dummy evaluation function
+    return config["a"] * 2 + config["b"]
 loss = evaluate(config)
 
 # Tell the optimizer the result

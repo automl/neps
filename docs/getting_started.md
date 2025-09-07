@@ -68,5 +68,8 @@ Understand how to leverage multi-fidelity optimization for efficient model tunin
 * **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**:
 Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
+* **[Benefiting NePS State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**:
+Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
+
 * **[Additional NePS Examples](examples/index.md)**:
 Explore more examples, including various use cases and advanced configurations in NePS.
