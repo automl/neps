@@ -1211,6 +1211,7 @@ def convert_classic_to_neps_search_space(
             new_integer = Integer(
                 min_value=parameter.lower,
                 max_value=parameter.upper,
+                log=parameter.log,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
@@ -1225,6 +1226,7 @@ def convert_classic_to_neps_search_space(
             new_float = Float(
                 min_value=parameter.lower,
                 max_value=parameter.upper,
+                log=parameter.log,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
