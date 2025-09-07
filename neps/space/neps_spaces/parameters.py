@@ -84,9 +84,7 @@ class Fidelity(Resolvable, Generic[T]):
 
     def __str__(self) -> str:
         """Get a string representation of the fidelity."""
-        return f"Fidelity({
-            self._domain.__str__() if hasattr(self._domain, '__str__') else self._domain!r
-        })"
+        return f"Fidelity({self._domain.__str__()})"
 
     @property
     def min_value(self) -> int | float:
@@ -202,7 +200,7 @@ class PipelineSpace(Resolvable):
             attributes.
         """
         attrs = "\n\t".join(
-            f"{k} = {v.__str__() if hasattr(v, '__str__') else v!r}"
+            f"{k} = {v!s}"
             for k, v in self.get_attrs().items()
             if not k.startswith("_") and not callable(v)
         )
@@ -1010,8 +1008,8 @@ class Operation(Resolvable):
     def __str__(self) -> str:
         """Get a string representation of the operation."""
         return (
-            f"Operation(operator={self._operator!r}, args={self._args!r},"
-            f" kwargs={self._kwargs!r})"
+            f"Operation(operator={self._operator!s}, args={self._args!s},"
+            f" kwargs={self._kwargs!s})"
         )
 
     @property
@@ -1102,7 +1100,7 @@ class Resampled(Resolvable):
         self._source = source
 
     def __str__(self) -> str:
-        return f"Resampled({self._source!r})"
+        return f"Resampled({self._source!s})"
 
     @property
     def source(self) -> Resolvable | str:
