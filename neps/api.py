@@ -373,30 +373,28 @@ def run(  # noqa: PLR0913, PLR0912, C901
         if converted_space:
             pipeline_space = converted_space
 
+    space = convert_to_space(pipeline_space)
+
     if neps_classic_space_compatibility == "neps" and not isinstance(
-        pipeline_space, PipelineSpace
+        space, PipelineSpace
     ):
-        pipeline_space = convert_classic_to_neps_search_space(pipeline_space)
+        space = convert_classic_to_neps_search_space(space)
 
     # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
     # algorithm, we raise an error, as the optimizer is not compatible.
-    if (
-        isinstance(pipeline_space, PipelineSpace)
-        and neps_classic_space_compatibility == "classic"
-    ):
+    if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
         raise ValueError(
             "The provided optimizer is not compatible with this complex search space. "
             "Please use one that is, such as 'random_search', "
             "'priorband', or 'complex_random_search'."
         )
 
-    if isinstance(pipeline_space, PipelineSpace):
+    if isinstance(space, PipelineSpace):
         assert not isinstance(evaluate_pipeline, str)
         evaluate_pipeline = adjust_evaluation_pipeline_for_neps_space(
-            evaluate_pipeline, pipeline_space
+            evaluate_pipeline, space
         )
 
-    space = convert_to_space(pipeline_space)
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
     _eval: Callable
