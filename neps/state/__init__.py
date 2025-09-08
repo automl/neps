@@ -3,7 +3,7 @@ from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResult, evaluate_trial
 from neps.state.seed_snapshot import SeedSnapshot
 from neps.state.settings import DefaultReportValues, OnErrorPossibilities, WorkerSettings
-from neps.state.trial import Trial
+from neps.state.trial import State, Trial
 
 __all__ = [
     "BudgetInfo",
@@ -13,6 +13,7 @@ __all__ = [
     "OnErrorPossibilities",
     "OptimizationState",
     "SeedSnapshot",
+    "State",
     "Trial",
     "UserResult",
     "WorkerSettings",

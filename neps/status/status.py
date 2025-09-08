@@ -208,6 +208,11 @@ def status(
     if summary.is_multiobjective:
         return df, short
 
+    if "objective_to_minimize" not in df.columns:
+        short["best_objective_to_minimize"] = None
+        short["best_config_id"] = None
+        return df, short
+
     idx_min = df["objective_to_minimize"].idxmin()
     row = df.loc[idx_min]
     assert isinstance(row, pd.Series)

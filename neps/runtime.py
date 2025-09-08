@@ -1,4 +1,9 @@
-"""TODO."""
+"""Worker runtime implementation for NePS.
+
+This module defines the default worker logic for running optimization trials in NePS.
+It manages trial assignment, evaluation, stopping criteria, error handling, and
+integration with distributed setups (e.g., PyTorch DDP).
+"""
 
 from __future__ import annotations
 
@@ -6,6 +11,7 @@ import logging
 import os
 import shutil
 import time
+import traceback
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -38,6 +44,7 @@ from neps.state import (
     OptimizationState,
     SeedSnapshot,
     Trial,
+    UserResult,
     WorkerSettings,
     evaluate_trial,
 )
@@ -104,6 +111,11 @@ def get_workers_neps_state() -> NePSState:
 def _set_workers_neps_state(state: NePSState) -> None:
     global _WORKER_NEPS_STATE  # noqa: PLW0603
     _WORKER_NEPS_STATE = state
+
+
+def is_in_progress_trial_set() -> bool:
+    """Check if the currently running trial in this process is set."""
+    return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None
 
 
 def get_in_progress_trial() -> Trial:
@@ -648,10 +660,20 @@ class DefaultWorker:
                     default_report_values=self.settings.default_report_values,
                 )
                 evaluation_duration = evaluated_trial.metadata.evaluation_duration
-                assert evaluation_duration is not None
-                self.worker_cumulative_evaluation_time_seconds += evaluation_duration
+                assert (evaluation_duration is not None) | (report is None)
+                self.worker_cumulative_evaluation_time_seconds += (
+                    evaluation_duration if evaluation_duration else 0
+                )
 
             self.worker_cumulative_eval_count += 1
+
+            if report is None:
+                logger.info(
+                    "Worker '%s' evaluated trial: %s async task detected.",
+                    self.worker_id,
+                    evaluated_trial.id,
+                )
+                continue
 
             logger.info(
                 "Worker '%s' evaluated trial: %s as %s.",
@@ -806,6 +828,73 @@ def load_incumbent_trace(  # noqa: D103
             f.write(best_config_text)
 
 
+def _save_results(
+    user_result: dict,
+    trial_id: str,
+    root_directory: Path,
+) -> None:
+    """Parse `user_result` and persist it for <trial_id> in the NePS state."""
+    default_report_values = _make_default_report_values(
+        objective_value_on_error=0, cost_value_on_error=0
+    )
+
+    result = UserResult.parse(
+        user_result,
+        default_cost_value=default_report_values.cost_if_not_provided,
+        default_objective_to_minimize_value=default_report_values.objective_value_on_error,
+        default_learning_curve=default_report_values.learning_curve_if_not_provided,
+    )
+    if result.exception is None and result.cost is None:
+        logger.warning(
+            "The return value of `evaluate_pipeline` "
+            "must be a dictionary that includes a 'cost' key."
+        )
+
+    # load the NePS state from the optimization directory
+    state = NePSState.create_or_load(path=root_directory, load_only=True)
+
+    # lock the requested trial
+    trial = state.lock_and_get_trial_by_id(trial_id)
+    if trial is None:
+        raise RuntimeError(f"Trial '{trial_id}' not found in '{root_directory}'")
+
+    report = trial.set_complete(
+        report_as=Trial.State.SUCCESS.value
+        if result.exception is None
+        else Trial.State.CRASHED.value,
+        objective_to_minimize=result.objective_to_minimize,
+        cost=result.cost,
+        learning_curve=result.learning_curve,
+        err=result.exception,
+        tb=(
+            "".join(
+                traceback.format_exception(
+                    type(result.exception),
+                    result.exception,
+                    result.exception.__traceback__,
+                )
+            )
+            if result.exception is not None
+            else None
+        ),
+        extra=result.extra,
+        time_end=time.time(),
+        evaluation_duration=result.cost,
+    )
+
+    worker_id = trial.metadata.evaluating_worker_id
+    with state._trial_lock.lock():
+        state._report_trial_evaluation(
+            trial=trial,
+            report=report,
+            worker_id=worker_id,
+        )
+    for _, cb in _TRIAL_END_CALLBACKS.items():
+        cb(trial)
+
+    logger.info(f"Saved result for trial {trial.id}")
+
+
 def _launch_ddp_runtime(
     *,
     evaluation_fn: Callable[..., EvaluatePipelineReturn],
@@ -879,13 +968,9 @@ def _launch_runtime(  # noqa: PLR0913
     write_summary_to_disk: bool = True,
     worker_id: str | None = None,
 ) -> None:
-    default_report_values = DefaultReportValues(
+    default_report_values = _make_default_report_values(
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,
-        cost_if_not_provided=None,  # TODO: User can't specify yet
-        learning_curve_on_error=None,  # TODO: User can't specify yet
-        learning_curve_if_not_provided="objective_to_minimize",  # report the
-        # objective_to_minimize as single value LC
     )
 
     if _is_ddp_and_not_rank_zero():
@@ -990,3 +1075,17 @@ def _launch_runtime(  # noqa: PLR0913
         worker_id=worker_id,
     )
     worker.run()
+
+
+def _make_default_report_values(
+    *,
+    objective_value_on_error: float | None = None,
+    cost_value_on_error: float | None = None,
+) -> DefaultReportValues:
+    return DefaultReportValues(
+        objective_value_on_error=objective_value_on_error,
+        cost_value_on_error=cost_value_on_error,
+        cost_if_not_provided=None,
+        learning_curve_on_error=None,
+        learning_curve_if_not_provided="objective_to_minimize",
+    )

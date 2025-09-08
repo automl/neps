@@ -378,10 +378,12 @@ def _eval_trial(
     default_report_values: DefaultReportValues,
     fn: Callable[..., Any],
     **kwargs: Any,
-) -> Report:
+) -> Report | None:
     start = time.monotonic()
     try:
         user_result = fn(**kwargs, **trial.config)
+        if user_result is None:
+            return None
     # Something went wrong in evaluation
     except Exception as e:
         duration = time.monotonic() - start
@@ -435,7 +437,7 @@ def evaluate_trial(
     *,
     evaluation_fn: Callable[..., Any],
     default_report_values: DefaultReportValues,
-) -> tuple[Trial, Report]:
+) -> tuple[Trial, Report | None]:
     """Evaluates a trial from a user and parses the results into a `Report`."""
     trial_location = Path(trial.metadata.location)
     prev_trial_location = (
@@ -447,6 +449,7 @@ def evaluate_trial(
     params = {
         "pipeline_directory": trial_location,
         "previous_pipeline_directory": prev_trial_location,
+        "pipeline_id": trial.id,
     }
     sigkeys = inspect.signature(evaluation_fn).parameters.keys()
     injectable_params = {key: val for key, val in params.items() if key in sigkeys}
