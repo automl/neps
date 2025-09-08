@@ -21,6 +21,7 @@ from neps.space.neps_spaces.neps_space import (
     NepsCompatConverter,
     adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
+    convert_classic_to_neps_search_space,
     convert_neps_to_classic_search_space,
 )
 from neps.space.neps_spaces.parameters import PipelineSpace
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: PLR0913, C901
+def run(  # noqa: PLR0913, PLR0912, C901
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | PipelineSpace,
     *,
@@ -371,6 +372,11 @@ def run(  # noqa: PLR0913, C901
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
             pipeline_space = converted_space
+
+    if neps_classic_space_compatibility == "neps" and not isinstance(
+        pipeline_space, PipelineSpace
+    ):
+        pipeline_space = convert_classic_to_neps_search_space(pipeline_space)
 
     # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
     # algorithm, we raise an error, as the optimizer is not compatible.
