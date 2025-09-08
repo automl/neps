@@ -46,6 +46,7 @@ def run(  # noqa: C901, D417, PLR0913
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
     sample_batch_size: int | None = None,
+    worker_id: str | None = None,
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
@@ -248,6 +249,22 @@ def run(  # noqa: C901, D417, PLR0913
                 be able to take into account the results of any new
                 evaluations, even if they were to come in relatively
                 quickly.
+
+        worker_id: An optional string to identify the worker (run instance).
+            If not provided, a `worker_id` will be automatically generated using the pattern:
+            `worker_<N>`, where `<N>` is a unique integer for each worker and increments with each new worker.
+            A list of all workers created so far is stored in
+            `root_directory/optimizer_state.pkl` under the attribute `worker_ids`.
+
+            ??? tip "Why specify a `worker_id`?"
+                Specifying a `worker_id` is useful for tracking which worker performed specific tasks
+                in the results. For example, when debugging or running on a cluster, you can include
+                the process ID and machine name in the `worker_id` for better traceability.
+
+            ??? warning "Duplication of `worker_id`"
+                Ensure that each worker has a unique `worker_id`. If a duplicate `worker_id` is detected,
+                the optimization process will be stopped with an error to prevent overwriting the results
+                of other workers.
 
         optimizer: Which optimizer to use.
 
@@ -513,6 +530,7 @@ def run(  # noqa: C901, D417, PLR0913
         overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
         write_summary_to_disk=write_summary_to_disk,
+        worker_id=worker_id,
     )
 
     post_run_csv(root_directory)

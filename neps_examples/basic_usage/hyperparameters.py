@@ -1,7 +1,8 @@
 import logging
 import numpy as np
 import neps
-
+import socket
+import os
 # This example demonstrates how to use NePS to optimize hyperparameters
 # of a pipeline. The pipeline is a simple function that takes in
 # five hyperparameters and returns their sum.
@@ -28,4 +29,5 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     evaluations_to_spend=30,
+    worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
 )
