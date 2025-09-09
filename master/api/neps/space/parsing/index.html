@@ -4288,7 +4288,8 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 <span class="normal"><a href="#__codelineno-0-296">296</a></span>
 <span class="normal"><a href="#__codelineno-0-297">297</a></span>
 <span class="normal"><a href="#__codelineno-0-298">298</a></span>
-<span class="normal"><a href="#__codelineno-0-299">299</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_configspace</span><span class="p">(</span><span class="n">configspace</span><span class="p">:</span> <span class="n">ConfigurationSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>
+<span class="normal"><a href="#__codelineno-0-299">299</a></span>
+<span class="normal"><a href="#__codelineno-0-300">300</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_configspace</span><span class="p">(</span><span class="n">configspace</span><span class="p">:</span> <span class="n">ConfigurationSpace</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span><span class="p">:</span>  <span class="c1"># noqa: C901</span>
 <a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Constructs a [`SearchSpace`][neps.space.SearchSpace]</span>
 <a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">    from a [`ConfigurationSpace`](https://automl.github.io/ConfigSpace/latest/).</span>
 <a id="__codelineno-0-223" name="__codelineno-0-223"></a>
@@ -4301,73 +4302,74 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 <a id="__codelineno-0-230" name="__codelineno-0-230"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">ConfigSpace</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">CS</span>
 <a id="__codelineno-0-231" name="__codelineno-0-231"></a>
 <a id="__codelineno-0-232" name="__codelineno-0-232"></a>    <span class="n">space</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Parameter</span> <span class="o">|</span> <span class="n">HPOConstant</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">configspace</span><span class="o">.</span><span class="n">conditions</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">configspace</span><span class="o">.</span><span class="n">forbidden_clauses</span><span class="p">):</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a>            <span class="s2">&quot;The ConfigurationSpace has conditions or forbidden clauses, &quot;</span>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a>            <span class="s2">&quot;which are not supported by neps.&quot;</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a>        <span class="p">)</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">hyperparameter</span> <span class="ow">in</span> <span class="n">configspace</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>        <span class="k">match</span> <span class="n">hyperparameter</span><span class="p">:</span>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">Constant</span><span class="p">():</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOConstant</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">CategoricalHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOCategorical</span><span class="p">(</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">OrdinalHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a>                    <span class="s2">&quot;NePS does not support ordinals yet, please&quot;</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a>                    <span class="s2">&quot; either convert it to an integer or use a&quot;</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>                    <span class="s2">&quot; categorical hyperparameter.&quot;</span>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a>                <span class="p">)</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">UniformIntegerHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOInteger</span><span class="p">(</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a>                    <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a>                <span class="p">)</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">UniformFloatHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOFloat</span><span class="p">(</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a>                    <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>                <span class="p">)</span>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">NormalFloatHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a>                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a>                    <span class="s2">&quot;NormalFloatHyperparameter is detected as a prior for NePS&quot;</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a>                    <span class="s2">&quot; and will will consider it as a &#39;medium&#39; prior_confidence.&quot;</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>                    <span class="s2">&quot; If you wish to silence this warning, please manually&quot;</span>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a>                    <span class="s2">&quot; convert your ConfigurationSpace to a SearchSpace.&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a>                    <span class="ne">UserWarning</span><span class="p">,</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a>                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a>                <span class="p">)</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOFloat</span><span class="p">(</span>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a>                    <span class="n">prior</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>                <span class="p">)</span>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">NormalIntegerHyperparameter</span><span class="p">():</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a>                    <span class="s2">&quot;NormalIntegerHyperparameter is detected as a prior for NePS&quot;</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a>                    <span class="s2">&quot; and will will consider it as a &#39;medium&#39; prior_confidence.&quot;</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>                    <span class="s2">&quot; If you wish to silence this warning, please manually&quot;</span>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                    <span class="s2">&quot; convert your ConfigurationSpace to a SearchSpace.&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>                    <span class="ne">UserWarning</span><span class="p">,</span>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a>                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                <span class="p">)</span>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOInteger</span><span class="p">(</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                    <span class="n">prior</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">mu</span><span class="p">),</span>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                <span class="p">)</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a>            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown hyperparameter type </span><span class="si">{</span><span class="n">hyperparameter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="k">return</span> <span class="n">SearchSpace</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a>    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">configspace</span><span class="p">,</span> <span class="s2">&quot;conditions&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">configspace</span><span class="p">,</span> <span class="s2">&quot;forbidden_clauses&quot;</span><span class="p">):</span>  <span class="c1"># noqa: SIM102</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a>        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="n">configspace</span><span class="o">.</span><span class="n">conditions</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">any</span><span class="p">(</span><span class="n">configspace</span><span class="o">.</span><span class="n">forbidden_clauses</span><span class="p">):</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a>            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>                <span class="s2">&quot;The ConfigurationSpace has conditions or forbidden clauses, &quot;</span>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a>                <span class="s2">&quot;which are not supported by neps.&quot;</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a>            <span class="p">)</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a>    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">hyperparameter</span> <span class="ow">in</span> <span class="n">configspace</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>        <span class="k">match</span> <span class="n">hyperparameter</span><span class="p">:</span>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">Constant</span><span class="p">():</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOConstant</span><span class="p">(</span><span class="n">value</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">CategoricalHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOCategorical</span><span class="p">(</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">choices</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">OrdinalHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a>                    <span class="s2">&quot;NePS does not support ordinals yet, please&quot;</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a>                    <span class="s2">&quot; either convert it to an integer or use a&quot;</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>                    <span class="s2">&quot; categorical hyperparameter.&quot;</span>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a>                <span class="p">)</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">UniformIntegerHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOInteger</span><span class="p">(</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>                    <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a>                <span class="p">)</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">UniformFloatHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOFloat</span><span class="p">(</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a>                    <span class="n">prior</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>                <span class="p">)</span>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">NormalFloatHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a>                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a>                    <span class="s2">&quot;NormalFloatHyperparameter is detected as a prior for NePS&quot;</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a>                    <span class="s2">&quot; and will will consider it as a &#39;medium&#39; prior_confidence.&quot;</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>                    <span class="s2">&quot; If you wish to silence this warning, please manually&quot;</span>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a>                    <span class="s2">&quot; convert your ConfigurationSpace to a SearchSpace.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a>                    <span class="ne">UserWarning</span><span class="p">,</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a>                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a>                <span class="p">)</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOFloat</span><span class="p">(</span>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a>                    <span class="n">prior</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">mu</span><span class="p">,</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>                <span class="p">)</span>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a>            <span class="k">case</span> <span class="n">CS</span><span class="o">.</span><span class="n">NormalIntegerHyperparameter</span><span class="p">():</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a>                    <span class="s2">&quot;NormalIntegerHyperparameter is detected as a prior for NePS&quot;</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a>                    <span class="s2">&quot; and will will consider it as a &#39;medium&#39; prior_confidence.&quot;</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>                    <span class="s2">&quot; If you wish to silence this warning, please manually&quot;</span>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a>                    <span class="s2">&quot; convert your ConfigurationSpace to a SearchSpace.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>                    <span class="ne">UserWarning</span><span class="p">,</span>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a>                    <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>                <span class="p">)</span>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a>                <span class="n">space</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">HPOInteger</span><span class="p">(</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a>                    <span class="n">lower</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>                    <span class="n">upper</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>                    <span class="n">log</span><span class="o">=</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>                    <span class="n">prior</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">hyperparameter</span><span class="o">.</span><span class="n">mu</span><span class="p">),</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>                <span class="p">)</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a>            <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown hyperparameter type </span><span class="si">{</span><span class="n">hyperparameter</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a>    <span class="k">return</span> <span class="n">SearchSpace</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4551,8 +4553,7 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 
             <details class="quote">
               <summary>Source code in <code>neps\space\parsing.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-302">302</a></span>
-<span class="normal"><a href="#__codelineno-0-303">303</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-303">303</a></span>
 <span class="normal"><a href="#__codelineno-0-304">304</a></span>
 <span class="normal"><a href="#__codelineno-0-305">305</a></span>
 <span class="normal"><a href="#__codelineno-0-306">306</a></span>
@@ -4586,42 +4587,43 @@ from a <a href="https://automl.github.io/ConfigSpace/latest/"><code>Configuratio
 <span class="normal"><a href="#__codelineno-0-334">334</a></span>
 <span class="normal"><a href="#__codelineno-0-335">335</a></span>
 <span class="normal"><a href="#__codelineno-0-336">336</a></span>
-<span class="normal"><a href="#__codelineno-0-337">337</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_to_space</span><span class="p">(</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>    <span class="n">space</span><span class="p">:</span> <span class="p">(</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Parameter</span><span class="p">]</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="o">|</span> <span class="n">SearchSpace</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="o">|</span> <span class="n">ConfigurationSpace</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="o">|</span> <span class="n">PipelineSpace</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="p">),</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">:</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Converts a search space to a SearchSpace object.</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">        space: The search space to convert.</span>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">        The SearchSpace object representing the search space.</span>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a>    <span class="c1"># We quickly check ConfigSpace because it inherits from Mapping</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">ConfigSpace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationSpace</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">ConfigurationSpace</span><span class="p">):</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a>            <span class="k">return</span> <span class="n">convert_configspace</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a>        <span class="k">pass</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>    <span class="k">match</span> <span class="n">space</span><span class="p">:</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>        <span class="k">case</span> <span class="n">SearchSpace</span><span class="p">():</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>            <span class="k">return</span> <span class="n">space</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="k">case</span> <span class="n">Mapping</span><span class="p">():</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>            <span class="k">return</span> <span class="n">convert_mapping</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="k">case</span> <span class="n">PipelineSpace</span><span class="p">():</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a>            <span class="k">return</span> <span class="n">space</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>                <span class="sa">f</span><span class="s2">&quot;Unsupported type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; for conversion to SearchSpace.&quot;</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>            <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-337">337</a></span>
+<span class="normal"><a href="#__codelineno-0-338">338</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="k">def</span><span class="w"> </span><span class="nf">convert_to_space</span><span class="p">(</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a>    <span class="n">space</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a>        <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">|</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">Parameter</span><span class="p">]</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="o">|</span> <span class="n">SearchSpace</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="o">|</span> <span class="n">ConfigurationSpace</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>        <span class="o">|</span> <span class="n">PipelineSpace</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="p">),</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">:</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Converts a search space to a SearchSpace object.</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">        space: The search space to convert.</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">        The SearchSpace object representing the search space.</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a>    <span class="c1"># We quickly check ConfigSpace because it inherits from Mapping</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a>        <span class="kn">from</span><span class="w"> </span><span class="nn">ConfigSpace</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConfigurationSpace</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a>        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">ConfigurationSpace</span><span class="p">):</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a>            <span class="k">return</span> <span class="n">convert_configspace</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a>    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a>        <span class="k">pass</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="k">match</span> <span class="n">space</span><span class="p">:</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="k">case</span> <span class="n">SearchSpace</span><span class="p">():</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>            <span class="k">return</span> <span class="n">space</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a>        <span class="k">case</span> <span class="n">Mapping</span><span class="p">():</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a>            <span class="k">return</span> <span class="n">convert_mapping</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>        <span class="k">case</span> <span class="n">PipelineSpace</span><span class="p">():</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a>            <span class="k">return</span> <span class="n">space</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a>                <span class="sa">f</span><span class="s2">&quot;Unsupported type &#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">space</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39; for conversion to SearchSpace.&quot;</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a>            <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
