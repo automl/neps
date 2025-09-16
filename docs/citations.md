@@ -7,7 +7,7 @@ For citing NePS, please refer to the following:
 ### APA Style
 
 ```apa
-Stoll, D., Mallik, N., Schrodi, S., Bergman, E., Janowski, M., Garibov, S., Abou Chakra, T., Rogalla, D., Bergman, E., Hvarfner, C., Binxin, R., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.12.2) [Computer software]. https://github.com/automl/neps
+Stoll, D., Mallik, N., Bergman, E., Schrodi, S., Basu, S., Geburek, A. M., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.12.2) [Computer software]. https://github.com/automl/neps
 ```
 
 ### BibTex Style
