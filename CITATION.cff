@@ -9,27 +9,33 @@ authors:
     given-names: Eddie
   - family-names: Schrodi
     given-names: Simon
-  - family-names: Garibov
-    given-names: Samir
-  - family-names: Abou Chakra
-    given-names: Tarek
-  - family-names: Carstensen
-    given-names: Timur
-  - family-names: Janowski
-    given-names: Maciej
-  - family-names: Gaur
-    given-names: Gopalji
+  - family-names: Basu
+    given-names: Soham
   - family-names: Geburek
     given-names: Anton Merlin
-  - family-names: Rogalla
-    given-names: Daniel
+  - family-names: Abou Chakra
+    given-names: Tarek
+  - family-names: Garibov
+    given-names: Samir
+  - family-names: Gaur
+    given-names: Gopalji
+  - family-names: Alipour
+    given-names: Nastaran
+  - family-names: Janowski
+    given-names: Maciej
   - family-names: Hvarfner
     given-names: Carl
+  - family-names: Carstensen
+    given-names: Timur
+  - family-names: Mekic
+    given-names: Ema
+  - family-names: Rogalla
+    given-names: Daniel
   - family-names: Binxin
     given-names: Ru
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NePS)"
-version: 0.13.0
+version: 0.14.0
 date-released: 2025-04-11
 url: "https://github.com/automl/neps"
