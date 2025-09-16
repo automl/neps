@@ -1,6 +1,6 @@
 [project]
 name = "neural-pipeline-search"
-version = "v0.13.0"
+version = "v0.14.0"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
@@ -318,7 +318,7 @@ module = ["requests"]
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.13.0"
+current_version = "0.14.0"
 commit = true
 tag = true
 

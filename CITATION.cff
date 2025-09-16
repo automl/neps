@@ -36,6 +36,6 @@ authors:
   - family-names: Hutter
     given-names: Frank
 title: "Neural Pipeline Search (NePS)"
-version: 0.13.0
+version: 0.14.0
 date-released: 2025-04-11
 url: "https://github.com/automl/neps"
