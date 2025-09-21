@@ -25,14 +25,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: install the latest version uv
+      - name: Cache uv binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/uv
+          key: uv-${{ runner.os }}
+      
+      - name: Install uv if not cached
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.local/bin
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Setup uv + cache wheels
         uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-          version: latest
           enable-cache: true
-          prune-cache: false
-          cache-dependency-glob: "**/pyproject.toml"
+          prune-cache: true
+          cache-dependency-glob: |
+            pyproject.toml
+            uv.lock
+
       - name: run tests
         run: uv run --all-extras pytest -m ""  # Run all markers
 
