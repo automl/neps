@@ -31,7 +31,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           version: latest
           enable-cache: true
-          prune-cache: false
+          prune-cache: true
           cache-dependency-glob: "**/pyproject.toml"
       - name: run tests
         run: uv run --all-extras pytest -m ""  # Run all markers
