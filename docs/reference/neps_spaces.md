@@ -23,41 +23,41 @@ class MySpace(neps.PipelineSpace):
     cat_param = neps.Categorical(choices=("A", "B", "C"))
 ```
 
-!!! tip "**[Fidelity](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) Parameters**"
+!!! info "Using **NePS Spaces**"
 
-    Passing a [`neps.Integer`][neps.space.neps_spaces.parameters.Integer] or [`neps.Float`][neps.space.neps_spaces.parameters.Float] to a [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity] allows you to employ multi-fidelity optimization strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs):
-
-    ```python
-    epochs = neps.Fidelity(neps.Integer(1, 16))
-    ```
-
-    For more details on how to use fidelity parameters, see the [Multi-Fidelity](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) section.
-
-!!! tip "**Using your knowledge, providing a [Prior](../reference/search_algorithms/landing_page_algo.md#what-are-priors)**"
-
-    You can provide **your knowledge about where a good value for this parameter lies** by indicating a `prior=`. You can also specify a `prior_confidence=` to indicate how strongly you want NePS to focus on these, one of either `"low"`, `"medium"`, or `"high"`:
+    To search a **NePS space**, pass it as the `pipeline_space` argument to the `neps.run()` function:
 
     ```python
-    # Here "A" is used as a prior, indicated by its index 0
-    cat_with_prior = neps.Categorical(choices=("A", "B", "C"), prior=0, prior_confidence="high")
+    neps.run(
+        ...,
+        pipeline_space=MySpace()
+    )
     ```
 
-    For more details on how to use priors, see the [Priors](../reference/search_algorithms/landing_page_algo.md#what-are-priors) section.
+    For more details on how to use the `neps.run()` function, see the [NePS Run Reference](../reference/neps_run.md).
 
-## 2. Using **NePS Spaces**
+### Using cheap approximation, providing a [**Fidelity**](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) Parameter
 
-To search a **NePS space**, pass it as the `pipeline_space` argument to the `neps.run()` function:
+Passing a [`neps.Integer`][neps.space.neps_spaces.parameters.Integer] or [`neps.Float`][neps.space.neps_spaces.parameters.Float] to a [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity] allows you to employ multi-fidelity optimization strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs):
 
 ```python
-neps.run(
-    ...,
-    pipeline_space=MySpace()
-)
+epochs = neps.Fidelity(neps.Integer(1, 16))
 ```
 
-For more details on how to use the `neps.run()` function, see the [NePS Run Reference](../reference/neps_run.md).
+For more details on how to use fidelity parameters, see the [Multi-Fidelity](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) section.
 
-## 3. Architectures
+### Using your knowledge, providing a [**Prior**](../reference/search_algorithms/landing_page_algo.md#what-are-priors)
+
+You can provide **your knowledge about where a good value for this parameter lies** by indicating a `prior=`. You can also specify a `prior_confidence=` to indicate how strongly you want NePS to focus on these, one of either `"low"`, `"medium"`, or `"high"`:
+
+```python
+# Here "A" is used as a prior, indicated by its index 0
+cat_with_prior = neps.Categorical(choices=("A", "B", "C"), prior=0, prior_confidence="high")
+```
+
+For more details on how to use priors, see the [Priors](../reference/search_algorithms/landing_page_algo.md#what-are-priors) section.
+
+## 3. Constructing Architecture Spaces
 
 Additionally, **NePS spaces** can describe **complex (hierarchical) architectures** using:
 
@@ -109,7 +109,7 @@ This can be used for efficient architecture search by defining cells and blocks 
     - [`Complex Random Search`][neps.optimizers.algorithms.complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
     - [`PriorBand`][neps.optimizers.algorithms.priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the NePS space
 
-## 4. General Structures
+## 4. Constructing Complex Spaces
 
 Until now all parameters are sampled once and their value used for all occurrences. This section describes how to resample parameters in different contexts using:
 
