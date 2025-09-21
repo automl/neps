@@ -1,20 +1,23 @@
 [project]
 name = "neural-pipeline-search"
-version = "v0.13.0"
+version = "v0.14.0"
 description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
 authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
     { name = "Neeratyoy Mallik", email = "mallik@cs.uni-freiburg.de" },
     { name = "Eddie Bergman" },
     { name = "Simon Schrodi" },
-    { name = "Samir Garibov" },
-    { name = "Tarek Abou Chakra" },
-    { name = "Timur Carstensen" },
-    { name = "Maciej Janowski" },
-    { name = "Gopalji Gaur" },
+    { name = "Soham Basu" },
     { name = "Anton Merlin Geburek" },
-    { name = "Daniel Rogalla" },
+    { name = "Tarek Abou Chakra" },
+    { name = "Samir Garibov" },
+    { name = "Gopalji Gaur" },
+    { name = "Nastaran Alipour", email = "mallik@cs.uni-freiburg.de" },
+    { name = "Maciej Janowski" },
     { name = "Carl Hvarfner" },
+    { name = "Timur Carstensen" },
+    { name = "Ema Mekic" },
+    { name = "Daniel Rogalla" },
     { name = "Binxin Ru" },
     { name = "Frank Hutter" },
 ]
@@ -320,7 +323,7 @@ module = ["requests"]
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.13.0"
+current_version = "0.14.0"
 commit = true
 tag = true
 

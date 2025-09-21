@@ -12,7 +12,6 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from neps.runtime import get_workers_neps_state
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import NepsCompatConverter
 from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
@@ -227,6 +226,8 @@ class Summary:
         # NOTE: We don't lock the shared state since we are just reading and don't need to
         # make decisions based on the state
         try:
+            from neps.runtime import get_workers_neps_state
+
             shared_state = get_workers_neps_state()
         except RuntimeError:
             shared_state = NePSState.create_or_load(root_directory, load_only=True)
@@ -309,6 +310,11 @@ def status(
     if summary.is_multiobjective:
         return df, short
 
+    if "objective_to_minimize" not in df.columns:
+        short["best_objective_to_minimize"] = None
+        short["best_config_id"] = None
+        return df, short
+
     idx_min = df["objective_to_minimize"].idxmin()
     row = df.loc[idx_min]
     assert isinstance(row, pd.Series)
@@ -320,6 +326,79 @@ def status(
     short = pd.concat([short, row])  # type: ignore
     assert isinstance(short, pd.Series)
     return df, short
+
+
+def trajectory_of_improvements(
+    root_directory: str | Path,
+) -> list[dict]:
+    """Track and write the trajectory of improving configurations over time.
+
+    Args:
+        root_directory: The root directory given to neps.run.
+
+    Returns:
+        List of dicts with improving scores and their configurations.
+    """
+    root_directory = Path(root_directory)
+    summary = Summary.from_directory(root_directory)
+
+    if summary.is_multiobjective:
+        return []
+
+    df = summary.df()
+
+    if "time_sampled" not in df.columns:
+        raise ValueError("Missing `time_sampled` column in summary DataFrame.")
+
+    df = df.sort_values("time_sampled")
+
+    all_best_configs = []
+    best_score = float("inf")
+    trace_text = ""
+
+    for trial_id, row in df.iterrows():
+        if "objective_to_minimize" not in row or pd.isna(row["objective_to_minimize"]):
+            continue
+
+        score = row["objective_to_minimize"]
+        if score < best_score:
+            best_score = score
+            config = {
+                k.replace("config.", ""): v
+                for k, v in row.items()
+                if k.startswith("config.")
+            }
+
+            best = {
+                "score": score,
+                "trial_id": trial_id,
+                "config": config,
+            }
+            all_best_configs.append(best)
+
+            trace_text += (
+                f"Objective to minimize: {best['score']}\n"
+                f"Config ID: {best['trial_id']}\n"
+                f"Config: {best['config']}\n" + "-" * 80 + "\n"
+            )
+
+    summary_dir = root_directory / "summary"
+    summary_dir.mkdir(parents=True, exist_ok=True)
+    output_path = summary_dir / "best_config_trajectory.txt"
+    with output_path.open("w") as f:
+        f.write(trace_text)
+
+    if all_best_configs:
+        final_best = all_best_configs[-1]
+        best_path = summary_dir / "best_config.txt"
+        with best_path.open("w") as f:
+            f.write(
+                f"Objective to minimize: {final_best['score']}\n"
+                f"Config ID: {final_best['trial_id']}\n"
+                f"Config: {final_best['config']}\n"
+            )
+
+    return all_best_configs
 
 
 def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:

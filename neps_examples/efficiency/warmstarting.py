@@ -66,7 +66,7 @@ neps.warmstart_neps(
     pipeline,
     "results/warmstart_example/",
     warmstarting_configs,
-    overwrite_working_directory=True,
+    overwrite_root_directory=True,
     optimizer=partial(
         neps.algorithms.neps_random_search,
         use_priors=True,
@@ -84,7 +84,7 @@ neps.run(
         ignore_fidelity="highest fidelity",
     ),
     # warmstart_configs=warmstarting_configs,
-    overwrite_working_directory=False,
+    overwrite_root_directory=False,
 )
 neps.status(
     "results/warmstart_example",

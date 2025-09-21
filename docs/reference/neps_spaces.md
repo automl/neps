@@ -1,6 +1,6 @@
 # NePS Spaces
 
-**NePS Spaces** provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including [hyperparameters](#1-constructing-hyperparameter-spaces), [architecture search](#3-architectures) and [more](#4-general-structures).
+**NePS Spaces** provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including [hyperparameters](#1-constructing-hyperparameter-spaces), [architecture search](#3-constructing-architecture-spaces) and [more](#4-constructing-complex-spaces).
 
 ## 1. Constructing Hyperparameter Spaces
 

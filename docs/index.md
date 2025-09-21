@@ -17,10 +17,10 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
     NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge, while also using many other efficiency boosters.
      - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning (NeurIPS 2023)](https://arxiv.org/abs/2306.12370)
      - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization (ICLR 2022)](https://arxiv.org/abs/2204.11051) <br /> <br />
-1. **Neural Architecture Search (NAS) with Expressive Search Spaces:** <br />
+2. **Neural Architecture Search (NAS) with Expressive Search Spaces:** <br />
     NePS provides capabilities for designing and optimizing architectures in an expressive and natural fashion.
      - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
-1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
+3. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
      NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
      computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
      DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
@@ -80,7 +80,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=ExampleSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
-    max_evaluations_total=100,
+    evaluations_to_spend=100,
 )
 ```
 
@@ -93,6 +93,8 @@ Discover how NePS works through these examples:
 - **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
 - **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
+
+- **[Benefiting NePS State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
 
 - **[Additional NePS Examples](examples/index.md)**: Explore more examples, including various use cases and advanced configurations in NePS.
 

@@ -108,7 +108,7 @@ See the algorithm's implementation details in the [api][neps.optimizers.algorith
 
 ??? example "Practical Tips"
 
-    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing neps's [checkpointing](../evaluate_pipeline.md#arguments-for-convenience) feature.
+    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing neps's [checkpointing](../evaluate_pipeline.md#4-extra-injected-arguments) feature.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).

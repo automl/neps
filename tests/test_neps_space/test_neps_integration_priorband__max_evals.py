@@ -80,16 +80,15 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
 def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"/tmp/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
+    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=200,
-        overwrite_working_directory=True,
+        evaluations_to_spend=200,
+        overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
 
@@ -118,15 +117,14 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
 def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"/tmp/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
+    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=200,
-        overwrite_working_directory=True,
+        evaluations_to_spend=200,
+        overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)

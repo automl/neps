@@ -139,16 +139,16 @@ def _interpolate_time(
 
     if x_range is not None:
         min_b, max_b = x_range
-        new_entry = {c: np.nan for c in df.columns}
+        new_entry = dict.fromkeys(df.columns, np.nan)
         _df = pd.DataFrame.from_dict(new_entry, orient="index").T
         _df.index = [min_b]
         df = pd.concat((df, _df)).sort_index()
-        new_entry = {c: np.nan for c in df.columns}
+        new_entry = dict.fromkeys(df.columns, np.nan)
         _df = pd.DataFrame.from_dict(new_entry, orient="index").T
         _df.index = [max_b]
         df = pd.concat((df, _df)).sort_index()
 
-    df = df.fillna(method="backfill", axis=0).fillna(method="ffill", axis=0)
+    df = df.bfill(axis=0).ffill(axis=0)
     if x_range is not None:
         df = df.query(f"{x_range[0]} <= index <= {x_range[1]}")
 
@@ -157,11 +157,11 @@ def _interpolate_time(
 
 def _df_to_x_range(df: pd.DataFrame, x_range: tuple | None = None) -> pd.DataFrame:
     x_max = np.inf if x_range is None else int(x_range[-1])
-    new_entry = {c: np.nan for c in df.columns}
+    new_entry = dict.fromkeys(df.columns, np.nan)
     _df = pd.DataFrame.from_dict(new_entry, orient="index").T
     _df.index = [x_max]
     df = pd.concat((df, _df)).sort_index()
-    return df.fillna(method="backfill", axis=0).fillna(method="ffill", axis=0)
+    return df.bfill(axis=0).ffill(axis=0)
 
 
 def _set_legend(

@@ -45,9 +45,9 @@ See the following for more:
 * What goes in and what goes out of [`evaluate_pipeline()`](../reference/neps_run.md)?
 
 ## Budget, how long to run?
-To define a budget, provide `max_evaluations_total=` to [`neps.run()`][neps.api.run],
+To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
 to specify the total number of evaluations to conduct before halting the optimization process,
-or `max_cost_total=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
+or `cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
 
 
 ```python
@@ -60,8 +60,8 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     return {"objective_function_to_minimize": loss, "cost": duration}
 
 neps.run(
-    max_evaluations_total=10, # (1)!
-    max_cost_total=1000, # (2)!
+    evaluations_to_spend=10, # (1)!
+    cost_to_spend=1000, # (2)!
 )
 ```
 
@@ -87,7 +87,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-with an increased `max_evaluations_total=` or `max_cost_total=`.
+with an increased `evaluations_to_spend=` or `cost_to_spend=`.
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -100,7 +100,7 @@ def run(learning_rate: float, epochs: int) -> float:
 
 neps.run(
     # Increase the total number of trials from 10 as set previously to 50
-    max_evaluations_total=50,
+    evaluations_to_spend=50,
 )
 ```
 
@@ -108,13 +108,13 @@ If the run previously stopped due to reaching a budget and you specify the same 
 
 ## Overwriting a Run
 
-To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_working_directory=True` argument.
+To overwrite a run, simply provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before, with the `overwrite_root_directory=True` argument.
 
 ```python
 neps.run(
     ...,
     root_directory="path/to/previous_result_dir",
-    overwrite_working_directory=True,
+    overwrite_root_directory=True,
 )
 ```
 
@@ -125,9 +125,6 @@ neps.run(
 ## Getting the results
 The results of the optimization process are stored in the `root_directory=`
 provided to [`neps.run()`][neps.api.run].
-To obtain a summary of the optimization process, you can enable the
-`post_run_summary=True` argument in [`neps.run()`][neps.api.run],
-while will generate a summary csv after the run has finished.
 
 === "Result Directory"
 
@@ -143,9 +140,11 @@ while will generate a summary csv after the run has finished.
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary                 # Only if post_run_summary=True
+    ├── summary
     │  ├── full.csv
     │  └── short.csv
+    │  ├── best_config_trajectory.txt
+    │  └── best_config.txt
     ├── optimizer_info.yaml     # The optimizer's configuration
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
@@ -153,7 +152,7 @@ while will generate a summary csv after the run has finished.
 === "python"
 
     ```python
-    neps.run(..., post_run_summary=True)
+    neps.run(..., write_summary_to_disk=True)
     ```
 
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
@@ -174,20 +173,20 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        max_evaluations_total=100,
+        evaluations_to_spend=100,
         max_evaluations_per_run=10, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
-        overwrite_working_directory=False, #!!!
+        overwrite_root_directory=False, #!!!
     )
     ```
 
     1.  Limits the number of evaluations for this specific call of [`neps.run()`][neps.api.run].
-    2.  Evaluations in-progress count towards max_evaluations_total, halting new ones when this limit is reached.
-        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets max_evaluations_total, optimizing resource use in time-sensitive scenarios.
+    2.  Evaluations in-progress count towards evaluations_to_spend, halting new ones when this limit is reached.
+        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets evaluations_to_spend, optimizing resource use in time-sensitive scenarios.
 
     !!! warning
 
-        Ensure `overwrite_working_directory=False` to prevent newly spawned workers from deleting the shared directory!
+        Ensure `overwrite_root_directory=False` to prevent newly spawned workers from deleting the shared directory!
 
 
 === "Shell"
@@ -227,7 +226,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `max_evaluations_total` or `max_evaluations_per_run`.
+    Any runs that error will still count towards the total `evaluations_to_spend` or `max_evaluations_per_run`.
 
 ### Re-running Failed Configurations
 

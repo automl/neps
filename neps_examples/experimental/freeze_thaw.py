@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 import neps
-from neps import tblogger
 from neps.plot.plot3D import Plotter3D
 
 
@@ -160,9 +159,9 @@ if __name__ == "__main__":
         pipeline_space=ModelSpace(),
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
-        max_evaluations_total=50,
+        fidelities_to_spend=50,
         root_directory="./results/ifbo-mnist/",
-        overwrite_working_directory=False,  # set to False for a multi-worker run
+        overwrite_root_directory=False,  # set to False for a multi-worker run
     )
 
     # NOTE: this is `experimental` and may not work as expected

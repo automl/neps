@@ -113,9 +113,7 @@ class HPOSpace(neps.PipelineSpace):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    neps.run(
-        evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=HPOSpace(),
-        root_directory="results/pytorch_ddp",
-        max_evaluations_total=25,
-    )
+    neps.run(evaluate_pipeline=evaluate_pipeline,
+             pipeline_space=HPOSpace(),
+             root_directory="results/pytorch_ddp",
+             evaluations_to_spend=25)

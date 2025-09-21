@@ -149,9 +149,8 @@ neps.run(
     pipeline_space=pipeline_space,
     optimizer=neps.algorithms.neps_random_search,
     root_directory="results/neps_spaces_nn_example",
-    post_run_summary=True,
-    max_evaluations_total=5,
-    overwrite_working_directory=True,
+    evaluations_to_spend=5,
+    overwrite_root_directory=True,
 )
 neps.status(
     "results/neps_spaces_nn_example",

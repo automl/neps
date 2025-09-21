@@ -5,7 +5,7 @@ and plotting utilities, making it easy to experiment with different configuratio
 and algorithms.
 """
 
-from neps.api import run, warmstart_neps
+from neps.api import run, save_pipeline_results, warmstart_neps
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -48,6 +48,7 @@ __all__ = [
     "load_yamls",
     "plot",
     "run",
+    "save_pipeline_results",
     "status",
     "tblogger",
     "warmstart_neps",

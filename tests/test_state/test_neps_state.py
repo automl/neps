@@ -125,6 +125,15 @@ REQUIRES_PRIOR = [
     "priorband",
 ]
 
+REQUIRES_FIDELITY_MO = [
+    "moasha",
+    "mo_hyperband",
+]
+
+REQUIRES_MO_PRIOR = [
+    "primo",
+]
+
 REQUIRES_NEPS_SPACE = [
     "neps_priorband",
     "neps_random_search",
@@ -159,6 +168,12 @@ def optimizer_and_key_and_search_space(
     ):
         pytest.xfail(f"{key} requires a prior")
 
+    if key in REQUIRES_FIDELITY_MO and not search_space.fidelity_attrs:
+        pytest.xfail(f"Multi-objective optimizer {key} requires a fidelity parameter")
+
+    if key in REQUIRES_MO_PRIOR:
+        pytest.xfail("No tests defined for PriMO yet")
+
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
     converted_space = (
@@ -178,11 +193,11 @@ def optimizer_and_key_and_search_space(
 
 
 @parametrize("optimizer_info", [OptimizerInfo(name="blah", info={"a": "b"})])
-@parametrize("max_cost_total", [BudgetInfo(max_cost_total=10, used_cost_budget=0), None])
+@parametrize("cost_to_spend", [BudgetInfo(cost_to_spend=10, used_cost_budget=0), None])
 @parametrize("shared_state", [{"a": "b"}, {}])
 def case_neps_state_filebased(
     tmp_path: Path,
-    max_cost_total: BudgetInfo | None,
+    cost_to_spend: BudgetInfo | None,
     optimizer_info: OptimizerInfo,
     shared_state: dict[str, Any],
 ) -> NePSState:
@@ -191,7 +206,7 @@ def case_neps_state_filebased(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
-            budget=max_cost_total,
+            budget=cost_to_spend,
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state=shared_state,
         ),
@@ -286,4 +301,7 @@ def test_optimizers_work_roughly(
 
     for _ in range(20):
         trial = ask_and_tell.ask()
-        ask_and_tell.tell(trial, 1.0)
+        if key in REQUIRES_FIDELITY_MO:
+            ask_and_tell.tell(trial, [1.0, 2.0])
+        else:
+            ask_and_tell.tell(trial, 1.0)

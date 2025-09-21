@@ -6,7 +6,7 @@ We distinguish between algorithms that use different types of information and st
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-architectures) |
+| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-constructing-architecture-spaces) |
 | :- | :------------: | :----: | :---------: | :-----------------: |
 | `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
 | `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|

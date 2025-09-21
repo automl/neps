@@ -42,7 +42,7 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#3-architectures) |
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#3-constructing-architecture-spaces) |
 | :- | :------------: | :----: | :---------: | :-----------------: |
 | `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
 | `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
@@ -73,7 +73,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     # no optimizer specified
 )
 ```
@@ -88,7 +88,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     # optimizer specified, along with an argument
     optimizer=neps.algorithms.bayesian_optimization, # or as string: "bayesian_optimization"
 )
@@ -105,7 +105,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     optimizer=("bayesian_optimization", {"initial_design_size": 5})
 )
 ```
@@ -138,7 +138,7 @@ neps.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
-    max_evaluations_total=25,
+    evaluations_to_spend=25,
     optimizer=MyOptimizer,
 )
 ```

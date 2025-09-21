@@ -162,16 +162,15 @@ class DemoHyperparameterComplexSpace(PipelineSpace):
 )
 def test_hyperparameter_demo(optimizer):
     pipeline_space = DemoHyperparameterSpace()
-    root_directory = f"/tmp/test_neps_spaces/results/hyperparameter_demo__{optimizer.func.__name__}"
+    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=10,
-        overwrite_working_directory=True,
+        evaluations_to_spend=10,
+        overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
 
@@ -185,18 +184,15 @@ def test_hyperparameter_demo(optimizer):
 )
 def test_hyperparameter_with_fidelity_demo(optimizer):
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = (
-        f"/tmp/test_neps_spaces/results/hyperparameter_with_fidelity_demo__{optimizer.func.__name__}"
-    )
+    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=10,
-        overwrite_working_directory=True,
+        evaluations_to_spend=10,
+        overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
 
@@ -210,16 +206,15 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
 )
 def test_hyperparameter_complex_demo(optimizer):
     pipeline_space = DemoHyperparameterComplexSpace()
-    root_directory = f"/tmp/test_neps_spaces/results/hyperparameter_complex_demo__{optimizer.func.__name__}"
+    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_complex_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=10,
-        overwrite_working_directory=True,
+        overwrite_root_directory=True,
+        evaluations_to_spend=10,
     )
     neps.status(root_directory, print_summary=True)
 
@@ -335,15 +330,16 @@ class DemoOperationSpace(PipelineSpace):
 )
 def test_operation_demo(optimizer):
     pipeline_space = DemoOperationSpace()
-    root_directory = f"/tmp/test_neps_spaces/results/operation_demo__{optimizer.__name__}"
+    root_directory = (
+        f"/tests_tmpdir/test_neps_spaces/results/operation_demo__{optimizer.__name__}"
+    )
 
     neps.run(
         evaluate_pipeline=operation_pipeline_to_optimize,
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        post_run_summary=True,
-        max_evaluations_total=10,
-        overwrite_working_directory=True,
+        evaluations_to_spend=10,
+        overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)

@@ -54,5 +54,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=HPOSpace(),
     root_directory="results/user_priors_example",
-    max_evaluations_total=15,
+    evaluations_to_spend=15,
 )

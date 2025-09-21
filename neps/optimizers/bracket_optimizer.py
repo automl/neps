@@ -28,6 +28,7 @@ from neps.utils.common import disable_warnings
 if TYPE_CHECKING:
     from gpytorch.models.approximate_gp import Any
 
+    from neps.optimizers.mopriors import MOPriorSampler
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
@@ -46,7 +47,7 @@ def trials_to_table(trials: Mapping[str, Trial]) -> pd.DataFrame:
     configs = np.empty(len(trials), dtype=object)
 
     for i, (trial_id, trial) in enumerate(trials.items()):
-        config_id_str, rung_str = trial_id.split("_")
+        config_id_str, rung_str = trial_id.split("_rung_")
         _id, _rung = int(config_id_str), int(rung_str)
 
         if trial.report is None:
@@ -236,7 +237,7 @@ class BracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
     """A function that creates the brackets from the table of trials."""
 
-    sampler: Sampler | PriorBandSampler
+    sampler: Sampler | PriorBandSampler | MOPriorSampler
     """The sampler used to generate new trials."""
 
     gp_sampler: GPSampler | None
@@ -284,7 +285,7 @@ class BracketOptimizer:
                     config.update(space.constants)
                     config[self.fid_name] = self.fid_max
                     rung = max(self.rung_to_fid)
-                    return SampledConfig(id=f"1_{rung}", config=config)
+                    return SampledConfig(id=f"1_rung_{rung}", config=config)
                 case True:  # fid_min
                     config = {
                         name: p.prior if p.prior is not None else p.center
@@ -293,7 +294,7 @@ class BracketOptimizer:
                     config.update(space.constants)
                     config[self.fid_name] = self.fid_min
                     rung = min(self.rung_to_fid)
-                    return SampledConfig(id=f"1_{rung}", config=config)
+                    return SampledConfig(id=f"1_rung_{rung}", config=config)
                 case False:
                     pass
 
@@ -345,9 +346,9 @@ class BracketOptimizer:
                     self.fid_name: self.rung_to_fid[new_rung],
                 }
                 return SampledConfig(
-                    id=f"{config_id}_{new_rung}",
+                    id=f"{config_id}_rung_{new_rung}",
                     config=config,
-                    previous_config_id=f"{config_id}_{new_rung - 1}",
+                    previous_config_id=f"{config_id}_rung_{new_rung - 1}",
                 )
 
             # The bracket would like us to sample a new configuration for a rung
@@ -364,7 +365,7 @@ class BracketOptimizer:
                     target_fidelity=target_fidelity,
                 )
                 config.update(space.constants)
-                return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+                return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
 
             # We need to sample for a new rung, with either no gp or it has
             # not yet kicked in.
@@ -378,7 +379,7 @@ class BracketOptimizer:
                             **space.constants,
                             self.fid_name: self.rung_to_fid[rung],
                         }
-                        return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+                        return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
 
                     case PriorBandSampler():
                         config = self.sampler.sample_config(table, rung=rung)
@@ -387,7 +388,7 @@ class BracketOptimizer:
                             **space.constants,
                             self.fid_name: self.rung_to_fid[rung],
                         }
-                        return SampledConfig(id=f"{nxt_id}_{rung}", config=config)
+                        return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
                     case _:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")
             case _:

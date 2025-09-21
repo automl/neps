@@ -182,9 +182,9 @@ class BayesianOptimization:
                     "Must provide a 'cost' to configurations if using cost"
                     " with BayesianOptimization."
                 )
-            if budget_info.max_cost_total is None:
+            if budget_info.cost_to_spend is None:
                 raise ValueError("Cost budget must be set if using cost")
-            cost_percent = budget_info.used_cost_budget / budget_info.max_cost_total
+            cost_percent = budget_info.used_cost_budget / budget_info.cost_to_spend
 
         # If we should use the prior, weight the acquisition function by
         # the probability of it being sampled from the prior.

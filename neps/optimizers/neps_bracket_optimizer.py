@@ -126,9 +126,9 @@ class _NePSBracketOptimizer:
             case PromoteAction(config=config, id=config_id, new_rung=new_rung):
                 config = self._convert_to_another_rung(config=config, rung=new_rung)
                 return SampledConfig(
-                    id=f"{config_id}_{new_rung}",
+                    id=f"{config_id}_rung_{new_rung}",
                     config=config,
-                    previous_config_id=f"{config_id}_{new_rung - 1}",
+                    previous_config_id=f"{config_id}_rung_{new_rung - 1}",
                 )
 
             # We need to sample for a new rung.
@@ -136,7 +136,7 @@ class _NePSBracketOptimizer:
                 config = self.sampler.sample_config(table, rung=rung)
                 config = self._convert_to_another_rung(config=config, rung=rung)
                 return SampledConfig(
-                    id=f"{nxt_id}_{rung}",
+                    id=f"{nxt_id}_rung_{rung}",
                     config=config,
                 )
 

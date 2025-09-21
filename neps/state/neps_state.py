@@ -251,6 +251,51 @@ class NePSState:
     _shared_errors_path: Path = field(repr=False)
     _shared_errors: ErrDump = field(repr=False)
 
+    new_score: float = float("inf")
+    """Tracking of the new incumbent"""
+
+    all_best_configs: list = field(default_factory=list)
+    """Trajectory to the newest incbumbent"""
+
+    def lock_and_set_new_worker_id(self, worker_id: str | None = None) -> str:
+        """Acquire the state lock and set a new worker id in the optimizer state.
+
+        Args:
+            worker_id: The worker id to set. If `None`, a new worker id will be generated.
+
+        Returns:
+            The worker id that was set.
+
+        Raises:
+                NePSError: If the worker id already exists.
+        """
+        with self._optimizer_lock.lock():
+            with self._optimizer_state_path.open("rb") as f:
+                opt_state: OptimizationState = pickle.load(f)  # noqa: S301
+                assert isinstance(opt_state, OptimizationState)
+                worker_id = (
+                    worker_id
+                    if worker_id is not None
+                    else _get_worker_name(
+                        len(opt_state.worker_ids)
+                        if opt_state.worker_ids is not None
+                        else 0
+                    )
+                )
+                if opt_state.worker_ids and worker_id in opt_state.worker_ids:
+                    raise NePSError(
+                        f"Worker id '{worker_id}' already exists, \
+                        reserved worker ids: {opt_state.worker_ids}"
+                    )
+                if opt_state.worker_ids is None:
+                    opt_state.worker_ids = []
+
+                opt_state.worker_ids.append(worker_id)
+            bytes_ = pickle.dumps(opt_state, protocol=pickle.HIGHEST_PROTOCOL)
+            with atomic_write(self._optimizer_state_path, "wb") as f:
+                f.write(bytes_)
+            return worker_id
+
     def lock_and_read_trials(self) -> dict[str, Trial]:
         """Acquire the state lock and read the trials."""
         with self._trial_lock.lock():
@@ -382,9 +427,16 @@ class NePSState:
             else:
                 previous_trial_location = None
 
+            id_str = sampled_config.id
+            config_name = f"{sampled_config.id}"
+            parts = id_str.split("_rung_")
+            if len(parts) == 2 and all(p.isdigit() for p in parts):
+                config_id, rung_id = map(int, parts)
+                config_name = f"{config_id}_rung_{rung_id}"
+
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
+                location=str(self._trial_repo.directory / f"config_{config_name}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,
@@ -670,3 +722,7 @@ def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
             f" {path}. Expected a `dict` or `None`."
         )
     return OptimizerInfo(name=name, info=info or {})
+
+
+def _get_worker_name(idx: int) -> str:
+    return f"worker_{idx}"

@@ -41,9 +41,10 @@ def test_default_values_on_error(
             cost_value_on_error=2.4,  # <- Highlight
             learning_curve_on_error=[2.4, 2.5],  # <- Highlight
         ),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
-        max_cost_total=None,
+        cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -92,9 +93,10 @@ def test_default_values_on_not_specified(
             cost_if_not_provided=2.4,
             learning_curve_if_not_provided=[2.4, 2.5],
         ),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
-        max_cost_total=None,
+        cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
@@ -141,9 +143,10 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
         default_report_values=DefaultReportValues(
             learning_curve_if_not_provided="objective_to_minimize"
         ),
-        max_evaluations_total=None,
+        evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
-        max_cost_total=None,
+        cost_to_spend=None,
+        fidelities_to_spend=None,
         max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_for_worker_seconds=None,
