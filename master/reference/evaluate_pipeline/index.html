@@ -3829,7 +3829,7 @@
 <em>Async</em>: return <code>None</code>, launch a job, and call <code>neps.save_pipeline_results()</code> when the job finishes.</p>
 </blockquote>
 <hr />
-<h2 id="1-return-types">1  Return types<a class="headerlink" href="#1-return-types" title="Permanent link">#</a></h2>
+<h2 id="1-return-types">1 Return types<a class="headerlink" href="#1-return-types" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -3857,7 +3857,7 @@
 </tbody>
 </table>
 <p>All other values raise a <code>TypeError</code> inside NePS.</p>
-<h2 id="2-result-dictionary-keys">2  Result dictionary keys<a class="headerlink" href="#2-result-dictionary-keys" title="Permanent link">#</a></h2>
+<h2 id="2-result-dictionary-keys">2 Result dictionary keys<a class="headerlink" href="#2-result-dictionary-keys" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -3898,7 +3898,7 @@
 <p><strong>Tip</strong>  Return exactly what you need; extra keys are preserved in the trial’s <code>report.yaml</code>.</p>
 </blockquote>
 <hr />
-<h2 id="3-asynchronous-evaluation-advanced">3  Asynchronous evaluation (advanced)<a class="headerlink" href="#3-asynchronous-evaluation-advanced" title="Permanent link">#</a></h2>
+<h2 id="3-asynchronous-evaluation-advanced">3 Asynchronous evaluation (advanced)<a class="headerlink" href="#3-asynchronous-evaluation-advanced" title="Permanent link">#</a></h2>
 <h3 id="31-design">3.1 Design<a class="headerlink" href="#31-design" title="Permanent link">#</a></h3>
 <ol>
 <li>
@@ -3995,7 +3995,7 @@
 </ul>
 <h3 id="34-common-pitfalls">3.4 Common pitfalls<a class="headerlink" href="#34-common-pitfalls" title="Permanent link">#</a></h3>
 <h2 id="when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun">* when using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>max_evaluations_per_run</code> when calling <code>neps.run</code>.<a class="headerlink" href="#when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun" title="Permanent link">#</a></h2>
-<h2 id="4-extra-injected-arguments">4  Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
+<h2 id="4-extra-injected-arguments">4 Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
