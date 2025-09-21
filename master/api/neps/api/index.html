@@ -4091,6 +4091,12 @@ holding summary information about the configs and results.</p>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>Number of evaluations this specific call should do.</p>
+<details class="note">
+<summary>Limitation on Async mode</summary>
+<p>Currently, there is no specific number to control number of parallel evaluations running with
+the same worker, so in case you want to limit the number of parallel evaluations,
+it's crucial to limit the number of evaluations per run.</p>
+</details>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -4949,7 +4955,8 @@ and <code>neps.algorithms.complex_random_search</code>.</p>
 <span class="normal"><a href="#__codelineno-0-532">532</a></span>
 <span class="normal"><a href="#__codelineno-0-533">533</a></span>
 <span class="normal"><a href="#__codelineno-0-534">534</a></span>
-<span class="normal"><a href="#__codelineno-0-535">535</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>  <span class="c1"># noqa: C901, D417, PLR0913, PLR0912</span>
+<span class="normal"><a href="#__codelineno-0-535">535</a></span>
+<span class="normal"><a href="#__codelineno-0-536">536</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span>  <span class="c1"># noqa: C901, D417, PLR0913, PLR0912</span>
 <a id="__codelineno-0-46" name="__codelineno-0-46"></a>    <span class="n">evaluate_pipeline</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">EvaluatePipelineReturn</span><span class="p">]</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
 <a id="__codelineno-0-47" name="__codelineno-0-47"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">ConfigurationSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span>
 <a id="__codelineno-0-48" name="__codelineno-0-48"></a>    <span class="o">*</span><span class="p">,</span>
@@ -5115,331 +5122,332 @@ and <code>neps.algorithms.complex_random_search</code>.</p>
 <a id="__codelineno-0-208" name="__codelineno-0-208"></a><span class="sd">            holding summary information about the configs and results.</span>
 <a id="__codelineno-0-209" name="__codelineno-0-209"></a>
 <a id="__codelineno-0-210" name="__codelineno-0-210"></a><span class="sd">        max_evaluations_per_run: Number of evaluations this specific call should do.</span>
-<a id="__codelineno-0-211" name="__codelineno-0-211"></a><span class="sd">        ??? note &quot;Limitation on Async mode&quot;</span>
-<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">            Currently, there is no specific number to control number of parallel evaluations running with</span>
-<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">            the same worker, so in case you want to limit the number of parallel evaluations,</span>
-<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">            it&#39;s crucial to limit the number of evaluations per run.</span>
-<a id="__codelineno-0-215" name="__codelineno-0-215"></a>
-<a id="__codelineno-0-216" name="__codelineno-0-216"></a><span class="sd">        evaluations_to_spend: Number of evaluations after which to terminate.</span>
-<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">            This is shared between all workers operating in the same `root_directory`.</span>
-<a id="__codelineno-0-218" name="__codelineno-0-218"></a>
-<a id="__codelineno-0-219" name="__codelineno-0-219"></a><span class="sd">        continue_until_max_evaluation_completed:</span>
-<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">            If true, only stop after evaluations_to_spend have been completed.</span>
-<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">            This is only relevant in the parallel setting.</span>
-<a id="__codelineno-0-222" name="__codelineno-0-222"></a>
-<a id="__codelineno-0-223" name="__codelineno-0-223"></a><span class="sd">        cost_to_spend: No new evaluations will start when this cost is exceeded. Requires</span>
-<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">            returning a cost in the evaluate_pipeline function, e.g.,</span>
-<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">            `return dict(loss=loss, cost=cost)`.</span>
-<a id="__codelineno-0-226" name="__codelineno-0-226"></a>
-<a id="__codelineno-0-227" name="__codelineno-0-227"></a><span class="sd">        fidelities_to_spend: Number of evaluations in case of multi-fidelity after which to terminate.</span>
-<a id="__codelineno-0-228" name="__codelineno-0-228"></a>
-<a id="__codelineno-0-229" name="__codelineno-0-229"></a><span class="sd">        ignore_errors: Ignore hyperparameter settings that threw an error and do not raise</span>
-<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">            an error. Error configs still count towards evaluations_to_spend.</span>
-<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">        objective_value_on_error: Setting this and cost_value_on_error to any float will</span>
-<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">            supress any error and will use given objective_to_minimize value instead. default: None</span>
-<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">        cost_value_on_error: Setting this and objective_value_on_error to any float will</span>
-<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">            supress any error and will use given cost value instead. default: None</span>
-<a id="__codelineno-0-235" name="__codelineno-0-235"></a>
-<a id="__codelineno-0-236" name="__codelineno-0-236"></a><span class="sd">        sample_batch_size:</span>
-<a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">            The number of samples to ask for in a single call to the optimizer.</span>
-<a id="__codelineno-0-238" name="__codelineno-0-238"></a>
-<a id="__codelineno-0-239" name="__codelineno-0-239"></a><span class="sd">            ??? tip &quot;When to use this?&quot;</span>
-<a id="__codelineno-0-240" name="__codelineno-0-240"></a>
-<a id="__codelineno-0-241" name="__codelineno-0-241"></a><span class="sd">                This is only useful in scenarios where you have many workers</span>
-<a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">                available, and the optimizers sample time prevents full</span>
-<a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">                worker utilization, as can happen with Bayesian optimizers.</span>
-<a id="__codelineno-0-244" name="__codelineno-0-244"></a>
-<a id="__codelineno-0-245" name="__codelineno-0-245"></a><span class="sd">                In this case, the currently active worker will first</span>
-<a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">                check if there are any new configurations to evaluate,</span>
-<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">                and if not, generate `sample_batch_size` new configurations</span>
-<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">                that the proceeding workers will then pick up and evaluate.</span>
-<a id="__codelineno-0-249" name="__codelineno-0-249"></a>
-<a id="__codelineno-0-250" name="__codelineno-0-250"></a><span class="sd">                We advise to only use this if:</span>
-<a id="__codelineno-0-251" name="__codelineno-0-251"></a>
-<a id="__codelineno-0-252" name="__codelineno-0-252"></a><span class="sd">                * You are using a `#!python &quot;ifbo&quot;` or `#!python &quot;bayesian_optimization&quot;`.</span>
-<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">                * You have a fast to evaluate `evaluate_pipeline`</span>
-<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">                * You have a significant amount of workers available, relative to the</span>
-<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">                time it takes to evaluate a single configuration.</span>
-<a id="__codelineno-0-256" name="__codelineno-0-256"></a>
-<a id="__codelineno-0-257" name="__codelineno-0-257"></a><span class="sd">            ??? warning &quot;Downsides of batching&quot;</span>
-<a id="__codelineno-0-258" name="__codelineno-0-258"></a>
-<a id="__codelineno-0-259" name="__codelineno-0-259"></a><span class="sd">                The primary downside of batched optimization is that</span>
-<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">                the next `sample_batch_size` configurations will not</span>
-<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">                be able to take into account the results of any new</span>
-<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">                evaluations, even if they were to come in relatively</span>
-<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">                quickly.</span>
-<a id="__codelineno-0-264" name="__codelineno-0-264"></a>
-<a id="__codelineno-0-265" name="__codelineno-0-265"></a><span class="sd">        worker_id: An optional string to identify the worker (run instance).</span>
-<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">            If not provided, a `worker_id` will be automatically generated using the pattern:</span>
-<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">            `worker_&lt;N&gt;`, where `&lt;N&gt;` is a unique integer for each worker and increments with each new worker.</span>
-<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            A list of all workers created so far is stored in</span>
-<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">            `root_directory/optimizer_state.pkl` under the attribute `worker_ids`.</span>
-<a id="__codelineno-0-270" name="__codelineno-0-270"></a>
-<a id="__codelineno-0-271" name="__codelineno-0-271"></a><span class="sd">            ??? tip &quot;Why specify a `worker_id`?&quot;</span>
-<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">                Specifying a `worker_id` is useful for tracking which worker performed specific tasks</span>
-<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">                in the results. For example, when debugging or running on a cluster, you can include</span>
-<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">                the process ID and machine name in the `worker_id` for better traceability.</span>
-<a id="__codelineno-0-275" name="__codelineno-0-275"></a>
-<a id="__codelineno-0-276" name="__codelineno-0-276"></a><span class="sd">            ??? warning &quot;Duplication of `worker_id`&quot;</span>
-<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">                Ensure that each worker has a unique `worker_id`. If a duplicate `worker_id` is detected,</span>
-<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">                the optimization process will be stopped with an error to prevent overwriting the results</span>
-<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">                of other workers.</span>
-<a id="__codelineno-0-280" name="__codelineno-0-280"></a>
-<a id="__codelineno-0-281" name="__codelineno-0-281"></a><span class="sd">        optimizer: Which optimizer to use.</span>
-<a id="__codelineno-0-282" name="__codelineno-0-282"></a>
-<a id="__codelineno-0-283" name="__codelineno-0-283"></a><span class="sd">            Not sure which to use? Leave this at `&quot;auto&quot;` and neps will</span>
-<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">            choose the optimizer based on the search space given.</span>
-<a id="__codelineno-0-285" name="__codelineno-0-285"></a>
-<a id="__codelineno-0-286" name="__codelineno-0-286"></a><span class="sd">            ??? note &quot;Available optimizers&quot;</span>
-<a id="__codelineno-0-287" name="__codelineno-0-287"></a>
-<a id="__codelineno-0-288" name="__codelineno-0-288"></a><span class="sd">                See the [optimizers documentation](../../reference/search_algorithms/landing_page_algo.md) for a list of available optimizers.</span>
-<a id="__codelineno-0-289" name="__codelineno-0-289"></a>
-<a id="__codelineno-0-290" name="__codelineno-0-290"></a><span class="sd">            With any optimizer choice, you also may provide some additional parameters to the optimizers.</span>
-<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">            We do not recommend this unless you are familiar with the optimizer you are using. You</span>
-<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">            may also specify an optimizer as a dictionary for supporting reading in serialized yaml</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">            formats:</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">            ```python</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">            neps.run(</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">                ...,</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">                optimzier=(&quot;priorband&quot;,</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">                    {</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">                        &quot;sample_prior_first&quot;: True,</span>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">                    }</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">                )</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">            )</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            ```</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a><span class="sd">            ??? tip &quot;Own optimzier&quot;</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a><span class="sd">                Lastly, you may also provide your own optimizer which must satisfy</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">                the [`AskFunction`][neps.optimizers.optimizer.AskFunction] signature.</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a><span class="sd">                ```python</span>
-<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">                class MyOpt:</span>
-<a id="__codelineno-0-313" name="__codelineno-0-313"></a>
-<a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="sd">                    def __init__(self, space: SearchSpace):</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">                        ...</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">                    def __call__(</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">                        self,</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">                        trials: Mapping[str, Trial],</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">                        budget_info: BudgetInfo | None,</span>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">                        n: int | None = None,</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">                    ) -&gt; SampledConfig | list[SampledConfig]:</span>
-<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">                        # Sample a new configuration.</span>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">                        #</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">                        # Args:</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">                        #   trials: All of the trials that are known about.</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">                        #   budget_info: information about the budget constraints.</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">                        #</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">                        # Returns:</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">                        #   The sampled configuration(s)</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>
+<a id="__codelineno-0-211" name="__codelineno-0-211"></a>
+<a id="__codelineno-0-212" name="__codelineno-0-212"></a><span class="sd">            ??? note &quot;Limitation on Async mode&quot;</span>
+<a id="__codelineno-0-213" name="__codelineno-0-213"></a><span class="sd">                Currently, there is no specific number to control number of parallel evaluations running with</span>
+<a id="__codelineno-0-214" name="__codelineno-0-214"></a><span class="sd">                the same worker, so in case you want to limit the number of parallel evaluations,</span>
+<a id="__codelineno-0-215" name="__codelineno-0-215"></a><span class="sd">                it&#39;s crucial to limit the number of evaluations per run.</span>
+<a id="__codelineno-0-216" name="__codelineno-0-216"></a>
+<a id="__codelineno-0-217" name="__codelineno-0-217"></a><span class="sd">        evaluations_to_spend: Number of evaluations after which to terminate.</span>
+<a id="__codelineno-0-218" name="__codelineno-0-218"></a><span class="sd">            This is shared between all workers operating in the same `root_directory`.</span>
+<a id="__codelineno-0-219" name="__codelineno-0-219"></a>
+<a id="__codelineno-0-220" name="__codelineno-0-220"></a><span class="sd">        continue_until_max_evaluation_completed:</span>
+<a id="__codelineno-0-221" name="__codelineno-0-221"></a><span class="sd">            If true, only stop after evaluations_to_spend have been completed.</span>
+<a id="__codelineno-0-222" name="__codelineno-0-222"></a><span class="sd">            This is only relevant in the parallel setting.</span>
+<a id="__codelineno-0-223" name="__codelineno-0-223"></a>
+<a id="__codelineno-0-224" name="__codelineno-0-224"></a><span class="sd">        cost_to_spend: No new evaluations will start when this cost is exceeded. Requires</span>
+<a id="__codelineno-0-225" name="__codelineno-0-225"></a><span class="sd">            returning a cost in the evaluate_pipeline function, e.g.,</span>
+<a id="__codelineno-0-226" name="__codelineno-0-226"></a><span class="sd">            `return dict(loss=loss, cost=cost)`.</span>
+<a id="__codelineno-0-227" name="__codelineno-0-227"></a>
+<a id="__codelineno-0-228" name="__codelineno-0-228"></a><span class="sd">        fidelities_to_spend: Number of evaluations in case of multi-fidelity after which to terminate.</span>
+<a id="__codelineno-0-229" name="__codelineno-0-229"></a>
+<a id="__codelineno-0-230" name="__codelineno-0-230"></a><span class="sd">        ignore_errors: Ignore hyperparameter settings that threw an error and do not raise</span>
+<a id="__codelineno-0-231" name="__codelineno-0-231"></a><span class="sd">            an error. Error configs still count towards evaluations_to_spend.</span>
+<a id="__codelineno-0-232" name="__codelineno-0-232"></a><span class="sd">        objective_value_on_error: Setting this and cost_value_on_error to any float will</span>
+<a id="__codelineno-0-233" name="__codelineno-0-233"></a><span class="sd">            supress any error and will use given objective_to_minimize value instead. default: None</span>
+<a id="__codelineno-0-234" name="__codelineno-0-234"></a><span class="sd">        cost_value_on_error: Setting this and objective_value_on_error to any float will</span>
+<a id="__codelineno-0-235" name="__codelineno-0-235"></a><span class="sd">            supress any error and will use given cost value instead. default: None</span>
+<a id="__codelineno-0-236" name="__codelineno-0-236"></a>
+<a id="__codelineno-0-237" name="__codelineno-0-237"></a><span class="sd">        sample_batch_size:</span>
+<a id="__codelineno-0-238" name="__codelineno-0-238"></a><span class="sd">            The number of samples to ask for in a single call to the optimizer.</span>
+<a id="__codelineno-0-239" name="__codelineno-0-239"></a>
+<a id="__codelineno-0-240" name="__codelineno-0-240"></a><span class="sd">            ??? tip &quot;When to use this?&quot;</span>
+<a id="__codelineno-0-241" name="__codelineno-0-241"></a>
+<a id="__codelineno-0-242" name="__codelineno-0-242"></a><span class="sd">                This is only useful in scenarios where you have many workers</span>
+<a id="__codelineno-0-243" name="__codelineno-0-243"></a><span class="sd">                available, and the optimizers sample time prevents full</span>
+<a id="__codelineno-0-244" name="__codelineno-0-244"></a><span class="sd">                worker utilization, as can happen with Bayesian optimizers.</span>
+<a id="__codelineno-0-245" name="__codelineno-0-245"></a>
+<a id="__codelineno-0-246" name="__codelineno-0-246"></a><span class="sd">                In this case, the currently active worker will first</span>
+<a id="__codelineno-0-247" name="__codelineno-0-247"></a><span class="sd">                check if there are any new configurations to evaluate,</span>
+<a id="__codelineno-0-248" name="__codelineno-0-248"></a><span class="sd">                and if not, generate `sample_batch_size` new configurations</span>
+<a id="__codelineno-0-249" name="__codelineno-0-249"></a><span class="sd">                that the proceeding workers will then pick up and evaluate.</span>
+<a id="__codelineno-0-250" name="__codelineno-0-250"></a>
+<a id="__codelineno-0-251" name="__codelineno-0-251"></a><span class="sd">                We advise to only use this if:</span>
+<a id="__codelineno-0-252" name="__codelineno-0-252"></a>
+<a id="__codelineno-0-253" name="__codelineno-0-253"></a><span class="sd">                * You are using a `#!python &quot;ifbo&quot;` or `#!python &quot;bayesian_optimization&quot;`.</span>
+<a id="__codelineno-0-254" name="__codelineno-0-254"></a><span class="sd">                * You have a fast to evaluate `evaluate_pipeline`</span>
+<a id="__codelineno-0-255" name="__codelineno-0-255"></a><span class="sd">                * You have a significant amount of workers available, relative to the</span>
+<a id="__codelineno-0-256" name="__codelineno-0-256"></a><span class="sd">                time it takes to evaluate a single configuration.</span>
+<a id="__codelineno-0-257" name="__codelineno-0-257"></a>
+<a id="__codelineno-0-258" name="__codelineno-0-258"></a><span class="sd">            ??? warning &quot;Downsides of batching&quot;</span>
+<a id="__codelineno-0-259" name="__codelineno-0-259"></a>
+<a id="__codelineno-0-260" name="__codelineno-0-260"></a><span class="sd">                The primary downside of batched optimization is that</span>
+<a id="__codelineno-0-261" name="__codelineno-0-261"></a><span class="sd">                the next `sample_batch_size` configurations will not</span>
+<a id="__codelineno-0-262" name="__codelineno-0-262"></a><span class="sd">                be able to take into account the results of any new</span>
+<a id="__codelineno-0-263" name="__codelineno-0-263"></a><span class="sd">                evaluations, even if they were to come in relatively</span>
+<a id="__codelineno-0-264" name="__codelineno-0-264"></a><span class="sd">                quickly.</span>
+<a id="__codelineno-0-265" name="__codelineno-0-265"></a>
+<a id="__codelineno-0-266" name="__codelineno-0-266"></a><span class="sd">        worker_id: An optional string to identify the worker (run instance).</span>
+<a id="__codelineno-0-267" name="__codelineno-0-267"></a><span class="sd">            If not provided, a `worker_id` will be automatically generated using the pattern:</span>
+<a id="__codelineno-0-268" name="__codelineno-0-268"></a><span class="sd">            `worker_&lt;N&gt;`, where `&lt;N&gt;` is a unique integer for each worker and increments with each new worker.</span>
+<a id="__codelineno-0-269" name="__codelineno-0-269"></a><span class="sd">            A list of all workers created so far is stored in</span>
+<a id="__codelineno-0-270" name="__codelineno-0-270"></a><span class="sd">            `root_directory/optimizer_state.pkl` under the attribute `worker_ids`.</span>
+<a id="__codelineno-0-271" name="__codelineno-0-271"></a>
+<a id="__codelineno-0-272" name="__codelineno-0-272"></a><span class="sd">            ??? tip &quot;Why specify a `worker_id`?&quot;</span>
+<a id="__codelineno-0-273" name="__codelineno-0-273"></a><span class="sd">                Specifying a `worker_id` is useful for tracking which worker performed specific tasks</span>
+<a id="__codelineno-0-274" name="__codelineno-0-274"></a><span class="sd">                in the results. For example, when debugging or running on a cluster, you can include</span>
+<a id="__codelineno-0-275" name="__codelineno-0-275"></a><span class="sd">                the process ID and machine name in the `worker_id` for better traceability.</span>
+<a id="__codelineno-0-276" name="__codelineno-0-276"></a>
+<a id="__codelineno-0-277" name="__codelineno-0-277"></a><span class="sd">            ??? warning &quot;Duplication of `worker_id`&quot;</span>
+<a id="__codelineno-0-278" name="__codelineno-0-278"></a><span class="sd">                Ensure that each worker has a unique `worker_id`. If a duplicate `worker_id` is detected,</span>
+<a id="__codelineno-0-279" name="__codelineno-0-279"></a><span class="sd">                the optimization process will be stopped with an error to prevent overwriting the results</span>
+<a id="__codelineno-0-280" name="__codelineno-0-280"></a><span class="sd">                of other workers.</span>
+<a id="__codelineno-0-281" name="__codelineno-0-281"></a>
+<a id="__codelineno-0-282" name="__codelineno-0-282"></a><span class="sd">        optimizer: Which optimizer to use.</span>
+<a id="__codelineno-0-283" name="__codelineno-0-283"></a>
+<a id="__codelineno-0-284" name="__codelineno-0-284"></a><span class="sd">            Not sure which to use? Leave this at `&quot;auto&quot;` and neps will</span>
+<a id="__codelineno-0-285" name="__codelineno-0-285"></a><span class="sd">            choose the optimizer based on the search space given.</span>
+<a id="__codelineno-0-286" name="__codelineno-0-286"></a>
+<a id="__codelineno-0-287" name="__codelineno-0-287"></a><span class="sd">            ??? note &quot;Available optimizers&quot;</span>
+<a id="__codelineno-0-288" name="__codelineno-0-288"></a>
+<a id="__codelineno-0-289" name="__codelineno-0-289"></a><span class="sd">                See the [optimizers documentation](../../reference/search_algorithms/landing_page_algo.md) for a list of available optimizers.</span>
+<a id="__codelineno-0-290" name="__codelineno-0-290"></a>
+<a id="__codelineno-0-291" name="__codelineno-0-291"></a><span class="sd">            With any optimizer choice, you also may provide some additional parameters to the optimizers.</span>
+<a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="sd">            We do not recommend this unless you are familiar with the optimizer you are using. You</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="sd">            may also specify an optimizer as a dictionary for supporting reading in serialized yaml</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a><span class="sd">            formats:</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">            ```python</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">            neps.run(</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">                ...,</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a><span class="sd">                optimzier=(&quot;priorband&quot;,</span>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">                    {</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">                        &quot;sample_prior_first&quot;: True,</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">                    }</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">                )</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            )</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">            ```</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a><span class="sd">            ??? tip &quot;Own optimzier&quot;</span>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a><span class="sd">                Lastly, you may also provide your own optimizer which must satisfy</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a><span class="sd">                the [`AskFunction`][neps.optimizers.optimizer.AskFunction] signature.</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a><span class="sd">                ```python</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a><span class="sd">                class MyOpt:</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="sd">                    def __init__(self, space: SearchSpace):</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a><span class="sd">                        ...</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">                    def __call__(</span>
+<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">                        self,</span>
+<a id="__codelineno-0-320" name="__codelineno-0-320"></a><span class="sd">                        trials: Mapping[str, Trial],</span>
+<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">                        budget_info: BudgetInfo | None,</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">                        n: int | None = None,</span>
+<a id="__codelineno-0-323" name="__codelineno-0-323"></a><span class="sd">                    ) -&gt; SampledConfig | list[SampledConfig]:</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">                        # Sample a new configuration.</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">                        #</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">                        # Args:</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a><span class="sd">                        #   trials: All of the trials that are known about.</span>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">                        #   budget_info: information about the budget constraints.</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">                        #</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a><span class="sd">                        # Returns:</span>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">                        #   The sampled configuration(s)</span>
 <a id="__codelineno-0-332" name="__codelineno-0-332"></a>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">                neps.run(</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">                    ...,</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">                    optimizer=MyOpt,</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">                )</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">                ```</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a><span class="sd">                This is mainly meant for internal development but allows you to use the NePS</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">                runtime to run your optimizer.</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>
-<a id="__codelineno-0-342" name="__codelineno-0-342"></a><span class="sd">        warmstart_configs: A list of configurations to warmstart the NePS state with.</span>
-<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">            This is useful for testing and debugging purposes, where you want to</span>
-<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">            start with a set of predefined configurations and their results.</span>
-<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">            Each configuration is a tuple of three elements:</span>
-<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">            1. A dictionary of the samplings to make, i.e. resolution_context.samplings_made</span>
-<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">            2. A dictionary of the environment values, i.e. resolution_context.environment_values</span>
-<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">            3. The result of the evaluation, which is the return value of the `evaluate_pipeline`</span>
-<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">               function, i.e. the objective value to minimize or a dictionary with</span>
-<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">               `&quot;objective_to_minimize&quot;` and `&quot;cost&quot;` keys.</span>
-<a id="__codelineno-0-351" name="__codelineno-0-351"></a>
-<a id="__codelineno-0-352" name="__codelineno-0-352"></a><span class="sd">            !!! warning &quot;Warmstarting compatibility&quot;</span>
-<a id="__codelineno-0-353" name="__codelineno-0-353"></a>
-<a id="__codelineno-0-354" name="__codelineno-0-354"></a><span class="sd">                The warmstarting feature is only compatible with the new NEPS optimizers,</span>
-<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">                such as `neps.algorithms.neps_random_search`, `neps.algorithms.neps_priorband`,</span>
-<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">                and `neps.algorithms.complex_random_search`.</span>
-<a id="__codelineno-0-357" name="__codelineno-0-357"></a>
-<a id="__codelineno-0-358" name="__codelineno-0-358"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
-<a id="__codelineno-0-359" name="__codelineno-0-359"></a>    <span class="k">if</span> <span class="p">(</span>
-<a id="__codelineno-0-360" name="__codelineno-0-360"></a>        <span class="n">evaluations_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="ow">and</span> <span class="n">max_evaluations_total</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="ow">and</span> <span class="n">max_evaluations_per_run</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="ow">and</span> <span class="n">cost_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="ow">and</span> <span class="n">max_cost_total</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="ow">and</span> <span class="n">fidelities_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
-<a id="__codelineno-0-366" name="__codelineno-0-366"></a>    <span class="p">):</span>
-<a id="__codelineno-0-367" name="__codelineno-0-367"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-368" name="__codelineno-0-368"></a>            <span class="s2">&quot;None of the following were set, this will run idefinitely until the worker&quot;</span>
-<a id="__codelineno-0-369" name="__codelineno-0-369"></a>            <span class="s2">&quot; process is stopped.&quot;</span>
-<a id="__codelineno-0-370" name="__codelineno-0-370"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">evaluations_to_spend</span><span class="si">=}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-371" name="__codelineno-0-371"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">max_evaluations_per_run</span><span class="si">=}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-372" name="__codelineno-0-372"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">cost_to_spend</span><span class="si">=}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-373" name="__codelineno-0-373"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">fidelities_to_spend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-374" name="__codelineno-0-374"></a>            <span class="ne">UserWarning</span><span class="p">,</span>
-<a id="__codelineno-0-375" name="__codelineno-0-375"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-376" name="__codelineno-0-376"></a>        <span class="p">)</span>
-<a id="__codelineno-0-377" name="__codelineno-0-377"></a>
-<a id="__codelineno-0-378" name="__codelineno-0-378"></a>    <span class="k">if</span> <span class="n">max_evaluations_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-379" name="__codelineno-0-379"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-380" name="__codelineno-0-380"></a>            <span class="s2">&quot;`max_evaluations_total` is deprecated and will be removed in&quot;</span>
-<a id="__codelineno-0-381" name="__codelineno-0-381"></a>            <span class="s2">&quot; a future release. Please use `evaluations_to_spend` instead.&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-382" name="__codelineno-0-382"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-<a id="__codelineno-0-383" name="__codelineno-0-383"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-384" name="__codelineno-0-384"></a>        <span class="p">)</span>
-<a id="__codelineno-0-385" name="__codelineno-0-385"></a>        <span class="n">evaluations_to_spend</span> <span class="o">=</span> <span class="n">max_evaluations_total</span>
-<a id="__codelineno-0-386" name="__codelineno-0-386"></a>
-<a id="__codelineno-0-387" name="__codelineno-0-387"></a>    <span class="k">if</span> <span class="n">max_cost_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-388" name="__codelineno-0-388"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
-<a id="__codelineno-0-389" name="__codelineno-0-389"></a>            <span class="s2">&quot;`max_cost_total` is deprecated and will be removed in a future release. &quot;</span>
-<a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="s2">&quot;Please use `cost_to_spend` instead.&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-391" name="__codelineno-0-391"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
-<a id="__codelineno-0-392" name="__codelineno-0-392"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
-<a id="__codelineno-0-393" name="__codelineno-0-393"></a>        <span class="p">)</span>
-<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="n">cost_to_spend</span> <span class="o">=</span> <span class="n">max_cost_total</span>
-<a id="__codelineno-0-395" name="__codelineno-0-395"></a>
-<a id="__codelineno-0-396" name="__codelineno-0-396"></a>    <span class="n">criteria</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-397" name="__codelineno-0-397"></a>        <span class="s2">&quot;evaluations_to_spend&quot;</span><span class="p">:</span> <span class="n">evaluations_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-398" name="__codelineno-0-398"></a>        <span class="s2">&quot;max_evaluations_per_run&quot;</span><span class="p">:</span> <span class="n">max_evaluations_per_run</span><span class="p">,</span>
-<a id="__codelineno-0-399" name="__codelineno-0-399"></a>        <span class="s2">&quot;cost_to_spend&quot;</span><span class="p">:</span> <span class="n">cost_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="s2">&quot;fidelities_to_spend&quot;</span><span class="p">:</span> <span class="n">fidelities_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-401" name="__codelineno-0-401"></a>    <span class="p">}</span>
-<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="n">set_criteria</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">criteria</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
-<a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">set_criteria</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-<a id="__codelineno-0-404" name="__codelineno-0-404"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-405" name="__codelineno-0-405"></a>            <span class="sa">f</span><span class="s2">&quot;Multiple stopping criteria specified: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">set_criteria</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
-<a id="__codelineno-0-406" name="__codelineno-0-406"></a>            <span class="s2">&quot;Only one is allowed.&quot;</span>
-<a id="__codelineno-0-407" name="__codelineno-0-407"></a>        <span class="p">)</span>
-<a id="__codelineno-0-408" name="__codelineno-0-408"></a>
-<a id="__codelineno-0-409" name="__codelineno-0-409"></a>    <span class="k">if</span> <span class="n">warmstart_configs</span><span class="p">:</span>
-<a id="__codelineno-0-410" name="__codelineno-0-410"></a>        <span class="n">warmstart_neps</span><span class="p">(</span>
-<a id="__codelineno-0-411" name="__codelineno-0-411"></a>            <span class="n">root_directory</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">),</span>
-<a id="__codelineno-0-412" name="__codelineno-0-412"></a>            <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-0-413" name="__codelineno-0-413"></a>            <span class="n">warmstart_configs</span><span class="o">=</span><span class="n">warmstart_configs</span><span class="p">,</span>
-<a id="__codelineno-0-414" name="__codelineno-0-414"></a>            <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
-<a id="__codelineno-0-415" name="__codelineno-0-415"></a>            <span class="n">overwrite_working_directory</span><span class="o">=</span><span class="n">overwrite_working_directory</span><span class="p">,</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a>            <span class="n">inside_neps</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>        <span class="p">)</span>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="n">overwrite_working_directory</span> <span class="o">=</span> <span class="kc">False</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting neps.run using root directory </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a>    <span class="c1"># Check if the pipeline_space only contains basic HPO parameters.</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="c1"># If yes, we convert it to a classic SearchSpace, to use with the old optimizers.</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="c1"># If no, we use adjust_evaluation_pipeline_for_neps_space to convert the</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="c1"># pipeline_space and only use the new NEPS optimizers.</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="c1"># If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>    <span class="n">neps_classic_space_compatibility</span> <span class="o">=</span> <span class="n">check_neps_space_compatibility</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a>    <span class="k">if</span> <span class="p">(</span>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a>        <span class="n">neps_classic_space_compatibility</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;classic&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">)</span>
-<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="ow">and</span> <span class="ow">not</span> <span class="n">warmstart_configs</span>
-<a id="__codelineno-0-434" name="__codelineno-0-434"></a>    <span class="p">):</span>
-<a id="__codelineno-0-435" name="__codelineno-0-435"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
-<a id="__codelineno-0-436" name="__codelineno-0-436"></a>        <span class="k">if</span> <span class="n">converted_space</span><span class="p">:</span>
-<a id="__codelineno-0-437" name="__codelineno-0-437"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
-<a id="__codelineno-0-438" name="__codelineno-0-438"></a>
-<a id="__codelineno-0-439" name="__codelineno-0-439"></a>    <span class="n">space</span> <span class="o">=</span> <span class="n">convert_to_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
-<a id="__codelineno-0-440" name="__codelineno-0-440"></a>
-<a id="__codelineno-0-441" name="__codelineno-0-441"></a>    <span class="k">if</span> <span class="n">neps_classic_space_compatibility</span> <span class="o">==</span> <span class="s2">&quot;neps&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
-<a id="__codelineno-0-442" name="__codelineno-0-442"></a>        <span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span>
-<a id="__codelineno-0-443" name="__codelineno-0-443"></a>    <span class="p">):</span>
-<a id="__codelineno-0-444" name="__codelineno-0-444"></a>        <span class="n">space</span> <span class="o">=</span> <span class="n">convert_classic_to_neps_search_space</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
-<a id="__codelineno-0-445" name="__codelineno-0-445"></a>
-<a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="c1"># Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="c1"># algorithm, we raise an error, as the optimizer is not compatible.</span>
-<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">)</span> <span class="ow">and</span> <span class="n">neps_classic_space_compatibility</span> <span class="o">==</span> <span class="s2">&quot;classic&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-449" name="__codelineno-0-449"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-450" name="__codelineno-0-450"></a>            <span class="s2">&quot;The provided optimizer is not compatible with this complex search space. &quot;</span>
-<a id="__codelineno-0-451" name="__codelineno-0-451"></a>            <span class="s2">&quot;Please use one that is, such as &#39;random_search&#39;, &quot;</span>
-<a id="__codelineno-0-452" name="__codelineno-0-452"></a>            <span class="s2">&quot;&#39;priorband&#39;, or &#39;complex_random_search&#39;.&quot;</span>
-<a id="__codelineno-0-453" name="__codelineno-0-453"></a>        <span class="p">)</span>
-<a id="__codelineno-0-454" name="__codelineno-0-454"></a>
-<a id="__codelineno-0-455" name="__codelineno-0-455"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
-<a id="__codelineno-0-456" name="__codelineno-0-456"></a>        <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
-<a id="__codelineno-0-457" name="__codelineno-0-457"></a>        <span class="n">evaluate_pipeline</span> <span class="o">=</span> <span class="n">adjust_evaluation_pipeline_for_neps_space</span><span class="p">(</span>
-<a id="__codelineno-0-458" name="__codelineno-0-458"></a>            <span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="n">space</span>
-<a id="__codelineno-0-459" name="__codelineno-0-459"></a>        <span class="p">)</span>
-<a id="__codelineno-0-460" name="__codelineno-0-460"></a>
-<a id="__codelineno-0-461" name="__codelineno-0-461"></a>    <span class="n">_optimizer_ask</span><span class="p">,</span> <span class="n">_optimizer_info</span> <span class="o">=</span> <span class="n">load_optimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">space</span><span class="o">=</span><span class="n">space</span><span class="p">)</span>
-<a id="__codelineno-0-462" name="__codelineno-0-462"></a>
-<a id="__codelineno-0-463" name="__codelineno-0-463"></a>    <span class="n">multi_fidelity_optimizers</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-464" name="__codelineno-0-464"></a>        <span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="s2">&quot;asha&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-466" name="__codelineno-0-466"></a>        <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-467" name="__codelineno-0-467"></a>        <span class="s2">&quot;async_hb&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-468" name="__codelineno-0-468"></a>        <span class="s2">&quot;ifbo&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-469" name="__codelineno-0-469"></a>        <span class="s2">&quot;priorband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="s2">&quot;moasha&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-471" name="__codelineno-0-471"></a>        <span class="s2">&quot;mo_hyperband&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-472" name="__codelineno-0-472"></a>        <span class="s2">&quot;primo&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-473" name="__codelineno-0-473"></a>    <span class="p">}</span>
-<a id="__codelineno-0-474" name="__codelineno-0-474"></a>
-<a id="__codelineno-0-475" name="__codelineno-0-475"></a>    <span class="n">is_multi_fidelity</span> <span class="o">=</span> <span class="n">_optimizer_info</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">multi_fidelity_optimizers</span>
-<a id="__codelineno-0-476" name="__codelineno-0-476"></a>
-<a id="__codelineno-0-477" name="__codelineno-0-477"></a>    <span class="k">if</span> <span class="n">is_multi_fidelity</span><span class="p">:</span>
-<a id="__codelineno-0-478" name="__codelineno-0-478"></a>        <span class="k">if</span> <span class="n">evaluations_to_spend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-479" name="__codelineno-0-479"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-480" name="__codelineno-0-480"></a>                <span class="s2">&quot;`evaluations_to_spend` is not allowed for multi-fidelity optimizers. &quot;</span>
-<a id="__codelineno-0-481" name="__codelineno-0-481"></a>                <span class="s2">&quot;Only `fidelities_to_spend` or `cost_to_spend`&quot;</span>
-<a id="__codelineno-0-482" name="__codelineno-0-482"></a>            <span class="p">)</span>
-<a id="__codelineno-0-483" name="__codelineno-0-483"></a>    <span class="k">elif</span> <span class="n">fidelities_to_spend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-484" name="__codelineno-0-484"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-485" name="__codelineno-0-485"></a>            <span class="s2">&quot;`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers.&quot;</span>
-<a id="__codelineno-0-486" name="__codelineno-0-486"></a>        <span class="p">)</span>
-<a id="__codelineno-0-487" name="__codelineno-0-487"></a>
-<a id="__codelineno-0-488" name="__codelineno-0-488"></a>    <span class="n">_eval</span><span class="p">:</span> <span class="n">Callable</span>
-<a id="__codelineno-0-489" name="__codelineno-0-489"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a>        <span class="n">module</span><span class="p">,</span> <span class="n">funcname</span> <span class="o">=</span> <span class="n">evaluate_pipeline</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a>        <span class="n">eval_pipeline</span> <span class="o">=</span> <span class="n">dynamic_load_object</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">funcname</span><span class="p">)</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">eval_pipeline</span><span class="p">):</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a>                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">funcname</span><span class="si">}</span><span class="s2">&#39; in module &#39;</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">&#39; is not a callable function.&quot;</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a>            <span class="p">)</span>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a>        <span class="n">_eval</span> <span class="o">=</span> <span class="n">eval_pipeline</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a>    <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">):</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>        <span class="n">_eval</span> <span class="o">=</span> <span class="n">evaluate_pipeline</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a>    <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a>            <span class="s2">&quot;evaluate_pipeline must be a callable or a string in the format&quot;</span>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a>            <span class="s2">&quot;&#39;module:function&#39;.&quot;</span>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a>        <span class="p">)</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>    <span class="n">_launch_runtime</span><span class="p">(</span>
-<a id="__codelineno-0-506" name="__codelineno-0-506"></a>        <span class="n">evaluation_fn</span><span class="o">=</span><span class="n">_eval</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-507" name="__codelineno-0-507"></a>        <span class="n">optimizer</span><span class="o">=</span><span class="n">_optimizer_ask</span><span class="p">,</span>
-<a id="__codelineno-0-508" name="__codelineno-0-508"></a>        <span class="n">optimizer_info</span><span class="o">=</span><span class="n">_optimizer_info</span><span class="p">,</span>
-<a id="__codelineno-0-509" name="__codelineno-0-509"></a>        <span class="n">cost_to_spend</span><span class="o">=</span><span class="n">cost_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-510" name="__codelineno-0-510"></a>        <span class="n">fidelities_to_spend</span><span class="o">=</span><span class="n">fidelities_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-511" name="__codelineno-0-511"></a>        <span class="n">optimization_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">),</span>
-<a id="__codelineno-0-512" name="__codelineno-0-512"></a>        <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="n">evaluations_to_spend</span><span class="p">,</span>
-<a id="__codelineno-0-513" name="__codelineno-0-513"></a>        <span class="n">max_evaluations_for_worker</span><span class="o">=</span><span class="n">max_evaluations_per_run</span><span class="p">,</span>
-<a id="__codelineno-0-514" name="__codelineno-0-514"></a>        <span class="n">continue_until_max_evaluation_completed</span><span class="o">=</span><span class="n">continue_until_max_evaluation_completed</span><span class="p">,</span>
-<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="n">objective_value_on_error</span><span class="o">=</span><span class="n">objective_value_on_error</span><span class="p">,</span>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a>        <span class="n">cost_value_on_error</span><span class="o">=</span><span class="n">cost_value_on_error</span><span class="p">,</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="n">ignore_errors</span><span class="o">=</span><span class="n">ignore_errors</span><span class="p">,</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a>        <span class="n">overwrite_optimization_dir</span><span class="o">=</span><span class="n">overwrite_root_directory</span><span class="p">,</span>
-<a id="__codelineno-0-519" name="__codelineno-0-519"></a>        <span class="n">sample_batch_size</span><span class="o">=</span><span class="n">sample_batch_size</span><span class="p">,</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="n">write_summary_to_disk</span><span class="o">=</span><span class="n">write_summary_to_disk</span><span class="p">,</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="n">worker_id</span><span class="o">=</span><span class="n">worker_id</span><span class="p">,</span>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a>    <span class="p">)</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>    <span class="n">post_run_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-525" name="__codelineno-0-525"></a>    <span class="n">root_directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a>    <span class="n">summary_dir</span> <span class="o">=</span> <span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;summary&quot;</span>
-<a id="__codelineno-0-527" name="__codelineno-0-527"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">write_summary_to_disk</span><span class="p">:</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>        <span class="n">trajectory_of_improvements</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-<a id="__codelineno-0-530" name="__codelineno-0-530"></a>            <span class="s2">&quot;The summary folder has been created, which contains csv and txt files with&quot;</span>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="s2">&quot;the output of all data in the run (short.csv - only the best; full.csv - &quot;</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="s2">&quot;all runs; best_config_trajectory.txt for incumbent trajectory; and &quot;</span>
-<a id="__codelineno-0-533" name="__codelineno-0-533"></a>            <span class="s2">&quot;best_config.txt for final incumbent).&quot;</span>
-<a id="__codelineno-0-534" name="__codelineno-0-534"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find summary folder at: </span><span class="si">{</span><span class="n">summary_dir</span><span class="si">}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="p">)</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a><span class="sd">                neps.run(</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a><span class="sd">                    ...,</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a><span class="sd">                    optimizer=MyOpt,</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a><span class="sd">                )</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a><span class="sd">                ```</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a><span class="sd">                This is mainly meant for internal development but allows you to use the NePS</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a><span class="sd">                runtime to run your optimizer.</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a><span class="sd">        warmstart_configs: A list of configurations to warmstart the NePS state with.</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a><span class="sd">            This is useful for testing and debugging purposes, where you want to</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a><span class="sd">            start with a set of predefined configurations and their results.</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a><span class="sd">            Each configuration is a tuple of three elements:</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a><span class="sd">            1. A dictionary of the samplings to make, i.e. resolution_context.samplings_made</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a><span class="sd">            2. A dictionary of the environment values, i.e. resolution_context.environment_values</span>
+<a id="__codelineno-0-349" name="__codelineno-0-349"></a><span class="sd">            3. The result of the evaluation, which is the return value of the `evaluate_pipeline`</span>
+<a id="__codelineno-0-350" name="__codelineno-0-350"></a><span class="sd">               function, i.e. the objective value to minimize or a dictionary with</span>
+<a id="__codelineno-0-351" name="__codelineno-0-351"></a><span class="sd">               `&quot;objective_to_minimize&quot;` and `&quot;cost&quot;` keys.</span>
+<a id="__codelineno-0-352" name="__codelineno-0-352"></a>
+<a id="__codelineno-0-353" name="__codelineno-0-353"></a><span class="sd">            !!! warning &quot;Warmstarting compatibility&quot;</span>
+<a id="__codelineno-0-354" name="__codelineno-0-354"></a>
+<a id="__codelineno-0-355" name="__codelineno-0-355"></a><span class="sd">                The warmstarting feature is only compatible with the new NEPS optimizers,</span>
+<a id="__codelineno-0-356" name="__codelineno-0-356"></a><span class="sd">                such as `neps.algorithms.neps_random_search`, `neps.algorithms.neps_priorband`,</span>
+<a id="__codelineno-0-357" name="__codelineno-0-357"></a><span class="sd">                and `neps.algorithms.complex_random_search`.</span>
+<a id="__codelineno-0-358" name="__codelineno-0-358"></a>
+<a id="__codelineno-0-359" name="__codelineno-0-359"></a><span class="sd">    &quot;&quot;&quot;</span>  <span class="c1"># noqa: E501</span>
+<a id="__codelineno-0-360" name="__codelineno-0-360"></a>    <span class="k">if</span> <span class="p">(</span>
+<a id="__codelineno-0-361" name="__codelineno-0-361"></a>        <span class="n">evaluations_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-362" name="__codelineno-0-362"></a>        <span class="ow">and</span> <span class="n">max_evaluations_total</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-363" name="__codelineno-0-363"></a>        <span class="ow">and</span> <span class="n">max_evaluations_per_run</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-364" name="__codelineno-0-364"></a>        <span class="ow">and</span> <span class="n">cost_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-365" name="__codelineno-0-365"></a>        <span class="ow">and</span> <span class="n">max_cost_total</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-366" name="__codelineno-0-366"></a>        <span class="ow">and</span> <span class="n">fidelities_to_spend</span> <span class="ow">is</span> <span class="kc">None</span>
+<a id="__codelineno-0-367" name="__codelineno-0-367"></a>    <span class="p">):</span>
+<a id="__codelineno-0-368" name="__codelineno-0-368"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+<a id="__codelineno-0-369" name="__codelineno-0-369"></a>            <span class="s2">&quot;None of the following were set, this will run idefinitely until the worker&quot;</span>
+<a id="__codelineno-0-370" name="__codelineno-0-370"></a>            <span class="s2">&quot; process is stopped.&quot;</span>
+<a id="__codelineno-0-371" name="__codelineno-0-371"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">evaluations_to_spend</span><span class="si">=}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-372" name="__codelineno-0-372"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">max_evaluations_per_run</span><span class="si">=}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-373" name="__codelineno-0-373"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">cost_to_spend</span><span class="si">=}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-374" name="__codelineno-0-374"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2"> * </span><span class="si">{</span><span class="n">fidelities_to_spend</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-375" name="__codelineno-0-375"></a>            <span class="ne">UserWarning</span><span class="p">,</span>
+<a id="__codelineno-0-376" name="__codelineno-0-376"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-377" name="__codelineno-0-377"></a>        <span class="p">)</span>
+<a id="__codelineno-0-378" name="__codelineno-0-378"></a>
+<a id="__codelineno-0-379" name="__codelineno-0-379"></a>    <span class="k">if</span> <span class="n">max_evaluations_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-380" name="__codelineno-0-380"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+<a id="__codelineno-0-381" name="__codelineno-0-381"></a>            <span class="s2">&quot;`max_evaluations_total` is deprecated and will be removed in&quot;</span>
+<a id="__codelineno-0-382" name="__codelineno-0-382"></a>            <span class="s2">&quot; a future release. Please use `evaluations_to_spend` instead.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-383" name="__codelineno-0-383"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+<a id="__codelineno-0-384" name="__codelineno-0-384"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-385" name="__codelineno-0-385"></a>        <span class="p">)</span>
+<a id="__codelineno-0-386" name="__codelineno-0-386"></a>        <span class="n">evaluations_to_spend</span> <span class="o">=</span> <span class="n">max_evaluations_total</span>
+<a id="__codelineno-0-387" name="__codelineno-0-387"></a>
+<a id="__codelineno-0-388" name="__codelineno-0-388"></a>    <span class="k">if</span> <span class="n">max_cost_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-389" name="__codelineno-0-389"></a>        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+<a id="__codelineno-0-390" name="__codelineno-0-390"></a>            <span class="s2">&quot;`max_cost_total` is deprecated and will be removed in a future release. &quot;</span>
+<a id="__codelineno-0-391" name="__codelineno-0-391"></a>            <span class="s2">&quot;Please use `cost_to_spend` instead.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-392" name="__codelineno-0-392"></a>            <span class="ne">DeprecationWarning</span><span class="p">,</span>
+<a id="__codelineno-0-393" name="__codelineno-0-393"></a>            <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-0-394" name="__codelineno-0-394"></a>        <span class="p">)</span>
+<a id="__codelineno-0-395" name="__codelineno-0-395"></a>        <span class="n">cost_to_spend</span> <span class="o">=</span> <span class="n">max_cost_total</span>
+<a id="__codelineno-0-396" name="__codelineno-0-396"></a>
+<a id="__codelineno-0-397" name="__codelineno-0-397"></a>    <span class="n">criteria</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-398" name="__codelineno-0-398"></a>        <span class="s2">&quot;evaluations_to_spend&quot;</span><span class="p">:</span> <span class="n">evaluations_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-399" name="__codelineno-0-399"></a>        <span class="s2">&quot;max_evaluations_per_run&quot;</span><span class="p">:</span> <span class="n">max_evaluations_per_run</span><span class="p">,</span>
+<a id="__codelineno-0-400" name="__codelineno-0-400"></a>        <span class="s2">&quot;cost_to_spend&quot;</span><span class="p">:</span> <span class="n">cost_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-401" name="__codelineno-0-401"></a>        <span class="s2">&quot;fidelities_to_spend&quot;</span><span class="p">:</span> <span class="n">fidelities_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-402" name="__codelineno-0-402"></a>    <span class="p">}</span>
+<a id="__codelineno-0-403" name="__codelineno-0-403"></a>    <span class="n">set_criteria</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">criteria</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">]</span>
+<a id="__codelineno-0-404" name="__codelineno-0-404"></a>    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">set_criteria</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-405" name="__codelineno-0-405"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-406" name="__codelineno-0-406"></a>            <span class="sa">f</span><span class="s2">&quot;Multiple stopping criteria specified: </span><span class="si">{</span><span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">set_criteria</span><span class="p">)</span><span class="si">}</span><span class="s2">. &quot;</span>
+<a id="__codelineno-0-407" name="__codelineno-0-407"></a>            <span class="s2">&quot;Only one is allowed.&quot;</span>
+<a id="__codelineno-0-408" name="__codelineno-0-408"></a>        <span class="p">)</span>
+<a id="__codelineno-0-409" name="__codelineno-0-409"></a>
+<a id="__codelineno-0-410" name="__codelineno-0-410"></a>    <span class="k">if</span> <span class="n">warmstart_configs</span><span class="p">:</span>
+<a id="__codelineno-0-411" name="__codelineno-0-411"></a>        <span class="n">warmstart_neps</span><span class="p">(</span>
+<a id="__codelineno-0-412" name="__codelineno-0-412"></a>            <span class="n">root_directory</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">),</span>
+<a id="__codelineno-0-413" name="__codelineno-0-413"></a>            <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
+<a id="__codelineno-0-414" name="__codelineno-0-414"></a>            <span class="n">warmstart_configs</span><span class="o">=</span><span class="n">warmstart_configs</span><span class="p">,</span>
+<a id="__codelineno-0-415" name="__codelineno-0-415"></a>            <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span>
+<a id="__codelineno-0-416" name="__codelineno-0-416"></a>            <span class="n">overwrite_working_directory</span><span class="o">=</span><span class="n">overwrite_working_directory</span><span class="p">,</span>
+<a id="__codelineno-0-417" name="__codelineno-0-417"></a>            <span class="n">inside_neps</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-418" name="__codelineno-0-418"></a>        <span class="p">)</span>
+<a id="__codelineno-0-419" name="__codelineno-0-419"></a>        <span class="n">overwrite_working_directory</span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-420" name="__codelineno-0-420"></a>
+<a id="__codelineno-0-421" name="__codelineno-0-421"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Starting neps.run using root directory </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-422" name="__codelineno-0-422"></a>
+<a id="__codelineno-0-423" name="__codelineno-0-423"></a>    <span class="c1"># Check if the pipeline_space only contains basic HPO parameters.</span>
+<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="c1"># If yes, we convert it to a classic SearchSpace, to use with the old optimizers.</span>
+<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="c1"># If no, we use adjust_evaluation_pipeline_for_neps_space to convert the</span>
+<a id="__codelineno-0-426" name="__codelineno-0-426"></a>    <span class="c1"># pipeline_space and only use the new NEPS optimizers.</span>
+<a id="__codelineno-0-427" name="__codelineno-0-427"></a>
+<a id="__codelineno-0-428" name="__codelineno-0-428"></a>    <span class="c1"># If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space</span>
+<a id="__codelineno-0-429" name="__codelineno-0-429"></a>
+<a id="__codelineno-0-430" name="__codelineno-0-430"></a>    <span class="n">neps_classic_space_compatibility</span> <span class="o">=</span> <span class="n">check_neps_space_compatibility</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+<a id="__codelineno-0-431" name="__codelineno-0-431"></a>    <span class="k">if</span> <span class="p">(</span>
+<a id="__codelineno-0-432" name="__codelineno-0-432"></a>        <span class="n">neps_classic_space_compatibility</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;both&quot;</span><span class="p">,</span> <span class="s2">&quot;classic&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-433" name="__codelineno-0-433"></a>        <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">)</span>
+<a id="__codelineno-0-434" name="__codelineno-0-434"></a>        <span class="ow">and</span> <span class="ow">not</span> <span class="n">warmstart_configs</span>
+<a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="p">):</span>
+<a id="__codelineno-0-436" name="__codelineno-0-436"></a>        <span class="n">converted_space</span> <span class="o">=</span> <span class="n">convert_neps_to_classic_search_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
+<a id="__codelineno-0-437" name="__codelineno-0-437"></a>        <span class="k">if</span> <span class="n">converted_space</span><span class="p">:</span>
+<a id="__codelineno-0-438" name="__codelineno-0-438"></a>            <span class="n">pipeline_space</span> <span class="o">=</span> <span class="n">converted_space</span>
+<a id="__codelineno-0-439" name="__codelineno-0-439"></a>
+<a id="__codelineno-0-440" name="__codelineno-0-440"></a>    <span class="n">space</span> <span class="o">=</span> <span class="n">convert_to_space</span><span class="p">(</span><span class="n">pipeline_space</span><span class="p">)</span>
+<a id="__codelineno-0-441" name="__codelineno-0-441"></a>
+<a id="__codelineno-0-442" name="__codelineno-0-442"></a>    <span class="k">if</span> <span class="n">neps_classic_space_compatibility</span> <span class="o">==</span> <span class="s2">&quot;neps&quot;</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+<a id="__codelineno-0-443" name="__codelineno-0-443"></a>        <span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span>
+<a id="__codelineno-0-444" name="__codelineno-0-444"></a>    <span class="p">):</span>
+<a id="__codelineno-0-445" name="__codelineno-0-445"></a>        <span class="n">space</span> <span class="o">=</span> <span class="n">convert_classic_to_neps_search_space</span><span class="p">(</span><span class="n">space</span><span class="p">)</span>
+<a id="__codelineno-0-446" name="__codelineno-0-446"></a>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="c1"># Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS</span>
+<a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="c1"># algorithm, we raise an error, as the optimizer is not compatible.</span>
+<a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">)</span> <span class="ow">and</span> <span class="n">neps_classic_space_compatibility</span> <span class="o">==</span> <span class="s2">&quot;classic&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-450" name="__codelineno-0-450"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-451" name="__codelineno-0-451"></a>            <span class="s2">&quot;The provided optimizer is not compatible with this complex search space. &quot;</span>
+<a id="__codelineno-0-452" name="__codelineno-0-452"></a>            <span class="s2">&quot;Please use one that is, such as &#39;random_search&#39;, &quot;</span>
+<a id="__codelineno-0-453" name="__codelineno-0-453"></a>            <span class="s2">&quot;&#39;priorband&#39;, or &#39;complex_random_search&#39;.&quot;</span>
+<a id="__codelineno-0-454" name="__codelineno-0-454"></a>        <span class="p">)</span>
+<a id="__codelineno-0-455" name="__codelineno-0-455"></a>
+<a id="__codelineno-0-456" name="__codelineno-0-456"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">PipelineSpace</span><span class="p">):</span>
+<a id="__codelineno-0-457" name="__codelineno-0-457"></a>        <span class="k">assert</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+<a id="__codelineno-0-458" name="__codelineno-0-458"></a>        <span class="n">evaluate_pipeline</span> <span class="o">=</span> <span class="n">adjust_evaluation_pipeline_for_neps_space</span><span class="p">(</span>
+<a id="__codelineno-0-459" name="__codelineno-0-459"></a>            <span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="n">space</span>
+<a id="__codelineno-0-460" name="__codelineno-0-460"></a>        <span class="p">)</span>
+<a id="__codelineno-0-461" name="__codelineno-0-461"></a>
+<a id="__codelineno-0-462" name="__codelineno-0-462"></a>    <span class="n">_optimizer_ask</span><span class="p">,</span> <span class="n">_optimizer_info</span> <span class="o">=</span> <span class="n">load_optimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">space</span><span class="o">=</span><span class="n">space</span><span class="p">)</span>
+<a id="__codelineno-0-463" name="__codelineno-0-463"></a>
+<a id="__codelineno-0-464" name="__codelineno-0-464"></a>    <span class="n">multi_fidelity_optimizers</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-465" name="__codelineno-0-465"></a>        <span class="s2">&quot;successive_halving&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-466" name="__codelineno-0-466"></a>        <span class="s2">&quot;asha&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-467" name="__codelineno-0-467"></a>        <span class="s2">&quot;hyperband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-468" name="__codelineno-0-468"></a>        <span class="s2">&quot;async_hb&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-469" name="__codelineno-0-469"></a>        <span class="s2">&quot;ifbo&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-470" name="__codelineno-0-470"></a>        <span class="s2">&quot;priorband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-471" name="__codelineno-0-471"></a>        <span class="s2">&quot;moasha&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-472" name="__codelineno-0-472"></a>        <span class="s2">&quot;mo_hyperband&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-473" name="__codelineno-0-473"></a>        <span class="s2">&quot;primo&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-474" name="__codelineno-0-474"></a>    <span class="p">}</span>
+<a id="__codelineno-0-475" name="__codelineno-0-475"></a>
+<a id="__codelineno-0-476" name="__codelineno-0-476"></a>    <span class="n">is_multi_fidelity</span> <span class="o">=</span> <span class="n">_optimizer_info</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">multi_fidelity_optimizers</span>
+<a id="__codelineno-0-477" name="__codelineno-0-477"></a>
+<a id="__codelineno-0-478" name="__codelineno-0-478"></a>    <span class="k">if</span> <span class="n">is_multi_fidelity</span><span class="p">:</span>
+<a id="__codelineno-0-479" name="__codelineno-0-479"></a>        <span class="k">if</span> <span class="n">evaluations_to_spend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-480" name="__codelineno-0-480"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-481" name="__codelineno-0-481"></a>                <span class="s2">&quot;`evaluations_to_spend` is not allowed for multi-fidelity optimizers. &quot;</span>
+<a id="__codelineno-0-482" name="__codelineno-0-482"></a>                <span class="s2">&quot;Only `fidelities_to_spend` or `cost_to_spend`&quot;</span>
+<a id="__codelineno-0-483" name="__codelineno-0-483"></a>            <span class="p">)</span>
+<a id="__codelineno-0-484" name="__codelineno-0-484"></a>    <span class="k">elif</span> <span class="n">fidelities_to_spend</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-485" name="__codelineno-0-485"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-486" name="__codelineno-0-486"></a>            <span class="s2">&quot;`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers.&quot;</span>
+<a id="__codelineno-0-487" name="__codelineno-0-487"></a>        <span class="p">)</span>
+<a id="__codelineno-0-488" name="__codelineno-0-488"></a>
+<a id="__codelineno-0-489" name="__codelineno-0-489"></a>    <span class="n">_eval</span><span class="p">:</span> <span class="n">Callable</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a>    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a>        <span class="n">module</span><span class="p">,</span> <span class="n">funcname</span> <span class="o">=</span> <span class="n">evaluate_pipeline</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a>        <span class="n">eval_pipeline</span> <span class="o">=</span> <span class="n">dynamic_load_object</span><span class="p">(</span><span class="n">module</span><span class="p">,</span> <span class="n">funcname</span><span class="p">)</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="nb">callable</span><span class="p">(</span><span class="n">eval_pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a>                <span class="sa">f</span><span class="s2">&quot;&#39;</span><span class="si">{</span><span class="n">funcname</span><span class="si">}</span><span class="s2">&#39; in module &#39;</span><span class="si">{</span><span class="n">module</span><span class="si">}</span><span class="s2">&#39; is not a callable function.&quot;</span>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a>            <span class="p">)</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a>        <span class="n">_eval</span> <span class="o">=</span> <span class="n">eval_pipeline</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a>    <span class="k">elif</span> <span class="nb">callable</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">):</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="n">_eval</span> <span class="o">=</span> <span class="n">evaluate_pipeline</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a>    <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-501" name="__codelineno-0-501"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-502" name="__codelineno-0-502"></a>            <span class="s2">&quot;evaluate_pipeline must be a callable or a string in the format&quot;</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a>            <span class="s2">&quot;&#39;module:function&#39;.&quot;</span>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a>        <span class="p">)</span>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a>    <span class="n">_launch_runtime</span><span class="p">(</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>        <span class="n">evaluation_fn</span><span class="o">=</span><span class="n">_eval</span><span class="p">,</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a>        <span class="n">optimizer</span><span class="o">=</span><span class="n">_optimizer_ask</span><span class="p">,</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a>        <span class="n">optimizer_info</span><span class="o">=</span><span class="n">_optimizer_info</span><span class="p">,</span>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a>        <span class="n">cost_to_spend</span><span class="o">=</span><span class="n">cost_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a>        <span class="n">fidelities_to_spend</span><span class="o">=</span><span class="n">fidelities_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-512" name="__codelineno-0-512"></a>        <span class="n">optimization_dir</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">),</span>
+<a id="__codelineno-0-513" name="__codelineno-0-513"></a>        <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="n">evaluations_to_spend</span><span class="p">,</span>
+<a id="__codelineno-0-514" name="__codelineno-0-514"></a>        <span class="n">max_evaluations_for_worker</span><span class="o">=</span><span class="n">max_evaluations_per_run</span><span class="p">,</span>
+<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="n">continue_until_max_evaluation_completed</span><span class="o">=</span><span class="n">continue_until_max_evaluation_completed</span><span class="p">,</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>        <span class="n">objective_value_on_error</span><span class="o">=</span><span class="n">objective_value_on_error</span><span class="p">,</span>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="n">cost_value_on_error</span><span class="o">=</span><span class="n">cost_value_on_error</span><span class="p">,</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a>        <span class="n">ignore_errors</span><span class="o">=</span><span class="n">ignore_errors</span><span class="p">,</span>
+<a id="__codelineno-0-519" name="__codelineno-0-519"></a>        <span class="n">overwrite_optimization_dir</span><span class="o">=</span><span class="n">overwrite_root_directory</span><span class="p">,</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>        <span class="n">sample_batch_size</span><span class="o">=</span><span class="n">sample_batch_size</span><span class="p">,</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>        <span class="n">write_summary_to_disk</span><span class="o">=</span><span class="n">write_summary_to_disk</span><span class="p">,</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a>        <span class="n">worker_id</span><span class="o">=</span><span class="n">worker_id</span><span class="p">,</span>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>    <span class="p">)</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>
+<a id="__codelineno-0-525" name="__codelineno-0-525"></a>    <span class="n">post_run_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a>    <span class="n">root_directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-527" name="__codelineno-0-527"></a>    <span class="n">summary_dir</span> <span class="o">=</span> <span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;summary&quot;</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">write_summary_to_disk</span><span class="p">:</span>
+<a id="__codelineno-0-529" name="__codelineno-0-529"></a>        <span class="n">trajectory_of_improvements</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-530" name="__codelineno-0-530"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="s2">&quot;The summary folder has been created, which contains csv and txt files with&quot;</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="s2">&quot;the output of all data in the run (short.csv - only the best; full.csv - &quot;</span>
+<a id="__codelineno-0-533" name="__codelineno-0-533"></a>            <span class="s2">&quot;all runs; best_config_trajectory.txt for incumbent trajectory; and &quot;</span>
+<a id="__codelineno-0-534" name="__codelineno-0-534"></a>            <span class="s2">&quot;best_config.txt for final incumbent).&quot;</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find summary folder at: </span><span class="si">{</span><span class="n">summary_dir</span><span class="si">}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-536" name="__codelineno-0-536"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5557,8 +5565,7 @@ trial completion, holding summary info about configs and results.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\api.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-538">538</a></span>
-<span class="normal"><a href="#__codelineno-0-539">539</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-539">539</a></span>
 <span class="normal"><a href="#__codelineno-0-540">540</a></span>
 <span class="normal"><a href="#__codelineno-0-541">541</a></span>
 <span class="normal"><a href="#__codelineno-0-542">542</a></span>
@@ -5593,43 +5600,44 @@ trial completion, holding summary info about configs and results.</p>
 <span class="normal"><a href="#__codelineno-0-571">571</a></span>
 <span class="normal"><a href="#__codelineno-0-572">572</a></span>
 <span class="normal"><a href="#__codelineno-0-573">573</a></span>
-<span class="normal"><a href="#__codelineno-0-574">574</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-538" name="__codelineno-0-538"></a><span class="k">def</span><span class="w"> </span><span class="nf">save_pipeline_results</span><span class="p">(</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a>    <span class="n">user_result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="n">pipeline_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="o">*</span><span class="p">,</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>    <span class="n">post_run_summary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist the outcome of one pipeline evaluation.</span>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">        user_result (dict): Dictionary returned by evaluate_pipeline. Must</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="sd">            contain keys required by _save_results (e.g. &quot;cost&quot;,</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="sd">            &quot;objective_to_minimize&quot;, optional &quot;learning_curve&quot;, &quot;exception&quot;,</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a><span class="sd">            &quot;info_dict&quot;).</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">        pipeline_id (str): Unique identifier of the pipeline/trial whose</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">            result is being stored. Used to locate the corresponding</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">            neps.core.trial.Trial object inside the optimisation state.</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">        root_directory (Path): Root directory of the NePS run (contains</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">            optimizer_info.yaml and configs/ folder).</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">        post_run_summary (bool, optional): If True, creates a CSV file after</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">            trial completion, holding summary info about configs and results.</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="n">_save_results</span><span class="p">(</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>        <span class="n">user_result</span><span class="o">=</span><span class="n">user_result</span><span class="p">,</span>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="n">trial_id</span><span class="o">=</span><span class="n">pipeline_id</span><span class="p">,</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="n">root_directory</span><span class="p">,</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>    <span class="p">)</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>    <span class="k">if</span> <span class="n">post_run_summary</span><span class="p">:</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="n">full_frame_path</span><span class="p">,</span> <span class="n">short_path</span> <span class="o">=</span> <span class="n">post_run_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>            <span class="s2">&quot;The post run summary has been created, which is a csv file with the &quot;</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>            <span class="s2">&quot;output of all data in the run.&quot;</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find a full dataframe at: </span><span class="si">{</span><span class="n">full_frame_path</span><span class="si">}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find a quick summary at: </span><span class="si">{</span><span class="n">short_path</span><span class="si">}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-574" name="__codelineno-0-574"></a>        <span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-574">574</a></span>
+<span class="normal"><a href="#__codelineno-0-575">575</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-539" name="__codelineno-0-539"></a><span class="k">def</span><span class="w"> </span><span class="nf">save_pipeline_results</span><span class="p">(</span>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a>    <span class="n">user_result</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+<a id="__codelineno-0-541" name="__codelineno-0-541"></a>    <span class="n">pipeline_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-542" name="__codelineno-0-542"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a>    <span class="o">*</span><span class="p">,</span>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a>    <span class="n">post_run_summary</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Persist the outcome of one pipeline evaluation.</span>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a><span class="sd">        user_result (dict): Dictionary returned by evaluate_pipeline. Must</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a><span class="sd">            contain keys required by _save_results (e.g. &quot;cost&quot;,</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a><span class="sd">            &quot;objective_to_minimize&quot;, optional &quot;learning_curve&quot;, &quot;exception&quot;,</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a><span class="sd">            &quot;info_dict&quot;).</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a><span class="sd">        pipeline_id (str): Unique identifier of the pipeline/trial whose</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a><span class="sd">            result is being stored. Used to locate the corresponding</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a><span class="sd">            neps.core.trial.Trial object inside the optimisation state.</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a><span class="sd">        root_directory (Path): Root directory of the NePS run (contains</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a><span class="sd">            optimizer_info.yaml and configs/ folder).</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a><span class="sd">        post_run_summary (bool, optional): If True, creates a CSV file after</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a><span class="sd">            trial completion, holding summary info about configs and results.</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="n">_save_results</span><span class="p">(</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a>        <span class="n">user_result</span><span class="o">=</span><span class="n">user_result</span><span class="p">,</span>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="n">trial_id</span><span class="o">=</span><span class="n">pipeline_id</span><span class="p">,</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="n">root_directory</span><span class="p">,</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a>    <span class="p">)</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a>    <span class="k">if</span> <span class="n">post_run_summary</span><span class="p">:</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="n">full_frame_path</span><span class="p">,</span> <span class="n">short_path</span> <span class="o">=</span> <span class="n">post_run_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a>            <span class="s2">&quot;The post run summary has been created, which is a csv file with the &quot;</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a>            <span class="s2">&quot;output of all data in the run.&quot;</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find a full dataframe at: </span><span class="si">{</span><span class="n">full_frame_path</span><span class="si">}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">You can find a quick summary at: </span><span class="si">{</span><span class="n">short_path</span><span class="si">}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-575" name="__codelineno-0-575"></a>        <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -5904,8 +5912,7 @@ warmstarting feature and raise an error if it is not.</p>
 
             <details class="quote">
               <summary>Source code in <code>neps\api.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-577">577</a></span>
-<span class="normal"><a href="#__codelineno-0-578">578</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-578">578</a></span>
 <span class="normal"><a href="#__codelineno-0-579">579</a></span>
 <span class="normal"><a href="#__codelineno-0-580">580</a></span>
 <span class="normal"><a href="#__codelineno-0-581">581</a></span>
@@ -6090,193 +6097,194 @@ warmstarting feature and raise an error if it is not.</p>
 <span class="normal"><a href="#__codelineno-0-760">760</a></span>
 <span class="normal"><a href="#__codelineno-0-761">761</a></span>
 <span class="normal"><a href="#__codelineno-0-762">762</a></span>
-<span class="normal"><a href="#__codelineno-0-763">763</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-577" name="__codelineno-0-577"></a><span class="k">def</span><span class="w"> </span><span class="nf">warmstart_neps</span><span class="p">(</span>
-<a id="__codelineno-0-578" name="__codelineno-0-578"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
-<a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
-<a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="n">warmstart_configs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span>
-<a id="__codelineno-0-581" name="__codelineno-0-581"></a>        <span class="nb">tuple</span><span class="p">[</span>
-<a id="__codelineno-0-582" name="__codelineno-0-582"></a>            <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<span class="normal"><a href="#__codelineno-0-763">763</a></span>
+<span class="normal"><a href="#__codelineno-0-764">764</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-578" name="__codelineno-0-578"></a><span class="k">def</span><span class="w"> </span><span class="nf">warmstart_neps</span><span class="p">(</span>
+<a id="__codelineno-0-579" name="__codelineno-0-579"></a>    <span class="n">pipeline_space</span><span class="p">:</span> <span class="n">PipelineSpace</span><span class="p">,</span>
+<a id="__codelineno-0-580" name="__codelineno-0-580"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-581" name="__codelineno-0-581"></a>    <span class="n">warmstart_configs</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span>
+<a id="__codelineno-0-582" name="__codelineno-0-582"></a>        <span class="nb">tuple</span><span class="p">[</span>
 <a id="__codelineno-0-583" name="__codelineno-0-583"></a>            <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
-<a id="__codelineno-0-584" name="__codelineno-0-584"></a>            <span class="n">EvaluatePipelineReturn</span><span class="p">,</span>
-<a id="__codelineno-0-585" name="__codelineno-0-585"></a>        <span class="p">]</span>
-<a id="__codelineno-0-586" name="__codelineno-0-586"></a>    <span class="p">],</span>
-<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="n">overwrite_working_directory</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
-<a id="__codelineno-0-588" name="__codelineno-0-588"></a>    <span class="n">optimizer</span><span class="p">:</span> <span class="p">(</span>
-<a id="__codelineno-0-589" name="__codelineno-0-589"></a>        <span class="n">OptimizerChoice</span>
-<a id="__codelineno-0-590" name="__codelineno-0-590"></a>        <span class="o">|</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
-<a id="__codelineno-0-591" name="__codelineno-0-591"></a>        <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">OptimizerChoice</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
-<a id="__codelineno-0-592" name="__codelineno-0-592"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">SearchSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># Hack, while we transit</span>
-<a id="__codelineno-0-593" name="__codelineno-0-593"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">PipelineSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># from SearchSpace to</span>
-<a id="__codelineno-0-594" name="__codelineno-0-594"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># Pipeline</span>
-<a id="__codelineno-0-595" name="__codelineno-0-595"></a>        <span class="o">|</span> <span class="n">CustomOptimizer</span>
-<a id="__codelineno-0-596" name="__codelineno-0-596"></a>        <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-597" name="__codelineno-0-597"></a>    <span class="p">)</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-598" name="__codelineno-0-598"></a>    <span class="n">inside_neps</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
-<a id="__codelineno-0-599" name="__codelineno-0-599"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Warmstart the NePS state with given configurations.</span>
-<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="sd">    This is useful for testing and debugging purposes, where you want to</span>
-<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    start with a set of predefined configurations and their results.</span>
-<a id="__codelineno-0-603" name="__codelineno-0-603"></a>
-<a id="__codelineno-0-604" name="__codelineno-0-604"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">        pipeline_space: The pipeline space to use for the warmstart.</span>
-<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        root_directory: The path to the NePS state directory.</span>
-<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        warmstart_configs: A list of tuples, where each tuple contains a configuration,</span>
-<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">            environment values, and the result of the evaluation.</span>
-<a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">            The configuration is a dictionary of parameter values, the environment values</span>
-<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">            are also a dictionary, and the result is the evaluation result.</span>
-<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">        overwrite_working_directory: If True, the working directory will be deleted before</span>
-<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">            starting the warmstart.</span>
-<a id="__codelineno-0-613" name="__codelineno-0-613"></a>
-<a id="__codelineno-0-614" name="__codelineno-0-614"></a><span class="sd">            !!! warning &quot;Repeated warmstarting&quot;</span>
-<a id="__codelineno-0-615" name="__codelineno-0-615"></a>
-<a id="__codelineno-0-616" name="__codelineno-0-616"></a><span class="sd">                When not overwriting the working directory, starting multiple NePS</span>
-<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">                instances will result in an error. Instead, use warmstart_neps once</span>
-<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">                on its own and then start the NePS instances.</span>
-<a id="__codelineno-0-619" name="__codelineno-0-619"></a>
-<a id="__codelineno-0-620" name="__codelineno-0-620"></a><span class="sd">        optimizer: The optimizer to use for the warmstart. This can be a string, a</span>
-<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">            callable, or a tuple of a callable and a dictionary of parameters.</span>
-<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">            If &quot;auto&quot;, the optimizer will be chosen based on the pipeline space.</span>
-<a id="__codelineno-0-623" name="__codelineno-0-623"></a>
-<a id="__codelineno-0-624" name="__codelineno-0-624"></a><span class="sd">            !!! warning &quot;Warmstarting compatibility&quot;</span>
-<a id="__codelineno-0-625" name="__codelineno-0-625"></a>
-<a id="__codelineno-0-626" name="__codelineno-0-626"></a><span class="sd">                The warmstarting feature is only compatible with the new NEPS optimizers,</span>
-<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">                such as `neps.algorithms.neps_random_search`,</span>
-<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">                `neps.algorithms.neps_priorband`, and</span>
-<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">                `neps.algorithms.complex_random_search`.</span>
-<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">        inside_neps: If True, the function is called from within the NEPS runtime.</span>
-<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">            This is used to avoid checking the compatibility of the optimizer with the</span>
-<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">            warmstarting feature, as this is already done in the NEPS runtime.</span>
-<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">            If False, the function will check if the optimizer is compatible with the</span>
-<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">            warmstarting feature and raise an error if it is not.</span>
-<a id="__codelineno-0-635" name="__codelineno-0-635"></a>
-<a id="__codelineno-0-636" name="__codelineno-0-636"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">        ValueError: If the optimizer is not compatible with the warmstarting feature.</span>
-<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">        ValueError: If the warmstart config already exists in the root directory.</span>
-<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-640" name="__codelineno-0-640"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">inside_neps</span> <span class="ow">and</span> <span class="n">check_neps_space_compatibility</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;neps&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-641" name="__codelineno-0-641"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-642" name="__codelineno-0-642"></a>            <span class="s2">&quot;The provided optimizer is not compatible with the warmstarting feature. &quot;</span>
-<a id="__codelineno-0-643" name="__codelineno-0-643"></a>            <span class="s2">&quot;Please use one that is, such as &#39;neps_random_search&#39;, &#39;neps_priorband&#39;, &quot;</span>
-<a id="__codelineno-0-644" name="__codelineno-0-644"></a>            <span class="s2">&quot;or &#39;complex_random_search&#39;.&quot;</span>
-<a id="__codelineno-0-645" name="__codelineno-0-645"></a>        <span class="p">)</span>
-<a id="__codelineno-0-646" name="__codelineno-0-646"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-<a id="__codelineno-0-647" name="__codelineno-0-647"></a>        <span class="s2">&quot;Warmstarting neps.run with the provided&quot;</span>
-<a id="__codelineno-0-648" name="__codelineno-0-648"></a>        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">warmstart_configs</span><span class="p">)</span><span class="si">}</span><span class="s2"> configurations using root directory&quot;</span>
-<a id="__codelineno-0-649" name="__codelineno-0-649"></a>        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-650" name="__codelineno-0-650"></a>    <span class="p">)</span>
-<a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="n">root_directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-652" name="__codelineno-0-652"></a>    <span class="k">if</span> <span class="n">overwrite_working_directory</span> <span class="ow">and</span> <span class="n">root_directory</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-<a id="__codelineno-0-653" name="__codelineno-0-653"></a>        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-654" name="__codelineno-0-654"></a>    <span class="n">optimizer_ask</span><span class="p">,</span> <span class="n">optimizer_info</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">load_optimizer</span><span class="p">(</span>
-<a id="__codelineno-0-655" name="__codelineno-0-655"></a>        <span class="n">optimizer</span><span class="p">,</span> <span class="n">pipeline_space</span>
-<a id="__codelineno-0-656" name="__codelineno-0-656"></a>    <span class="p">)</span>
-<a id="__codelineno-0-657" name="__codelineno-0-657"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">NePSState</span><span class="o">.</span><span class="n">create_or_load</span><span class="p">(</span>
-<a id="__codelineno-0-658" name="__codelineno-0-658"></a>        <span class="n">root_directory</span><span class="p">,</span>
-<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="n">optimizer_info</span><span class="o">=</span><span class="n">optimizer_info</span><span class="p">,</span>
-<a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">optimizer_state</span><span class="o">=</span><span class="n">OptimizationState</span><span class="p">(</span>
-<a id="__codelineno-0-661" name="__codelineno-0-661"></a>            <span class="n">budget</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed_snapshot</span><span class="o">=</span><span class="n">SeedSnapshot</span><span class="o">.</span><span class="n">new_capture</span><span class="p">(),</span> <span class="n">shared_state</span><span class="o">=</span><span class="p">{}</span>
-<a id="__codelineno-0-662" name="__codelineno-0-662"></a>        <span class="p">),</span>
-<a id="__codelineno-0-663" name="__codelineno-0-663"></a>    <span class="p">)</span>
-<a id="__codelineno-0-664" name="__codelineno-0-664"></a>    <span class="k">for</span> <span class="n">n_config</span><span class="p">,</span> <span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">warmstart_configs</span><span class="p">):</span>
-<a id="__codelineno-0-665" name="__codelineno-0-665"></a>        <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-666" name="__codelineno-0-666"></a>            <span class="n">_</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
-<a id="__codelineno-0-667" name="__codelineno-0-667"></a>                <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
-<a id="__codelineno-0-668" name="__codelineno-0-668"></a>                <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span>
-<a id="__codelineno-0-669" name="__codelineno-0-669"></a>                    <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span>
-<a id="__codelineno-0-670" name="__codelineno-0-670"></a>                <span class="p">),</span>
-<a id="__codelineno-0-671" name="__codelineno-0-671"></a>                <span class="n">environment_values</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
-<a id="__codelineno-0-672" name="__codelineno-0-672"></a>            <span class="p">)</span>
-<a id="__codelineno-0-673" name="__codelineno-0-673"></a>        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-0-674" name="__codelineno-0-674"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-<a id="__codelineno-0-675" name="__codelineno-0-675"></a>                <span class="s2">&quot;Failed to resolve the pipeline space with the provided config:&quot;</span>
-<a id="__codelineno-0-676" name="__codelineno-0-676"></a>                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2"> and env: </span><span class="si">{</span><span class="n">env</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-677" name="__codelineno-0-677"></a>            <span class="p">)</span>
-<a id="__codelineno-0-678" name="__codelineno-0-678"></a>            <span class="k">raise</span> <span class="n">e</span>
-<a id="__codelineno-0-679" name="__codelineno-0-679"></a>
-<a id="__codelineno-0-680" name="__codelineno-0-680"></a>        <span class="n">ask_tell</span> <span class="o">=</span> <span class="n">AskAndTell</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer_ask</span><span class="p">,</span> <span class="n">worker_id</span><span class="o">=</span><span class="s2">&quot;warmstart_worker&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-681" name="__codelineno-0-681"></a>        <span class="k">if</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
-<a id="__codelineno-0-682" name="__codelineno-0-682"></a>            <span class="n">optimizer_ask</span><span class="p">,</span>
-<a id="__codelineno-0-683" name="__codelineno-0-683"></a>            <span class="n">neps</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">neps_bracket_optimizer</span><span class="o">.</span><span class="n">_NePSBracketOptimizer</span><span class="p">,</span>
-<a id="__codelineno-0-684" name="__codelineno-0-684"></a>        <span class="p">):</span>
-<a id="__codelineno-0-685" name="__codelineno-0-685"></a>            <span class="n">rung_to_fid</span> <span class="o">=</span> <span class="n">optimizer_ask</span><span class="o">.</span><span class="n">rung_to_fid</span>
-<a id="__codelineno-0-686" name="__codelineno-0-686"></a>            <span class="n">fid_to_rung</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-687" name="__codelineno-0-687"></a>                <span class="n">v</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">rung_to_fid</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="n">v</span><span class="p">)</span>
-<a id="__codelineno-0-688" name="__codelineno-0-688"></a>                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rung_to_fid</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
-<a id="__codelineno-0-689" name="__codelineno-0-689"></a>            <span class="p">}</span>
-<a id="__codelineno-0-690" name="__codelineno-0-690"></a>            <span class="n">fidelity_value</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))]</span>
-<a id="__codelineno-0-691" name="__codelineno-0-691"></a>            <span class="n">highest_rung</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
-<a id="__codelineno-0-692" name="__codelineno-0-692"></a>                <span class="p">[</span>
-<a id="__codelineno-0-693" name="__codelineno-0-693"></a>                    <span class="n">fid_to_rung</span><span class="p">[</span><span class="n">small_key</span><span class="p">]</span>
-<a id="__codelineno-0-694" name="__codelineno-0-694"></a>                    <span class="k">for</span> <span class="n">small_key</span> <span class="ow">in</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fid_to_rung</span> <span class="k">if</span> <span class="n">key</span> <span class="o">&lt;=</span> <span class="n">fidelity_value</span><span class="p">]</span>
-<a id="__codelineno-0-695" name="__codelineno-0-695"></a>                <span class="p">]</span>
-<a id="__codelineno-0-696" name="__codelineno-0-696"></a>            <span class="p">)</span>
-<a id="__codelineno-0-697" name="__codelineno-0-697"></a>            <span class="k">for</span> <span class="n">rung</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">highest_rung</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
-<a id="__codelineno-0-698" name="__codelineno-0-698"></a>                <span class="c1"># Store the config for each rung</span>
-<a id="__codelineno-0-699" name="__codelineno-0-699"></a>                <span class="n">config_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">rung</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-700" name="__codelineno-0-700"></a>
-<a id="__codelineno-0-701" name="__codelineno-0-701"></a>                <span class="c1"># Check if result is a UserResultDict by checking its structure</span>
-<a id="__codelineno-0-702" name="__codelineno-0-702"></a>                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;cost&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
-<a id="__codelineno-0-703" name="__codelineno-0-703"></a>                    <span class="c1"># This is a UserResultDict-like dictionary</span>
-<a id="__codelineno-0-704" name="__codelineno-0-704"></a>                    <span class="n">rung_result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-<a id="__codelineno-0-705" name="__codelineno-0-705"></a>                    <span class="n">rung_result</span><span class="p">[</span><span class="s2">&quot;cost&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rung_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">highest_rung</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-706" name="__codelineno-0-706"></a>                <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-707" name="__codelineno-0-707"></a>                    <span class="c1"># This is a simple numeric result</span>
-<a id="__codelineno-0-708" name="__codelineno-0-708"></a>                    <span class="n">rung_result</span> <span class="o">=</span> <span class="n">result</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-709" name="__codelineno-0-709"></a>                <span class="n">trial</span> <span class="o">=</span> <span class="n">ask_tell</span><span class="o">.</span><span class="n">tell_custom</span><span class="p">(</span>
-<a id="__codelineno-0-710" name="__codelineno-0-710"></a>                    <span class="n">config_id</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span>
-<a id="__codelineno-0-711" name="__codelineno-0-711"></a>                    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
-<a id="__codelineno-0-712" name="__codelineno-0-712"></a>                    <span class="n">result</span><span class="o">=</span><span class="n">rung_result</span><span class="p">,</span>
-<a id="__codelineno-0-713" name="__codelineno-0-713"></a>                    <span class="n">time_sampled</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-714" name="__codelineno-0-714"></a>                    <span class="n">time_started</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-715" name="__codelineno-0-715"></a>                    <span class="n">time_end</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-716" name="__codelineno-0-716"></a>                    <span class="n">previous_trial_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">rung</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">rung</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-717" name="__codelineno-0-717"></a>                    <span class="n">location</span><span class="o">=</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">,</span>
-<a id="__codelineno-0-718" name="__codelineno-0-718"></a>                <span class="p">)</span>
-<a id="__codelineno-0-719" name="__codelineno-0-719"></a>                <span class="n">trial</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">to_neps_config</span><span class="p">(</span><span class="n">resolution_context</span><span class="p">)</span>
-<a id="__codelineno-0-720" name="__codelineno-0-720"></a>                <span class="k">if</span> <span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-<a id="__codelineno-0-721" name="__codelineno-0-721"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-722" name="__codelineno-0-722"></a>                        <span class="sa">f</span><span class="s2">&quot;Warmstart config </span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2"> already exists in&quot;</span>
-<a id="__codelineno-0-723" name="__codelineno-0-723"></a>                        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">. Please remove it before running the&quot;</span>
-<a id="__codelineno-0-724" name="__codelineno-0-724"></a>                        <span class="s2">&quot; script again.&quot;</span>
-<a id="__codelineno-0-725" name="__codelineno-0-725"></a>                    <span class="p">)</span>
-<a id="__codelineno-0-726" name="__codelineno-0-726"></a>                <span class="n">TrialRepo</span><span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">store_new_trial</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
-<a id="__codelineno-0-727" name="__codelineno-0-727"></a>                <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span>
-<a id="__codelineno-0-728" name="__codelineno-0-728"></a>                <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span>
-<a id="__codelineno-0-729" name="__codelineno-0-729"></a>                <span class="n">state</span><span class="o">.</span><span class="n">lock_and_report_trial_evaluation</span><span class="p">(</span>
-<a id="__codelineno-0-730" name="__codelineno-0-730"></a>                    <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">,</span>
-<a id="__codelineno-0-731" name="__codelineno-0-731"></a>                    <span class="n">report</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="p">,</span>
-<a id="__codelineno-0-732" name="__codelineno-0-732"></a>                    <span class="n">worker_id</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span><span class="p">,</span>
-<a id="__codelineno-0-733" name="__codelineno-0-733"></a>                <span class="p">)</span>
-<a id="__codelineno-0-734" name="__codelineno-0-734"></a>                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-<a id="__codelineno-0-735" name="__codelineno-0-735"></a>                    <span class="sa">f</span><span class="s2">&quot;Warmstarted config </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> with result: </span><span class="si">{</span><span class="n">rung_result</span><span class="si">}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-736" name="__codelineno-0-736"></a>                <span class="p">)</span>
-<a id="__codelineno-0-737" name="__codelineno-0-737"></a>
-<a id="__codelineno-0-738" name="__codelineno-0-738"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-739" name="__codelineno-0-739"></a>            <span class="n">config_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">&quot;</span>
-<a id="__codelineno-0-740" name="__codelineno-0-740"></a>            <span class="n">trial</span> <span class="o">=</span> <span class="n">ask_tell</span><span class="o">.</span><span class="n">tell_custom</span><span class="p">(</span>
-<a id="__codelineno-0-741" name="__codelineno-0-741"></a>                <span class="n">config_id</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span>
-<a id="__codelineno-0-742" name="__codelineno-0-742"></a>                <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
-<a id="__codelineno-0-743" name="__codelineno-0-743"></a>                <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
-<a id="__codelineno-0-744" name="__codelineno-0-744"></a>                <span class="n">time_sampled</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-745" name="__codelineno-0-745"></a>                <span class="n">time_started</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-746" name="__codelineno-0-746"></a>                <span class="n">time_end</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
-<a id="__codelineno-0-747" name="__codelineno-0-747"></a>                <span class="n">location</span><span class="o">=</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">,</span>
-<a id="__codelineno-0-748" name="__codelineno-0-748"></a>            <span class="p">)</span>
-<a id="__codelineno-0-749" name="__codelineno-0-749"></a>            <span class="n">trial</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">to_neps_config</span><span class="p">(</span><span class="n">resolution_context</span><span class="p">)</span>
-<a id="__codelineno-0-750" name="__codelineno-0-750"></a>            <span class="k">if</span> <span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-<a id="__codelineno-0-751" name="__codelineno-0-751"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-752" name="__codelineno-0-752"></a>                    <span class="sa">f</span><span class="s2">&quot;Warmstart config </span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2"> already exists in </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">.&quot;</span>
-<a id="__codelineno-0-753" name="__codelineno-0-753"></a>                    <span class="s2">&quot; Please remove it before running the script again.&quot;</span>
-<a id="__codelineno-0-754" name="__codelineno-0-754"></a>                <span class="p">)</span>
-<a id="__codelineno-0-755" name="__codelineno-0-755"></a>            <span class="n">TrialRepo</span><span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">store_new_trial</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
-<a id="__codelineno-0-756" name="__codelineno-0-756"></a>            <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span>
-<a id="__codelineno-0-757" name="__codelineno-0-757"></a>            <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span>
-<a id="__codelineno-0-758" name="__codelineno-0-758"></a>            <span class="n">state</span><span class="o">.</span><span class="n">lock_and_report_trial_evaluation</span><span class="p">(</span>
-<a id="__codelineno-0-759" name="__codelineno-0-759"></a>                <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">,</span>
-<a id="__codelineno-0-760" name="__codelineno-0-760"></a>                <span class="n">report</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="p">,</span>
-<a id="__codelineno-0-761" name="__codelineno-0-761"></a>                <span class="n">worker_id</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span><span class="p">,</span>
-<a id="__codelineno-0-762" name="__codelineno-0-762"></a>            <span class="p">)</span>
-<a id="__codelineno-0-763" name="__codelineno-0-763"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warmstarted config </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> with result: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-584" name="__codelineno-0-584"></a>            <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span>
+<a id="__codelineno-0-585" name="__codelineno-0-585"></a>            <span class="n">EvaluatePipelineReturn</span><span class="p">,</span>
+<a id="__codelineno-0-586" name="__codelineno-0-586"></a>        <span class="p">]</span>
+<a id="__codelineno-0-587" name="__codelineno-0-587"></a>    <span class="p">],</span>
+<a id="__codelineno-0-588" name="__codelineno-0-588"></a>    <span class="n">overwrite_working_directory</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
+<a id="__codelineno-0-589" name="__codelineno-0-589"></a>    <span class="n">optimizer</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-590" name="__codelineno-0-590"></a>        <span class="n">OptimizerChoice</span>
+<a id="__codelineno-0-591" name="__codelineno-0-591"></a>        <span class="o">|</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+<a id="__codelineno-0-592" name="__codelineno-0-592"></a>        <span class="o">|</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">OptimizerChoice</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+<a id="__codelineno-0-593" name="__codelineno-0-593"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">SearchSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># Hack, while we transit</span>
+<a id="__codelineno-0-594" name="__codelineno-0-594"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">PipelineSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># from SearchSpace to</span>
+<a id="__codelineno-0-595" name="__codelineno-0-595"></a>        <span class="o">|</span> <span class="n">Callable</span><span class="p">[</span><span class="n">Concatenate</span><span class="p">[</span><span class="n">SearchSpace</span> <span class="o">|</span> <span class="n">PipelineSpace</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">AskFunction</span><span class="p">]</span>  <span class="c1"># Pipeline</span>
+<a id="__codelineno-0-596" name="__codelineno-0-596"></a>        <span class="o">|</span> <span class="n">CustomOptimizer</span>
+<a id="__codelineno-0-597" name="__codelineno-0-597"></a>        <span class="o">|</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;auto&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-598" name="__codelineno-0-598"></a>    <span class="p">)</span> <span class="o">=</span> <span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-599" name="__codelineno-0-599"></a>    <span class="n">inside_neps</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
+<a id="__codelineno-0-600" name="__codelineno-0-600"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-601" name="__codelineno-0-601"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Warmstart the NePS state with given configurations.</span>
+<a id="__codelineno-0-602" name="__codelineno-0-602"></a><span class="sd">    This is useful for testing and debugging purposes, where you want to</span>
+<a id="__codelineno-0-603" name="__codelineno-0-603"></a><span class="sd">    start with a set of predefined configurations and their results.</span>
+<a id="__codelineno-0-604" name="__codelineno-0-604"></a>
+<a id="__codelineno-0-605" name="__codelineno-0-605"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-606" name="__codelineno-0-606"></a><span class="sd">        pipeline_space: The pipeline space to use for the warmstart.</span>
+<a id="__codelineno-0-607" name="__codelineno-0-607"></a><span class="sd">        root_directory: The path to the NePS state directory.</span>
+<a id="__codelineno-0-608" name="__codelineno-0-608"></a><span class="sd">        warmstart_configs: A list of tuples, where each tuple contains a configuration,</span>
+<a id="__codelineno-0-609" name="__codelineno-0-609"></a><span class="sd">            environment values, and the result of the evaluation.</span>
+<a id="__codelineno-0-610" name="__codelineno-0-610"></a><span class="sd">            The configuration is a dictionary of parameter values, the environment values</span>
+<a id="__codelineno-0-611" name="__codelineno-0-611"></a><span class="sd">            are also a dictionary, and the result is the evaluation result.</span>
+<a id="__codelineno-0-612" name="__codelineno-0-612"></a><span class="sd">        overwrite_working_directory: If True, the working directory will be deleted before</span>
+<a id="__codelineno-0-613" name="__codelineno-0-613"></a><span class="sd">            starting the warmstart.</span>
+<a id="__codelineno-0-614" name="__codelineno-0-614"></a>
+<a id="__codelineno-0-615" name="__codelineno-0-615"></a><span class="sd">            !!! warning &quot;Repeated warmstarting&quot;</span>
+<a id="__codelineno-0-616" name="__codelineno-0-616"></a>
+<a id="__codelineno-0-617" name="__codelineno-0-617"></a><span class="sd">                When not overwriting the working directory, starting multiple NePS</span>
+<a id="__codelineno-0-618" name="__codelineno-0-618"></a><span class="sd">                instances will result in an error. Instead, use warmstart_neps once</span>
+<a id="__codelineno-0-619" name="__codelineno-0-619"></a><span class="sd">                on its own and then start the NePS instances.</span>
+<a id="__codelineno-0-620" name="__codelineno-0-620"></a>
+<a id="__codelineno-0-621" name="__codelineno-0-621"></a><span class="sd">        optimizer: The optimizer to use for the warmstart. This can be a string, a</span>
+<a id="__codelineno-0-622" name="__codelineno-0-622"></a><span class="sd">            callable, or a tuple of a callable and a dictionary of parameters.</span>
+<a id="__codelineno-0-623" name="__codelineno-0-623"></a><span class="sd">            If &quot;auto&quot;, the optimizer will be chosen based on the pipeline space.</span>
+<a id="__codelineno-0-624" name="__codelineno-0-624"></a>
+<a id="__codelineno-0-625" name="__codelineno-0-625"></a><span class="sd">            !!! warning &quot;Warmstarting compatibility&quot;</span>
+<a id="__codelineno-0-626" name="__codelineno-0-626"></a>
+<a id="__codelineno-0-627" name="__codelineno-0-627"></a><span class="sd">                The warmstarting feature is only compatible with the new NEPS optimizers,</span>
+<a id="__codelineno-0-628" name="__codelineno-0-628"></a><span class="sd">                such as `neps.algorithms.neps_random_search`,</span>
+<a id="__codelineno-0-629" name="__codelineno-0-629"></a><span class="sd">                `neps.algorithms.neps_priorband`, and</span>
+<a id="__codelineno-0-630" name="__codelineno-0-630"></a><span class="sd">                `neps.algorithms.complex_random_search`.</span>
+<a id="__codelineno-0-631" name="__codelineno-0-631"></a><span class="sd">        inside_neps: If True, the function is called from within the NEPS runtime.</span>
+<a id="__codelineno-0-632" name="__codelineno-0-632"></a><span class="sd">            This is used to avoid checking the compatibility of the optimizer with the</span>
+<a id="__codelineno-0-633" name="__codelineno-0-633"></a><span class="sd">            warmstarting feature, as this is already done in the NEPS runtime.</span>
+<a id="__codelineno-0-634" name="__codelineno-0-634"></a><span class="sd">            If False, the function will check if the optimizer is compatible with the</span>
+<a id="__codelineno-0-635" name="__codelineno-0-635"></a><span class="sd">            warmstarting feature and raise an error if it is not.</span>
+<a id="__codelineno-0-636" name="__codelineno-0-636"></a>
+<a id="__codelineno-0-637" name="__codelineno-0-637"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-638" name="__codelineno-0-638"></a><span class="sd">        ValueError: If the optimizer is not compatible with the warmstarting feature.</span>
+<a id="__codelineno-0-639" name="__codelineno-0-639"></a><span class="sd">        ValueError: If the warmstart config already exists in the root directory.</span>
+<a id="__codelineno-0-640" name="__codelineno-0-640"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-641" name="__codelineno-0-641"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">inside_neps</span> <span class="ow">and</span> <span class="n">check_neps_space_compatibility</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span> <span class="o">!=</span> <span class="s2">&quot;neps&quot;</span><span class="p">:</span>
+<a id="__codelineno-0-642" name="__codelineno-0-642"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-643" name="__codelineno-0-643"></a>            <span class="s2">&quot;The provided optimizer is not compatible with the warmstarting feature. &quot;</span>
+<a id="__codelineno-0-644" name="__codelineno-0-644"></a>            <span class="s2">&quot;Please use one that is, such as &#39;neps_random_search&#39;, &#39;neps_priorband&#39;, &quot;</span>
+<a id="__codelineno-0-645" name="__codelineno-0-645"></a>            <span class="s2">&quot;or &#39;complex_random_search&#39;.&quot;</span>
+<a id="__codelineno-0-646" name="__codelineno-0-646"></a>        <span class="p">)</span>
+<a id="__codelineno-0-647" name="__codelineno-0-647"></a>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+<a id="__codelineno-0-648" name="__codelineno-0-648"></a>        <span class="s2">&quot;Warmstarting neps.run with the provided&quot;</span>
+<a id="__codelineno-0-649" name="__codelineno-0-649"></a>        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">warmstart_configs</span><span class="p">)</span><span class="si">}</span><span class="s2"> configurations using root directory&quot;</span>
+<a id="__codelineno-0-650" name="__codelineno-0-650"></a>        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-651" name="__codelineno-0-651"></a>    <span class="p">)</span>
+<a id="__codelineno-0-652" name="__codelineno-0-652"></a>    <span class="n">root_directory</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-653" name="__codelineno-0-653"></a>    <span class="k">if</span> <span class="n">overwrite_working_directory</span> <span class="ow">and</span> <span class="n">root_directory</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+<a id="__codelineno-0-654" name="__codelineno-0-654"></a>        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
+<a id="__codelineno-0-655" name="__codelineno-0-655"></a>    <span class="n">optimizer_ask</span><span class="p">,</span> <span class="n">optimizer_info</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">load_optimizer</span><span class="p">(</span>
+<a id="__codelineno-0-656" name="__codelineno-0-656"></a>        <span class="n">optimizer</span><span class="p">,</span> <span class="n">pipeline_space</span>
+<a id="__codelineno-0-657" name="__codelineno-0-657"></a>    <span class="p">)</span>
+<a id="__codelineno-0-658" name="__codelineno-0-658"></a>    <span class="n">state</span> <span class="o">=</span> <span class="n">NePSState</span><span class="o">.</span><span class="n">create_or_load</span><span class="p">(</span>
+<a id="__codelineno-0-659" name="__codelineno-0-659"></a>        <span class="n">root_directory</span><span class="p">,</span>
+<a id="__codelineno-0-660" name="__codelineno-0-660"></a>        <span class="n">optimizer_info</span><span class="o">=</span><span class="n">optimizer_info</span><span class="p">,</span>
+<a id="__codelineno-0-661" name="__codelineno-0-661"></a>        <span class="n">optimizer_state</span><span class="o">=</span><span class="n">OptimizationState</span><span class="p">(</span>
+<a id="__codelineno-0-662" name="__codelineno-0-662"></a>            <span class="n">budget</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed_snapshot</span><span class="o">=</span><span class="n">SeedSnapshot</span><span class="o">.</span><span class="n">new_capture</span><span class="p">(),</span> <span class="n">shared_state</span><span class="o">=</span><span class="p">{}</span>
+<a id="__codelineno-0-663" name="__codelineno-0-663"></a>        <span class="p">),</span>
+<a id="__codelineno-0-664" name="__codelineno-0-664"></a>    <span class="p">)</span>
+<a id="__codelineno-0-665" name="__codelineno-0-665"></a>    <span class="k">for</span> <span class="n">n_config</span><span class="p">,</span> <span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">env</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">warmstart_configs</span><span class="p">):</span>
+<a id="__codelineno-0-666" name="__codelineno-0-666"></a>        <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-667" name="__codelineno-0-667"></a>            <span class="n">_</span><span class="p">,</span> <span class="n">resolution_context</span> <span class="o">=</span> <span class="n">neps_space</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
+<a id="__codelineno-0-668" name="__codelineno-0-668"></a>                <span class="n">pipeline</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
+<a id="__codelineno-0-669" name="__codelineno-0-669"></a>                <span class="n">domain_sampler</span><span class="o">=</span><span class="n">neps_space</span><span class="o">.</span><span class="n">OnlyPredefinedValuesSampler</span><span class="p">(</span>
+<a id="__codelineno-0-670" name="__codelineno-0-670"></a>                    <span class="n">predefined_samplings</span><span class="o">=</span><span class="n">config</span>
+<a id="__codelineno-0-671" name="__codelineno-0-671"></a>                <span class="p">),</span>
+<a id="__codelineno-0-672" name="__codelineno-0-672"></a>                <span class="n">environment_values</span><span class="o">=</span><span class="n">env</span><span class="p">,</span>
+<a id="__codelineno-0-673" name="__codelineno-0-673"></a>            <span class="p">)</span>
+<a id="__codelineno-0-674" name="__codelineno-0-674"></a>        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-0-675" name="__codelineno-0-675"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+<a id="__codelineno-0-676" name="__codelineno-0-676"></a>                <span class="s2">&quot;Failed to resolve the pipeline space with the provided config:&quot;</span>
+<a id="__codelineno-0-677" name="__codelineno-0-677"></a>                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">config</span><span class="si">}</span><span class="s2"> and env: </span><span class="si">{</span><span class="n">env</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-678" name="__codelineno-0-678"></a>            <span class="p">)</span>
+<a id="__codelineno-0-679" name="__codelineno-0-679"></a>            <span class="k">raise</span> <span class="n">e</span>
+<a id="__codelineno-0-680" name="__codelineno-0-680"></a>
+<a id="__codelineno-0-681" name="__codelineno-0-681"></a>        <span class="n">ask_tell</span> <span class="o">=</span> <span class="n">AskAndTell</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer_ask</span><span class="p">,</span> <span class="n">worker_id</span><span class="o">=</span><span class="s2">&quot;warmstart_worker&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-682" name="__codelineno-0-682"></a>        <span class="k">if</span> <span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+<a id="__codelineno-0-683" name="__codelineno-0-683"></a>            <span class="n">optimizer_ask</span><span class="p">,</span>
+<a id="__codelineno-0-684" name="__codelineno-0-684"></a>            <span class="n">neps</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">neps_bracket_optimizer</span><span class="o">.</span><span class="n">_NePSBracketOptimizer</span><span class="p">,</span>
+<a id="__codelineno-0-685" name="__codelineno-0-685"></a>        <span class="p">):</span>
+<a id="__codelineno-0-686" name="__codelineno-0-686"></a>            <span class="n">rung_to_fid</span> <span class="o">=</span> <span class="n">optimizer_ask</span><span class="o">.</span><span class="n">rung_to_fid</span>
+<a id="__codelineno-0-687" name="__codelineno-0-687"></a>            <span class="n">fid_to_rung</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-688" name="__codelineno-0-688"></a>                <span class="n">v</span><span class="p">:</span> <span class="nb">max</span><span class="p">(</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">rung_to_fid</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">val</span> <span class="o">==</span> <span class="n">v</span><span class="p">)</span>
+<a id="__codelineno-0-689" name="__codelineno-0-689"></a>                <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rung_to_fid</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+<a id="__codelineno-0-690" name="__codelineno-0-690"></a>            <span class="p">}</span>
+<a id="__codelineno-0-691" name="__codelineno-0-691"></a>            <span class="n">fidelity_value</span> <span class="o">=</span> <span class="n">env</span><span class="p">[</span><span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">pipeline_space</span><span class="o">.</span><span class="n">fidelity_attrs</span><span class="o">.</span><span class="n">keys</span><span class="p">()))]</span>
+<a id="__codelineno-0-692" name="__codelineno-0-692"></a>            <span class="n">highest_rung</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span>
+<a id="__codelineno-0-693" name="__codelineno-0-693"></a>                <span class="p">[</span>
+<a id="__codelineno-0-694" name="__codelineno-0-694"></a>                    <span class="n">fid_to_rung</span><span class="p">[</span><span class="n">small_key</span><span class="p">]</span>
+<a id="__codelineno-0-695" name="__codelineno-0-695"></a>                    <span class="k">for</span> <span class="n">small_key</span> <span class="ow">in</span> <span class="p">[</span><span class="n">key</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">fid_to_rung</span> <span class="k">if</span> <span class="n">key</span> <span class="o">&lt;=</span> <span class="n">fidelity_value</span><span class="p">]</span>
+<a id="__codelineno-0-696" name="__codelineno-0-696"></a>                <span class="p">]</span>
+<a id="__codelineno-0-697" name="__codelineno-0-697"></a>            <span class="p">)</span>
+<a id="__codelineno-0-698" name="__codelineno-0-698"></a>            <span class="k">for</span> <span class="n">rung</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">highest_rung</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+<a id="__codelineno-0-699" name="__codelineno-0-699"></a>                <span class="c1"># Store the config for each rung</span>
+<a id="__codelineno-0-700" name="__codelineno-0-700"></a>                <span class="n">config_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">rung</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-701" name="__codelineno-0-701"></a>
+<a id="__codelineno-0-702" name="__codelineno-0-702"></a>                <span class="c1"># Check if result is a UserResultDict by checking its structure</span>
+<a id="__codelineno-0-703" name="__codelineno-0-703"></a>                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">&quot;cost&quot;</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>
+<a id="__codelineno-0-704" name="__codelineno-0-704"></a>                    <span class="c1"># This is a UserResultDict-like dictionary</span>
+<a id="__codelineno-0-705" name="__codelineno-0-705"></a>                    <span class="n">rung_result</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<a id="__codelineno-0-706" name="__codelineno-0-706"></a>                    <span class="n">rung_result</span><span class="p">[</span><span class="s2">&quot;cost&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rung_result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cost&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">highest_rung</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-707" name="__codelineno-0-707"></a>                <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-708" name="__codelineno-0-708"></a>                    <span class="c1"># This is a simple numeric result</span>
+<a id="__codelineno-0-709" name="__codelineno-0-709"></a>                    <span class="n">rung_result</span> <span class="o">=</span> <span class="n">result</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-710" name="__codelineno-0-710"></a>                <span class="n">trial</span> <span class="o">=</span> <span class="n">ask_tell</span><span class="o">.</span><span class="n">tell_custom</span><span class="p">(</span>
+<a id="__codelineno-0-711" name="__codelineno-0-711"></a>                    <span class="n">config_id</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span>
+<a id="__codelineno-0-712" name="__codelineno-0-712"></a>                    <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+<a id="__codelineno-0-713" name="__codelineno-0-713"></a>                    <span class="n">result</span><span class="o">=</span><span class="n">rung_result</span><span class="p">,</span>
+<a id="__codelineno-0-714" name="__codelineno-0-714"></a>                    <span class="n">time_sampled</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-715" name="__codelineno-0-715"></a>                    <span class="n">time_started</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-716" name="__codelineno-0-716"></a>                    <span class="n">time_end</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-717" name="__codelineno-0-717"></a>                    <span class="n">previous_trial_id</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">rung</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">if</span> <span class="n">rung</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-718" name="__codelineno-0-718"></a>                    <span class="n">location</span><span class="o">=</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">,</span>
+<a id="__codelineno-0-719" name="__codelineno-0-719"></a>                <span class="p">)</span>
+<a id="__codelineno-0-720" name="__codelineno-0-720"></a>                <span class="n">trial</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">to_neps_config</span><span class="p">(</span><span class="n">resolution_context</span><span class="p">)</span>
+<a id="__codelineno-0-721" name="__codelineno-0-721"></a>                <span class="k">if</span> <span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+<a id="__codelineno-0-722" name="__codelineno-0-722"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-723" name="__codelineno-0-723"></a>                        <span class="sa">f</span><span class="s2">&quot;Warmstart config </span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2"> already exists in&quot;</span>
+<a id="__codelineno-0-724" name="__codelineno-0-724"></a>                        <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">. Please remove it before running the&quot;</span>
+<a id="__codelineno-0-725" name="__codelineno-0-725"></a>                        <span class="s2">&quot; script again.&quot;</span>
+<a id="__codelineno-0-726" name="__codelineno-0-726"></a>                    <span class="p">)</span>
+<a id="__codelineno-0-727" name="__codelineno-0-727"></a>                <span class="n">TrialRepo</span><span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">store_new_trial</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
+<a id="__codelineno-0-728" name="__codelineno-0-728"></a>                <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span>
+<a id="__codelineno-0-729" name="__codelineno-0-729"></a>                <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span>
+<a id="__codelineno-0-730" name="__codelineno-0-730"></a>                <span class="n">state</span><span class="o">.</span><span class="n">lock_and_report_trial_evaluation</span><span class="p">(</span>
+<a id="__codelineno-0-731" name="__codelineno-0-731"></a>                    <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">,</span>
+<a id="__codelineno-0-732" name="__codelineno-0-732"></a>                    <span class="n">report</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="p">,</span>
+<a id="__codelineno-0-733" name="__codelineno-0-733"></a>                    <span class="n">worker_id</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span><span class="p">,</span>
+<a id="__codelineno-0-734" name="__codelineno-0-734"></a>                <span class="p">)</span>
+<a id="__codelineno-0-735" name="__codelineno-0-735"></a>                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+<a id="__codelineno-0-736" name="__codelineno-0-736"></a>                    <span class="sa">f</span><span class="s2">&quot;Warmstarted config </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> with result: </span><span class="si">{</span><span class="n">rung_result</span><span class="si">}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-737" name="__codelineno-0-737"></a>                <span class="p">)</span>
+<a id="__codelineno-0-738" name="__codelineno-0-738"></a>
+<a id="__codelineno-0-739" name="__codelineno-0-739"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-740" name="__codelineno-0-740"></a>            <span class="n">config_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2">&quot;</span>
+<a id="__codelineno-0-741" name="__codelineno-0-741"></a>            <span class="n">trial</span> <span class="o">=</span> <span class="n">ask_tell</span><span class="o">.</span><span class="n">tell_custom</span><span class="p">(</span>
+<a id="__codelineno-0-742" name="__codelineno-0-742"></a>                <span class="n">config_id</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span>
+<a id="__codelineno-0-743" name="__codelineno-0-743"></a>                <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+<a id="__codelineno-0-744" name="__codelineno-0-744"></a>                <span class="n">result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
+<a id="__codelineno-0-745" name="__codelineno-0-745"></a>                <span class="n">time_sampled</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-746" name="__codelineno-0-746"></a>                <span class="n">time_started</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-747" name="__codelineno-0-747"></a>                <span class="n">time_end</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">(),</span>
+<a id="__codelineno-0-748" name="__codelineno-0-748"></a>                <span class="n">location</span><span class="o">=</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">,</span>
+<a id="__codelineno-0-749" name="__codelineno-0-749"></a>            <span class="p">)</span>
+<a id="__codelineno-0-750" name="__codelineno-0-750"></a>            <span class="n">trial</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">NepsCompatConverter</span><span class="o">.</span><span class="n">to_neps_config</span><span class="p">(</span><span class="n">resolution_context</span><span class="p">)</span>
+<a id="__codelineno-0-751" name="__codelineno-0-751"></a>            <span class="k">if</span> <span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="n">config_path</span><span class="p">)</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
+<a id="__codelineno-0-752" name="__codelineno-0-752"></a>                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-753" name="__codelineno-0-753"></a>                    <span class="sa">f</span><span class="s2">&quot;Warmstart config </span><span class="si">{</span><span class="n">n_config</span><span class="si">}</span><span class="s2"> already exists in </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span><span class="s2">.&quot;</span>
+<a id="__codelineno-0-754" name="__codelineno-0-754"></a>                    <span class="s2">&quot; Please remove it before running the script again.&quot;</span>
+<a id="__codelineno-0-755" name="__codelineno-0-755"></a>                <span class="p">)</span>
+<a id="__codelineno-0-756" name="__codelineno-0-756"></a>            <span class="n">TrialRepo</span><span class="p">(</span><span class="n">root_directory</span> <span class="o">/</span> <span class="s2">&quot;configs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">store_new_trial</span><span class="p">(</span><span class="n">trial</span><span class="p">)</span>
+<a id="__codelineno-0-757" name="__codelineno-0-757"></a>            <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span>
+<a id="__codelineno-0-758" name="__codelineno-0-758"></a>            <span class="k">assert</span> <span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span>
+<a id="__codelineno-0-759" name="__codelineno-0-759"></a>            <span class="n">state</span><span class="o">.</span><span class="n">lock_and_report_trial_evaluation</span><span class="p">(</span>
+<a id="__codelineno-0-760" name="__codelineno-0-760"></a>                <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">,</span>
+<a id="__codelineno-0-761" name="__codelineno-0-761"></a>                <span class="n">report</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="p">,</span>
+<a id="__codelineno-0-762" name="__codelineno-0-762"></a>                <span class="n">worker_id</span><span class="o">=</span><span class="n">trial</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">evaluating_worker_id</span><span class="p">,</span>
+<a id="__codelineno-0-763" name="__codelineno-0-763"></a>            <span class="p">)</span>
+<a id="__codelineno-0-764" name="__codelineno-0-764"></a>            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Warmstarted config </span><span class="si">{</span><span class="n">config_path</span><span class="si">}</span><span class="s2"> with result: </span><span class="si">{</span><span class="n">result</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
