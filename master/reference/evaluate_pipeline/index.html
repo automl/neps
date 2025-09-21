@@ -697,15 +697,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun" class="md-nav__link">
-    <span class="md-ellipsis">
-      * when using async approach, one worker, may create as many trials as possible, of course that in Slurm or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set max_evaluations_per_run when calling neps.run.
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#4-extra-injected-arguments" class="md-nav__link">
     <span class="md-ellipsis">
       4 Extra injected arguments
@@ -3822,14 +3813,14 @@
 
 
 
-<h1 id="the-evaluate_pipeline-function">The <code>evaluate_pipeline</code> function<a class="headerlink" href="#the-evaluate_pipeline-function" title="Permanent link">#</a></h1>
+<h1 id="the-evaluate_pipeline-function">The <code>evaluate_pipeline</code> function<a class="headerlink" href="#the-evaluate_pipeline-function" title="Permanent link">#</a></h1>
 <blockquote>
 <p><strong>TL;DR</strong>
 <em>Sync</em>: return a scalar or a dict ⟶ NePS records it automatically.
 <em>Async</em>: return <code>None</code>, launch a job, and call <code>neps.save_pipeline_results()</code> when the job finishes.</p>
 </blockquote>
 <hr />
-<h2 id="1-return-types">1 Return types<a class="headerlink" href="#1-return-types" title="Permanent link">#</a></h2>
+<h2 id="1-return-types">1 Return types<a class="headerlink" href="#1-return-types" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -3851,13 +3842,13 @@
 </tr>
 <tr>
 <td><strong><code>None</code></strong></td>
-<td>you launch the job elsewhere (SLURM, k8s …)</td>
-<td><em>see § 3 Async</em></td>
+<td>you launch the job elsewhere (SLURM, k8s …)</td>
+<td><em>see § 3 Async</em></td>
 </tr>
 </tbody>
 </table>
 <p>All other values raise a <code>TypeError</code> inside NePS.</p>
-<h2 id="2-result-dictionary-keys">2 Result dictionary keys<a class="headerlink" href="#2-result-dictionary-keys" title="Permanent link">#</a></h2>
+<h2 id="2-result-dictionary-keys">2 Result dictionary keys<a class="headerlink" href="#2-result-dictionary-keys" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -3874,8 +3865,8 @@
 </tr>
 <tr>
 <td><code>cost</code></td>
-<td>wall‑clock, GPU‑hours, … — only if you passed <code>cost_to_spend</code> to <code>neps.run</code></td>
-<td>yes <em>iff</em> cost budget enabled</td>
+<td>wall‑clock, GPU‑hours, … — only if you passed <code>cost_to_spend</code> to <code>neps.run</code></td>
+<td>yes <em>iff</em> cost budget enabled</td>
 </tr>
 <tr>
 <td><code>learning_curve</code></td>
@@ -3895,11 +3886,11 @@
 </tbody>
 </table>
 <blockquote>
-<p><strong>Tip</strong>  Return exactly what you need; extra keys are preserved in the trial’s <code>report.yaml</code>.</p>
+<p><strong>Tip</strong>  Return exactly what you need; extra keys are preserved in the trial’s <code>report.yaml</code>.</p>
 </blockquote>
 <hr />
-<h2 id="3-asynchronous-evaluation-advanced">3 Asynchronous evaluation (advanced)<a class="headerlink" href="#3-asynchronous-evaluation-advanced" title="Permanent link">#</a></h2>
-<h3 id="31-design">3.1 Design<a class="headerlink" href="#31-design" title="Permanent link">#</a></h3>
+<h2 id="3-asynchronous-evaluation-advanced">3 Asynchronous evaluation (advanced)<a class="headerlink" href="#3-asynchronous-evaluation-advanced" title="Permanent link">#</a></h2>
+<h3 id="31-design">3.1 Design<a class="headerlink" href="#31-design" title="Permanent link">#</a></h3>
 <ol>
 <li>
 <p><strong>The Python side</strong> (your <code>evaluate_pipeline</code> function)</p>
@@ -3919,8 +3910,8 @@
 </code></pre></div>
 <p>when it finishes.
    This writes <code>report.yaml</code> and marks the trial <em>SUCCESS</em> / <em>CRASHED</em>.</p>
-<h3 id="32-code-walkthrough">3.2 Code walk‑through<a class="headerlink" href="#32-code-walkthrough" title="Permanent link">#</a></h3>
-<p><code>submit.py</code> – called by NePS synchronously</p>
+<h3 id="32-code-walkthrough">3.2 Code walk‑through<a class="headerlink" href="#32-code-walkthrough" title="Permanent link">#</a></h3>
+<p><code>submit.py</code> – called by NePS synchronously</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -3932,7 +3923,7 @@
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">optimizer</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">):</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="c1"># 1) write a Slurm script</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="c1"># 1) write a Slurm script</span>
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">script</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;&quot;&quot;#!/bin/bash</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="s2">#SBATCH --time=0-00:10</span>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="s2">#SBATCH --job-name=trial_</span><span class="si">{</span><span class="n">pipeline_id</span><span class="si">}</span>
@@ -3947,14 +3938,14 @@
 <a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="s2">       --root_dir </span><span class="si">{</span><span class="n">root_directory</span><span class="si">}</span>
 <a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>
-<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="c1"># 2) submit and RETURN None (async)</span>
+<a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a>    <span class="c1"># 2) submit and RETURN None (async)</span>
 <a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a>    <span class="n">script_path</span> <span class="o">=</span> <span class="n">pipeline_directory</span> <span class="o">/</span> <span class="s2">&quot;submit.sh&quot;</span>
 <a id="__codelineno-1-29" name="__codelineno-1-29" href="#__codelineno-1-29"></a>    <span class="n">script_path</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">script</span><span class="p">)</span>
 <a id="__codelineno-1-30" name="__codelineno-1-30" href="#__codelineno-1-30"></a>    <span class="n">os</span><span class="o">.</span><span class="n">system</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;sbatch </span><span class="si">{</span><span class="n">script_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <a id="__codelineno-1-31" name="__codelineno-1-31" href="#__codelineno-1-31"></a>
-<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># ⟵ signals async mode</span>
+<a id="__codelineno-1-32" name="__codelineno-1-32" href="#__codelineno-1-32"></a>    <span class="k">return</span> <span class="kc">None</span>  <span class="c1"># ⟵ signals async mode</span>
 </code></pre></div>
-<p><code>run_pipeline.py</code> – executed on the compute node</p>
+<p><code>run_pipeline.py</code> – executed on the compute node</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span><span class="o">,</span><span class="w"> </span><span class="nn">json</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">neps</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
@@ -3987,15 +3978,18 @@
 <a id="__codelineno-2-30" name="__codelineno-2-30" href="#__codelineno-2-30"></a><span class="p">)</span>
 </code></pre></div>
 <p>the default value for <code>post_run_summary</code> is True, if you want to prevent any summary creation, you should specify in the arguments.</p>
-<h3 id="33-why-this-matters">3.3 Why this matters<a class="headerlink" href="#33-why-this-matters" title="Permanent link">#</a></h3>
+<h3 id="33-why-this-matters">3.3 Why this matters<a class="headerlink" href="#33-why-this-matters" title="Permanent link">#</a></h3>
 <ul>
 <li>No worker idles while your job is in the queue ➜ better throughput.</li>
 <li>Crashes inside the job still mark the trial <em>CRASHED</em> instead of hanging.</li>
 <li>Compatible with Successive‑Halving/ASHA — NePS just waits for <code>report.yaml</code>.</li>
 </ul>
 <h3 id="34-common-pitfalls">3.4 Common pitfalls<a class="headerlink" href="#34-common-pitfalls" title="Permanent link">#</a></h3>
-<h2 id="when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun">* when using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>max_evaluations_per_run</code> when calling <code>neps.run</code>.<a class="headerlink" href="#when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun" title="Permanent link">#</a></h2>
-<h2 id="4-extra-injected-arguments">4 Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
+<ul>
+<li>when using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>max_evaluations_per_run</code> when calling <code>neps.run</code>.</li>
+</ul>
+<hr />
+<h2 id="4-extra-injected-arguments">4 Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
@@ -4024,7 +4018,7 @@
 </table>
 <p>Use them to handle warm‑starts, logging and result persistence.</p>
 <hr />
-<h2 id="5-checklist">5  Checklist<a class="headerlink" href="#5-checklist" title="Permanent link">#</a></h2>
+<h2 id="5-checklist">5 Checklist<a class="headerlink" href="#5-checklist" title="Permanent link">#</a></h2>
 <ul>
 <li>[x] Return scalar <strong>or</strong> dict <strong>or</strong> <code>None</code>.</li>
 <li>[x] Include <code>cost</code> when using cost budgets.</li>
