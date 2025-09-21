@@ -25,6 +25,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Cache uv wheelhouse
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
+          # restore-keys: |
+            # uv-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('**/pyproject.toml') }}
       - name: install the latest version uv
         uses: astral-sh/setup-uv@v5
         with:
@@ -35,4 +42,3 @@ jobs:
           cache-dependency-glob: "**/pyproject.toml"
       - name: run tests
         run: uv run --all-extras pytest -m ""  # Run all markers
-
