@@ -57,6 +57,20 @@ cat_with_prior = neps.Categorical(choices=("A", "B", "C"), prior=0, prior_confid
 
 For more details on how to use priors, see the [Priors](../reference/search_algorithms/landing_page_algo.md#what-are-priors) section.
 
+!!! info "Adding and removing parameters from **NePS Spaces**"
+
+    To add or remove parameters from a `PipelineSpace` after its definition, you can use the `+` operator or the `add()` and `remove()` methods. Mind you, these methods do NOT modify the existing space in-place, but return a new instance with the modifications:
+
+    ```python
+    space = MySpace()
+    # Adding a new parameter, this will appear as param_n where n is the next available index
+    space = space + neps.Float(min_value=0.01, max_value=0.1)
+    # Or using the add() method, this allows you to specify a name
+    space = space.add(neps.Integer(min_value=5, max_value=15), name="new_int_param")
+    # Removing a parameter by its name
+    space = space.remove("cat_param")
+    ```
+
 ## 3. Constructing Architecture Spaces
 
 Additionally, **NePS spaces** can describe **complex (hierarchical) architectures** using:
