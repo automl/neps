@@ -17,7 +17,8 @@ T = TypeVar("T")
 
 
 class _Unset:
-    pass
+    def __repr__(self) -> str:
+        return "<UNSET>"
 
 
 _UNSET = _Unset()
@@ -85,6 +86,11 @@ class Fidelity(Resolvable, Generic[T]):
     def __str__(self) -> str:
         """Get a string representation of the fidelity."""
         return f"Fidelity({self._domain.__str__()})"
+
+    def __eq__(self, other: Fidelity | object) -> bool:
+        if not isinstance(other, Fidelity):
+            raise ValueError("__eq__ only available to compare to Fidelity objects.")
+        return self._domain == other._domain
 
     @property
     def min_value(self) -> int | float:
@@ -159,12 +165,13 @@ class PipelineSpace(Resolvable):
         attrs = {}
 
         for attr_name, attr_value in vars(self.__class__).items():
-            if attr_name.startswith("_") or callable(attr_value):
+            if attr_name.startswith("_") or callable(attr_value) or attr_value is None:
                 continue
+            # Skip if this parameter has been marked as removed
             attrs[attr_name] = attr_value
 
         for attr_name, attr_value in vars(self).items():
-            if attr_name.startswith("_") or callable(attr_value):
+            if attr_name.startswith("_") or callable(attr_value) or attr_value is None:
                 continue
             attrs[attr_name] = attr_value
 
@@ -205,6 +212,115 @@ class PipelineSpace(Resolvable):
             if not k.startswith("_") and not callable(v)
         )
         return f"PipelineSpace {self.__class__.__name__} with parameters:\n\t{attrs}"
+
+    def __add__(
+        self,
+        other: (
+            Integer
+            | Float
+            | Categorical
+            | Operation
+            | Resampled
+            | Repeated
+            | PipelineSpace
+        ),
+        name: str | None = None,
+    ) -> PipelineSpace:
+        """Add a new parameter to the pipeline.
+
+        Args:
+            other: The parameter to be added, which can be an Integer, Float,
+                Categorical, Operation, Resampled, Repeated, or PipelineSpace.
+            name: The name of the parameter to be added. If None, a default name will be
+                generated.
+
+        Returns:
+            A new PipelineSpace instance with the added parameter.
+
+        Raises:
+            ValueError: If the parameter is not of a supported type or if a parameter
+                with the same name already exists in the pipeline.
+        """
+        if isinstance(other, PipelineSpace):
+            new_space = self
+            for exist_name, value in other.get_attrs().items():
+                new_space = new_space.__add__(value, exist_name)
+            return new_space
+
+        if not isinstance(
+            other, Integer | Float | Categorical | Operation | Resampled | Repeated
+        ):
+            raise ValueError(
+                "Can only add Integer, Float, Categorical, Operation, Resampled,"
+                f" Repeated or PipelineSpace, got {other!r}."
+            )
+        param_name = name if name else f"param_{len(self.get_attrs()) + 1}"
+
+        class NewSpace(PipelineSpace):
+            pass
+
+        NewSpace.__name__ = self.__class__.__name__
+
+        new_pipeline = NewSpace()
+        for exist_name, value in self.get_attrs().items():
+            setattr(new_pipeline, exist_name, value)
+            if exist_name == param_name and not value == other:
+                raise ValueError(
+                    f"A different parameter with the name {param_name!r} already exists"
+                    " in the pipeline:\n"
+                    f" {value}\n"
+                    f" {other}"
+                )
+        if not hasattr(new_pipeline, param_name):
+            setattr(new_pipeline, param_name, other)
+        return new_pipeline
+
+    def add(
+        self,
+        new_param: Integer | Float | Categorical | Operation | Resampled | Repeated,
+        name: str | None = None,
+    ) -> PipelineSpace:
+        """Add a new parameter to the pipeline. This is NOT an in-place operation.
+
+        Args:
+            new_param: The parameter to be added, which can be an Integer, Float,
+                Categorical, Operation, Resampled, or Repeated domain.
+            name: The name of the parameter to be added. If None, a default name will
+                be generated.
+
+        Returns:
+            A NEW PipelineSpace with the added parameter.
+        """
+        return self.__add__(new_param, name)
+
+    def remove(self, name: str) -> PipelineSpace:
+        """Remove a parameter from the pipeline by its name. This is NOT an in-place
+            operation.
+
+        Args:
+            name: The name of the parameter to be removed.
+
+        Returns:
+            A NEW PipelineSpace without the removed parameter.
+
+        Raises:
+            ValueError: If no parameter with the specified name exists in the pipeline.
+        """
+        if name not in self.get_attrs():
+            raise ValueError(
+                f"No parameter with the name {name!r} exists in the pipeline."
+            )
+
+        class NewSpace(PipelineSpace):
+            pass
+
+        NewSpace.__name__ = self.__class__.__name__
+        new_pipeline = NewSpace()
+        for exist_name, value in self.get_attrs().items():
+            if exist_name != name:
+                setattr(new_pipeline, exist_name, value)
+
+        return new_pipeline
 
 
 class ConfidenceLevel(enum.Enum):
@@ -462,6 +578,15 @@ class Categorical(Domain[int], Generic[T]):
         string += ")"
         return string
 
+    def __eq__(self, other: Categorical | object) -> bool:
+        if not isinstance(other, Categorical):
+            raise ValueError("__eq__ only available to compare to Categorical objects.")
+        return (
+            self.prior == other.prior
+            and self.prior_confidence == other.prior_confidence
+            and self.choices == other.choices
+        )
+
     @property
     def min_value(self) -> int:
         """Get the minimum value of the categorical domain.
@@ -648,6 +773,17 @@ class Float(Domain[float]):
         string += ")"
         return string
 
+    def __eq__(self, other: Float | object) -> bool:
+        if not isinstance(other, Float):
+            raise ValueError("__eq__ only available to compare to Float objects.")
+        return (
+            self._prior == other._prior
+            and self._prior_confidence == other._prior_confidence
+            and self.min_value == other.min_value
+            and self.max_value == other.max_value
+            and self._log == other._log
+        )
+
     @property
     def min_value(self) -> float:
         """Get the minimum value of the floating-point domain.
@@ -832,6 +968,17 @@ class Integer(Domain[int]):
         string += ")"
         return string
 
+    def __eq__(self, other: Integer | object) -> bool:
+        if not isinstance(other, Integer):
+            raise ValueError("__eq__ only available to compare to Integer objects.")
+        return (
+            self._prior == other._prior
+            and self._prior_confidence == other._prior_confidence
+            and self.min_value == other.min_value
+            and self.max_value == other.max_value
+            and self._log == other._log
+        )
+
     @property
     def min_value(self) -> int:
         """Get the minimum value of the integer domain.
@@ -1006,6 +1153,15 @@ class Operation(Resolvable):
         return (
             f"Operation(operator={self._operator!s}, args={self._args!s},"
             f" kwargs={self._kwargs!s})"
+        )
+
+    def __eq__(self, other: Operation | object) -> bool:
+        if not isinstance(other, Operation):
+            raise ValueError("__eq__ only available to compare to Operation objects.")
+        return (
+            self.operator == other.operator
+            and self.args == other.args
+            and self.kwargs == other.kwargs
         )
 
     @property

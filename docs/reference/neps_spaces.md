@@ -87,6 +87,8 @@ Operation also allow for (keyword-)arguments to be defined, including other para
 
 ```python
 
+    batch_size = neps.Categorical(choices=(16, 32, 64))
+
     _layer_size = neps.Integer(min_value=80, max_value=100)
 
     hidden_layer = neps.Operation(
@@ -100,6 +102,27 @@ Operation also allow for (keyword-)arguments to be defined, including other para
 ```
 
 This can be used for efficient architecture search by defining cells and blocks of operations, that make up a neural network.
+The `evaluate_pipeline` function will receive the sampled operations as Callables, which can be used to instantiate the model:
+
+```python
+def evaluate_pipeline(
+    activation_function: torch.nn.Module,
+    batch_size: int,
+    hidden_layer: torch.nn.Linear):
+
+    # Instantiate the model using the sampled operations
+    model = torch.nn.Sequential(
+        torch.nn.Flatten(),
+        hidden_layer,
+        activation_function,
+        torch.nn.Linear(in_features=hidden_layer.out_features, out_features=10)
+    )
+
+    # Use the model for training and return the validation accuracy
+    model.train(batch_size=batch_size, ...)
+    return model.evaluate(...).accuracy
+
+```
 
 ??? abstract "Structural Space-compatible optimizers"
 
@@ -118,6 +141,7 @@ Until now all parameters are sampled once and their value used for all occurrenc
 With `neps.Resampled` you can reuse a parameter, even themselves recursively, but with a new value each time:
 
 ```python
+class ResampledSpace(neps.PipelineSpace):
     float_param = neps.Float(min_value=0, max_value=1)
 
     # The resampled parameter will have the same range but will be sampled
@@ -128,11 +152,12 @@ With `neps.Resampled` you can reuse a parameter, even themselves recursively, bu
 This is especially useful for defining complex architectures, where e.g. a cell block is defined and then resampled multiple times to create a neural network architecture:
 
 ```python
-
+class CNN_Space(neps.PipelineSpace):
     _kernel_size = neps.Integer(min_value=5, max_value=8)
 
     # Define a cell block that can be resampled
     # It will resample a new kernel size from _kernel_size each time
+    # Each instance will be identically but independently sampled
     _cell_block = neps.Operation(
         operator=torch.nn.Conv2d,
         kwargs={"kernel_size": neps.Resampled(source=_kernel_size)}
@@ -144,6 +169,11 @@ This is especially useful for defining complex architectures, where e.g. a cell 
         neps.Resampled(_cell_block),
         neps.Resampled(_cell_block),
     )
+
+def evaluate_pipeline(cnn: torch.nn.Module):
+    # Use the cnn model for training and return the validation accuracy
+    cnn.train(...)
+    return cnn.evaluate(...).accuracy
 ```
 
 ??? info "Self- and future references"
