@@ -15,17 +15,18 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+from neps.optimizers.neps_priorband import NePSPriorBandSampler
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.sampling import (
+    DomainSampler,
     OnlyPredefinedValuesSampler,
     PriorOrFallbackSampler,
     RandomSampler,
 )
 
 if TYPE_CHECKING:
-    from neps.optimizers.neps_priorband import NePSPriorBandSampler
     from neps.optimizers.utils.brackets import Bracket
     from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.state.optimizer import BudgetInfo
@@ -58,7 +59,7 @@ class _NePSBracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
 
     """The sampler used to generate new trials."""
-    sampler: NePSPriorBandSampler
+    sampler: NePSPriorBandSampler | DomainSampler
 
     def __call__(  # noqa: C901
         self,
@@ -133,7 +134,16 @@ class _NePSBracketOptimizer:
 
             # We need to sample for a new rung.
             case SampleAction(rung=rung):
-                config = self.sampler.sample_config(table, rung=rung)
+                if isinstance(self.sampler, NePSPriorBandSampler):
+                    config = self.sampler.sample_config(table, rung=rung)
+                elif isinstance(self.sampler, DomainSampler):
+                    _, resolution_context = neps_space.resolve(
+                        self.space, domain_sampler=self.sampler
+                    )
+                    config = neps_space.NepsCompatConverter.to_neps_config(
+                        resolution_context
+                    )
+                    config = dict(**config)
                 config = self._convert_to_another_rung(config=config, rung=rung)
                 return SampledConfig(
                     id=f"{nxt_id}_rung_{rung}",

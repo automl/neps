@@ -55,6 +55,11 @@ from neps.space.neps_spaces.parameters import (
     PipelineSpace,
     Resolvable,
 )
+from neps.space.neps_spaces.sampling import (
+    DomainSampler,
+    PriorOrFallbackSampler,
+    RandomSampler,
+)
 from neps.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
@@ -1528,7 +1533,7 @@ def _neps_bracket_optimizer(
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["priorband"],
+    sampler: Literal["priorband", "uniform", "prior"],
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
     inc_ratio: float = 0.9,
@@ -1605,7 +1610,7 @@ def _neps_bracket_optimizer(
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 
-    _sampler: NePSPriorBandSampler
+    _sampler: NePSPriorBandSampler | DomainSampler
     match sampler:
         case "priorband":
             _sampler = NePSPriorBandSampler(
@@ -1616,6 +1621,12 @@ def _neps_bracket_optimizer(
                 ),
                 fid_bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
                 inc_ratio=inc_ratio,
+            )
+        case "uniform":
+            _sampler = RandomSampler({})
+        case "prior":
+            _sampler = PriorOrFallbackSampler(
+                fallback_sampler=RandomSampler({}), always_use_prior=False
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
