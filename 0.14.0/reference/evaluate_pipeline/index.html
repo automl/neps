@@ -697,15 +697,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun" class="md-nav__link">
-    <span class="md-ellipsis">
-      * when using async approach, one worker, may create as many trials as possible, of course that in Slurm or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set max_evaluations_per_run when calling neps.run.
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#4-extra-injected-arguments" class="md-nav__link">
     <span class="md-ellipsis">
       4 Extra injected arguments
@@ -3736,7 +3727,9 @@
 <li>Compatible with Successive‑Halving/ASHA — NePS just waits for <code>report.yaml</code>.</li>
 </ul>
 <h3 id="34-common-pitfalls">3.4 Common pitfalls<a class="headerlink" href="#34-common-pitfalls" title="Permanent link">#</a></h3>
-<h2 id="when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun">* when using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>max_evaluations_per_run</code> when calling <code>neps.run</code>.<a class="headerlink" href="#when-using-async-approach-one-worker-may-create-as-many-trials-as-possible-of-course-that-in-slurm-or-other-workload-managers-its-impossible-to-overload-the-system-because-of-limitations-set-for-each-user-but-if-you-want-to-control-resources-used-for-optimization-its-crucial-to-set-max_evaluations_per_run-when-calling-nepsrun" title="Permanent link">#</a></h2>
+<ul>
+<li>When using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>max_evaluations_per_run</code> when calling <code>neps.run</code>.</li>
+</ul>
 <h2 id="4-extra-injected-arguments">4  Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
 <table>
 <thead>
