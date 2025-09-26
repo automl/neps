@@ -135,8 +135,8 @@ the default value for `post_run_summary` is True, if you want to prevent any sum
 * Compatible with Successive‑Halving/ASHA — NePS just waits for `report.yaml`.
 
 ### 3.4 Common pitfalls
-* when using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `max_evaluations_per_run` when calling `neps.run`.
----
+
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `max_evaluations_per_run` when calling `neps.run`.
 
 ## 4  Extra injected arguments
 
