@@ -48,6 +48,7 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
+from neps.space.neps_spaces.neps_space import PipelineSpace, NepsCompatConverter
 from neps.status.status import _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
 
@@ -351,7 +352,13 @@ class DefaultWorker:
         if self.settings.fidelities_to_spend is not None and hasattr(
             self.optimizer, "space"
         ):
-            fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
+            if not isinstance(self.optimizer.space, PipelineSpace):
+                fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
+            else:
+                fidelity_name = next(
+                    iter(self.optimizer.space.fidelity_attrs.keys())
+                )
+                fidelity_name = f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
             count = sum(
                 trial.config[fidelity_name]
                 for _, trial in trials.items()

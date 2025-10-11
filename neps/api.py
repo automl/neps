@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 import neps
-import neps.optimizers.algorithms
-import neps.optimizers.neps_bracket_optimizer
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.runtime import _launch_runtime, _save_results
@@ -438,7 +436,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
             pipeline_space = converted_space
-
     space = convert_to_space(pipeline_space)
 
     if neps_classic_space_compatibility == "neps" and not isinstance(
@@ -473,6 +470,11 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         "moasha",
         "mo_hyperband",
         "primo",
+        "neps_priorband",
+        "neps_random_search",
+        "complex_random_search",
+        "neps_bracket_optimizer",
+        "neps_hyperband",
     }
 
     is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers

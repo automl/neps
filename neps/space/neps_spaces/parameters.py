@@ -89,8 +89,12 @@ class Fidelity(Resolvable, Generic[T]):
 
     def __eq__(self, other: Fidelity | object) -> bool:
         if not isinstance(other, Fidelity):
-            raise ValueError("__eq__ only available to compare to Fidelity objects.")
+            return False
         return self._domain == other._domain
+
+    def __hash__(self) -> int:
+        """Get the hash of the fidelity based on its domain."""
+        return hash(self._domain)
 
     @property
     def min_value(self) -> int | float:
@@ -580,12 +584,25 @@ class Categorical(Domain[int], Generic[T]):
 
     def __eq__(self, other: Categorical | object) -> bool:
         if not isinstance(other, Categorical):
-            raise ValueError("__eq__ only available to compare to Categorical objects.")
+            return False
         return (
             self.prior == other.prior
             and self.prior_confidence == other.prior_confidence
             and self.choices == other.choices
         )
+
+    def __hash__(self) -> int:
+        """Get the hash of the categorical domain based on its attributes."""
+        try:
+            choices_hash = hash(self.choices)
+        except TypeError:
+            # If choices are not hashable (e.g., contain mutable objects), use id
+            choices_hash = id(self.choices)
+        return hash((
+            self._prior if self._prior is not _UNSET else None,
+            self._prior_confidence if self._prior_confidence is not _UNSET else None,
+            choices_hash,
+        ))
 
     @property
     def min_value(self) -> int:
@@ -775,7 +792,7 @@ class Float(Domain[float]):
 
     def __eq__(self, other: Float | object) -> bool:
         if not isinstance(other, Float):
-            raise ValueError("__eq__ only available to compare to Float objects.")
+            return False
         return (
             self._prior == other._prior
             and self._prior_confidence == other._prior_confidence
@@ -783,6 +800,16 @@ class Float(Domain[float]):
             and self.max_value == other.max_value
             and self._log == other._log
         )
+
+    def __hash__(self) -> int:
+        """Get the hash of the float domain based on its attributes."""
+        return hash((
+            self._prior if self._prior is not _UNSET else None,
+            self._prior_confidence if self._prior_confidence is not _UNSET else None,
+            self.min_value,
+            self.max_value,
+            self._log,
+        ))
 
     @property
     def min_value(self) -> float:
@@ -970,7 +997,9 @@ class Integer(Domain[int]):
 
     def __eq__(self, other: Integer | object) -> bool:
         if not isinstance(other, Integer):
-            raise ValueError("__eq__ only available to compare to Integer objects.")
+            print(other)
+            print(self)
+            return False
         return (
             self._prior == other._prior
             and self._prior_confidence == other._prior_confidence
@@ -978,6 +1007,16 @@ class Integer(Domain[int]):
             and self.max_value == other.max_value
             and self._log == other._log
         )
+
+    def __hash__(self) -> int:
+        """Get the hash of the integer domain based on its attributes."""
+        return hash((
+            self._prior if self._prior is not _UNSET else None,
+            self._prior_confidence if self._prior_confidence is not _UNSET else None,
+            self.min_value,
+            self.max_value,
+            self._log,
+        ))
 
     @property
     def min_value(self) -> int:
@@ -1157,7 +1196,7 @@ class Operation(Resolvable):
 
     def __eq__(self, other: Operation | object) -> bool:
         if not isinstance(other, Operation):
-            raise ValueError("__eq__ only available to compare to Operation objects.")
+            return False
         return (
             self.operator == other.operator
             and self.args == other.args
