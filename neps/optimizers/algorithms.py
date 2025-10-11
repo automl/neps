@@ -171,10 +171,12 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["uniform", "prior", "priorband", "mopriorsampler"]
-    | PriorBandSampler
-    | MOPriorSampler
-    | Sampler,
+    sampler: (
+        Literal["uniform", "prior", "priorband", "mopriorsampler"]
+        | PriorBandSampler
+        | MOPriorSampler
+        | Sampler
+    ),
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
@@ -468,7 +470,9 @@ def random_search(
         pipeline_space: The search space to sample from.
         use_priors: Whether to use priors when sampling.
         ignore_fidelity: Whether to ignore fidelity when sampling.
-            In this case, the max fidelity is always used.
+            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to True will randomly sample from the fidelity like any other
+            parameter.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -535,7 +539,8 @@ def random_search(
 def grid_search(
     pipeline_space: SearchSpace | PipelineSpace,
     *,
-    ignore_fidelity: bool = False,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    size_per_numerical_dimension: int = 5,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -543,7 +548,11 @@ def grid_search(
     Args:
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore fidelity when sampling.
-            In this case, the max fidelity is always used.
+            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to True will make a grid over the fidelity like any other
+            parameter.
+        size_per_numerical_dimension: The number of points to use per numerical
+            dimension when discretizing the space.
     """
     from neps.optimizers.utils.grid import make_grid
 
@@ -552,23 +561,95 @@ def grid_search(
         if converted_space is not None:
             pipeline_space = converted_space
         else:
-            raise ValueError(
-                "This optimizer only supports HPO search spaces, please use a NePS"
-                " space-compatible optimizer."
+            return neps_grid_search(
+                pipeline_space,
+                ignore_fidelity=ignore_fidelity,
+                size_per_numerical_dimension=size_per_numerical_dimension,
             )
 
     if any(
         parameter.prior is not None for parameter in pipeline_space.searchables.values()
     ):
-        raise ValueError("Grid search does not support priors.")
+        logger.warning("Grid search does not support priors, they will be ignored.")
     if ignore_fidelity and pipeline_space.fidelity is None:
         logger.warning(
             "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
             " search space. Consider setting ignore_fidelity to False."
         )
+    if not ignore_fidelity and pipeline_space.fidelity is not None:
+        raise ValueError(
+            "Fidelities are not supported for GridSearch natively. Consider setting the"
+            " fidelity to a constant value, or setting ignore_fidelity to True to sample"
+            " from it like any other parameter or 'highest fidelity' to always sample at"
+            f" max fidelity. Got fidelity: {pipeline_space.fidelities} "
+        )
 
     return GridSearch(
-        configs_list=make_grid(pipeline_space, ignore_fidelity=ignore_fidelity)
+        configs_list=make_grid(
+            pipeline_space,
+            ignore_fidelity=ignore_fidelity,
+            size_per_numerical_hp=size_per_numerical_dimension,
+        )
+    )
+
+
+def neps_grid_search(
+    pipeline_space: PipelineSpace,
+    *,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    size_per_numerical_dimension: int = 5,
+) -> GridSearch:
+    """A simple grid search algorithm which discretizes the search
+    space and evaluates all possible configurations.
+
+    Args:
+        pipeline_space: The search space to sample from.
+        ignore_fidelity: Whether to ignore fidelity when sampling.
+            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to True will make a grid over the fidelity like any other
+            parameter.
+        size_per_numerical_dimension: The number of points to use per numerical
+            dimension when discretizing the space.
+    """
+    from neps.optimizers.utils.grid import make_grid
+
+    if not isinstance(pipeline_space, PipelineSpace):
+        raise ValueError(
+            "This optimizer only supports NePS spaces, please use a classic"
+            " search space-compatible optimizer."
+        )
+    parameters = pipeline_space.get_attrs().values()
+    non_fid_parameters = [
+        parameter
+        for parameter in parameters
+        if parameter not in pipeline_space.fidelity_attrs.values()
+    ]
+    if any(
+        parameter.has_prior  # type: ignore
+        for parameter in non_fid_parameters
+        if isinstance(parameter, Resolvable)
+        and isinstance(parameter, Integer | Float | Categorical)
+    ):
+        logger.warning("Grid search does not support priors, they will be ignored.")
+    if not pipeline_space.fidelity_attrs and ignore_fidelity:
+        logger.warning(
+            "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
+            " search space. Consider setting ignore_fidelity to False."
+        )
+    if pipeline_space.fidelity_attrs and not ignore_fidelity:
+        raise ValueError(
+            "Fidelities are not supported for GridSearch natively. Consider setting the"
+            " fidelity to a constant value, or setting ignore_fidelity to True to sample"
+            " from it like any other parameter or 'highest fidelity' to always sample at"
+            f" max fidelity. Got fidelity: {pipeline_space.fidelity_attrs} "
+        )
+
+    return GridSearch(
+        configs_list=make_grid(
+            pipeline_space,
+            ignore_fidelity=ignore_fidelity,
+            size_per_numerical_hp=size_per_numerical_dimension,
+        )
     )
 
 
@@ -797,7 +878,7 @@ def hyperband(
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
-) -> BracketOptimizer:
+) -> BracketOptimizer | _NePSBracketOptimizer:
     """Another bandit-based optimization algorithm that uses a _fidelity_ parameter,
     very similar to [`successive_halving`][neps.optimizers.algorithms.successive_halving],
     but hedges a bit more on the safe side, just incase your _fidelity_ parameters
@@ -844,12 +925,14 @@ def hyperband(
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
-        if converted_space is not None:
+        if converted_space:
             pipeline_space = converted_space
         else:
-            raise ValueError(
-                "This optimizer only supports HPO search spaces, please use a NePS"
-                " space-compatible optimizer."
+            return neps_hyperband(
+                pipeline_space,
+                eta=eta,
+                sampler=sampler,
+                sample_prior_first=sample_prior_first,
             )
     return _bracket_optimizer(
         pipeline_space=pipeline_space,
@@ -861,6 +944,39 @@ def hyperband(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+    )
+
+
+def neps_hyperband(
+    pipeline_space: PipelineSpace,
+    *,
+    eta: int = 3,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+) -> _NePSBracketOptimizer:
+    """
+    Hyperband optimizer for NePS search spaces.
+    Args:
+        pipeline_space: The search space to sample from.
+        eta: The reduction factor used for building brackets
+        sampler: The type of sampling procedure to use:
+
+            * If `#!python "uniform"`, samples uniformly from the space when
+                it needs to sample.
+            * If `#!python "prior"`, samples from the prior
+                distribution built from the `prior` and `prior_confidence`
+                values in the search space.
+
+        sample_prior_first: Whether to sample the prior configuration first,
+            and if so, should it be at the highest fidelity level.
+    """
+    return _neps_bracket_optimizer(
+        pipeline_space=pipeline_space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler="prior" if sampler == "prior" else "uniform",
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
     )
 
 
@@ -1716,6 +1832,7 @@ PredefinedOptimizers: Mapping[
         neps_random_search,
         complex_random_search,
         neps_priorband,
+        neps_hyperband,
     )
 }
 
@@ -1736,4 +1853,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_random_search",
     "complex_random_search",
     "neps_priorband",
+    "neps_hyperband",
 ]

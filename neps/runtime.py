@@ -35,6 +35,7 @@ from neps.exceptions import (
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
+from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
 from neps.state import (
     BudgetInfo,
     DefaultReportValues,
@@ -324,7 +325,7 @@ class DefaultWorker:
 
         return False
 
-    def _check_global_stopping_criterion(
+    def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
     ) -> str | Literal[False]:
@@ -351,7 +352,13 @@ class DefaultWorker:
         if self.settings.fidelities_to_spend is not None and hasattr(
             self.optimizer, "space"
         ):
-            fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
+            if not isinstance(self.optimizer.space, PipelineSpace):
+                fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
+            else:
+                fidelity_name = next(iter(self.optimizer.space.fidelity_attrs.keys()))
+                fidelity_name = (
+                    f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
+                )
             count = sum(
                 trial.config[fidelity_name]
                 for _, trial in trials.items()
@@ -745,7 +752,7 @@ class DefaultWorker:
 
                         best_config = self.state.all_best_configs[-1]  # Latest best
                         best_config_text = (
-                            f"# Best config:"
+                            "# Best config:"
                             f"\n\n    Config ID: {best_config['trial_id']}"
                             f"\n    Objective to minimize: {best_config['score']}"
                             f"\n    Config: {best_config['config']}"
@@ -813,7 +820,7 @@ def load_incumbent_trace(  # noqa: D103
     if state.all_best_configs:
         best_config = state.all_best_configs[-1]
         best_config_text = (
-            f"# Best config:"
+            "# Best config:"
             f"\n\n    Config ID: {best_config['trial_id']}"
             f"\n    Objective to minimize: {best_config['score']}"
             f"\n    Config: {best_config['config']}"
@@ -859,9 +866,11 @@ def _save_results(
         raise RuntimeError(f"Trial '{trial_id}' not found in '{root_directory}'")
 
     report = trial.set_complete(
-        report_as=Trial.State.SUCCESS.value
-        if result.exception is None
-        else Trial.State.CRASHED.value,
+        report_as=(
+            Trial.State.SUCCESS.value
+            if result.exception is None
+            else Trial.State.CRASHED.value
+        ),
         objective_to_minimize=result.objective_to_minimize,
         cost=result.cost,
         learning_curve=result.learning_curve,

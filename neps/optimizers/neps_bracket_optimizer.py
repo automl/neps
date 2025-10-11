@@ -61,7 +61,7 @@ class _NePSBracketOptimizer:
     """The sampler used to generate new trials."""
     sampler: NePSPriorBandSampler | DomainSampler
 
-    def __call__(  # noqa: C901
+    def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
@@ -137,10 +137,17 @@ class _NePSBracketOptimizer:
                 if isinstance(self.sampler, NePSPriorBandSampler):
                     config = self.sampler.sample_config(table, rung=rung)
                 elif isinstance(self.sampler, DomainSampler):
+                    environment_values = {}
+                    fidelity_attrs = self.space.fidelity_attrs
+                    assert len(fidelity_attrs) == 1, "TODO: [lum]"
+                    for fidelity_name, _fidelity_obj in fidelity_attrs.items():
+                        environment_values[fidelity_name] = self.rung_to_fid[rung]
                     _, resolution_context = neps_space.resolve(
-                        self.space, domain_sampler=self.sampler
+                        self.space,
+                        domain_sampler=self.sampler,
+                        environment_values=environment_values,
                     )
-                    config = neps_space.NepsCompatConverter.to_neps_config(
+                    config = neps_space.NepsCompatConverter.to_neps_config(  # type: ignore[assignment]
                         resolution_context
                     )
                     config = dict(**config)
