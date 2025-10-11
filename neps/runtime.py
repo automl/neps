@@ -328,10 +328,12 @@ class DefaultWorker:
     def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
-    ) -> str | Literal[False]:
+    ) -> tuple[str | Literal[False], dict[str, float | int]]:
+        return_dict: dict[str, float | int] = {}
+        return_string: str | Literal[False] = False
         if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
-                count = sum(
+                count_evals = sum(
                     1
                     for _, trial in trials.items()
                     if trial.metadata.state
@@ -339,10 +341,12 @@ class DefaultWorker:
                 )
             else:
                 # This indicates they have completed.
-                count = sum(1 for _, trial in trials.items() if trial.report is not None)
-
-            if count >= self.settings.evaluations_to_spend:
-                return (
+                count_evals = sum(
+                    1 for _, trial in trials.items() if trial.report is not None
+                )
+            return_dict["cumulative_evaluations"] = count_evals
+            if count_evals >= self.settings.evaluations_to_spend:
+                return_string = (
                     "The total number of evaluations has reached the maximum allowed of"
                     f" `{self.settings.evaluations_to_spend=}`."
                     " To allow more evaluations, increase this value or use a different"
@@ -359,13 +363,14 @@ class DefaultWorker:
                 fidelity_name = (
                     f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
                 )
-            count = sum(
+            count_fidelities = sum(
                 trial.config[fidelity_name]
                 for _, trial in trials.items()
                 if trial.report is not None and trial.config[fidelity_name] is not None
             )
-            if count >= self.settings.fidelities_to_spend:
-                return (
+            return_dict["cumulative_fidelities"] = count_fidelities
+            if count_fidelities >= self.settings.fidelities_to_spend:
+                return_string = (
                     "The total number of fidelity evaluations has reached the maximum"
                     f" allowed of `{self.settings.fidelities_to_spend=}`."
                     " To allow more evaluations, increase this value or use a different"
@@ -378,8 +383,9 @@ class DefaultWorker:
                 for _, trial in trials.items()
                 if trial.report is not None and trial.report.cost is not None
             )
+            return_dict["cumulative_cost"] = cost
             if cost >= self.settings.cost_to_spend:
-                return (
+                return_string = (
                     f"The maximum cost `{self.settings.cost_to_spend=}` has been"
                     " reached by all of the evaluated trials. To allow more evaluations,"
                     " increase this value or use a different stopping criterion."
@@ -392,15 +398,16 @@ class DefaultWorker:
                 if trial.report is not None
                 if trial.report.evaluation_duration is not None
             )
+            return_dict["cumulative_time"] = time_spent
             if time_spent >= self.settings.max_evaluation_time_total_seconds:
-                return (
+                return_string = (
                     "The maximum evaluation time of"
                     f" `{self.settings.max_evaluation_time_total_seconds=}` has been"
                     " reached. To allow more evaluations, increase this value or use"
                     " a different stopping criterion."
                 )
 
-        return False
+        return (return_string, return_dict)
 
     @property
     def _requires_global_stopping_criterion(self) -> bool:
@@ -428,7 +435,7 @@ class DefaultWorker:
                 trials = self.state._trial_repo.latest()
 
                 if self._requires_global_stopping_criterion:
-                    should_stop = self._check_global_stopping_criterion(trials)
+                    should_stop = self._check_global_stopping_criterion(trials)[0]
                     if should_stop is not False:
                         logger.info(should_stop)
                         return "break"
@@ -729,13 +736,26 @@ class DefaultWorker:
 
                     if self.settings.write_summary_to_disk:
                         # Store in memory for later file re-writing
-                        self.state.all_best_configs.append(
-                            {
-                                "score": self.state.new_score,
-                                "trial_id": evaluated_trial.id,
-                                "config": evaluated_trial.config,
-                            }
-                        )
+                        global_stopping_criterion = self._check_global_stopping_criterion(
+                            self.state._trial_repo.latest()
+                        )[1]
+
+                        config_dict = {
+                            "score": self.state.new_score,
+                            "trial_id": evaluated_trial.id,
+                            "config": evaluated_trial.config,
+                        }
+                        if report.cost is not None:
+                            config_dict["cost"] = report.cost
+                        for metric in (
+                            "cumulative_evaluations",
+                            "cumulative_fidelities",
+                            "cumulative_cost",
+                            "cumulative_time",
+                        ):
+                            if metric in global_stopping_criterion:
+                                config_dict[metric] = global_stopping_criterion[metric]
+                        self.state.all_best_configs.append(config_dict)
 
                         # Build trace text and best config text
                         trace_text = (
@@ -743,11 +763,41 @@ class DefaultWorker:
                             + "-" * 80
                             + "\n"
                         )
+
                         for best in self.state.all_best_configs:
                             trace_text += (
-                                f"Objective to minimize: {best['score']}\n"
                                 f"Config ID: {best['trial_id']}\n"
-                                f"Config: {best['config']}\n" + "-" * 80 + "\n"
+                                f"Objective to minimize: {best['score']}\n"
+                                + (
+                                    f"Cost: {best.get('cost', 0)}\n"
+                                    if "cost" in best
+                                    else ""
+                                )
+                                + (
+                                    "Cumulative evaluations:"
+                                    f" {best.get('cumulative_evaluations', 0)}\n"
+                                    if "cumulative_evaluations" in best
+                                    else ""
+                                )
+                                + (
+                                    "Cumulative fidelities:"
+                                    f" {best.get('cumulative_fidelities', 0)}\n"
+                                    if "cumulative_fidelities" in best
+                                    else ""
+                                )
+                                + (
+                                    f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
+                                    if "cumulative_cost" in best
+                                    else ""
+                                )
+                                + (
+                                    f"Cumulative time: {best.get('cumulative_time', 0)}\n"
+                                    if "cumulative_time" in best
+                                    else ""
+                                )
+                                + f"Config: {best['config']}\n"
+                                + "-" * 80
+                                + "\n"
                             )
 
                         best_config = self.state.all_best_configs[-1]  # Latest best
@@ -755,7 +805,34 @@ class DefaultWorker:
                             "# Best config:"
                             f"\n\n    Config ID: {best_config['trial_id']}"
                             f"\n    Objective to minimize: {best_config['score']}"
-                            f"\n    Config: {best_config['config']}"
+                            + (
+                                f"\n    Cost: {best_config['cost']}"
+                                if "cost" in best_config
+                                else ""
+                            )
+                            + (
+                                "\n    Cumulative evaluations:"
+                                f" {best_config['cumulative_evaluations']}"
+                                if "cumulative_evaluations" in best_config
+                                else ""
+                            )
+                            + (
+                                "\n    Cumulative fidelities:"
+                                f" {best_config['cumulative_fidelities']}"
+                                if "cumulative_fidelities" in best_config
+                                else ""
+                            )
+                            + (
+                                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
+                                if "cumulative_cost" in best_config
+                                else ""
+                            )
+                            + (
+                                f"\n    Cumulative time: {best_config['cumulative_time']}"
+                                if "cumulative_time" in best_config
+                                else ""
+                            )
+                            + f"\n    Config: {best_config['config']}"
                         )
 
                         # Write files from scratch

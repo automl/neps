@@ -326,6 +326,61 @@ class PipelineSpace(Resolvable):
 
         return new_pipeline
 
+    def add_prior(
+        self,
+        parameter_name: str,
+        prior: Any,
+        prior_confidence: ConfidenceLevel | Literal["low", "medium", "high"],
+    ) -> PipelineSpace:
+        """Add a prior to a parameter in the pipeline. This is NOT an in-place operation.
+
+        Args:
+            parameter_name: The name of the parameter to which the prior will be added.
+            prior: The value of the prior to be added.
+            prior_confidence: The confidence level of the prior, which can be "low",
+                "medium", or "high".
+
+        Returns:
+            A NEW PipelineSpace with the added prior.
+
+        Raises:
+            ValueError: If no parameter with the specified name exists in the pipeline
+                or if the parameter type does not support priors.
+        """
+        if parameter_name not in self.get_attrs():
+            raise ValueError(
+                f"No parameter with the name {parameter_name!r} exists in the pipeline."
+            )
+
+        class NewSpace(PipelineSpace):
+            pass
+
+        NewSpace.__name__ = self.__class__.__name__
+        new_pipeline = NewSpace()
+        for exist_name, value in self.get_attrs().items():
+            if exist_name == parameter_name:
+                if isinstance(value, Integer | Float | Categorical):
+                    if value.has_prior:
+                        raise ValueError(
+                            f"The parameter {parameter_name!r} already has a prior:"
+                            f" {value.prior!r}."
+                        )
+                    if isinstance(prior_confidence, str):
+                        prior_confidence = convert_confidence_level(prior_confidence)
+                    old_attributes = dict(value.get_attrs())
+                    old_attributes["prior"] = prior
+                    old_attributes["prior_confidence"] = prior_confidence
+                    new_value = value.from_attrs(attrs=old_attributes)
+                else:
+                    raise ValueError(
+                        f"The parameter {parameter_name!r} is of type"
+                        f" {type(value).__name__}, which does not support priors."
+                    )
+            else:
+                new_value = value
+            setattr(new_pipeline, exist_name, new_value)
+        return new_pipeline
+
 
 class ConfidenceLevel(enum.Enum):
     """Enum representing confidence levels for sampling."""
