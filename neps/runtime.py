@@ -59,6 +59,83 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
+    """Build trace text and best config text from a list of best configurations.
+
+    Args:
+        best_configs: List of best configuration dictionaries containing
+                     'trial_id', 'score', 'config', and optional metrics.
+
+    Returns:
+        Tuple of (trace_text, best_config_text) strings.
+    """
+    trace_text = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
+
+    for best in best_configs:
+        trace_text += (
+            f"Config ID: {best['trial_id']}\nObjective to minimize: {best['score']}\n"
+            + (f"Cost: {best.get('cost', 0)}\n" if "cost" in best else "")
+            + (
+                f"Cumulative evaluations: {best.get('cumulative_evaluations', 0)}\n"
+                if "cumulative_evaluations" in best
+                else ""
+            )
+            + (
+                f"Cumulative fidelities: {best.get('cumulative_fidelities', 0)}\n"
+                if "cumulative_fidelities" in best
+                else ""
+            )
+            + (
+                f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
+                if "cumulative_cost" in best
+                else ""
+            )
+            + (
+                f"Cumulative time: {best.get('cumulative_time', 0)}\n"
+                if "cumulative_time" in best
+                else ""
+            )
+            + f"Config: {best['config']}\n"
+            + "-" * 80
+            + "\n"
+        )
+
+    best_config_text = ""
+    if best_configs:
+        best_config = best_configs[-1]  # Latest best
+        best_config_text = (
+            "# Best config:"
+            f"\n\n    Config ID: {best_config['trial_id']}"
+            f"\n    Objective to minimize: {best_config['score']}"
+            + (f"\n    Cost: {best_config['cost']}" if "cost" in best_config else "")
+            + (
+                f"\n    Cumulative evaluations: {best_config['cumulative_evaluations']}"
+                if "cumulative_evaluations" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative fidelities: {best_config['cumulative_fidelities']}"
+                if "cumulative_fidelities" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
+                if "cumulative_cost" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative time: {best_config['cumulative_time']}"
+                if "cumulative_time" in best_config
+                else ""
+            )
+            + f"\n    Config: {best_config['config']}"
+        )
+
+    return trace_text, best_config_text
+
+
 _DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"
 
 
@@ -757,82 +834,9 @@ class DefaultWorker:
                                 config_dict[metric] = global_stopping_criterion[metric]
                         self.state.all_best_configs.append(config_dict)
 
-                        # Build trace text and best config text
-                        trace_text = (
-                            "Best configs and their objectives across evaluations:\n"
-                            + "-" * 80
-                            + "\n"
-                        )
-
-                        for best in self.state.all_best_configs:
-                            trace_text += (
-                                f"Config ID: {best['trial_id']}\n"
-                                f"Objective to minimize: {best['score']}\n"
-                                + (
-                                    f"Cost: {best.get('cost', 0)}\n"
-                                    if "cost" in best
-                                    else ""
-                                )
-                                + (
-                                    "Cumulative evaluations:"
-                                    f" {best.get('cumulative_evaluations', 0)}\n"
-                                    if "cumulative_evaluations" in best
-                                    else ""
-                                )
-                                + (
-                                    "Cumulative fidelities:"
-                                    f" {best.get('cumulative_fidelities', 0)}\n"
-                                    if "cumulative_fidelities" in best
-                                    else ""
-                                )
-                                + (
-                                    f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
-                                    if "cumulative_cost" in best
-                                    else ""
-                                )
-                                + (
-                                    f"Cumulative time: {best.get('cumulative_time', 0)}\n"
-                                    if "cumulative_time" in best
-                                    else ""
-                                )
-                                + f"Config: {best['config']}\n"
-                                + "-" * 80
-                                + "\n"
-                            )
-
-                        best_config = self.state.all_best_configs[-1]  # Latest best
-                        best_config_text = (
-                            "# Best config:"
-                            f"\n\n    Config ID: {best_config['trial_id']}"
-                            f"\n    Objective to minimize: {best_config['score']}"
-                            + (
-                                f"\n    Cost: {best_config['cost']}"
-                                if "cost" in best_config
-                                else ""
-                            )
-                            + (
-                                "\n    Cumulative evaluations:"
-                                f" {best_config['cumulative_evaluations']}"
-                                if "cumulative_evaluations" in best_config
-                                else ""
-                            )
-                            + (
-                                "\n    Cumulative fidelities:"
-                                f" {best_config['cumulative_fidelities']}"
-                                if "cumulative_fidelities" in best_config
-                                else ""
-                            )
-                            + (
-                                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
-                                if "cumulative_cost" in best_config
-                                else ""
-                            )
-                            + (
-                                f"\n    Cumulative time: {best_config['cumulative_time']}"
-                                if "cumulative_time" in best_config
-                                else ""
-                            )
-                            + f"\n    Config: {best_config['config']}"
+                        # Build trace text and best config text using shared function
+                        trace_text, best_config_text = _build_trace_texts(
+                            self.state.all_best_configs
                         )
 
                         # Write files from scratch
@@ -875,35 +879,18 @@ def load_incumbent_trace(  # noqa: D103
             state.new_score = evaluated_trial.report.objective_to_minimize
             if state.new_score is not None and state.new_score < _best_score_so_far:
                 _best_score_so_far = state.new_score
-                state.all_best_configs.append(
-                    {
-                        "score": state.new_score,
-                        "trial_id": evaluated_trial.metadata.id,
-                        "config": evaluated_trial.config,
-                    }
-                )
+                config_dict = {
+                    "score": state.new_score,
+                    "trial_id": evaluated_trial.metadata.id,
+                    "config": evaluated_trial.config,
+                }
+                # Add cost if available
+                if evaluated_trial.report.cost is not None:
+                    config_dict["cost"] = evaluated_trial.report.cost
+                state.all_best_configs.append(config_dict)
 
-    trace_text = (
-        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
-    )
-    for best in state.all_best_configs:
-        trace_text += (
-            f"Objective to minimize: {best['score']}\n"
-            f"Config ID: {best['trial_id']}\n"
-            f"Config: {best['config']}\n" + "-" * 80 + "\n"
-        )
-
-    best_config_text = ""
-    if state.all_best_configs:
-        best_config = state.all_best_configs[-1]
-        best_config_text = (
-            "# Best config:"
-            f"\n\n    Config ID: {best_config['trial_id']}"
-            f"\n    Objective to minimize: {best_config['score']}"
-            f"\n    Config: {best_config['config']}"
-        )
-    else:
-        best_config = None
+    # Use the shared function to build trace texts
+    trace_text, best_config_text = _build_trace_texts(state.all_best_configs)
 
     with _trace_lock:
         with improvement_trace_path.open(mode="w") as f:
