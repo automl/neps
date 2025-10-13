@@ -103,6 +103,8 @@ Discover how NePS works through these examples:
 
 - **[Benefiting NePS State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
 
+- **[Integration with TensorBoard](examples/convenience/neps_tblogger_tutorial.md)**: Discover how to leverage NePS's built-in TensorBoard support and seamlessly incorporate your own custom TensorBoard data for enhanced experiment tracking.
+
 - **[Additional NePS Examples](examples/index.md)**: Explore more examples, including various use cases and advanced configurations in NePS.
 
 ## Contributing
