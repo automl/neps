@@ -3,7 +3,7 @@ import numpy as np
 import neps
 import socket
 import os
-from neps.state.pipeline_eval import UserResultDict
+from neps import UserResultDict
 import random
 import torch
 import argparse
