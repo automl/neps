@@ -297,6 +297,54 @@ class SamplingResolutionContext:
                 f"No value is available for the environment variable {var_name!r}."
             ) from err
 
+    def was_already_resolved_with_path(self, obj: Any) -> bool:
+        """Check if the given object was already resolved with current path.
+
+        Args:
+            obj: The object to check if it was already resolved.
+
+        Returns:
+            True if the object was already resolved with current path, False otherwise.
+        """
+        current_path = ".".join(self._current_path_parts)
+        # Use object identity (id) instead of equality to ensure different instances
+        # are treated separately even if they're equal
+        cache_key = (id(obj), current_path)
+        return cache_key in self._resolved_objects
+
+    def get_resolved_with_path(self, obj: Any) -> Any:
+        """Get the resolved value for the given object with current path.
+
+        Args:
+            obj: The object for which to get the resolved value.
+
+        Returns:
+            The resolved value of the object.
+
+        Raises:
+            ValueError: If the object was not already resolved with current path.
+        """
+        current_path = ".".join(self._current_path_parts)
+        cache_key = (id(obj), current_path)
+        try:
+            return self._resolved_objects[cache_key]
+        except KeyError as err:
+            raise ValueError(
+                f"Given object was not already resolved with path {current_path!r}:"
+                f" {obj!r}"
+            ) from err
+
+    def add_resolved_with_path(self, original: Any, resolved: Any) -> None:
+        """Add a resolved object to the context with current path.
+
+        Args:
+            original: The original object that was resolved.
+            resolved: The resolved value of the original object.
+        """
+        current_path = ".".join(self._current_path_parts)
+        cache_key = (id(original), current_path)
+        self._resolved_objects[cache_key] = resolved
+
 
 class SamplingResolver:
     """A class responsible for resolving samplings in a NePS space.
@@ -386,8 +434,10 @@ class SamplingResolver:
         domain_obj: Domain,
         context: SamplingResolutionContext,
     ) -> Any:
-        if context.was_already_resolved(domain_obj):
-            return context.get_resolved(domain_obj)
+        # Use path-aware caching to ensure different parameter positions
+        # with the same domain get sampled independently
+        if context.was_already_resolved_with_path(domain_obj):
+            return context.get_resolved_with_path(domain_obj)
 
         initial_attrs = domain_obj.get_attrs()
         final_attrs = {}
@@ -410,7 +460,7 @@ class SamplingResolver:
             raise ValueError(f"Failed to sample from {resolved_domain_obj!r}.") from e
         result = self._resolve(sampled_value, "sampled_value", context)
 
-        context.add_resolved(domain_obj, result)
+        context.add_resolved_with_path(domain_obj, result)
         return result
 
     @_resolver_dispatch.register
