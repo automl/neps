@@ -25,12 +25,13 @@ neps.run(..., optimizer=(MyOpt, {"a": 1, "b": 2}))
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
+    from neps.state.pipeline_eval import UserResultDict
     from neps.state.trial import Trial
 
 
@@ -54,6 +55,13 @@ class SampledConfig:
     previous_config_id: str | None = None
 
 
+@dataclass
+class ImportedConfig:
+    id: str
+    config: Mapping[str, Any]
+    result: UserResultDict
+
+
 class AskFunction(Protocol):
     """Interface to implement the ask of optimizer."""
 
@@ -75,5 +83,21 @@ class AskFunction(Protocol):
 
         Returns:
             The sampled configuration(s)
+        """
+        ...
+
+    @abstractmethod
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        """Add a trial to the optimizer's internal state.
+
+        This is called whenever a trial is added to the neps state.
+
+        Args:
+            external_evaluations: The configs to add.
+            trials: All of the trials that are known about.
         """
         ...

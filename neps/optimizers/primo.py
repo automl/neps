@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, Sequence
+from collections.abc import (
+    Mapping,
+    Sequence,
+    Sequence as TypeSequence,
+)
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import (
+    TYPE_CHECKING,
+    Any,
+)
 
 import numpy as np
 import torch
@@ -16,7 +23,7 @@ from neps.optimizers.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
-from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -25,6 +32,7 @@ if TYPE_CHECKING:
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
     from neps.state import BudgetInfo, Trial
+    from neps.state.pipeline_eval import UserResultDict
 
 
 @dataclass
@@ -182,6 +190,28 @@ class PriMO:
             }
         )
         return SampledConfig(id=str(nxt_id), config=sampled_config)
+
+    def import_trials(
+        self,
+        external_evaluations: TypeSequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        # we can create all the imported trials with the bracket
+        # optimizer since we need the fidelity for MOASHA sampling
+        # and in the BO sampling, we remove the fidelity from the config
+        evals = []
+        for config, result in external_evaluations:
+            if self.fid_name not in config:
+                completed_config = {
+                    **config,
+                    self.fid_name: self.fid_max,
+                    **self.space.constants,
+                }
+            evals.append((completed_config, result))
+        return self.bracket_optimizer.import_trials(
+            external_evaluations=evals,
+            trials=trials,
+        )
 
     def sample_using_initial_design(
         self,

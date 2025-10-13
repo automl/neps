@@ -23,6 +23,7 @@ class NotReportedYetError(NePSError):
 class State(str, Enum):
     """The state of a trial."""
 
+    EXTERNAL = "external"
     PENDING = "pending"
     SUBMITTED = "submitted"
     EVALUATING = "evaluating"
@@ -112,6 +113,7 @@ class Trial:
     config: Mapping[str, Any]
     metadata: MetaData
     report: Report | None
+    source: Literal["run", "ask_and_tell", "imported"] = "run"
 
     @classmethod
     def new(
@@ -140,6 +142,50 @@ class Trial:
             ),
             report=None,
         )
+
+    @classmethod
+    def load_from_dict(
+        cls,
+        data: list,
+        *,
+        worker_id: str,
+    ) -> list[Self]:
+        """Load a trial from a dictionary with state EXTERNAL."""
+        trials: list[Self] = []
+        for i, imported_conf in enumerate(data):
+            info_dict = imported_conf.result.get("info_dict") or {}
+
+            trial = cls(
+                config=imported_conf.config,
+                metadata=MetaData(
+                    id=imported_conf.id,
+                    state=State.EXTERNAL,
+                    time_sampled=float("nan"),
+                    time_started=info_dict.get("time_started"),
+                    time_end=info_dict.get("time_end"),
+                    evaluation_duration=info_dict.get("evaluation_duration"),
+                    previous_trial_id=None if i == 0 else trials[i - 1].metadata.id,
+                    sampling_worker_id=worker_id,
+                    evaluating_worker_id=worker_id,
+                    location="external",
+                    previous_trial_location=None
+                    if i == 0
+                    else trials[i - 1].metadata.location,
+                ),
+                report=Report(
+                    reported_as="success",
+                    evaluation_duration=info_dict.get("evaluation_duration"),
+                    objective_to_minimize=imported_conf.result["objective_to_minimize"],
+                    cost=imported_conf.result.get("cost"),
+                    learning_curve=imported_conf.result.get("learning_curve"),
+                    extra={},
+                    err=None,
+                    tb=None,
+                ),
+                source="imported",
+            )
+            trials.append(trial)
+        return trials
 
     @property
     def id(self) -> str:

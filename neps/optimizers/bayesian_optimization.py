@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import copy
 import itertools
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import torch
@@ -20,13 +21,14 @@ from neps.optimizers.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
-from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
 
 if TYPE_CHECKING:
     from neps.sampling import Prior
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
+    from neps.state.pipeline_eval import UserResultDict
 
 
 def _pibo_exp_term(
@@ -96,7 +98,6 @@ class BayesianOptimization:
         # If fidelities exist, sample from them as normal
         # This is a bit of a hack, as we set them to max fidelity
         # afterwards, but we need the complete space to sample
-
         if self.space.fidelity is not None:
             parameters = {**self.space.searchables, **self.space.fidelities}
         else:
@@ -292,6 +293,23 @@ class BayesianOptimization:
             ]
         )
         return sampled_configs[0] if n is None else sampled_configs
+
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        trials_len = len(trials)
+        return [
+            ImportedConfig(
+                id=str(i),
+                config=copy.deepcopy(config),
+                result=copy.deepcopy(result),
+            )
+            for i, (config, result) in enumerate(
+                external_evaluations, start=trials_len + 1
+            )
+        ]
 
 
 def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:

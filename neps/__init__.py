@@ -1,4 +1,4 @@
-from neps.api import run, save_pipeline_results
+from neps.api import import_trials, run, save_pipeline_results
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -6,6 +6,7 @@ from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
 from neps.space import Categorical, Constant, Float, Integer, SearchSpace
 from neps.state import BudgetInfo, Trial
+from neps.state.pipeline_eval import UserResultDict
 from neps.status.status import status
 from neps.utils.files import load_and_merge_yamls as load_yamls
 
@@ -19,7 +20,9 @@ __all__ = [
     "SampledConfig",
     "SearchSpace",
     "Trial",
+    "UserResultDict",
     "algorithms",
+    "import_trials",
     "load_yamls",
     "plot",
     "run",

@@ -44,6 +44,8 @@ if TYPE_CHECKING:
     from neps.optimizers import OptimizerInfo
     from neps.optimizers.optimizer import AskFunction
 
+from neps.utils.common import gc_disabled
+
 logger = logging.getLogger(__name__)
 
 
@@ -328,6 +330,36 @@ class NePSState:
             with self._trial_lock.lock():
                 self._trial_repo.store_new_trial(trials)
 
+            return trials
+
+    def lock_and_import_trials(
+        self, data: list, *, worker_id: str
+    ) -> Trial | list[Trial]:
+        """Acquire the state lock and import trials from external data.
+
+        Args:
+            data: List of trial dictionaries to import.
+            worker_id: The worker ID performing the import.
+
+        Returns:
+            Trial or list of Trial objects imported.
+
+        Raises:
+            ValueError: If data is not a list or trial import fails.
+            NePSError: If storing or reporting trials fails.
+        """
+        with self._optimizer_lock.lock(), gc_disabled():
+            trials = Trial.load_from_dict(data=data, worker_id=worker_id)
+
+            with self._trial_lock.lock():
+                self._trial_repo.store_new_trial(trials)
+                for trial in trials:
+                    assert trial.report is not None
+                    self._report_trial_evaluation(
+                        trial=trial,
+                        report=trial.report,
+                        worker_id=worker_id,
+                    )
             return trials
 
     def lock_and_report_trial_evaluation(
