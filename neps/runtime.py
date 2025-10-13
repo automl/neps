@@ -640,13 +640,14 @@ class DefaultWorker:
 
         previous_trials = self.state.lock_and_read_trials()
         if len(previous_trials):
-            load_incumbent_trace(
+            self.load_incumbent_trace(
                 previous_trials,
                 _trace_lock,
                 self.state,
                 self.settings,
                 improvement_trace_path,
                 best_config_path,
+                self.optimizer,
             )
 
         _best_score_so_far = float("inf")
@@ -860,43 +861,109 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
+    def load_incumbent_trace(  # noqa: C901
+        self,
+        previous_trials: dict[str, Trial],
+        _trace_lock: FileLock,
+        state: NePSState,
+        settings: WorkerSettings,
+        improvement_trace_path: Path,
+        best_config_path: Path,
+        optimizer: AskFunction,
+    ) -> None:
+        """Load the incumbent trace from previous trials and update the state.
+        This function also computes cumulative metrics and updates the best
+        configurations.
 
-def load_incumbent_trace(  # noqa: D103
-    previous_trials: dict[str, Trial],
-    _trace_lock: FileLock,
-    state: NePSState,
-    settings: WorkerSettings,  # noqa: ARG001
-    improvement_trace_path: Path,
-    best_config_path: Path,
-) -> None:
-    _best_score_so_far = float("inf")
+        Args:
+            previous_trials (dict): A dictionary of previous trials.
+            _trace_lock (FileLock): A file lock to ensure thread-safe writing.
+            state (NePSState): The current NePS state.
+            settings (WorkerSettings): The worker settings.
+            improvement_trace_path (Path): Path to the improvement trace file.
+            best_config_path (Path): Path to the best configuration file.
+            optimizer (AskFunction): The optimizer used for sampling configurations.
+        """
+        _best_score_so_far = float("inf")
 
-    for evaluated_trial in previous_trials.values():
-        if (
-            evaluated_trial.report is not None
-            and evaluated_trial.report.objective_to_minimize is not None
-        ):
-            state.new_score = evaluated_trial.report.objective_to_minimize
-            if state.new_score is not None and state.new_score < _best_score_so_far:
-                _best_score_so_far = state.new_score
-                config_dict = {
-                    "score": state.new_score,
-                    "trial_id": evaluated_trial.metadata.id,
-                    "config": evaluated_trial.config,
-                }
-                # Add cost if available
-                if evaluated_trial.report.cost is not None:
-                    config_dict["cost"] = evaluated_trial.report.cost
-                state.all_best_configs.append(config_dict)
+        metrics = {
+            "cumulative_evaluations": 0,
+            "cumulative_fidelities": 0.0,
+            "cumulative_cost": 0.0,
+            "cumulative_time": 0.0,
+        }
+        for evaluated_trial in previous_trials.values():
+            if (
+                evaluated_trial.report is not None
+                and evaluated_trial.report.objective_to_minimize is not None
+            ):
+                metrics["cumulative_evaluations"] += 1
+                if (
+                    settings.cost_to_spend is not None
+                    and evaluated_trial.report.cost is not None
+                ):
+                    metrics["cumulative_cost"] += evaluated_trial.report.cost
+                if (
+                    (
+                        settings.max_evaluation_time_total_seconds is not None
+                        or evaluated_trial.metadata.evaluation_duration is not None
+                        or settings.max_evaluation_time_total_seconds is not None
+                    )
+                    and evaluated_trial.metadata.time_started is not None
+                    and evaluated_trial.metadata.time_end is not None
+                ):
+                    metrics["cumulative_time"] += (
+                        evaluated_trial.metadata.time_end
+                        - evaluated_trial.metadata.time_started
+                    )
 
-    # Use the shared function to build trace texts
-    trace_text, best_config_text = _build_trace_texts(state.all_best_configs)
+                if hasattr(optimizer, "space"):
+                    if not isinstance(optimizer.space, PipelineSpace):
+                        fidelity_name = next(iter(optimizer.space.fidelities.keys()))
+                    else:
+                        fidelity_name = next(iter(optimizer.space.fidelity_attrs.keys()))
+                        fidelity_name = (
+                            f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
+                        )
+                    if (
+                        fidelity_name in evaluated_trial.config
+                        and evaluated_trial.config[fidelity_name] is not None
+                    ):
+                        metrics["cumulative_fidelities"] += evaluated_trial.config[
+                            fidelity_name
+                        ]
 
-    with _trace_lock:
-        with improvement_trace_path.open(mode="w") as f:
-            f.write(trace_text)
-        with best_config_path.open(mode="w") as f:
-            f.write(best_config_text)
+                state.new_score = evaluated_trial.report.objective_to_minimize
+                if state.new_score is not None and state.new_score < _best_score_so_far:
+                    _best_score_so_far = state.new_score
+                    config_dict = {
+                        "score": state.new_score,
+                        "trial_id": evaluated_trial.metadata.id,
+                        "config": evaluated_trial.config,
+                    }
+
+                    # Add cost if available
+                    if evaluated_trial.report.cost is not None:
+                        config_dict["cost"] = evaluated_trial.report.cost
+                    state.all_best_configs.append(config_dict)
+
+                    for metric in (
+                        "cumulative_evaluations",
+                        "cumulative_fidelities",
+                        "cumulative_cost",
+                        "cumulative_time",
+                    ):
+                        if metrics[metric] > 0:
+                            config_dict[metric] = metrics[metric]
+
+        # Use the shared function to build trace texts
+        trace_text, best_config_text = _build_trace_texts(state.all_best_configs)
+
+        with _trace_lock:
+            with improvement_trace_path.open(mode="w") as f:
+                f.write(trace_text)
+            with best_config_path.open(mode="w") as f:
+                f.write(best_config_text)
 
 
 def _save_results(
