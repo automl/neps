@@ -495,7 +495,7 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
-    def _get_next_trial(self) -> Trial | Literal["break"]:
+    def _get_next_trial(self) -> Trial | Literal["break"]:  # noqa: PLR0915
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock(worker_id=self.worker_id):
             # NOTE: It's important to release the trial lock before sampling
@@ -512,8 +512,39 @@ class DefaultWorker:
                 trials = self.state._trial_repo.latest()
 
                 if self._requires_global_stopping_criterion:
-                    should_stop = self._check_global_stopping_criterion(trials)[0]
+                    should_stop, stop_dict = self._check_global_stopping_criterion(trials)
                     if should_stop is not False:
+                        # Update the best_config.txt to include the final cumulative
+                        # metrics
+                        main_dir = Path(self.state.path)
+                        summary_dir = main_dir / "summary"
+                        improvement_trace_path = (
+                            summary_dir / "best_config_trajectory.txt"
+                        )
+                        best_config_path = summary_dir / "best_config.txt"
+                        _trace_lock = FileLock(".trace.lock")
+                        _trace_lock_path = Path(str(_trace_lock.lock_file))
+                        _trace_lock_path.touch(exist_ok=True)
+
+                        with _trace_lock:
+                            trace_text, best_config_text = _build_trace_texts(
+                                self.state.all_best_configs
+                            )
+
+                            # Add final cumulative metrics to the best config text
+                            best_config_text += "\n"
+                            best_config_text += "-" * 80
+                            best_config_text += (
+                                "\nFinal cumulative metrics (Assuming completed run):"
+                            )
+                            for metric, value in stop_dict.items():
+                                best_config_text += f"\n{metric}: {value}"
+
+                            with improvement_trace_path.open(mode="w") as f:
+                                f.write(trace_text)
+
+                            with best_config_path.open(mode="w") as f:
+                                f.write(best_config_text)
                         logger.info(should_stop)
                         return "break"
 
