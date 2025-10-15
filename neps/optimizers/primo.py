@@ -201,6 +201,7 @@ class PriMO:
         # and in the BO sampling, we remove the fidelity from the config
         evals = []
         for config, result in external_evaluations:
+            completed_config = config
             if self.fid_name not in config:
                 completed_config = {
                     **config,
