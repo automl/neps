@@ -529,7 +529,7 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
     post_run_csv(root_directory)
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
-    if not write_summary_to_disk:
+    if write_summary_to_disk:
         trajectory_of_improvements(root_directory)
         logger.info(
             "The summary folder has been created, which contains csv and txt files with"

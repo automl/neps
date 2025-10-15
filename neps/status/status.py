@@ -74,12 +74,12 @@ class Summary:
         metadata_df = pd.DataFrame.from_records(
             [asdict(t.metadata) for t in trials]
         ).convert_dtypes()
-
-        return (
-            pd.concat([config_df, extra_df, report_df, metadata_df], axis="columns")
-            .set_index("id")
-            .dropna(how="all", axis="columns")
+        combined_df = pd.concat(
+            [config_df, extra_df, report_df, metadata_df], axis="columns"
         )
+        if combined_df.empty:
+            return combined_df
+        return combined_df.set_index("id").dropna(how="all", axis="columns")
 
     def completed(self) -> list[Trial]:
         """Return all trials which are in a completed state."""
@@ -347,10 +347,10 @@ def trajectory_of_improvements(
 
     df = summary.df()
 
-    if "time_sampled" not in df.columns:
+    if not df.empty and "time_sampled" not in df.columns:
         raise ValueError("Missing `time_sampled` column in summary DataFrame.")
-
-    df = df.sort_values("time_sampled")
+    if not df.empty:
+        df = df.sort_values("time_sampled")
 
     all_best_configs = []
     best_score = float("inf")

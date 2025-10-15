@@ -75,11 +75,11 @@ class _NePSBracketOptimizer:
                 case "highest_fidelity":  # fid_max
                     config = self._sample_prior(fidelity_level="max")
                     rung = max(self.rung_to_fid)
-                    return SampledConfig(id=f"1_{rung}", config=config)
+                    return SampledConfig(id=f"1_rung_{rung}", config=config)
                 case True:  # fid_min
                     config = self._sample_prior(fidelity_level="min")
                     rung = min(self.rung_to_fid)
-                    return SampledConfig(id=f"1_{rung}", config=config)
+                    return SampledConfig(id=f"1__rung_{rung}", config=config)
                 case False:
                     pass
 

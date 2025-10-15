@@ -495,7 +495,7 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
-    def _get_next_trial(self) -> Trial | Literal["break"]:  # noqa: PLR0915
+    def _get_next_trial(self) -> Trial | Literal["break"]:  # noqa: PLR0915, C901
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock(worker_id=self.worker_id):
             # NOTE: It's important to release the trial lock before sampling
@@ -514,37 +514,39 @@ class DefaultWorker:
                 if self._requires_global_stopping_criterion:
                     should_stop, stop_dict = self._check_global_stopping_criterion(trials)
                     if should_stop is not False:
-                        # Update the best_config.txt to include the final cumulative
-                        # metrics
-                        main_dir = Path(self.state.path)
-                        summary_dir = main_dir / "summary"
-                        improvement_trace_path = (
-                            summary_dir / "best_config_trajectory.txt"
-                        )
-                        best_config_path = summary_dir / "best_config.txt"
                         _trace_lock = FileLock(".trace.lock")
                         _trace_lock_path = Path(str(_trace_lock.lock_file))
                         _trace_lock_path.touch(exist_ok=True)
 
-                        with _trace_lock:
-                            trace_text, best_config_text = _build_trace_texts(
-                                self.state.all_best_configs
+                        if self.settings.write_summary_to_disk:
+                            # Update the best_config.txt to include the final cumulative
+                            # metrics
+                            main_dir = Path(self.state.path)
+                            summary_dir = main_dir / "summary"
+                            improvement_trace_path = (
+                                summary_dir / "best_config_trajectory.txt"
                             )
+                            best_config_path = summary_dir / "best_config.txt"
 
-                            # Add final cumulative metrics to the best config text
-                            best_config_text += "\n"
-                            best_config_text += "-" * 80
-                            best_config_text += (
-                                "\nFinal cumulative metrics (Assuming completed run):"
-                            )
-                            for metric, value in stop_dict.items():
-                                best_config_text += f"\n{metric}: {value}"
+                            with _trace_lock:
+                                trace_text, best_config_text = _build_trace_texts(
+                                    self.state.all_best_configs
+                                )
 
-                            with improvement_trace_path.open(mode="w") as f:
-                                f.write(trace_text)
+                                # Add final cumulative metrics to the best config text
+                                best_config_text += "\n"
+                                best_config_text += "-" * 80
+                                best_config_text += (
+                                    "\nFinal cumulative metrics (Assuming completed run):"
+                                )
+                                for metric, value in stop_dict.items():
+                                    best_config_text += f"\n{metric}: {value}"
 
-                            with best_config_path.open(mode="w") as f:
-                                f.write(best_config_text)
+                                with improvement_trace_path.open(mode="w") as f:
+                                    f.write(trace_text)
+
+                                with best_config_path.open(mode="w") as f:
+                                    f.write(best_config_text)
                         logger.info(should_stop)
                         return "break"
 
@@ -643,6 +645,15 @@ class DefaultWorker:
         _set_workers_neps_state(self.state)
 
         main_dir = Path(self.state.path)
+        summary_dir = main_dir / "summary"
+        summary_dir.mkdir(parents=True, exist_ok=True)
+        improvement_trace_path = summary_dir / "best_config_trajectory.txt"
+        improvement_trace_path.touch(exist_ok=True)
+        best_config_path = summary_dir / "best_config.txt"
+        best_config_path.touch(exist_ok=True)
+        _trace_lock = FileLock(".trace.lock")
+        _trace_lock_path = Path(str(_trace_lock.lock_file))
+        _trace_lock_path.touch(exist_ok=True)
         if self.settings.write_summary_to_disk:
             full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
 
@@ -651,17 +662,6 @@ class DefaultWorker:
                 full_df_path.parent.mkdir(parents=True, exist_ok=True)
                 full_df_path.touch(exist_ok=True)
                 short_path.touch(exist_ok=True)
-
-            summary_dir = main_dir / "summary"
-            summary_dir.mkdir(parents=True, exist_ok=True)
-
-            improvement_trace_path = summary_dir / "best_config_trajectory.txt"
-            improvement_trace_path.touch(exist_ok=True)
-            best_config_path = summary_dir / "best_config.txt"
-            best_config_path.touch(exist_ok=True)
-            _trace_lock = FileLock(".trace.lock")
-            _trace_lock_path = Path(str(_trace_lock.lock_file))
-            _trace_lock_path.touch(exist_ok=True)
 
             logger.info(
                 "Summary files can be found in the “summary” folder inside"
