@@ -140,9 +140,11 @@ class TrialRepo:
 
         return trials
 
-    def latest(self) -> dict[str, Trial]:
+    def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:
         """Get the latest trials from the cache."""
         if not self.cache_path.exists():
+            if not create_cache_if_missing:
+                return {}
             # If we end up with no cache but there are trials on disk, we need to read in.
             if any(path.name.startswith("config_") for path in self.directory.iterdir()):
                 trial_ids = self.list_trial_ids()

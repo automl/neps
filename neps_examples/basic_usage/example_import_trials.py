@@ -7,6 +7,7 @@ from neps import UserResultDict
 import random
 import torch
 import argparse
+import neps.utils
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -39,7 +40,7 @@ def get_evaluate_pipeline_func(optimizer):
                 )
                 return objective_to_minimize
     return evaluate_pipeline
-    
+
 
 def get_evaluated_trials(optimizer):
     # Each optimizer gets its own evaluated trials fixture
@@ -158,15 +159,27 @@ def run_import_trials(optimizer):
         )
     )
 
+    # here we write something 
     neps.run(
         evaluate_pipeline=get_evaluate_pipeline_func(optimizer=optimizer),
         pipeline_space=pipeline_space,
-        root_directory=f"results_{optimizer}",
+        root_directory=f"initial_results_{optimizer}",
         fidelities_to_spend=5,
         worker_id=f"worker_{optimizer}-{socket.gethostname()}-{os.getpid()}",
         optimizer=optimizer
     )
 
+    trials = neps.utils.load_trials_from_pickle(root_dir=f"initial_results_{optimizer}")
+
+    # import trials been evaluated above
+    neps.import_trials(
+        pipeline_space,
+        evaluated_trials=trials,
+        root_directory=f"results_{optimizer}",
+        optimizer=optimizer
+    )
+
+    # imort some trials evaluated in some other setup
     neps.import_trials(
         pipeline_space,
         evaluated_trials=get_evaluated_trials(optimizer),

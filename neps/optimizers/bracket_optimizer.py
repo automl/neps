@@ -421,12 +421,15 @@ class BracketOptimizer:
             else:
                 existing_id = config_to_id[config_key]
                 # check if the other config with same key has the same fidelity
-                existing_config = table.xs(existing_id, level="id")["config"].iloc[0]
-                if existing_config[self.fid_name] == config[self.fid_name]:
-                    logger.warning(
-                        f"Duplicate configuration with same fidelity found: {config}"
-                    )
+                try:
+                    existing_config = table.xs(existing_id, level="id")["config"].iloc[0]
+                    if existing_config[self.fid_name] == config[self.fid_name]:
+                        logger.warning(
+                            f"Duplicate configuration with same fidelity found: {config}"
+                        )
                     continue
+                except KeyError:
+                    pass
 
             config_id = config_to_id[config_key]
 
