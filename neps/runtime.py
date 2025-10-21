@@ -49,7 +49,7 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.status.status import _initiate_summary_csv, status
+from neps.status.status import _build_trace_texts, _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
@@ -57,83 +57,6 @@ if TYPE_CHECKING:
     from neps.optimizers.optimizer import AskFunction
 
 logger = logging.getLogger(__name__)
-
-
-def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
-    """Build trace text and best config text from a list of best configurations.
-
-    Args:
-        best_configs: List of best configuration dictionaries containing
-                     'trial_id', 'score', 'config', and optional metrics.
-
-    Returns:
-        Tuple of (trace_text, best_config_text) strings.
-    """
-    trace_text = (
-        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
-    )
-
-    for best in best_configs:
-        trace_text += (
-            f"Config ID: {best['trial_id']}\nObjective to minimize: {best['score']}\n"
-            + (f"Cost: {best.get('cost', 0)}\n" if "cost" in best else "")
-            + (
-                f"Cumulative evaluations: {best.get('cumulative_evaluations', 0)}\n"
-                if "cumulative_evaluations" in best
-                else ""
-            )
-            + (
-                f"Cumulative fidelities: {best.get('cumulative_fidelities', 0)}\n"
-                if "cumulative_fidelities" in best
-                else ""
-            )
-            + (
-                f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
-                if "cumulative_cost" in best
-                else ""
-            )
-            + (
-                f"Cumulative time: {best.get('cumulative_time', 0)}\n"
-                if "cumulative_time" in best
-                else ""
-            )
-            + f"Config: {best['config']}\n"
-            + "-" * 80
-            + "\n"
-        )
-
-    best_config_text = ""
-    if best_configs:
-        best_config = best_configs[-1]  # Latest best
-        best_config_text = (
-            "# Best config:"
-            f"\n\n    Config ID: {best_config['trial_id']}"
-            f"\n    Objective to minimize: {best_config['score']}"
-            + (f"\n    Cost: {best_config['cost']}" if "cost" in best_config else "")
-            + (
-                f"\n    Cumulative evaluations: {best_config['cumulative_evaluations']}"
-                if "cumulative_evaluations" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative fidelities: {best_config['cumulative_fidelities']}"
-                if "cumulative_fidelities" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
-                if "cumulative_cost" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative time: {best_config['cumulative_time']}"
-                if "cumulative_time" in best_config
-                else ""
-            )
-            + f"\n    Config: {best_config['config']}"
-        )
-
-    return trace_text, best_config_text
 
 
 _DDP_ENV_VAR_NAME = "NEPS_DDP_TRIAL_ID"

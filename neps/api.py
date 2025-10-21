@@ -29,7 +29,7 @@ from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
 from neps.state.neps_state import TrialRepo
 from neps.state.pipeline_eval import EvaluatePipelineReturn
-from neps.status.status import post_run_csv, trajectory_of_improvements
+from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
 
 if TYPE_CHECKING:
@@ -530,7 +530,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
     if write_summary_to_disk:
-        trajectory_of_improvements(root_directory)
         logger.info(
             "The summary folder has been created, which contains csv and txt files with"
             "the output of all data in the run (short.csv - only the best; full.csv - "
