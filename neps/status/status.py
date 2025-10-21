@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
+from neps.runtime import _build_trace_texts
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import NepsCompatConverter
 from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
@@ -354,7 +355,6 @@ def trajectory_of_improvements(
 
     all_best_configs = []
     best_score = float("inf")
-    trace_text = ""
 
     for trial_id, row in df.iterrows():
         if "objective_to_minimize" not in row or pd.isna(row["objective_to_minimize"]):
@@ -376,11 +376,8 @@ def trajectory_of_improvements(
             }
             all_best_configs.append(best)
 
-            trace_text += (
-                f"Objective to minimize: {best['score']}\n"
-                f"Config ID: {best['trial_id']}\n"
-                f"Config: {best['config']}\n" + "-" * 80 + "\n"
-            )
+    # Use the _build_trace_texts function to generate consistent trace text
+    trace_text, best_config_text = _build_trace_texts(all_best_configs)
 
     summary_dir = root_directory / "summary"
     summary_dir.mkdir(parents=True, exist_ok=True)
@@ -389,14 +386,9 @@ def trajectory_of_improvements(
         f.write(trace_text)
 
     if all_best_configs:
-        final_best = all_best_configs[-1]
         best_path = summary_dir / "best_config.txt"
         with best_path.open("w") as f:
-            f.write(
-                f"Objective to minimize: {final_best['score']}\n"
-                f"Config ID: {final_best['trial_id']}\n"
-                f"Config: {final_best['config']}\n"
-            )
+            f.write(best_config_text)
 
     return all_best_configs
 
