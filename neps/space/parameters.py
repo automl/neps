@@ -97,6 +97,10 @@ class Float:
         self.domain = Domain.floating(self.lower, self.upper, log=self.log)
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
+    def validate(self, value: Any) -> bool:
+        """Validate if a value is within the bounds of the float parameter."""
+        return isinstance(value, float | int) and self.lower <= value <= self.upper
+
 
 @dataclass
 class Integer:
@@ -190,6 +194,10 @@ class Integer:
         self.domain = Domain.integer(self.lower, self.upper, log=self.log)
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
+    def validate(self, value: Any) -> bool:
+        """Validate if a value is within the bounds of the parameter."""
+        return isinstance(value, float | int) and self.lower <= value <= self.upper
+
 
 @dataclass
 class Categorical:
@@ -252,6 +260,10 @@ class Categorical:
         self.center = self.choices[0]
         self.domain = Domain.indices(len(self.choices), is_categorical=True)
 
+    def validate(self, value: Any) -> bool:
+        """Validate if a value is one of the choices of the categorical parameter."""
+        return value in self.choices
+
 
 @dataclass
 class Constant:
@@ -282,6 +294,10 @@ class Constant:
             value itself.
         """
         return self.value
+
+    def validate(self, value: Any) -> bool:
+        """Validate if a value is the same as the constant parameter's value."""
+        return value == self.value
 
 
 Parameter: TypeAlias = Float | Integer | Categorical

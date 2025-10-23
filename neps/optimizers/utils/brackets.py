@@ -353,8 +353,9 @@ class Sync:
         # First we need all of the unique ids.
         uniq_ids = table.index.get_level_values("id").unique()
 
-        # * Why (len(uniq_ids) + K) // K?
-        #   * If we have `1` unique id, then 1 // K == 0 while (K + 1) // K == 1
+        # The formula (len(uniq_ids) + K) // K is used instead of
+        # len(uniq_ids) // K. reason: make to ensure that even if the number of
+        # unique IDs is less than K, at least one bracket is created
         N = (len(uniq_ids) + K) // K
 
         # Now we take the unique ids and split them into batches of size K

@@ -4,15 +4,18 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
+from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
 from neps.space.parsing import convert_to_space
+from neps.state import NePSState, OptimizationState, SeedSnapshot
 from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
+from neps.validation import _validate_imported_config, _validate_imported_result
 
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
@@ -20,6 +23,7 @@ if TYPE_CHECKING:
     from neps.optimizers.algorithms import CustomOptimizer
     from neps.space import Parameter, SearchSpace
     from neps.state import EvaluatePipelineReturn
+    from neps.state.pipeline_eval import UserResultDict
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +45,7 @@ def run(  # noqa: C901, D417, PLR0913
     continue_until_max_evaluation_completed: bool = False,
     cost_to_spend: int | float | None = None,
     max_cost_total: int | float | None = None,
-    fidelities_to_spend: int | None = None,
+    fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -89,7 +93,7 @@ def run(  # noqa: C901, D417, PLR0913
             ),
             "learning_rate": neps.Float(    # log spaced float
                 lower=1e-5,
-                uperr=1,
+                upper=1,
                 log=True
             ),
             "alpha": neps.Float(            # float with a prior
@@ -217,7 +221,7 @@ def run(  # noqa: C901, D417, PLR0913
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
 
-        fidelities_to_spend: Number of evaluations in case of multi-fidelity after which to terminate.
+        fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
 
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards evaluations_to_spend.
@@ -591,4 +595,92 @@ def save_pipeline_results(
         )
 
 
-__all__ = ["run", "save_pipeline_results"]
+def import_trials(
+    pipeline_space: SearchSpace,
+    evaluated_trials: Sequence[tuple[Mapping[str, Any], UserResultDict],],
+    root_directory: Path | str,
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+) -> None:
+    """Import externally evaluated trials into the optimization state.
+
+    This function allows you to add trials that have already been
+    evaluated outside of NePS into the current optimization run.
+    It validates and normalizes the provided configurations,
+    removes duplicates, and updates the optimization state accordingly.
+
+    Args:
+        pipeline_space (SearchSpace): The search space used for the optimization.
+        evaluated_trials (Sequence[tuple[Mapping[str, Any], UserResultDict]]):
+            A sequence of tuples, each containing a configuration dictionary
+            and its corresponding result.
+        root_directory (Path or str): The root directory of the NePS run.
+        optimizer: The optimizer to use for importing trials.
+            Can be a string, mapping, tuple, callable, or CustomOptimizer.
+            Defaults to "auto".
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If any configuration or result is invalid.
+        FileNotFoundError: If the root directory does not exist.
+        Exception: For unexpected errors during trial import.
+
+    Example:
+        >>> import neps
+        >>> from neps.state.pipeline_eval import UserResultDict
+        >>> pipeline_space = neps.SearchSpace({...})
+        >>> evaluated_trials = [
+        ...     ({"param1": 0.5, "param2": 10},
+        ...     UserResultDict(objective_to_minimize=-5.0)),
+        ... ]
+        >>> neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+    """
+    if isinstance(root_directory, str):
+        root_directory = Path(root_directory)
+
+    optimizer_ask, optimizer_info = load_optimizer(optimizer, pipeline_space)
+
+    state = NePSState.create_or_load(
+        root_directory,
+        optimizer_info=optimizer_info,
+        optimizer_state=OptimizationState(
+            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+        ),
+    )
+
+    normalized_trials = []
+    for config, result in evaluated_trials:
+        _validate_imported_config(pipeline_space, config)
+        _validate_imported_result(result)
+        normalized_config = _normalize_imported_config(pipeline_space, config)
+        normalized_trials.append((normalized_config, result))
+
+    with state._trial_lock.lock():
+        state_trials = state._trial_repo.latest()
+        # remove duplicates
+        existing_configs = [
+            tuple(sorted(t.config.items())) for t in state_trials.values()
+        ]
+        normalized_trials = [
+            t
+            for t in normalized_trials
+            if tuple(sorted(t[0].items())) not in existing_configs
+        ]
+
+        imported_trials = optimizer_ask.import_trials(
+            external_evaluations=normalized_trials,
+            trials=state_trials,
+        )
+    # create Trial objects and add to state
+    state.lock_and_import_trials(imported_trials, worker_id="external")
+
+
+__all__ = ["import_trials", "run", "save_pipeline_results"]
