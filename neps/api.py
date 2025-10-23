@@ -3,22 +3,14 @@
 from __future__ import annotations
 
 import logging
-import os
-import shutil
-import socket
-import time
 import warnings
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
-import neps
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
-from neps.optimizers.ask_and_tell import AskAndTell
 from neps.runtime import _launch_runtime, _save_results
-from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import (
-    NepsCompatConverter,
     adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
     convert_classic_to_neps_search_space,
@@ -26,8 +18,6 @@ from neps.space.neps_spaces.neps_space import (
 )
 from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.space.parsing import convert_to_space
-from neps.state import NePSState, OptimizationState, SeedSnapshot
-from neps.state.neps_state import TrialRepo
 from neps.state.pipeline_eval import EvaluatePipelineReturn
 from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
@@ -71,16 +61,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
-    warmstart_configs: (
-        list[
-            tuple[
-                dict[str, Any] | Mapping[str, Any],
-                dict[str, Any] | Mapping[str, Any],
-                Any,
-            ]
-        ]
-        | None
-    ) = None,
 ) -> None:
     """Run the optimization.
 
@@ -340,22 +320,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
                 This is mainly meant for internal development but allows you to use the NePS
                 runtime to run your optimizer.
 
-        warmstart_configs: A list of configurations to warmstart the NePS state with.
-            This is useful for testing and debugging purposes, where you want to
-            start with a set of predefined configurations and their results.
-            Each configuration is a tuple of three elements:
-            1. A dictionary of the samplings to make, i.e. resolution_context.samplings_made
-            2. A dictionary of the environment values, i.e. resolution_context.environment_values
-            3. The result of the evaluation, which is the return value of the `evaluate_pipeline`
-               function, i.e. the objective value to minimize or a dictionary with
-               `"objective_to_minimize"` and `"cost"` keys.
-
-            !!! warning "Warmstarting compatibility"
-
-                The warmstarting feature is only compatible with the new NEPS optimizers,
-                such as `neps.algorithms.neps_random_search`, `neps.algorithms.neps_priorband`,
-                and `neps.algorithms.complex_random_search`.
-
     """  # noqa: E501
     if (
         evaluations_to_spend is None
@@ -407,17 +371,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
             "Only one is allowed."
         )
 
-    if warmstart_configs:
-        warmstart_neps(
-            root_directory=Path(root_directory),
-            pipeline_space=pipeline_space,
-            warmstart_configs=warmstart_configs,
-            optimizer=optimizer,
-            overwrite_root_directory=overwrite_root_directory,
-            inside_neps=True,
-        )
-        overwrite_root_directory = False
-
     logger.info(f"Starting neps.run using root directory {root_directory}")
 
     # Check if the pipeline_space only contains basic HPO parameters.
@@ -428,10 +381,8 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
     # If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space
 
     neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
-    if (
-        neps_classic_space_compatibility in ["both", "classic"]
-        and isinstance(pipeline_space, PipelineSpace)
-        and not warmstart_configs
+    if neps_classic_space_compatibility in ["both", "classic"] and isinstance(
+        pipeline_space, PipelineSpace
     ):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space:
@@ -576,195 +527,4 @@ def save_pipeline_results(
         )
 
 
-def warmstart_neps(
-    pipeline_space: PipelineSpace,
-    root_directory: Path | str,
-    warmstart_configs: Sequence[
-        tuple[
-            dict[str, Any] | Mapping[str, Any],
-            dict[str, Any] | Mapping[str, Any],
-            EvaluatePipelineReturn,
-        ]
-    ],
-    overwrite_root_directory: bool = False,  # noqa: FBT001, FBT002
-    optimizer: (
-        OptimizerChoice
-        | Mapping[str, Any]
-        | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
-        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
-        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
-        | CustomOptimizer
-        | Literal["auto"]
-    ) = "auto",
-    inside_neps: bool = False,  # noqa: FBT001, FBT002
-) -> None:
-    """Warmstart the NePS state with given configurations.
-    This is useful for testing and debugging purposes, where you want to
-    start with a set of predefined configurations and their results.
-
-    Args:
-        pipeline_space: The pipeline space to use for the warmstart.
-        root_directory: The path to the NePS state directory.
-        warmstart_configs: A list of tuples, where each tuple contains a configuration,
-            environment values, and the result of the evaluation.
-            The configuration is a dictionary of parameter values, the environment values
-            are also a dictionary, and the result is the evaluation result.
-        overwrite_root_directory: If True, the working directory will be deleted before
-            starting the warmstart.
-
-            !!! warning "Repeated warmstarting"
-
-                When not overwriting the working directory, starting multiple NePS
-                instances will result in an error. Instead, use warmstart_neps once
-                on its own and then start the NePS instances.
-
-        optimizer: The optimizer to use for the warmstart. This can be a string, a
-            callable, or a tuple of a callable and a dictionary of parameters.
-            If "auto", the optimizer will be chosen based on the pipeline space.
-
-            !!! warning "Warmstarting compatibility"
-
-                The warmstarting feature is only compatible with the new NEPS optimizers,
-                such as `neps.algorithms.neps_random_search`,
-                `neps.algorithms.neps_priorband`, and
-                `neps.algorithms.complex_random_search`.
-        inside_neps: If True, the function is called from within the NEPS runtime.
-            This is used to avoid checking the compatibility of the optimizer with the
-            warmstarting feature, as this is already done in the NEPS runtime.
-            If False, the function will check if the optimizer is compatible with the
-            warmstarting feature and raise an error if it is not.
-
-    Raises:
-        ValueError: If the optimizer is not compatible with the warmstarting feature.
-        ValueError: If the warmstart config already exists in the root directory.
-    """
-    if not inside_neps and check_neps_space_compatibility(optimizer) != "neps":
-        raise ValueError(
-            "The provided optimizer is not compatible with the warmstarting feature. "
-            "Please use one that is, such as 'neps_random_search', 'neps_priorband', "
-            "or 'complex_random_search'."
-        )
-    logger.info(
-        "Warmstarting neps.run with the provided"
-        f" {len(warmstart_configs)} configurations using root directory"
-        f" {root_directory}"
-    )
-    root_directory = Path(root_directory)
-    if overwrite_root_directory and root_directory.is_dir():
-        shutil.rmtree(root_directory)
-    optimizer_ask, optimizer_info = neps.optimizers.load_optimizer(
-        optimizer, pipeline_space
-    )
-    state = NePSState.create_or_load(
-        root_directory,
-        optimizer_info=optimizer_info,
-        optimizer_state=OptimizationState(
-            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
-        ),
-    )
-    for n_config, (config, env, result) in enumerate(warmstart_configs):
-        try:
-            _, resolution_context = neps_space.resolve(
-                pipeline=pipeline_space,
-                domain_sampler=neps_space.OnlyPredefinedValuesSampler(
-                    predefined_samplings=config
-                ),
-                environment_values=env,
-            )
-        except ValueError as e:
-            logger.error(
-                "Failed to resolve the pipeline space with the provided config:"
-                f" {config} and env: {env}.",
-            )
-            raise e
-
-        ask_tell = AskAndTell(optimizer=optimizer_ask, worker_id="warmstart_worker")
-        if pipeline_space.fidelity_attrs and isinstance(
-            optimizer_ask,
-            neps.optimizers.neps_bracket_optimizer._NePSBracketOptimizer,
-        ):
-            rung_to_fid = optimizer_ask.rung_to_fid
-            fid_to_rung = {
-                v: max(k for k, val in rung_to_fid.items() if val == v)
-                for v in rung_to_fid.values()
-            }
-            fidelity_value = env[next(iter(pipeline_space.fidelity_attrs.keys()))]
-            highest_rung = max(
-                [
-                    fid_to_rung[small_key]
-                    for small_key in [key for key in fid_to_rung if key <= fidelity_value]
-                ]
-            )
-            for rung in range(highest_rung + 1):
-                # Store the config for each rung
-                config_path = f"{n_config}_rung_{rung}"
-
-                # Check if result is a UserResultDict by checking its structure
-                if isinstance(result, dict) and "cost" in result:
-                    # This is a UserResultDict-like dictionary
-                    rung_result = result.copy()
-                    rung_result["cost"] = rung_result.get("cost", 0) / (highest_rung + 1)  # type: ignore
-                else:
-                    # This is a simple numeric result
-                    rung_result = result  # type: ignore
-                trial = ask_tell.tell_custom(
-                    config_id=config_path,
-                    config=config,
-                    result=rung_result,
-                    time_sampled=time.time(),
-                    time_started=time.time(),
-                    time_end=time.time(),
-                    previous_trial_id=f"{n_config}_rung_{rung - 1}" if rung > 0 else None,
-                    location=root_directory / "configs" / config_path,
-                    worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
-                )
-                trial.config = NepsCompatConverter.to_neps_config(resolution_context)
-                if (root_directory / config_path).is_dir():
-                    raise ValueError(
-                        f"Warmstart config {n_config} already exists in"
-                        f" {root_directory}. Please remove it before running the"
-                        " script again."
-                    )
-                TrialRepo(root_directory / "configs").store_new_trial(trial)
-                assert trial.report
-                assert trial.metadata.evaluating_worker_id
-                state.lock_and_report_trial_evaluation(
-                    trial=trial,
-                    report=trial.report,
-                    worker_id=trial.metadata.evaluating_worker_id,
-                )
-                logger.info(
-                    f"Warmstarted config {config_path} with result: {rung_result}."
-                )
-
-        else:
-            config_path = f"{n_config}"
-            trial = ask_tell.tell_custom(
-                config_id=config_path,
-                config=config,
-                result=result,
-                time_sampled=time.time(),
-                time_started=time.time(),
-                time_end=time.time(),
-                location=root_directory / "configs" / config_path,
-                worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
-            )
-            trial.config = NepsCompatConverter.to_neps_config(resolution_context)
-            if (root_directory / config_path).is_dir():
-                raise ValueError(
-                    f"Warmstart config {n_config} already exists in {root_directory}."
-                    " Please remove it before running the script again."
-                )
-            TrialRepo(root_directory / "configs").store_new_trial(trial)
-            assert trial.report
-            assert trial.metadata.evaluating_worker_id
-            state.lock_and_report_trial_evaluation(
-                trial=trial,
-                report=trial.report,
-                worker_id=trial.metadata.evaluating_worker_id,
-            )
-            logger.info(f"Warmstarted config {config_path} with result: {result}.")
-
-
-__all__ = ["run", "save_pipeline_results", "warmstart_neps"]
+__all__ = ["run", "save_pipeline_results"]
