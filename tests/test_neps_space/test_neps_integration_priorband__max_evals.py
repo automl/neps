@@ -87,7 +87,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        evaluations_to_spend=200,
+        evaluations_to_spend=100,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -124,7 +124,7 @@ def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        evaluations_to_spend=200,
+        evaluations_to_spend=100,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)

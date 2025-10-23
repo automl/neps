@@ -1252,6 +1252,7 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                     classic_space[key] = neps.HPOInteger(
                         lower=value.min_value,
                         upper=value.max_value,
+                        log=value._log if hasattr(value, "_log") else False,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
@@ -1261,6 +1262,7 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                     classic_space[key] = neps.HPOFloat(
                         lower=value.min_value,
                         upper=value.max_value,
+                        log=value._log if hasattr(value, "_log") else False,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
@@ -1271,12 +1273,22 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         classic_space[key] = neps.HPOInteger(
                             lower=value._domain.min_value,
                             upper=value._domain.max_value,
+                            log=(
+                                value._domain._log
+                                if hasattr(value._domain, "_log")
+                                else False
+                            ),
                             is_fidelity=True,
                         )
                     elif isinstance(value._domain, Float):
                         classic_space[key] = neps.HPOFloat(
                             lower=value._domain.min_value,
                             upper=value._domain.max_value,
+                            log=(
+                                value._domain._log
+                                if hasattr(value._domain, "_log")
+                                else False
+                            ),
                             is_fidelity=True,
                         )
                 else:

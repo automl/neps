@@ -121,7 +121,7 @@ def test_resolve():
     pipeline = NosBench()
 
     try:
-        resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
+        resolved_pipeline, _ = neps_space.resolve(pipeline)
     except RecursionError:
         pytest.xfail("XFAIL due to too much recursion.")
         raise
