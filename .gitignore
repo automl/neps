@@ -50,3 +50,7 @@ path
 
 # From example that uses MNIST
 .data
+
+.trace.lock
+
+copilot/

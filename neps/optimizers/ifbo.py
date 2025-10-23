@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import torch
@@ -13,8 +14,9 @@ from neps.optimizers.models.ftpfn import (
     decode_ftpfn_data,
     encode_ftpfn,
 )
-from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
+from neps.optimizers.utils.util import get_trial_config_unique_key
 from neps.sampling import Prior, Sampler
 from neps.space import ConfigEncoder, Domain, HPOFloat, HPOInteger, SearchSpace
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
@@ -22,10 +24,13 @@ from neps.space.neps_spaces.parameters import PipelineSpace
 
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
+    from neps.state.pipeline_eval import UserResultDict
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
 BUDGET_DOMAIN_EPS = 1e-6
+
+logger = logging.getLogger(__name__)
 
 
 def _adjust_space_to_match_stepsize(
@@ -168,8 +173,9 @@ class IFBO:
             upper=1,
         )
 
-        # However, we need to make sure we don't end up with a positive
-        # `lower=` which gauranteed with this assertion.
+        # However, we need to make sure we don't end up with a
+        # lower greater than upper (lower < 1)
+        #  which gauranteed with this assertion.
         if fidelity.upper - fidelity.lower < BUDGET_DOMAIN_EPS:
             raise ValueError(
                 f"Fidelity domain {fidelity} is too small to be used with ifBO."
@@ -291,3 +297,70 @@ class IFBO:
             config=config,
             previous_config_id=f"{_id}_{budget_ix}",
         )
+
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        """Imports external evaluations, assigning correct multi-fidelity IDs."""
+        if not external_evaluations:
+            return []
+
+        imported: list[ImportedConfig] = []
+        assert isinstance(self.space, SearchSpace)
+        assert self.space.fidelity is not None
+        fidelity_name, fidelity = self.space.fidelity
+        budget_index_domain = Domain.indices(self.n_fidelity_bins + 1)
+
+        # Create a lookup map from existing configs to
+        # their base ID (int before "_" in config_id).
+        config_to_base_id: dict[tuple[tuple[str, Any], ...], int] = {}
+        existing_trial_ids: set[tuple[int, int]] = set()
+
+        for trial_id, trial in trials.items():
+            base_id_str, budget_ix_str = trial_id.split("_", 1)
+            base_id = int(base_id_str)
+            budget_ix = int(budget_ix_str)
+            existing_trial_ids.add((base_id, budget_ix))
+            # The key is a hashable representation of the config's hyperparameters
+            key = get_trial_config_unique_key(trial.config, fid_name=fidelity_name)
+            if key not in config_to_base_id:
+                config_to_base_id[key] = base_id
+
+        next_id = max([id_tuple[0] for id_tuple in existing_trial_ids], default=0) + 1
+
+        for config, result in external_evaluations:
+            obj = result.get("objective_to_minimize")
+            assert not isinstance(obj, Sequence)  # ifbo is single objective only
+            if obj is None or not (0 <= obj <= 1):
+                logger.warning(f"Skipping invalid trial: {config=}, {result=}")
+                continue
+
+            config_key = get_trial_config_unique_key(config, fid_name=fidelity_name)
+
+            _base_id = config_to_base_id.get(config_key)
+            if _base_id is None:
+                base_id = next_id
+                config_to_base_id[config_key] = base_id
+                next_id += 1
+
+            fid_value = config[fidelity_name]
+            budget_ix = budget_index_domain.cast_one(fid_value, frm=fidelity.domain)
+            if (base_id, budget_ix) in existing_trial_ids:
+                logger.warning(
+                    f"Skipping config: {config=} with id {base_id} and "
+                    f"budget_index {budget_ix} as we already have one "
+                    f"evaluation with same config and fidelity in the same budget bin"
+                )
+                continue
+            imported.append(
+                ImportedConfig(
+                    id=f"{base_id}_{budget_ix}",
+                    config=config,
+                    result=result,
+                )
+            )
+            existing_trial_ids.add((base_id, budget_ix))
+
+        return imported

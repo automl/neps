@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
 
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from neps.sampling import Sampler
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
+    from neps.state.pipeline_eval import UserResultDict
 
 
 @dataclass
@@ -66,3 +67,21 @@ class RandomSearch:
             )
             for i, config in enumerate(config_dicts)
         ]
+
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        n_trials = len(trials)
+        imported_configs = []
+        for i, (config, result) in enumerate(external_evaluations):
+            config_id = str(n_trials + i + 1)
+            imported_configs.append(
+                ImportedConfig(
+                    config=config,
+                    id=config_id,
+                    result=result,
+                )
+            )
+        return imported_configs

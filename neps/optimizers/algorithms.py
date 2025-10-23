@@ -28,7 +28,6 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 
 import torch
 
-from neps.optimizers.ask_and_tell import AskAndTell  # noqa: F401
 from neps.optimizers.bayesian_optimization import BayesianOptimization
 from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
@@ -1808,12 +1807,7 @@ def neps_priorband(
     )
 
 
-PredefinedOptimizers: Mapping[
-    str,
-    Callable[Concatenate[SearchSpace, ...], AskFunction]
-    | Callable[Concatenate[PipelineSpace, ...], AskFunction]
-    | Callable[Concatenate[SearchSpace, PipelineSpace, ...], AskFunction],
-] = {
+PredefinedOptimizers: Mapping[str, Any] = {
     f.__name__: f
     for f in (
         bayesian_optimization,

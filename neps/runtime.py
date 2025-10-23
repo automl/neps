@@ -1058,7 +1058,7 @@ def _launch_runtime(  # noqa: PLR0913
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
     evaluations_to_spend: int | None,
-    fidelities_to_spend: int | None,
+    fidelities_to_spend: int | float | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
     write_summary_to_disk: bool = True,

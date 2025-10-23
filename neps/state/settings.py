@@ -111,7 +111,7 @@ class WorkerSettings:
     indefinitely or until another stopping criterion is met.
     """
 
-    fidelities_to_spend: int | None
+    fidelities_to_spend: int | float | None
     """The maximum number of evaluations to run in case of multi-fidelity.
 
     Once this evaluation total is reached, **all** workers will stop evaluating

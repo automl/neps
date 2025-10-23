@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import logging
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -17,9 +18,13 @@ from neps.optimizers.models.gp import (
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
 )
-from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
+from neps.optimizers.utils.util import (
+    get_config_key_to_id_mapping,
+    get_trial_config_unique_key,
+)
 from neps.sampling.samplers import Sampler
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
@@ -34,6 +39,7 @@ if TYPE_CHECKING:
     from neps.space.encoding import ConfigEncoder
     from neps.space.parameters import Parameter
     from neps.state.optimizer import BudgetInfo
+    from neps.state.pipeline_eval import UserResultDict
     from neps.state.trial import Trial
 
 
@@ -270,10 +276,9 @@ class BracketOptimizer:
                     " space-compatible optimizer."
                 )
 
-        assert n is None, "TODO"
+        assert n is None, "paramter n should be not None"
         space = self.space
         parameters = space.searchables
-
         # If we have no trials, we either go with the prior or just a sampled config
         if len(trials) == 0:
             match self.sample_prior_first:
@@ -332,7 +337,7 @@ class BracketOptimizer:
             raise RuntimeError(
                 f"{self.__class__.__name__} never got a 'sample' or 'promote' action!"
                 f" This likely means the implementation of {self.create_brackets}"
-                " is incorrect and should have provded enough brackets, where at"
+                " is incorrect and should have provided enough brackets, where at"
                 " least one of them should have requested another sample."
                 f"\nBrackets:\n{brackets}"
             )
@@ -393,3 +398,61 @@ class BracketOptimizer:
                         raise RuntimeError(f"Unknown sampler: {self.sampler}")
             case _:
                 raise RuntimeError(f"Unknown bracket action: {next_action}")
+
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        rung_to_fid = self.rung_to_fid
+
+        # Use trials_to_table to get all used config IDs
+        table = trials_to_table(trials)
+        used_ids = set(table.index.get_level_values("id").tolist())
+
+        imported_configs = []
+        config_to_id = get_config_key_to_id_mapping(table=table, fid_name=self.fid_name)
+
+        for config, result in external_evaluations:
+            fid_value = config[self.fid_name]
+            if fid_value not in rung_to_fid.values():
+                logger.warning(
+                    f"Fidelity value {fid_value} not in known rung fidelities "
+                    f"{list(rung_to_fid.values())}. Skipping config: {config}"
+                )
+                continue
+            # create a  unique key for the config without the fidelity
+            config_key = get_trial_config_unique_key(
+                config=config, fid_name=self.fid_name
+            )
+            # Assign id if not already assigned
+            if config_key not in config_to_id:
+                next_id = max(used_ids, default=0) + 1
+                config_to_id[config_key] = next_id
+                used_ids.add(next_id)
+            else:
+                existing_id = config_to_id[config_key]
+                # check if the other config with same key has the same fidelity
+                try:
+                    existing_config = table.xs(existing_id, level="id")["config"].iloc[0]
+                    if existing_config[self.fid_name] == config[self.fid_name]:
+                        logger.warning(
+                            f"Duplicate configuration with same fidelity found: {config}"
+                        )
+                    continue
+                except KeyError:
+                    pass
+
+            config_id = config_to_id[config_key]
+
+            # Find the rung corresponding to the fidelity value in config
+            rung = next((r for r, f in rung_to_fid.items() if f == fid_value), None)
+            trial_id = f"{config_id}_rung_{rung}"
+            imported_configs.append(
+                ImportedConfig(
+                    id=trial_id,
+                    config=copy.deepcopy(config),
+                    result=copy.deepcopy(result),
+                )
+            )
+        return imported_configs
