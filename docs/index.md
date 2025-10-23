@@ -88,7 +88,11 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="path/to/save/results",  # Replace with the actual path.
     evaluations_to_spend=100,
+    write_summary_to_disk=True,
 )
+
+# 4. status information about a neural pipeline search run, using:
+# python -m neps.status path/to/save/results
 ```
 
 ## Examples
@@ -102,6 +106,8 @@ Discover how NePS works through these examples:
 - **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
 - **[Benefiting NePS State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
+
+- **[Integration with TensorBoard](examples/convenience/neps_tblogger_tutorial.md)**: Discover how to leverage NePS's built-in TensorBoard support and seamlessly incorporate your own custom TensorBoard data for enhanced experiment tracking.
 
 - **[Additional NePS Examples](examples/index.md)**: Explore more examples, including various use cases and advanced configurations in NePS.
 
