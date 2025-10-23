@@ -815,7 +815,7 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-    def load_incumbent_trace(  # noqa: C901
+    def load_incumbent_trace(  # noqa: C901, PLR0912
         self,
         previous_trials: dict[str, Trial],
         _trace_lock: FileLock,
@@ -872,9 +872,11 @@ class DefaultWorker:
                     )
 
                 if hasattr(optimizer, "space"):
+                    fidelity_name = ""
                     if not isinstance(optimizer.space, PipelineSpace):
-                        fidelity_name = next(iter(optimizer.space.fidelities.keys()))
-                    else:
+                        if optimizer.space.fidelities:
+                            fidelity_name = next(iter(optimizer.space.fidelities.keys()))
+                    elif optimizer.space.fidelity_attrs:
                         fidelity_name = next(iter(optimizer.space.fidelity_attrs.keys()))
                         fidelity_name = (
                             f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"

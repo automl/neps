@@ -1658,7 +1658,7 @@ def _neps_bracket_optimizer(
 
     if len(fidelity_attrs.items()) != 1:
         raise ValueError(
-            "Only one fidelity should be defined in the pipeline space."
+            "Exactly one fidelity should be defined in the pipeline space."
             f"\nGot: {fidelity_attrs!r}"
         )
 

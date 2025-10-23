@@ -97,6 +97,7 @@ REQUIRES_FIDELITY = [
     "moasha",
     "mo_hyperband",
     "neps_priorband",
+    "neps_hyperband",
 ]
 NO_DEFAULT_FIDELITY_SUPPORT = [
     "random_search",
@@ -138,6 +139,7 @@ REQUIRES_NEPS_SPACE = [
     "neps_priorband",
     "neps_random_search",
     "complex_random_search",
+    "neps_hyperband",
 ]
 
 

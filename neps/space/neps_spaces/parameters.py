@@ -24,6 +24,29 @@ class _Unset:
 _UNSET = _Unset()
 
 
+def _parameters_are_equivalent(param1: Any, param2: Any) -> bool:
+    """Check if two parameters are equivalent using their is_equivalent_to method.
+
+    This helper function provides a safe way to compare parameters without
+    interfering with Python's object identity system. Falls back to regular
+    equality comparison for objects that don't have the is_equivalent_to method.
+
+    Args:
+        param1: First parameter to compare.
+        param2: Second parameter to compare.
+
+    Returns:
+        True if the parameters are equivalent, False otherwise.
+    """
+    # Try to use the is_equivalent_to method if available
+    if hasattr(param1, "is_equivalent_to"):
+        return param1.is_equivalent_to(param2)
+    if hasattr(param2, "is_equivalent_to"):
+        return param2.is_equivalent_to(param1)
+    # Fall back to regular equality for other types
+    return param1 == param2
+
+
 @runtime_checkable
 class Resolvable(Protocol):
     """A protocol for objects that can be resolved into attributes."""
@@ -87,14 +110,33 @@ class Fidelity(Resolvable, Generic[T]):
         """Get a string representation of the fidelity."""
         return f"Fidelity({self._domain.__str__()})"
 
-    def __eq__(self, other: Fidelity | object) -> bool:
+    def is_equivalent_to(self, other: object) -> bool:
+        """Check if this fidelity parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
         if not isinstance(other, Fidelity):
             return False
         return self._domain == other._domain
 
+    def __eq__(self, other: object) -> bool:
+        """Check if this is the exact same object instance.
+
+        This uses object identity to avoid interfering with the resolution caching system.
+        """
+        return self is other
+
     def __hash__(self) -> int:
-        """Get the hash of the fidelity based on its domain."""
-        return hash(self._domain)
+        """Get hash based on object identity."""
+        return id(self)
 
     @property
     def min_value(self) -> int | float:
@@ -268,7 +310,7 @@ class PipelineSpace(Resolvable):
         new_pipeline = NewSpace()
         for exist_name, value in self.get_attrs().items():
             setattr(new_pipeline, exist_name, value)
-            if exist_name == param_name and not value == other:
+            if exist_name == param_name and not _parameters_are_equivalent(value, other):
                 raise ValueError(
                     f"A different parameter with the name {param_name!r} already exists"
                     " in the pipeline:\n"
@@ -637,29 +679,37 @@ class Categorical(Domain[int], Generic[T]):
         string += ")"
         return string
 
-    def __eq__(self, other: Categorical | object) -> bool:
+    def is_equivalent_to(self, other: object) -> bool:
+        """Check if this categorical parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
         if not isinstance(other, Categorical):
             return False
         return (
-            self.prior == other.prior
-            and self.prior_confidence == other.prior_confidence
+            self._prior == other._prior
+            and self._prior_confidence == other._prior_confidence
             and self.choices == other.choices
         )
 
+    def __eq__(self, other: object) -> bool:
+        """Check if this is the exact same object instance.
+
+        This uses object identity to avoid interfering with the resolution caching system.
+        """
+        return self is other
+
     def __hash__(self) -> int:
-        """Get the hash of the categorical domain based on its attributes."""
-        try:
-            choices_hash = hash(self.choices)
-        except TypeError:
-            # If choices are not hashable (e.g., contain mutable objects), use id
-            choices_hash = id(self.choices)
-        return hash(
-            (
-                self._prior if self._prior is not _UNSET else None,
-                self._prior_confidence if self._prior_confidence is not _UNSET else None,
-                choices_hash,
-            )
-        )
+        """Get hash based on object identity."""
+        return id(self)
 
     @property
     def min_value(self) -> int:
@@ -847,7 +897,19 @@ class Float(Domain[float]):
         string += ")"
         return string
 
-    def __eq__(self, other: Float | object) -> bool:
+    def is_equivalent_to(self, other: object) -> bool:
+        """Check if this float parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
         if not isinstance(other, Float):
             return False
         return (
@@ -858,17 +920,16 @@ class Float(Domain[float]):
             and self._log == other._log
         )
 
+    def __eq__(self, other: object) -> bool:
+        """Check if this is the exact same object instance.
+
+        This uses object identity to avoid interfering with the resolution caching system.
+        """
+        return self is other
+
     def __hash__(self) -> int:
-        """Get the hash of the float domain based on its attributes."""
-        return hash(
-            (
-                self._prior if self._prior is not _UNSET else None,
-                self._prior_confidence if self._prior_confidence is not _UNSET else None,
-                self.min_value,
-                self.max_value,
-                self._log,
-            )
-        )
+        """Get hash based on object identity."""
+        return id(self)
 
     @property
     def min_value(self) -> float:
@@ -1054,7 +1115,19 @@ class Integer(Domain[int]):
         string += ")"
         return string
 
-    def __eq__(self, other: Integer | object) -> bool:
+    def is_equivalent_to(self, other: object) -> bool:
+        """Check if this integer parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
         if not isinstance(other, Integer):
             return False
         return (
@@ -1065,17 +1138,16 @@ class Integer(Domain[int]):
             and self._log == other._log
         )
 
+    def __eq__(self, other: object) -> bool:
+        """Check if this is the exact same object instance.
+
+        This uses object identity to avoid interfering with the resolution caching system.
+        """
+        return self is other
+
     def __hash__(self) -> int:
-        """Get the hash of the integer domain based on its attributes."""
-        return hash(
-            (
-                self._prior if self._prior is not _UNSET else None,
-                self._prior_confidence if self._prior_confidence is not _UNSET else None,
-                self.min_value,
-                self.max_value,
-                self._log,
-            )
-        )
+        """Get hash based on object identity."""
+        return id(self)
 
     @property
     def min_value(self) -> int:
@@ -1253,7 +1325,19 @@ class Operation(Resolvable):
             f" kwargs={self._kwargs!s})"
         )
 
-    def __eq__(self, other: Operation | object) -> bool:
+    def is_equivalent_to(self, other: object) -> bool:
+        """Check if this operation parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
         if not isinstance(other, Operation):
             return False
         return (
@@ -1261,6 +1345,17 @@ class Operation(Resolvable):
             and self.args == other.args
             and self.kwargs == other.kwargs
         )
+
+    def __eq__(self, other: object) -> bool:
+        """Check if this is the exact same object instance.
+
+        This uses object identity to avoid interfering with the resolution caching system.
+        """
+        return self is other
+
+    def __hash__(self) -> int:
+        """Get hash based on object identity."""
+        return id(self)
 
     @property
     def operator(self) -> Callable | str:
@@ -1283,10 +1378,14 @@ class Operation(Resolvable):
             A tuple of arguments to be passed to the operator.
 
         Raises:
-            ValueError: If the args are not a tuple or Resolvable.
-
+            ValueError: If the args are not resolved to a tuple.
         """
-        return cast(tuple[Any, ...], self._args)
+        if isinstance(self._args, Resolvable):
+            raise ValueError(
+                f"Operation args contain unresolved Resolvable: {self._args!r}. "
+                "The operation needs to be resolved before accessing args as a tuple."
+            )
+        return self._args
 
     @property
     def kwargs(self) -> Mapping[str, Any]:
@@ -1296,10 +1395,14 @@ class Operation(Resolvable):
             A mapping of keyword arguments to be passed to the operator.
 
         Raises:
-            ValueError: If the kwargs are not a mapping or Resolvable.
-
+            ValueError: If the kwargs are not resolved to a mapping.
         """
-        return cast(Mapping[str, Any], self._kwargs)
+        if isinstance(self._kwargs, Resolvable):
+            raise ValueError(
+                f"Operation kwargs contain unresolved Resolvable: {self._kwargs!r}. "
+                "The operation needs to be resolved before accessing kwargs as a mapping."
+            )
+        return self._kwargs
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the operation as a mapping.

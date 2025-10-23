@@ -448,7 +448,7 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
     if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
         raise ValueError(
             "The provided optimizer is not compatible with this complex search space. "
-            "Please use one that is, such as 'random_search', "
+            "Please use one that is, such as 'random_search', 'hyperband'"
             "'priorband', or 'complex_random_search'."
         )
 
@@ -471,8 +471,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         "mo_hyperband",
         "primo",
         "neps_priorband",
-        "neps_random_search",
-        "complex_random_search",
         "neps_bracket_optimizer",
         "neps_hyperband",
     }
