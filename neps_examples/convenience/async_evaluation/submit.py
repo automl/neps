@@ -34,14 +34,13 @@ python run_pipeline.py --learning-rate {lr} \\
     return None
 
 
-pipeline_space = dict(
-    optimizer=neps.Categorical(choices=["sgd", "adam"]),
-    lr=neps.Float(lower=10e-7, upper=10e-3, log=True),
-)
+class ExampleSpace(neps.PipelineSpace):
+    optimizer=neps.Categorical(choices=["sgd", "adam"])
+    lr=neps.Float(lower=10e-7, upper=10e-3, log=True)
 
 neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
-    pipeline_space=pipeline_space,
+    pipeline_space=ExampleSpace(),
     root_directory="results",
     max_evaluations_per_run=2,
 )
