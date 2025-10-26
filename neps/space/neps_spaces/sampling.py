@@ -405,7 +405,7 @@ class MutatateUsingCentersSampler(DomainSampler):
                 original_value = self._original_samplings_to_make[current_path]
                 sampled_value = domain_obj.centered_around(
                     center=original_value,
-                    confidence=ConfidenceLevel.HIGH,
+                    confidence=ConfidenceLevel.MEDIUM,
                 ).sample()
             else:
                 # We never had a value for this path, we can only sample from the domain.
