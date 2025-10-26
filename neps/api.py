@@ -39,7 +39,6 @@ def run(  # noqa: C901, D417, PLR0913
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
     evaluations_to_spend: int | None = None,
-    write_summary_to_disk: bool = True,
     max_evaluations_total: int | None = None,
     max_evaluations_per_run: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
@@ -200,9 +199,6 @@ def run(  # noqa: C901, D417, PLR0913
 
         overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
-
-        write_summary_to_disk: If True, creates a csv and txt files after each worker is done,
-            holding summary information about the configs and results.
 
         max_evaluations_per_run: Number of evaluations this specific call should do.
         ??? note "Limitation on Async mode"
@@ -538,30 +534,26 @@ def run(  # noqa: C901, D417, PLR0913
         ignore_errors=ignore_errors,
         overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
-        write_summary_to_disk=write_summary_to_disk,
         worker_id=worker_id,
     )
 
     post_run_csv(root_directory)
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
-    if not write_summary_to_disk:
-        trajectory_of_improvements(root_directory)
-        logger.info(
-            "The summary folder has been created, which contains csv and txt files with"
-            "the output of all data in the run (short.csv - only the best; full.csv - "
-            "all runs; best_config_trajectory.txt for incumbent trajectory; and "
-            "best_config.txt for final incumbent)."
-            f"\nYou can find summary folder at: {summary_dir}."
-        )
+    trajectory_of_improvements(root_directory)
+    logger.info(
+        "The summary folder has been created, which contains csv and txt files with"
+        "the output of all data in the run (short.csv - only the best; full.csv - "
+        "all runs; best_config_trajectory.txt for incumbent trajectory; and "
+        "best_config.txt for final incumbent)."
+        f"\nYou can find summary folder at: {summary_dir}."
+    )
 
 
 def save_pipeline_results(
     user_result: dict,
     pipeline_id: str,
     root_directory: Path,
-    *,
-    post_run_summary: bool = True,
 ) -> None:
     """Persist the outcome of one pipeline evaluation.
 
@@ -575,8 +567,6 @@ def save_pipeline_results(
             neps.core.trial.Trial object inside the optimisation state.
         root_directory (Path): Root directory of the NePS run (contains
             optimizer_info.yaml and configs/ folder).
-        post_run_summary (bool, optional): If True, creates a CSV file after
-            trial completion, holding summary info about configs and results.
 
     """
     _save_results(
@@ -585,14 +575,13 @@ def save_pipeline_results(
         root_directory=root_directory,
     )
 
-    if post_run_summary:
-        full_frame_path, short_path = post_run_csv(root_directory)
-        logger.info(
-            "The post run summary has been created, which is a csv file with the "
-            "output of all data in the run."
-            f"\nYou can find a full dataframe at: {full_frame_path}."
-            f"\nYou can find a quick summary at: {short_path}."
-        )
+    full_frame_path, short_path = post_run_csv(root_directory)
+    logger.info(
+        "The post run summary has been created, which is a csv file with the "
+        "output of all data in the run."
+        f"\nYou can find a full dataframe at: {full_frame_path}."
+        f"\nYou can find a quick summary at: {short_path}."
+    )
 
 
 def import_trials(

@@ -521,31 +521,30 @@ class DefaultWorker:
         _set_workers_neps_state(self.state)
 
         main_dir = Path(self.state.path)
-        if self.settings.write_summary_to_disk:
-            full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
+        full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
 
-            # Create empty CSV files
-            with csv_locker.lock():
-                full_df_path.parent.mkdir(parents=True, exist_ok=True)
-                full_df_path.touch(exist_ok=True)
-                short_path.touch(exist_ok=True)
+        # Create empty CSV files
+        with csv_locker.lock():
+            full_df_path.parent.mkdir(parents=True, exist_ok=True)
+            full_df_path.touch(exist_ok=True)
+            short_path.touch(exist_ok=True)
 
-            summary_dir = main_dir / "summary"
-            summary_dir.mkdir(parents=True, exist_ok=True)
+        summary_dir = main_dir / "summary"
+        summary_dir.mkdir(parents=True, exist_ok=True)
 
-            improvement_trace_path = summary_dir / "best_config_trajectory.txt"
-            improvement_trace_path.touch(exist_ok=True)
-            best_config_path = summary_dir / "best_config.txt"
-            best_config_path.touch(exist_ok=True)
-            _trace_lock = FileLock(".trace.lock")
-            _trace_lock_path = Path(str(_trace_lock.lock_file))
-            _trace_lock_path.touch(exist_ok=True)
+        improvement_trace_path = summary_dir / "best_config_trajectory.txt"
+        improvement_trace_path.touch(exist_ok=True)
+        best_config_path = summary_dir / "best_config.txt"
+        best_config_path.touch(exist_ok=True)
+        _trace_lock = FileLock(".trace.lock")
+        _trace_lock_path = Path(str(_trace_lock.lock_file))
+        _trace_lock_path.touch(exist_ok=True)
 
-            logger.info(
-                "Summary files can be found in the “summary” folder inside"
-                "the root directory: %s",
-                summary_dir,
-            )
+        logger.info(
+            "Summary files can be found in the “summary” folder inside"
+            "the root directory: %s",
+            summary_dir,
+        )
 
         previous_trials = self.state.lock_and_read_trials()
         if len(previous_trials):
@@ -720,50 +719,48 @@ class DefaultWorker:
                         self.state.new_score,
                     )
 
-                    if self.settings.write_summary_to_disk:
-                        # Store in memory for later file re-writing
-                        self.state.all_best_configs.append(
-                            {
-                                "score": self.state.new_score,
-                                "trial_id": evaluated_trial.id,
-                                "config": evaluated_trial.config,
-                            }
+                    # Store in memory for later file re-writing
+                    self.state.all_best_configs.append(
+                        {
+                            "score": self.state.new_score,
+                            "trial_id": evaluated_trial.id,
+                            "config": evaluated_trial.config,
+                        }
+                    )
+
+                    # Build trace text and best config text
+                    trace_text = (
+                        "Best configs and their objectives across evaluations:\n"
+                        + "-" * 80
+                        + "\n"
+                    )
+                    for best in self.state.all_best_configs:
+                        trace_text += (
+                            f"Objective to minimize: {best['score']}\n"
+                            f"Config ID: {best['trial_id']}\n"
+                            f"Config: {best['config']}\n" + "-" * 80 + "\n"
                         )
 
-                        # Build trace text and best config text
-                        trace_text = (
-                            "Best configs and their objectives across evaluations:\n"
-                            + "-" * 80
-                            + "\n"
-                        )
-                        for best in self.state.all_best_configs:
-                            trace_text += (
-                                f"Objective to minimize: {best['score']}\n"
-                                f"Config ID: {best['trial_id']}\n"
-                                f"Config: {best['config']}\n" + "-" * 80 + "\n"
-                            )
+                    best_config = self.state.all_best_configs[-1]  # Latest best
+                    best_config_text = (
+                        f"# Best config:"
+                        f"\n\n    Config ID: {best_config['trial_id']}"
+                        f"\n    Objective to minimize: {best_config['score']}"
+                        f"\n    Config: {best_config['config']}"
+                    )
 
-                        best_config = self.state.all_best_configs[-1]  # Latest best
-                        best_config_text = (
-                            f"# Best config:"
-                            f"\n\n    Config ID: {best_config['trial_id']}"
-                            f"\n    Objective to minimize: {best_config['score']}"
-                            f"\n    Config: {best_config['config']}"
-                        )
+                    # Write files from scratch
+                    with _trace_lock:
+                        with improvement_trace_path.open(mode="w") as f:
+                            f.write(trace_text)
 
-                        # Write files from scratch
-                        with _trace_lock:
-                            with improvement_trace_path.open(mode="w") as f:
-                                f.write(trace_text)
+                        with best_config_path.open(mode="w") as f:
+                            f.write(best_config_text)
 
-                            with best_config_path.open(mode="w") as f:
-                                f.write(best_config_text)
-
-                if self.settings.write_summary_to_disk:
-                    full_df, short = status(main_dir)
-                    with csv_locker.lock():
-                        full_df.to_csv(full_df_path)
-                        short.to_frame().to_csv(short_path)
+                full_df, short = status(main_dir)
+                with csv_locker.lock():
+                    full_df.to_csv(full_df_path)
+                    short.to_frame().to_csv(short_path)
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
@@ -965,7 +962,6 @@ def _launch_runtime(  # noqa: PLR0913
     fidelities_to_spend: int | float | None,
     max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
-    write_summary_to_disk: bool = True,
     worker_id: str | None = None,
 ) -> None:
     default_report_values = _make_default_report_values(
@@ -1043,7 +1039,6 @@ def _launch_runtime(  # noqa: PLR0913
         max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
         max_cost_for_worker=None,  # TODO: User can't specify yet
-        write_summary_to_disk=write_summary_to_disk,
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.

@@ -28,6 +28,6 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
-    evaluations_to_spend=30,
+    evaluations_to_spend=15,
     worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
 )

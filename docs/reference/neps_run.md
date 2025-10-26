@@ -149,12 +149,6 @@ provided to [`neps.run()`][neps.api.run].
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
 
-=== "python"
-
-    ```python
-    neps.run(..., write_summary_to_disk=True)
-    ```
-
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
 closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
 
