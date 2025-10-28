@@ -23,29 +23,23 @@ def evaluate_pipeline(some_float, some_integer, some_cat):
 # neps uses the default values and a confidence in this default value to construct a prior
 # that speeds up the search
 class HPOSpace(neps.PipelineSpace):
-    some_float = (
-        neps.Float(
-            min_value=1,
-            max_value=1000,
-            log=True,
-            prior=900,
-            prior_confidence="medium",
-        ),
+    some_float = neps.Float(
+        min_value=1,
+        max_value=1000,
+        log=True,
+        prior=900,
+        prior_confidence="medium",
     )
-    some_integer = (
-        neps.Integer(
-            min_value=0,
-            max_value=50,
-            prior=35,
-            prior_confidence="low",
-        ),
+    some_integer = neps.Integer(
+        min_value=0,
+        max_value=50,
+        prior=35,
+        prior_confidence="low",
     )
-    some_cat = (
-        neps.Categorical(
-            choices=("a", "b", "c"),
-            prior=0,
-            prior_confidence="high",
-        ),
+    some_cat = neps.Categorical(
+        choices=("a", "b", "c"),
+        prior=0,
+        prior_confidence="high",
     )
 
 

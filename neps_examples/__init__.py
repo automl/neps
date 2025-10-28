@@ -4,6 +4,7 @@ all_main_examples = {  # Used for printing in python -m neps_examples
         "architecture",
         "architecture_and_hyperparameters",
         "hyperparameters",
+        "pytorch_nn_example",
     ],
     "convenience": [
         "logging_additional_info",

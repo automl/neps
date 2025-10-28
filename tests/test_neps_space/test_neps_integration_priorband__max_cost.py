@@ -93,7 +93,7 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
 def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
+    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
 
     # Reset the _COSTS global, so they do not get mixed up between tests.
     _COSTS.clear()
@@ -133,7 +133,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
 def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
     optimizer.__name__ = optimizer_name  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"/tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
+    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
 
     # Reset the _COSTS global, so they do not get mixed up between tests.
     _COSTS.clear()
