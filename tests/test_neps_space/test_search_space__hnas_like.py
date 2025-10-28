@@ -250,14 +250,18 @@ def test_hnas_like_context():
         ),
         "Resolvable.CL.args.sequence[5].resampled_categorical::categorical__4": 0,
         "Resolvable.ARCH::categorical__3": 1,
-        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
+            2
+        ),
         "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
             2
         ),
         "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
             0
         ),
-        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
+            2
+        ),
         "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
             0
         ),
@@ -270,80 +274,82 @@ def test_hnas_like_context():
         "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[3].resampled_categorical::categorical__3": (
             1
         ),
-        "Resolvable.ARCH.sampled_value.args.sequence[2].resampled_categorical::categorical__3": 2,
+        "Resolvable.ARCH.sampled_value.args.sequence[2].resampled_categorical::categorical__3": (
+            2
+        ),
     }
 
     expected_cl_config_string = (
-        "(CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3)"
-        " (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero))"
+        "CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3,"
+        " NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero)"
     )
     expected_arch_config_string = (
-        "(D2 Sequential3 (D0 Residual3 (C Residual2 (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero))) (C Sequential2 (CELL Cell (OPS"
-        " Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch)))"
-        " (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT"
-        " relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero))) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero))) (D1 Residual3 (C Sequential2 (CELL"
-        " Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM"
-        " batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell"
-        " (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM"
-        " batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero))) (C"
-        " Sequential2 (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV"
-        " dconv3x3) (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero))"
-        " (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3)"
-        " (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero))) (DOWN"
-        " Sequential2 (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV"
-        " dconv3x3) (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero))"
-        " resBlock) (DOWN Sequential3 (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3"
-        " (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool)"
-        " (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM"
-        " layer))) (OPS zero)) (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT"
-        " relu) (CONV dconv3x3) (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS"
-        " Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer)))"
-        " (OPS zero)) resBlock)) (D1 Residual3 (C Sequential2 (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero))) (C Sequential2 (CELL Cell (OPS"
-        " Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch)))"
-        " (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT"
-        " relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell (OPS Sequential1"
-        " (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch))) (OPS zero)"
-        " (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu)"
-        " (CONV dconv3x3) (NORM layer))) (OPS zero))) (DOWN Sequential2 (CELL Cell (OPS"
-        " Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM batch)))"
-        " (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK Sequential3 (ACT"
-        " relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) resBlock) (DOWN Sequential3"
-        " (CELL Cell (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3)"
-        " (NORM batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) (CELL Cell"
-        " (OPS Sequential1 (CONVBLOCK Sequential3 (ACT relu) (CONV dconv3x3) (NORM"
-        " batch))) (OPS zero) (OPS id) (OPS avg_pool) (OPS Sequential1 (CONVBLOCK"
-        " Sequential3 (ACT relu) (CONV dconv3x3) (NORM layer))) (OPS zero)) resBlock)))"
+        "D2 Sequential3(D0 Residual3(C Residual2(CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero)), C Sequential2(CELL Cell(OPS"
+        " Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)),"
+        " OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT"
+        " relu, CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero)), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero)), D1 Residual3(C Sequential2(CELL"
+        " Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM"
+        " batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero), CELL Cell"
+        "(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM"
+        " batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero)), C"
+        " Sequential2(CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV"
+        " dconv3x3, NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero),"
+        " CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3,"
+        " NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero)), DOWN"
+        " Sequential2(CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV"
+        " dconv3x3, NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero),"
+        " resBlock), DOWN Sequential3(CELL Cell(OPS Sequential1(CONVBLOCK Sequential3"
+        "(ACT relu, CONV dconv3x3, NORM batch)), OPS zero, OPS id, OPS avg_pool,"
+        " OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM"
+        " layer)), OPS zero), CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT"
+        " relu, CONV dconv3x3, NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS"
+        " Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM layer)),"
+        " OPS zero), resBlock)), D1 Residual3(C Sequential2(CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero)), C Sequential2(CELL Cell(OPS"
+        " Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)),"
+        " OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT"
+        " relu, CONV dconv3x3, NORM layer)), OPS zero), CELL Cell(OPS Sequential1"
+        "(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)), OPS zero,"
+        " OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT relu,"
+        " CONV dconv3x3, NORM layer)), OPS zero)), DOWN Sequential2(CELL Cell(OPS"
+        " Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM batch)),"
+        " OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK Sequential3(ACT"
+        " relu, CONV dconv3x3, NORM layer)), OPS zero), resBlock), DOWN Sequential3"
+        "(CELL Cell(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3,"
+        " NORM batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero), CELL Cell"
+        "(OPS Sequential1(CONVBLOCK Sequential3(ACT relu, CONV dconv3x3, NORM"
+        " batch)), OPS zero, OPS id, OPS avg_pool, OPS Sequential1(CONVBLOCK"
+        " Sequential3(ACT relu, CONV dconv3x3, NORM layer)), OPS zero), resBlock)))"
     )
 
     pipeline = HNASLikePipeline()

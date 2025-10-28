@@ -166,6 +166,13 @@ def wrap_config_into_string(  # noqa: C901, PLR0915
             item.operator.__name__ if callable(item.operator) else item.operator
         )
 
+        # Check if we have hyperparameters (not empty and not just "{}")
+        has_hyperparameters = (
+            item.hyperparameters
+            and item.hyperparameters.strip()
+            and item.hyperparameters != "{}"
+        )
+
         # Get children of this item
         item_key = (item.level, item.opening_index)
         children = children_by_parent.get(item_key, [])
@@ -173,9 +180,14 @@ def wrap_config_into_string(  # noqa: C901, PLR0915
         # Reconstruct operands
         if not item.operands and not children:
             # No operands at all - just return the operator name
+            # (or operator with hyperparameters if they exist)
+            if has_hyperparameters:
+                return f"{operator_name}({item.hyperparameters})"
             return operator_name
         if not children:
-            # Leaf node - just wrap the operands
+            # Leaf node - wrap the operands (and hyperparameters if present)
+            if has_hyperparameters:
+                return f"{operator_name}({item.hyperparameters}, {item.operands})"
             return f"{operator_name}({item.operands})"
         # Has children - need to mix nested and non-nested operands
         # Parse operands to separate nested from non-nested
@@ -217,6 +229,12 @@ def wrap_config_into_string(  # noqa: C901, PLR0915
             reconstructed_parts.append(reconstruct(children[child_idx]))
             child_idx += 1
 
+        # Build result with hyperparameters if present
+        if has_hyperparameters:
+            return (
+                f"{operator_name}({item.hyperparameters},"
+                f" {', '.join(reconstructed_parts)})"
+            )
         return f"{operator_name}({', '.join(reconstructed_parts)})"
 
     # Start reconstruction from the root (level 1 items)

@@ -155,9 +155,9 @@ def test_nested_simple():
 @pytest.mark.repeat(50)
 def test_nested_simple_string():
     possible_cell_config_strings = {
-        "(relu)",
-        "(prelu_with_args (0.1) (0.2))",
-        "(prelu_with_kwargs {'init': 0.1})",
+        "relu",
+        "prelu_with_args(0.1, 0.2)",
+        "prelu_with_kwargs({'init': 0.1})",
     }
 
     pipeline = ActPipelineSimple()
@@ -207,8 +207,8 @@ def test_nested_complex_string():
     act_config_string = neps_space.convert_operation_to_string(act)
     assert act_config_string
 
-    # expected to look like: "(prelu {'init': 0.1087727907176638})"
-    expected_prefix = "(prelu {'init': "
+    # expected to look like: "prelu({'init': 0.1087727907176638})"
+    expected_prefix = "prelu({'init': "
     expected_ending = "})"
     assert act_config_string.startswith(expected_prefix)
     assert act_config_string.endswith(expected_ending)
@@ -243,7 +243,7 @@ def test_fixed_pipeline_string():
     act = resolved_pipeline.act
     act_config_string = neps_space.convert_operation_to_string(act)
     assert act_config_string
-    assert act_config_string == "(prelu {'init': 0.5})"
+    assert act_config_string == "prelu({'init': 0.5})"
 
 
 @pytest.mark.repeat(50)
@@ -279,14 +279,14 @@ def test_simple_reuse():
 @pytest.mark.repeat(50)
 def test_simple_reuse_string():
     possible_conv_block_config_strings = {
-        "(sequential3 (conv1x1) (conv1x1) (conv1x1))",
-        "(sequential3 (conv1x1) (conv3x3) (conv1x1))",
-        "(sequential3 (conv3x3) (conv1x1) (conv3x3))",
-        "(sequential3 (conv3x3) (conv3x3) (conv3x3))",
-        "(sequential3 (conv5x5) (conv5x5) (conv5x5))",
-        "(sequential3 (conv5x5) (conv9x9) (conv5x5))",
-        "(sequential3 (conv9x9) (conv5x5) (conv9x9))",
-        "(sequential3 (conv9x9) (conv9x9) (conv9x9))",
+        "sequential3(conv1x1, conv1x1, conv1x1)",
+        "sequential3(conv1x1, conv3x3, conv1x1)",
+        "sequential3(conv3x3, conv1x1, conv3x3)",
+        "sequential3(conv3x3, conv3x3, conv3x3)",
+        "sequential3(conv5x5, conv5x5, conv5x5)",
+        "sequential3(conv5x5, conv9x9, conv5x5)",
+        "sequential3(conv9x9, conv5x5, conv9x9)",
+        "sequential3(conv9x9, conv9x9, conv9x9)",
     }
 
     pipeline = ConvPipeline()
@@ -350,43 +350,43 @@ def test_shared_complex():
 def test_shared_complex_string():
     possible_cell_config_strings = {
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (avg_pool) (avg_pool)"
-            " (avg_pool) (avg_pool) (avg_pool))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, avg_pool, avg_pool, avg_pool,"
+            " avg_pool, avg_pool, avg_pool)"
         ),
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (sequential3 (relu) (conv3x3)"
-            " (batch)) (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3"
-            " (relu) (conv3x3) (batch)))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, zero, sequential3(relu, conv3x3,"
+            " batch), zero, sequential3(relu, conv3x3, batch), zero, sequential3"
+            "(relu, conv3x3, batch))"
         ),
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
-            " (avg_pool) (sequential3 (relu) (conv3x3) (batch)) (avg_pool) (sequential3"
-            " (relu) (conv3x3) (batch)) (avg_pool))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, sequential3(relu, conv3x3, batch),"
+            " avg_pool, sequential3(relu, conv3x3, batch), avg_pool, sequential3"
+            "(relu, conv3x3, batch), avg_pool)"
         ),
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (zero) (zero) (zero) (zero) (zero))",
+        "cell({'float_hp': 0.5, 'int_hp': 2}, zero, zero, zero, zero, zero, zero)",
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (zero) (avg_pool) (zero) (avg_pool)"
-            " (zero) (avg_pool))"
-        ),
-        (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
-            " (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu) (conv3x3)"
-            " (batch)) (sequential3 (relu) (conv3x3) (batch)) (sequential3 (relu)"
-            " (conv3x3) (batch)) (sequential3 (relu) (conv3x3) (batch)))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, zero, avg_pool, zero, avg_pool,"
+            " zero, avg_pool)"
         ),
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero)"
-            " (avg_pool) (zero))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, sequential3(relu, conv3x3, batch),"
+            " sequential3(relu, conv3x3, batch), sequential3(relu, conv3x3,"
+            " batch), sequential3(relu, conv3x3, batch), sequential3(relu,"
+            " conv3x3, batch), sequential3(relu, conv3x3, batch))"
         ),
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (sequential3 (relu) (conv3x3) (batch))"
-            " (zero) (sequential3 (relu) (conv3x3) (batch)) (zero) (sequential3 (relu)"
-            " (conv3x3) (batch)) (zero))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, avg_pool, zero, avg_pool, zero,"
+            " avg_pool, zero)"
         ),
         (
-            "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (sequential3 (relu)"
-            " (conv3x3) (batch)) (avg_pool) (sequential3 (relu) (conv3x3) (batch))"
-            " (avg_pool) (sequential3 (relu) (conv3x3) (batch)))"
+            "cell({'float_hp': 0.5, 'int_hp': 2}, sequential3(relu, conv3x3, batch),"
+            " zero, sequential3(relu, conv3x3, batch), zero, sequential3(relu,"
+            " conv3x3, batch), zero)"
+        ),
+        (
+            "cell({'float_hp': 0.5, 'int_hp': 2}, avg_pool, sequential3(relu,"
+            " conv3x3, batch), avg_pool, sequential3(relu, conv3x3, batch),"
+            " avg_pool, sequential3(relu, conv3x3, batch))"
         ),
     }
 
@@ -447,8 +447,8 @@ def test_shared_complex_context():
     assert resolved_pipeline_second is not resolved_pipeline_first
 
     expected_config_string: str = (
-        "(cell {'float_hp': 0.5, 'int_hp': 2} (avg_pool) (zero) (avg_pool) (zero)"
-        " (avg_pool) (zero))"
+        "cell({'float_hp': 0.5, 'int_hp': 2}, avg_pool, zero, avg_pool, zero,"
+        " avg_pool, zero)"
     )
 
     # however, their final results should be the same thing
