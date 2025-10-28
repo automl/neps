@@ -336,7 +336,7 @@ class DemoOperationSpace(PipelineSpace):
 def test_operation_demo(optimizer):
     pipeline_space = DemoOperationSpace()
     root_directory = (
-        f"/tests_tmpdir/test_neps_spaces/results/operation_demo__{optimizer.__name__}"
+        f"tests_tmpdir/test_neps_spaces/results/operation_demo__{optimizer.__name__}"
     )
 
     neps.run(
