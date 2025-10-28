@@ -110,7 +110,7 @@ class Fidelity(Resolvable, Generic[T]):
         """Get a string representation of the fidelity."""
         return f"Fidelity({self._domain.__str__()})"
 
-    def is_equivalent_to(self, other: object) -> bool:
+    def compare_domain_to(self, other: object) -> bool:
         """Check if this fidelity parameter is equivalent to another.
 
         This method provides comparison logic without interfering with Python's
@@ -127,24 +127,12 @@ class Fidelity(Resolvable, Generic[T]):
             return False
         return self._domain == other._domain
 
-    def __eq__(self, other: object) -> bool:
-        """Check if this is the exact same object instance.
-
-        This uses object identity to avoid interfering with the resolution caching system.
-        """
-        return self is other
-
-    def __hash__(self) -> int:
-        """Get hash based on object identity."""
-        return id(self)
-
     @property
     def min_value(self) -> int | float:
         """Get the minimum value of the fidelity domain.
 
         Returns:
             The minimum value of the fidelity domain.
-
         """
         return self._domain.min_value
 
@@ -213,7 +201,6 @@ class PipelineSpace(Resolvable):
         for attr_name, attr_value in vars(self.__class__).items():
             if attr_name.startswith("_") or callable(attr_value) or attr_value is None:
                 continue
-            # Skip if this parameter has been marked as removed
             attrs[attr_name] = attr_value
 
         for attr_name, attr_value in vars(self).items():
@@ -259,23 +246,15 @@ class PipelineSpace(Resolvable):
         )
         return f"PipelineSpace {self.__class__.__name__} with parameters:\n\t{attrs}"
 
-    def __add__(
+    def add(
         self,
-        other: (
-            Integer
-            | Float
-            | Categorical
-            | Operation
-            | Resampled
-            | Repeated
-            | PipelineSpace
-        ),
+        new_param: Integer | Float | Categorical | Operation | Resampled | Repeated,
         name: str | None = None,
     ) -> PipelineSpace:
         """Add a new parameter to the pipeline.
 
         Args:
-            other: The parameter to be added, which can be an Integer, Float,
+            new_param: The parameter to be added, which can be an Integer, Float,
                 Categorical, Operation, Resampled, Repeated, or PipelineSpace.
             name: The name of the parameter to be added. If None, a default name will be
                 generated.
@@ -287,18 +266,18 @@ class PipelineSpace(Resolvable):
             ValueError: If the parameter is not of a supported type or if a parameter
                 with the same name already exists in the pipeline.
         """
-        if isinstance(other, PipelineSpace):
+        if isinstance(new_param, PipelineSpace):
             new_space = self
-            for exist_name, value in other.get_attrs().items():
-                new_space = new_space.__add__(value, exist_name)
+            for exist_name, value in new_param.get_attrs().items():
+                new_space = new_space.add(value, exist_name)
             return new_space
 
         if not isinstance(
-            other, Integer | Float | Categorical | Operation | Resampled | Repeated
+            new_param, Integer | Float | Categorical | Operation | Resampled | Repeated
         ):
             raise ValueError(
                 "Can only add Integer, Float, Categorical, Operation, Resampled,"
-                f" Repeated or PipelineSpace, got {other!r}."
+                f" Repeated or PipelineSpace, got {new_param!r}."
             )
         param_name = name if name else f"param_{len(self.get_attrs()) + 1}"
 
@@ -310,34 +289,18 @@ class PipelineSpace(Resolvable):
         new_pipeline = NewSpace()
         for exist_name, value in self.get_attrs().items():
             setattr(new_pipeline, exist_name, value)
-            if exist_name == param_name and not _parameters_are_equivalent(value, other):
+            if exist_name == param_name and not _parameters_are_equivalent(
+                value, new_param
+            ):
                 raise ValueError(
                     f"A different parameter with the name {param_name!r} already exists"
                     " in the pipeline:\n"
                     f" {value}\n"
-                    f" {other}"
+                    f" {new_param}"
                 )
         if not hasattr(new_pipeline, param_name):
-            setattr(new_pipeline, param_name, other)
+            setattr(new_pipeline, param_name, new_param)
         return new_pipeline
-
-    def add(
-        self,
-        new_param: Integer | Float | Categorical | Operation | Resampled | Repeated,
-        name: str | None = None,
-    ) -> PipelineSpace:
-        """Add a new parameter to the pipeline. This is NOT an in-place operation.
-
-        Args:
-            new_param: The parameter to be added, which can be an Integer, Float,
-                Categorical, Operation, Resampled, or Repeated domain.
-            name: The name of the parameter to be added. If None, a default name will
-                be generated.
-
-        Returns:
-            A NEW PipelineSpace with the added parameter.
-        """
-        return self.__add__(new_param, name)
 
     def remove(self, name: str) -> PipelineSpace:
         """Remove a parameter from the pipeline by its name. This is NOT an in-place
@@ -679,7 +642,7 @@ class Categorical(Domain[int], Generic[T]):
         string += ")"
         return string
 
-    def is_equivalent_to(self, other: object) -> bool:
+    def compare_domain_to(self, other: object) -> bool:
         """Check if this categorical parameter is equivalent to another.
 
         This method provides comparison logic without interfering with Python's
@@ -699,17 +662,6 @@ class Categorical(Domain[int], Generic[T]):
             and self._prior_confidence == other._prior_confidence
             and self.choices == other.choices
         )
-
-    def __eq__(self, other: object) -> bool:
-        """Check if this is the exact same object instance.
-
-        This uses object identity to avoid interfering with the resolution caching system.
-        """
-        return self is other
-
-    def __hash__(self) -> int:
-        """Get hash based on object identity."""
-        return id(self)
 
     @property
     def min_value(self) -> int:
@@ -897,7 +849,7 @@ class Float(Domain[float]):
         string += ")"
         return string
 
-    def is_equivalent_to(self, other: object) -> bool:
+    def compare_domain_to(self, other: object) -> bool:
         """Check if this float parameter is equivalent to another.
 
         This method provides comparison logic without interfering with Python's
@@ -919,17 +871,6 @@ class Float(Domain[float]):
             and self.max_value == other.max_value
             and self._log == other._log
         )
-
-    def __eq__(self, other: object) -> bool:
-        """Check if this is the exact same object instance.
-
-        This uses object identity to avoid interfering with the resolution caching system.
-        """
-        return self is other
-
-    def __hash__(self) -> int:
-        """Get hash based on object identity."""
-        return id(self)
 
     @property
     def min_value(self) -> float:
@@ -1115,7 +1056,7 @@ class Integer(Domain[int]):
         string += ")"
         return string
 
-    def is_equivalent_to(self, other: object) -> bool:
+    def compare_domain_to(self, other: object) -> bool:
         """Check if this integer parameter is equivalent to another.
 
         This method provides comparison logic without interfering with Python's
@@ -1137,17 +1078,6 @@ class Integer(Domain[int]):
             and self.max_value == other.max_value
             and self._log == other._log
         )
-
-    def __eq__(self, other: object) -> bool:
-        """Check if this is the exact same object instance.
-
-        This uses object identity to avoid interfering with the resolution caching system.
-        """
-        return self is other
-
-    def __hash__(self) -> int:
-        """Get hash based on object identity."""
-        return id(self)
 
     @property
     def min_value(self) -> int:
@@ -1325,7 +1255,7 @@ class Operation(Resolvable):
             f" kwargs={self._kwargs!s})"
         )
 
-    def is_equivalent_to(self, other: object) -> bool:
+    def compare_domain_to(self, other: object) -> bool:
         """Check if this operation parameter is equivalent to another.
 
         This method provides comparison logic without interfering with Python's
@@ -1345,17 +1275,6 @@ class Operation(Resolvable):
             and self.args == other.args
             and self.kwargs == other.kwargs
         )
-
-    def __eq__(self, other: object) -> bool:
-        """Check if this is the exact same object instance.
-
-        This uses object identity to avoid interfering with the resolution caching system.
-        """
-        return self is other
-
-    def __hash__(self) -> int:
-        """Get hash based on object identity."""
-        return id(self)
 
     @property
     def operator(self) -> Callable | str:
@@ -1519,6 +1438,23 @@ class Resampled(Resolvable):
                 f"Source should be a resolvable object. Is: {self._source!r}."
             )
         return self._source.from_attrs(attrs)
+
+    def compare_domain_to(self, other: object) -> bool:
+        """Check if this resampled parameter is equivalent to another.
+
+        This method provides comparison logic without interfering with Python's
+        object identity system (unlike __eq__). Use this for functional comparisons
+        like checking if parameters have the same configuration.
+
+        Args:
+            other: The object to compare with.
+
+        Returns:
+            True if the objects are equivalent, False otherwise.
+        """
+        if not isinstance(other, Resampled):
+            return False
+        return self.source == other.source
 
 
 class Repeated(Resolvable):

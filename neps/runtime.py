@@ -588,7 +588,7 @@ class DefaultWorker:
 
             logger.info(
                 "Summary files can be found in the “summary” folder inside"
-                "the root directory: %s",
+                " the root directory: %s",
                 summary_dir,
             )
 

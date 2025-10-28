@@ -291,12 +291,12 @@ def test_resolve_context():
         ),
     }
     expected_s_config_string = (
-        "(Sequential (Sequential (Sequential (ReLUConvBN)) (Sequential (Conv2D-3)"
-        " (Sequential (Sequential (Sequential (Sequential (Identity) (Conv2D-3)"
-        " (Identity)))) (Sequential (ReLUConvBN)) (Conv2D-3) (Identity) (Conv2D-1)"
-        " (Conv2D-3) (Conv2D-1) (Identity)) (ReLUConvBN))) (Sequential (Sequential"
-        " (Sequential (Sequential (Identity) (Sequential (ReLUConvBN)))))) (Conv2D-1)"
-        " (Conv2D-1) (Identity) (Identity) (Conv2D-1) (Conv2D-1))"
+        "Sequential(Sequential(Sequential(ReLUConvBN), Sequential(Conv2D-3,"
+        " Sequential(Sequential(Sequential(Sequential(Identity, Conv2D-3,"
+        " Identity))), Sequential(ReLUConvBN), Conv2D-3, Identity, Conv2D-1,"
+        " Conv2D-3, Conv2D-1, Identity), ReLUConvBN)), Sequential(Sequential"
+        "(Sequential(Sequential(Identity, Sequential(ReLUConvBN))))), Conv2D-1,"
+        " Conv2D-1, Identity, Identity, Conv2D-1, Conv2D-1)"
     )
 
     pipeline = GrammarLike()
@@ -482,17 +482,17 @@ def test_resolve_context_alt():
         ),
     }
     expected_s_config_string = (
-        "(Sequential (Sequential (Sequential (Sequential (Sequential "
-        "(Sequential (Conv2D-3) (Sequential (ReLUConvBN)))) (Sequential "
-        "(ReLUConvBN)) (Identity) (Conv2D-3) (Conv2D-3) (Conv2D-1) (Conv2D-3) "
-        "(Identity)))) (Sequential (Conv2D-3) (Sequential (Sequential "
-        "(Sequential (Sequential (Sequential (ReLUConvBN)) (Sequential "
-        "(Conv2D-1))) (Sequential (Sequential (ReLUConvBN))) (Conv2D-1) "
-        "(Conv2D-1) (Identity) (Conv2D-1) (Conv2D-3) (Conv2D-3))) "
-        "(Sequential (Sequential (ReLUConvBN)) (Sequential (Sequential "
-        "(Sequential (Identity))) (Sequential (Conv2D-3))) (Conv2D-1) "
-        "(Identity) (Conv2D-1) (Conv2D-1) (Conv2D-1) (Identity)) (Identity) "
-        "(Identity) (Identity) (Conv2D-1) (Conv2D-1) (Conv2D-3)) (ReLUConvBN)))"
+        "Sequential(Sequential(Sequential(Sequential(Sequential"
+        "(Sequential(Conv2D-3, Sequential(ReLUConvBN))), Sequential"
+        "(ReLUConvBN), Identity, Conv2D-3, Conv2D-3, Conv2D-1, Conv2D-3,"
+        " Identity))), Sequential(Conv2D-3, Sequential(Sequential"
+        "(Sequential(Sequential(Sequential(ReLUConvBN), Sequential"
+        "(Conv2D-1)), Sequential(Sequential(ReLUConvBN)), Conv2D-1,"
+        " Conv2D-1, Identity, Conv2D-1, Conv2D-3, Conv2D-3)),"
+        " Sequential(Sequential(ReLUConvBN), Sequential(Sequential"
+        "(Sequential(Identity)), Sequential(Conv2D-3)), Conv2D-1,"
+        " Identity, Conv2D-1, Conv2D-1, Conv2D-1, Identity), Identity,"
+        " Identity, Identity, Conv2D-1, Conv2D-1, Conv2D-3), ReLUConvBN))"
     )
 
     pipeline = GrammarLikeAlt()

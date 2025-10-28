@@ -116,10 +116,6 @@ class SamplingResolutionContext:
         # `_resolved_objects` stores the intermediate values to make re-use possible.
         self._resolved_objects: dict[Any, Any] = {}
 
-        # `_sampled_domains` tracks domain objects that have been sampled from by
-        # (id, path) key
-        self._sampled_domains: set[tuple[int, str]] = set()
-
         # `_current_path_parts` stores the current path we are resolving.
         self._current_path_parts: list[str] = []
 
@@ -185,12 +181,7 @@ class SamplingResolutionContext:
         Returns:
             True if the object was already resolved, False otherwise.
         """
-        try:
-            # Try to use the object itself as a key (works for hashable objects)
-            return obj in self._resolved_objects
-        except TypeError:
-            # If the object is not hashable, fall back to using its id
-            return id(obj) in self._resolved_objects
+        return obj in self._resolved_objects
 
     def add_resolved(self, original: Any, resolved: Any) -> None:
         """Add a resolved object to the context.
@@ -214,12 +205,7 @@ class SamplingResolutionContext:
             raise ValueError(
                 f"Attempting to add a Resampled object to resolved values: {original!r}."
             )
-        try:
-            # Try to use the object itself as a key (works for hashable objects)
-            self._resolved_objects[original] = resolved
-        except TypeError:
-            # If the object is not hashable, fall back to using its id
-            self._resolved_objects[id(original)] = resolved
+        self._resolved_objects[original] = resolved
 
     def get_resolved(self, obj: Any) -> Any:
         """Get the resolved value for the given object.
@@ -234,23 +220,11 @@ class SamplingResolutionContext:
             ValueError: If the object was not already resolved in the context.
         """
         try:
-            # Try to use the object itself as a key (works for hashable objects)
             return self._resolved_objects[obj]
-        except (KeyError, TypeError) as err:
-            if isinstance(err, TypeError):
-                # If the object is not hashable, try using its id
-                try:
-                    return self._resolved_objects[id(obj)]
-                except KeyError as id_err:
-                    raise ValueError(
-                        "Given object was not already resolved. Please check first:"
-                        f" {obj!r}"
-                    ) from id_err
-            else:
-                # KeyError - object wasn't found
-                raise ValueError(
-                    f"Given object was not already resolved. Please check first: {obj!r}"
-                ) from err
+        except KeyError as err:
+            raise ValueError(
+                f"Given object was not already resolved. Please check first: {obj!r}"
+            ) from err
 
     def sample_from(self, domain_obj: Domain) -> Any:
         """Sample a value from the given domain object.
@@ -265,6 +239,18 @@ class SamplingResolutionContext:
             ValueError: If the domain object was already resolved or if the path
                 has already been sampled from.
         """
+        # Each `domain_obj` is only ever sampled from once.
+        # This is okay and the expected behavior.
+        # For each `domain_obj`, its sampled value is either directly stored itself,
+        # or is used in some other Resolvable.
+        # In both cases that sampled value is cached for later uses,
+        # and so the `domain_obj` will not be re-sampled from again.
+        if self.was_already_resolved(domain_obj):
+            raise ValueError(
+                "We have already sampled a value for the given domain object:"
+                f" {domain_obj!r}." + "\nThis should not be happening."
+            )
+
         # The range compatibility identifier is there to make sure when we say
         # the path matches, that the range for the value we are looking up also matches.
         domain_obj_type_name = type(domain_obj).__name__.lower()
@@ -284,25 +270,12 @@ class SamplingResolutionContext:
                 + "\nThis should not be happening."
             )
 
-        # For domain object tracking, create a key that includes both domain ID and path
-        # context
-        # This allows the same domain to be sampled in different resampled contexts
-        domain_path_key = (id(domain_obj), current_path)
-
-        if domain_path_key in self._sampled_domains:
-            raise ValueError(
-                "We have already sampled a value for the given domain object:"
-                f" {domain_obj!r} at path {current_path!r}."
-                + "\nThis should not be happening."
-            )
-
         sampled_value = self._domain_sampler(
             domain_obj=domain_obj,
             current_path=current_path,
         )
 
         self._samplings_made[current_path] = sampled_value
-        self._sampled_domains.add(domain_path_key)
         return self._samplings_made[current_path]
 
     def get_value_from_environment(self, var_name: str) -> Any:
@@ -323,54 +296,6 @@ class SamplingResolutionContext:
             raise ValueError(
                 f"No value is available for the environment variable {var_name!r}."
             ) from err
-
-    def was_already_resolved_with_path(self, obj: Any) -> bool:
-        """Check if the given object was already resolved with current path.
-
-        Args:
-            obj: The object to check if it was already resolved.
-
-        Returns:
-            True if the object was already resolved with current path, False otherwise.
-        """
-        current_path = ".".join(self._current_path_parts)
-        # Use object identity (id) instead of equality to ensure different instances
-        # are treated separately even if they're equal
-        cache_key = (id(obj), current_path)
-        return cache_key in self._resolved_objects
-
-    def get_resolved_with_path(self, obj: Any) -> Any:
-        """Get the resolved value for the given object with current path.
-
-        Args:
-            obj: The object for which to get the resolved value.
-
-        Returns:
-            The resolved value of the object.
-
-        Raises:
-            ValueError: If the object was not already resolved with current path.
-        """
-        current_path = ".".join(self._current_path_parts)
-        cache_key = (id(obj), current_path)
-        try:
-            return self._resolved_objects[cache_key]
-        except KeyError as err:
-            raise ValueError(
-                f"Given object was not already resolved with path {current_path!r}:"
-                f" {obj!r}"
-            ) from err
-
-    def add_resolved_with_path(self, original: Any, resolved: Any) -> None:
-        """Add a resolved object to the context with current path.
-
-        Args:
-            original: The original object that was resolved.
-            resolved: The resolved value of the original object.
-        """
-        current_path = ".".join(self._current_path_parts)
-        cache_key = (id(original), current_path)
-        self._resolved_objects[cache_key] = resolved
 
 
 class SamplingResolver:
@@ -461,19 +386,8 @@ class SamplingResolver:
         domain_obj: Domain,
         context: SamplingResolutionContext,
     ) -> Any:
-        # Check if we're in a resampled context (path contains "resampled_")
-        current_path = ".".join(context._current_path_parts)
-        is_resampled_context = "resampled_" in current_path
-
-        # Always check object-identity cache first for shared objects
         if context.was_already_resolved(domain_obj):
             return context.get_resolved(domain_obj)
-
-        # In non-resampled contexts, also check path-specific cache
-        if not is_resampled_context and context.was_already_resolved_with_path(
-            domain_obj
-        ):
-            return context.get_resolved_with_path(domain_obj)
 
         initial_attrs = domain_obj.get_attrs()
         final_attrs = {}
@@ -496,16 +410,7 @@ class SamplingResolver:
             raise ValueError(f"Failed to sample from {resolved_domain_obj!r}.") from e
         result = self._resolve(sampled_value, "sampled_value", context)
 
-        # Cache the result
-        if not is_resampled_context:
-            # In normal contexts, cache with both object identity and path
-            context.add_resolved(domain_obj, result)
-            context.add_resolved_with_path(domain_obj, result)
-        elif not context.was_already_resolved(domain_obj):
-            # In resampled contexts, cache shared objects for reuse across contexts
-            # but skip path-based caching to prevent unwanted dependencies
-            context.add_resolved(domain_obj, result)
-
+        context.add_resolved(domain_obj, result)
         return result
 
     @_resolver_dispatch.register
@@ -631,6 +536,17 @@ class SamplingResolver:
 
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
+
+            # Special handling for 'args': if it was a Resolvable that resolved to a
+            # non-iterable, wrap it in a tuple since Operation expects args to be a
+            # sequence
+            if (
+                attr_name == "args"
+                and isinstance(initial_attr_value, Resolvable)
+                and not isinstance(resolved_attr_value, tuple | list | Resolvable)
+            ):
+                resolved_attr_value = (resolved_attr_value,)
+
             final_attrs[attr_name] = resolved_attr_value
             needed_resolving = needed_resolving or (
                 initial_attr_value is not resolved_attr_value
@@ -929,9 +845,7 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
     operator = cast(Callable, operation.operator)
 
     operation_args: list[Any] = []
-    for arg in (
-        operation.args if isinstance(operation.args, tuple | list) else (operation.args,)
-    ):
+    for arg in operation.args:
         if isinstance(arg, tuple | list):
             arg_sequence: list[Any] = []
             for a in arg:
@@ -967,73 +881,117 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
                 if isinstance(kwarg_value, Operation)
                 else kwarg_value
             )
+
     return cast(Callable, operator(*operation_args, **operation_kwargs))
 
 
+def _serialize_operation(operation: Operation | str | Callable) -> str:
+    """Serialize an operation to its string representation.
+
+    This is a helper function to convert Operation objects to strings
+    for inclusion in the operands field of UnwrappedConfigStringPart.
+    """
+    if isinstance(operation, str):
+        return operation
+
+    # Handle non-Operation objects (e.g., resolved PyTorch modules, integers, etc.)
+    if not isinstance(operation, Operation):
+        return str(operation)
+
+    # For Operation objects, build the string representation
+    operator_name = (
+        operation.operator
+        if isinstance(operation.operator, str)
+        else operation.operator.__name__
+    )
+
+    if not operation.args:
+        # No operands - just return operator name
+        return operator_name
+
+    # Recursively serialize operands
+    operand_strs = [_serialize_operation(arg) for arg in operation.args]
+    return f"{operator_name}({', '.join(operand_strs)})"
+
+
 def _operation_to_unwrapped_config(
-    operation: Operation | str | Resolvable,
+    operation: Operation | str,
     level: int = 1,
-) -> list[config_string.UnwrappedConfigStringPart]:
+    opening_index: int = 0,
+) -> tuple[list[config_string.UnwrappedConfigStringPart], int]:
+    """Convert an Operation to unwrapped config parts.
+
+    Returns:
+        A tuple of (list of parts, next available opening_index)
+    """
     result = []
 
     if isinstance(operation, Operation):
         operator = operation.operator
         kwargs = str(operation.kwargs)
+
+        # Build operands string and collect child parts
+        operand_strs = []
+        all_child_parts = []
+        next_opening = opening_index + 1
+
+        for operand in operation.args:
+            if isinstance(operand, Operation):
+                # Only create child parts if the operation has operands
+                # (otherwise it's just a simple name like "ReLU")
+                if operand.args:
+                    # Recursively get unwrapped parts for the nested operation
+                    child_parts, next_opening = _operation_to_unwrapped_config(
+                        operand, level + 1, next_opening
+                    )
+                    all_child_parts.extend(child_parts)
+                # Serialize this operand to a string for the operands field
+                operand_strs.append(_serialize_operation(operand))
+            else:
+                operand_strs.append(str(operand))
+
+        # Create operands string
+        operands_str = ", ".join(operand_strs)
+
         item = config_string.UnwrappedConfigStringPart(
             level=level,
-            opening_index=-1,
+            opening_index=opening_index,
             operator=operator,
             hyperparameters=kwargs,
-            operands="",
+            operands=operands_str,
         )
         result.append(item)
+        result.extend(all_child_parts)
 
-        # Handle args that might be a Resolvable or an iterable
-        args = operation.args
-        if isinstance(args, Resolvable):
-            # If args is a Resolvable, treat it as a single operand
-            result.extend(_operation_to_unwrapped_config(args, level + 1))
-        else:
-            # If args is iterable (tuple/list), iterate over each operand
-            for operand in args:
-                result.extend(_operation_to_unwrapped_config(operand, level + 1))
-    elif isinstance(operation, Resolvable):
-        # Handle other Resolvable types that are not Operations
-        item = config_string.UnwrappedConfigStringPart(
-            level=level,
-            opening_index=-1,
-            operator=str(operation),  # Convert to string for display
-            hyperparameters="",
-            operands="",
-        )
-        result.append(item)
-    else:
-        # Handle string operations
-        item = config_string.UnwrappedConfigStringPart(
-            level=level,
-            opening_index=-1,
-            operator=operation,
-            hyperparameters="",
-            operands="",
-        )
-        result.append(item)
-    return result
+        return result, next_opening
+    item = config_string.UnwrappedConfigStringPart(
+        level=level,
+        opening_index=opening_index,
+        operator=operation,
+        hyperparameters="",
+        operands="",
+    )
+    return [item], opening_index + 1
 
 
-def convert_operation_to_string(operation: Operation) -> str:
+def convert_operation_to_string(operation: Operation | str | int | float) -> str:
     """Convert an Operation to a string representation.
 
     Args:
-        operation: The Operation to convert.
+        operation: The Operation to convert, or a primitive value.
 
     Returns:
-        A string representation of the operation.
+        A string representation of the operation or value.
 
     Raises:
         ValueError: If the operation is not a valid Operation object.
     """
-    unwrapped_config = tuple(_operation_to_unwrapped_config(operation))
-    return config_string.wrap_config_into_string(unwrapped_config)
+    # Handle non-Operation values (resolved primitives)
+    if not isinstance(operation, Operation):
+        return str(operation)
+
+    unwrapped_config, _ = _operation_to_unwrapped_config(operation)
+    return config_string.wrap_config_into_string(tuple(unwrapped_config))
 
 
 # -------------------------------------------------
