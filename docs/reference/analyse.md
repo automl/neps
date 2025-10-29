@@ -82,6 +82,7 @@ Details include configuration hyperparameters and any returned result and cost f
 The `best_config_trajectory.txt` contains logging of the incumbent trajectory.
 The `best_config.txt` records current incumbent.
 
+
 # TensorBoard Integration
 
 In NePS we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
