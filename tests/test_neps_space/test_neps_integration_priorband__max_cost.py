@@ -66,32 +66,34 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
     [
         (
             partial(algorithms.neps_random_search, ignore_fidelity=True),
-            "new__RandomSearch",
+            "neps_random_search",
         ),
         (
             partial(algorithms.complex_random_search, ignore_fidelity=True),
-            "new__ComplexRandomSearch",
+            "neps_complex_random_search",
         ),
         (
             partial(algorithms.neps_priorband, base="successive_halving"),
-            "new__priorband+successive_halving",
+            "neps_priorband+successive_halving",
         ),
         (
             partial(algorithms.neps_priorband, base="asha"),
-            "new__priorband+asha",
+            "neps_priorband+asha",
         ),
         (
             partial(algorithms.neps_priorband, base="async_hb"),
-            "new__priorband+async_hb",
+            "neps_priorband+async_hb",
         ),
         (
             algorithms.neps_priorband,
-            "new__priorband+hyperband",
+            "neps_priorband+hyperband",
         ),
     ],
 )
 def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
-    optimizer.__name__ = optimizer_name  # Needed by NEPS later.
+    optimizer.__name__ = (
+        "neps_priorband" if "priorband" in optimizer_name else optimizer_name
+    )  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
     root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
 
@@ -103,7 +105,7 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        cost_to_spend=100,  # Reduced from 1000 to make tests faster
+        cost_to_spend=100,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -114,24 +116,24 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
     [
         (
             partial(algorithms.priorband, base="successive_halving"),
-            "old__priorband+successive_halving",
+            "old_priorband+successive_halving",
         ),
         (
             partial(algorithms.priorband, base="asha"),
-            "old__priorband+asha",
+            "old_priorband+asha",
         ),
         (
             partial(algorithms.priorband, base="async_hb"),
-            "old__priorband+async_hb",
+            "old_priorband+async_hb",
         ),
         (
             algorithms.priorband,
-            "old__priorband+hyperband",
+            "old_priorband+hyperband",
         ),
     ],
 )
 def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
-    optimizer.__name__ = optimizer_name  # Needed by NEPS later.
+    optimizer.__name__ = "priorband"  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
     root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__costs__{optimizer.__name__}"
 
@@ -143,7 +145,7 @@ def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        cost_to_spend=100,  # Reduced from 1000 to make tests faster
+        cost_to_spend=100,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
