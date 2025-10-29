@@ -153,7 +153,8 @@ class PriorBandSampler:
         w_inc = w_inc / total_weight
         w_random = w_random / total_weight
 
-        assert np.isclose(w_prior + w_inc + w_random, 1.0)
+        # Verify weights are valid probabilities (relaxed tolerance for floating-point)
+        assert np.isclose(w_prior + w_inc + w_random, 1.0, rtol=1e-7, atol=1e-9)
 
         # Now we use these weights to choose which sampling distribution to sample from
         policy = np.random.choice(
