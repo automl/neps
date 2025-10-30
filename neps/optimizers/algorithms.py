@@ -40,6 +40,7 @@ from neps.optimizers.neps_random_search import (
     NePSComplexRandomSearch,
     NePSRandomSearch,
 )
+from neps.optimizers.neps_regularized_evolution import NePSRegularizedEvolution
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
@@ -1804,6 +1805,29 @@ def neps_priorband(
         sample_prior_first=sample_prior_first,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
         inc_ratio=inc_ratio,
+    )
+
+
+def neps_regularized_evolution(
+    pipeline_space: PipelineSpace,
+    *,
+    population_size: int = 20,
+    tournament_size: int = 5,
+    use_priors: bool = True,
+    mutation_type: float | Literal["mutate_best", "crossover_top_2"] = 0.5,
+    n_mutations: int | Literal["random", "half"] | None = "random",
+    n_forgets: int | Literal["random", "half"] | None = None,
+    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+) -> NePSRegularizedEvolution:
+    return NePSRegularizedEvolution(
+        pipeline=pipeline_space,
+        population_size=population_size,
+        tournament_size=tournament_size,
+        use_priors=use_priors,
+        mutation_type=mutation_type,
+        n_mutations=n_mutations,
+        n_forgets=n_forgets,
+        ignore_fidelity=ignore_fidelity,
     )
 
 

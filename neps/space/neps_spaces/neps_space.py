@@ -1332,6 +1332,8 @@ ONLY_NEPS_ALGORITHMS_NAMES = [
     "complex_random_search",
     "neps_hyperband",
     "complex_hyperband",
+    "neps_regularized_evolution",
+    "regularized_evolution",
 ]
 CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
     "random_search",
@@ -1350,6 +1352,7 @@ def _get_only_neps_algorithms_functions() -> list[Callable]:
         algorithms.complex_random_search,
         algorithms.neps_hyperband,
         algorithms.neps_grid_search,
+        algorithms.neps_regularized_evolution,
     ]
 
 
