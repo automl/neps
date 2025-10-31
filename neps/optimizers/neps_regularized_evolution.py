@@ -32,15 +32,27 @@ if TYPE_CHECKING:
 
 @dataclass
 class NePSRegularizedEvolution:
-    """A complex random search optimizer for a NePS pipeline.
-    It samples configurations randomly from the pipeline's domain and environment values,
-    and also performs mutations and crossovers based on previous successful trials.
+    """A Regularized Evolution optimizer for a NePS pipeline.
+    It samples configurations based on mutations and crossovers of previous successful
+    trials, using a tournament selection mechanism.
 
     Args:
-        pipeline: The pipeline to optimize, which should be a Pipeline object.
-
-    Raises:
-        ValueError: If the pipeline is not a Pipeline object.
+        pipeline: The pipeline to optimize.
+        population_size: The size of the population for evolution.
+        tournament_size: The size of the tournament for selecting parents.
+        use_priors: Whether to use priors when sampling if available.
+        mutation_type: The type of mutation to use (e.g., "mutate_best",
+            "crossover_top_2"). If a float is provided, it is interpreted as the
+            probability of choosing mutation, compared to the probability of crossover.
+        n_mutations: The number of mutations to apply. A fixed integer, "random" for
+            a random number between 1 and half the parameters, or "half" to mutate
+            half the parameters.
+        n_forgets: The number of parameters to forget. A fixed integer, "random" for
+            a random number between 1 and half the parameters, or "half" to forget
+            half the parameters.
+        ignore_fidelity: Whether to ignore fidelity when sampling. If set to "highest
+            fidelity", the highest fidelity values will be used. If True, fidelity
+            values will be sampled randomly.
     """
 
     def __init__(
@@ -103,9 +115,9 @@ class NePSRegularizedEvolution:
             # By default we don't support fidelities unless explicitly requested.
             else:
                 raise ValueError(
-                    "ComplexRandomSearch does not support fidelities by default. Consider"
-                    " using a different optimizer or setting `ignore_fidelity=True` or"
-                    " `highest fidelity`."
+                    "RegularizedEvolution does not support fidelities by default. "
+                    "Consider using a different optimizer or setting "
+                    "`ignore_fidelity=True` or `highest fidelity`."
                 )
 
         self._random_or_prior_sampler: RandomSampler | PriorOrFallbackSampler = (
