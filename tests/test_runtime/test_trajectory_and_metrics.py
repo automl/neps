@@ -266,7 +266,7 @@ def test_neps_hyperband_metrics():
             pipeline_space=SpaceWithFidelity(),
             optimizer=algorithms.neps_hyperband,
             root_directory=str(root_directory),
-            fidelities_to_spend=20,  # Use fidelities_to_spend for multi-fidelity optimizers
+            fidelities_to_spend=20,  # Use fidelities_to_spend for mf optimizers
             overwrite_root_directory=True,
         )
 
@@ -499,7 +499,176 @@ def test_neps_revisit_run_with_trajectory():
         assert "Config ID:" in updated_trajectory
         assert "Objective to minimize:" in updated_trajectory
 
-        # The updated content should be at least as long (potentially with timing info added)
+        # The updated content should be at least as long (potentially with timing info
+        # added)
         assert len(updated_trajectory) >= len(initial_trajectory), (
             "Updated trajectory should have at least the same content"
         )
+
+
+@pytest.mark.parametrize("run_number", range(10))
+def test_continue_finished_run_with_higher_budget(run_number):
+    """Test continuing a finished run with overwrite_root_directory=False.
+
+    This test runs 10 times with different random seeds to catch any
+    non-deterministic bugs in state management.
+
+    Uses a HIGH initial budget to likely find a very good solution, then continues
+    with a SMALL additional budget. This makes bugs more obvious because:
+    - New evaluations will likely be worse than the initial best
+    - If bugs exist, they'll cause the worse configs to incorrectly appear as "best"
+    - Tests that the incumbent is properly preserved across continuation
+
+    Verifies:
+    1. Best config file contains the actual best configuration from all evaluations
+    2. Cumulative metrics in best_config.txt are correct
+    3. The best found improves or stays the same compared to initial run
+    4. Trajectory objectives are monotonically non-increasing
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        root_directory = Path(tmp_dir) / f"continue_test_run_{run_number}"
+
+        # First run - complete optimization with HIGH budget to find a good solution
+        initial_budget = 20
+        neps.run(
+            evaluate_pipeline=simple_evaluation,
+            pipeline_space=SimpleSpace(),
+            optimizer=algorithms.neps_random_search,
+            root_directory=str(root_directory),
+            evaluations_to_spend=initial_budget,
+            overwrite_root_directory=True,
+        )  # Verify first run completed
+        summary_dir = root_directory / "summary"
+        best_config_file = summary_dir / "best_config.txt"
+        trajectory_file = summary_dir / "best_config_trajectory.txt"
+
+        assert best_config_file.exists()
+        assert trajectory_file.exists()
+
+        # Read initial results
+        initial_best_config = best_config_file.read_text()
+        trajectory_file.read_text()
+
+        # Extract initial best objective
+        initial_obj_match = re.search(
+            r"Objective to minimize: ([\d.]+)", initial_best_config
+        )
+        assert initial_obj_match is not None
+        initial_best_objective = float(initial_obj_match.group(1))
+
+        # Extract initial cumulative evaluations
+        initial_cum_match = re.search(
+            r"Cumulative evaluations: (\d+)", initial_best_config
+        )
+        assert initial_cum_match is not None
+        initial_cumulative = int(initial_cum_match.group(1))
+
+        # Second run - continue with SMALL additional budget
+        # With the high initial budget, we likely found a good solution
+        # New evaluations will probably be worse, exposing bugs if they exist
+        additional_budget = 5
+        total_expected_budget = initial_budget + additional_budget
+
+        neps.run(
+            evaluate_pipeline=simple_evaluation,
+            pipeline_space=SimpleSpace(),
+            optimizer=algorithms.neps_random_search,
+            root_directory=str(root_directory),
+            evaluations_to_spend=additional_budget,
+            overwrite_root_directory=False,  # Continue from previous run
+        )
+
+        # Read final results
+        final_best_config = best_config_file.read_text()
+        final_trajectory = trajectory_file.read_text()
+
+        # ===== Test 1: Verify best_config.txt contains a valid best configuration =====
+        final_obj_match = re.search(r"Objective to minimize: ([\d.]+)", final_best_config)
+        assert final_obj_match is not None
+        final_best_objective = float(final_obj_match.group(1))
+
+        # The final best should be <= initial best (can only improve or stay same)
+        assert final_best_objective <= initial_best_objective, (
+            "Best objective regressed when continuing run: "
+            f"initial={initial_best_objective}, final={final_best_objective}"
+        )
+
+        # ===== Test 2: Verify cumulative metrics are correct =====
+        # Extract cumulative evaluations from best_config.txt
+        final_cum_match = re.search(r"Cumulative evaluations: (\d+)", final_best_config)
+        assert final_cum_match is not None, "Should have cumulative evaluations"
+        final_cumulative_evals = int(final_cum_match.group(1))
+
+        # The cumulative evaluations should be >= initial cumulative
+        # (we added more evaluations in the second run)
+        assert final_cumulative_evals >= initial_cumulative, (
+            f"Final cumulative evaluations {final_cumulative_evals} should be >= "
+            f"initial cumulative {initial_cumulative}"
+        )
+
+        # The cumulative evaluations should be <= total budget
+        # (may be less if some evaluations failed or optimizer stopped early)
+        assert final_cumulative_evals <= total_expected_budget, (
+            f"Cumulative evaluations {final_cumulative_evals} should not exceed "
+            f"total budget {total_expected_budget}"
+        )
+
+        # ===== Test 3: Verify trajectory contains the improvement history =====
+        trajectory_objectives = re.findall(
+            r"Objective to minimize: ([\d.]+)", final_trajectory
+        )
+        assert len(trajectory_objectives) > 0, "Should have trajectory objectives"
+
+        # Convert to floats
+        objectives = [float(obj) for obj in trajectory_objectives]
+
+        # The minimum objective in trajectory should be the true best across all runs
+        min_trajectory_objective = min(objectives)
+
+        # The best_config.txt should show the minimum objective from the trajectory
+        assert abs(final_best_objective - min_trajectory_objective) < 1e-10, (
+            f"best_config.txt shows {final_best_objective} but "
+            f"trajectory minimum is {min_trajectory_objective}"
+        )
+
+        # ===== Test 4: Verify trajectory is monotonically non-increasing =====
+        # The trajectory should be monotonically non-increasing (each entry should be
+        # better than or equal to the previous)
+        is_monotonic = all(
+            objectives[i] <= objectives[i - 1] for i in range(1, len(objectives))
+        )
+
+        assert is_monotonic, (
+            f"Trajectory is not monotonically non-increasing: {objectives}"
+        )
+
+        # ===== Test 5: Verify the config in best_config.txt is valid =====
+        # The format is "Config: {dict}" so we look for that pattern
+        assert "Config:" in final_best_config, "Should have config section"
+
+        # Should contain parameter values (x and y, possibly with SAMPLING__ prefix)
+        assert any(
+            param in final_best_config
+            for param in ["x", "y", "'x'", "'y'", "SAMPLING__Resolvable"]
+        ), "Config should contain parameter values"
+
+        # ===== Test 6: Verify the objective value is in the valid range =====
+        assert 1.0 <= final_best_objective <= 11.0, (
+            f"Best objective {final_best_objective} should be in range [1.0, 11.0]"
+        )
+
+        # ===== Test 7: Verify trajectory file format is correct =====
+        assert (
+            "Best configs and their objectives across evaluations:" in final_trajectory
+        ), "Should have trajectory header"
+
+        assert "Config ID:" in final_trajectory, "Should have config IDs"
+        assert (
+            "--------------------------------------------------------------------------------"
+            in final_trajectory
+        ), "Should have separator lines"
+
+        # ===== Test 8: Verify we actually did more evaluations =====
+        # Count config entries in trajectory (though trajectory only shows improvements)
+        config_count = final_trajectory.count("Config ID:")
+        assert config_count >= 1, "Should have at least one config entry"

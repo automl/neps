@@ -604,12 +604,16 @@ class DefaultWorker:
                 self.optimizer,
             )
 
+        # FIX: Use the actual best score from trajectory, not state.new_score
+        # state.new_score may have been set to the last processed trial, not the best
         _best_score_so_far = float("inf")
-        if (
-            self.state.new_score is not None
-            and self.state.new_score != _best_score_so_far
-        ):
-            _best_score_so_far = self.state.new_score
+        if self.state.all_best_configs:
+            # Get the true minimum from all best configs
+            _best_score_so_far = min(
+                config["score"] for config in self.state.all_best_configs
+            )
+            # Update state.new_score to the actual best
+            self.state.new_score = _best_score_so_far
 
         optimizer_name = self.state._optimizer_info["name"]
         logger.info("Using optimizer: %s", optimizer_name)
@@ -838,6 +842,9 @@ class DefaultWorker:
             best_config_path (Path): Path to the best configuration file.
             optimizer (AskFunction): The optimizer used for sampling configurations.
         """
+        # Clear any existing entries to prevent duplicates
+        state.all_best_configs.clear()
+
         _best_score_so_far = float("inf")
 
         metrics = {
@@ -846,7 +853,16 @@ class DefaultWorker:
             "cumulative_cost": 0.0,
             "cumulative_time": 0.0,
         }
-        for evaluated_trial in previous_trials.values():
+
+        # FIX: Sort trials chronologically to maintain trajectory monotonicity
+        sorted_trials = sorted(
+            previous_trials.values(),
+            key=lambda t: (
+                t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
+            ),
+        )
+
+        for evaluated_trial in sorted_trials:
             if (
                 evaluated_trial.report is not None
                 and evaluated_trial.report.objective_to_minimize is not None

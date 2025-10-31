@@ -67,7 +67,8 @@ def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
 
     best_config_text = ""
     if best_configs:
-        best_config = best_configs[-1]  # Latest best
+        # FIX: Find the actual best config by minimum score, not just the last one
+        best_config = min(best_configs, key=lambda c: c["score"])
         best_config_text = (
             "# Best config:"
             f"\n\n    Config ID: {best_config['trial_id']}"
