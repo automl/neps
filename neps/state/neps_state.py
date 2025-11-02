@@ -288,8 +288,8 @@ class NePSState:
                 )
                 if opt_state.worker_ids and worker_id in opt_state.worker_ids:
                     raise NePSError(
-                        f"Worker id '{worker_id}' already exists, \
-                        reserved worker ids: {opt_state.worker_ids}"
+                        f"Worker id '{worker_id}' already exists,                        "
+                        f" reserved worker ids: {opt_state.worker_ids}"
                     )
                 if opt_state.worker_ids is None:
                     opt_state.worker_ids = []
@@ -361,6 +361,11 @@ class NePSState:
                         trial=trial,
                         report=trial.report,
                         worker_id=worker_id,
+                    )
+                    # Log imported trial similar to normal evaluation
+                    logger.info(
+                        f"Imported trial {trial.id} with result: "
+                        f"{trial.report.objective_to_minimize}."
                     )
             return trials
 

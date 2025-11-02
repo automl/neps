@@ -19,18 +19,16 @@ from neps.space.neps_spaces.parameters import (
 class BasicSpace(PipelineSpace):
     """Basic space for testing dynamic methods."""
 
-    x = Float(min_value=0.0, max_value=1.0)
-    y = Integer(min_value=1, max_value=10)
+    x = Float(lower=0.0, upper=1.0)
+    y = Integer(lower=1, upper=10)
     z = Categorical(choices=("a", "b", "c"))
 
 
 class SpaceWithPriors(PipelineSpace):
     """Space with existing priors for testing."""
 
-    x = Float(
-        min_value=0.0, max_value=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM
-    )
-    y = Integer(min_value=1, max_value=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
+    x = Float(lower=0.0, upper=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM)
+    y = Integer(lower=1, upper=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
     z = Categorical(
         choices=("a", "b", "c"), prior=1, prior_confidence=ConfidenceLevel.LOW
     )
@@ -45,7 +43,7 @@ def test_add_method_basic():
     original_attrs = space.get_attrs()
 
     # Add a new parameter
-    new_param = Float(min_value=10.0, max_value=20.0)
+    new_param = Float(lower=10.0, upper=20.0)
     updated_space = space.add(new_param, "new_float")
 
     # Original space should be unchanged
@@ -63,7 +61,7 @@ def test_add_method_different_types():
     space = BasicSpace()
 
     # Add Integer
-    space = space.add(Integer(min_value=0, max_value=100), "new_int")
+    space = space.add(Integer(lower=0, upper=100), "new_int")
     assert "new_int" in space.get_attrs()
     assert isinstance(space.get_attrs()["new_int"], Integer)
 
@@ -91,7 +89,7 @@ def test_add_method_with_default_name():
     original_count = len(space.get_attrs())
 
     # Add without specifying name
-    new_param = Float(min_value=5.0, max_value=15.0)
+    new_param = Float(lower=5.0, upper=15.0)
     updated_space = space.add(new_param)
 
     updated_attrs = updated_space.get_attrs()
@@ -119,7 +117,7 @@ def test_add_method_conflicting_parameter():
     space = BasicSpace()
 
     # Try to add a different parameter with existing name
-    different_param = Integer(min_value=0, max_value=5)  # Different from existing "x"
+    different_param = Integer(lower=0, upper=5)  # Different from existing "x"
 
     with pytest.raises(ValueError, match="A different parameter with the name"):
         space.add(different_param, "x")
@@ -131,8 +129,8 @@ def test_add_method_chaining():
 
     # Chain multiple additions
     final_space = (
-        space.add(Float(min_value=100.0, max_value=200.0), "param1")
-        .add(Integer(min_value=0, max_value=50), "param2")
+        space.add(Float(lower=100.0, upper=200.0), "param1")
+        .add(Integer(lower=0, upper=50), "param2")
         .add(Categorical(choices=(1, 2, 3)), "param3")
     )
 
@@ -301,11 +299,11 @@ def test_combined_operations():
 
     # Complex chain of operations
     final_space = (
-        space.add(Float(min_value=50.0, max_value=100.0), "new_param")
+        space.add(Float(lower=50.0, upper=100.0), "new_param")
         .remove("y")
         .add_prior("x", prior=0.25, prior_confidence=ConfidenceLevel.HIGH)
         .add_prior("new_param", prior=75.0, prior_confidence=ConfidenceLevel.MEDIUM)
-        .add(Integer(min_value=0, max_value=10), "another_param")
+        .add(Integer(lower=0, upper=10), "another_param")
     )
 
     attrs = final_space.get_attrs()
@@ -332,7 +330,7 @@ def test_immutability():
     original_attrs = original_space.get_attrs()
 
     # Perform various operations
-    space1 = original_space.add(Float(min_value=0.0, max_value=1.0), "temp")
+    space1 = original_space.add(Float(lower=0.0, upper=1.0), "temp")
     space2 = original_space.remove("x")
     space3 = original_space.add_prior("y", prior=5, prior_confidence=ConfidenceLevel.HIGH)
 
@@ -352,13 +350,13 @@ def test_fidelity_operations():
     """Test operations with fidelity parameters."""
 
     class FidelitySpace(PipelineSpace):
-        x = Float(min_value=0.0, max_value=1.0)
-        epochs = Fidelity(Integer(min_value=1, max_value=100))
+        x = Float(lower=0.0, upper=1.0)
+        epochs = Fidelity(Integer(lower=1, upper=100))
 
     space = FidelitySpace()
 
     # Add another parameter (non-fidelity since add doesn't support Fidelity directly)
-    new_param = Integer(min_value=1, max_value=50)
+    new_param = Integer(lower=1, upper=50)
     space = space.add(new_param, "batch_size")
 
     # Check that original fidelity is preserved
@@ -384,7 +382,7 @@ def test_space_string_representation():
 
     # Perform operations
     modified_space = (
-        space.add(Float(min_value=10.0, max_value=20.0), "added_param")
+        space.add(Float(lower=10.0, upper=20.0), "added_param")
         .remove("y")
         .add_prior("x", prior=0.8, prior_confidence=ConfidenceLevel.LOW)
     )

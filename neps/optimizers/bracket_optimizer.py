@@ -421,7 +421,7 @@ class BracketOptimizer:
                     f"{list(rung_to_fid.values())}. Skipping config: {config}"
                 )
                 continue
-            # create a  unique key for the config without the fidelity
+            # create a unique key for the config without the fidelity
             config_key = get_trial_config_unique_key(
                 config=config, fid_name=self.fid_name
             )

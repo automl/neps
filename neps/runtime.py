@@ -905,6 +905,9 @@ class DefaultWorker:
                             fidelity_name
                         ]
 
+                if isinstance(evaluated_trial.report.objective_to_minimize, list):
+                    # Skip list objectives for now in incumbent trace
+                    continue
                 state.new_score = evaluated_trial.report.objective_to_minimize
                 if state.new_score is not None and state.new_score < _best_score_so_far:
                     _best_score_so_far = state.new_score

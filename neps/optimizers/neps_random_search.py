@@ -61,7 +61,7 @@ class NePSRandomSearch:
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
             if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.max_value
+                self._environment_values[fidelity_name] = fidelity_obj.upper
             elif not ignore_fidelity:
                 raise ValueError(
                     "RandomSearch does not support fidelities by default. Consider using"
@@ -70,14 +70,14 @@ class NePSRandomSearch:
                 )
             # Sample randomly from the fidelity bounds.
             elif isinstance(fidelity_obj._domain, Integer):
-                assert isinstance(fidelity_obj.min_value, int)
-                assert isinstance(fidelity_obj.max_value, int)
+                assert isinstance(fidelity_obj.lower, int)
+                assert isinstance(fidelity_obj.upper, int)
                 self._environment_values[fidelity_name] = random.randint(
-                    fidelity_obj.min_value, fidelity_obj.max_value
+                    fidelity_obj.lower, fidelity_obj.upper
                 )
             elif isinstance(fidelity_obj._domain, Float):
                 self._environment_values[fidelity_name] = random.uniform(
-                    fidelity_obj.min_value, fidelity_obj.max_value
+                    fidelity_obj.lower, fidelity_obj.upper
                 )
 
         self._random_sampler = RandomSampler(predefined_samplings={})
@@ -168,7 +168,7 @@ class NePSComplexRandomSearch:
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
             if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.max_value
+                self._environment_values[fidelity_name] = fidelity_obj.upper
             elif not ignore_fidelity:
                 raise ValueError(
                     "ComplexRandomSearch does not support fidelities by default. Consider"
@@ -177,14 +177,14 @@ class NePSComplexRandomSearch:
                 )
             # Sample randomly from the fidelity bounds.
             elif isinstance(fidelity_obj._domain, Integer):
-                assert isinstance(fidelity_obj.min_value, int)
-                assert isinstance(fidelity_obj.max_value, int)
+                assert isinstance(fidelity_obj.lower, int)
+                assert isinstance(fidelity_obj.upper, int)
                 self._environment_values[fidelity_name] = random.randint(
-                    fidelity_obj.min_value, fidelity_obj.max_value
+                    fidelity_obj.lower, fidelity_obj.upper
                 )
             elif isinstance(fidelity_obj._domain, Float):
                 self._environment_values[fidelity_name] = random.uniform(
-                    fidelity_obj.min_value, fidelity_obj.max_value
+                    fidelity_obj.lower, fidelity_obj.upper
                 )
 
         self._random_sampler = RandomSampler(

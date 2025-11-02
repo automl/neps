@@ -31,7 +31,7 @@ class ActPipelineSimple(PipelineSpace):
 
 
 class ActPipelineComplex(PipelineSpace):
-    prelu_init_value: float = Float(min_value=0.1, max_value=0.9)
+    prelu_init_value: float = Float(lower=0.1, upper=0.9)
     prelu = Operation(
         operator="prelu",
         kwargs={"init": prelu_init_value},
@@ -61,8 +61,8 @@ _conv_choices_prior_confidence_choices = (
 
 class ConvPipeline(PipelineSpace):
     conv_choices_prior_index: int = Integer(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         log=False,
         prior=0,
         prior_confidence=ConfidenceLevel.LOW,
@@ -118,7 +118,7 @@ class CellPipeline(PipelineSpace):
     )
 
     _some_int = 2
-    _some_float = Float(min_value=0.5, max_value=0.5)
+    _some_float = Float(lower=0.5, upper=0.5)
 
     cell = Operation(
         operator="cell",

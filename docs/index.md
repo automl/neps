@@ -70,8 +70,8 @@ def evaluate_pipeline(hyperparameter_a: float, hyperparameter_b: int, architectu
 
 # 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
 class ExampleSpace(neps.PipelineSpace):
-    hyperparameter_a = neps.Float(min_value=0.001, max_value=0.1, log=True)  # Log scale parameter
-    hyperparameter_b = neps.Integer(min_value=1, max_value=42)
+    hyperparameter_a = neps.Float(lower=0.001, upper=0.1, log=True)  # Log scale parameter
+    hyperparameter_b = neps.Integer(lower=1, upper=42)
     architecture_parameter = neps.Categorical(choices=("option_a", "option_b"))
 
 # 3. Run the NePS optimization

@@ -211,18 +211,16 @@ class PriorOrFallbackSampler(DomainSampler):
                 # Sample an integer from a Gaussian distribution centered around the
                 # prior, cut of the tails to ensure the value is within the domain's
                 # range. Using the _prior_probability to determine the standard deviation
-                assert hasattr(domain_obj, "min_value")
-                assert hasattr(domain_obj, "max_value")
+                assert hasattr(domain_obj, "lower")
+                assert hasattr(domain_obj, "upper")
                 assert hasattr(domain_obj, "prior")
 
                 std_dev = 1 / (
-                    10
-                    * _prior_probability
-                    / (domain_obj.max_value - domain_obj.min_value)  # type: ignore
+                    10 * _prior_probability / (domain_obj.upper - domain_obj.lower)  # type: ignore
                 )
 
-                a = (domain_obj.min_value - domain_obj.prior) / std_dev  # type: ignore
-                b = (domain_obj.max_value - domain_obj.prior) / std_dev  # type: ignore
+                a = (domain_obj.lower - domain_obj.prior) / std_dev  # type: ignore
+                b = (domain_obj.upper - domain_obj.prior) / std_dev  # type: ignore
                 sampled_value = stats.truncnorm.rvs(
                     a=a,
                     b=b,

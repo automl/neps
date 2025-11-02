@@ -39,6 +39,9 @@ def _load_optimizer_from_string(
 
     keywords = extract_keyword_defaults(optimizer_build)
     optimizer_kwargs = optimizer_kwargs or {}
+    optimizer_kwargs = dict(optimizer_kwargs)  # Make mutable copy
+    if _optimizer == "primo":
+        optimizer_kwargs["prior_centers"] = optimizer_kwargs.get("prior_centers", {})
     opt = optimizer_build(space, **optimizer_kwargs)  # type: ignore
     info = OptimizerInfo(name=_optimizer, info={**keywords, **optimizer_kwargs})
     return opt, info

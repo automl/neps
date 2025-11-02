@@ -11,7 +11,15 @@ import enum
 import math
 import random
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, Generic, Literal, Protocol, TypeVar, cast, runtime_checkable
+from typing import (
+    Any,
+    Generic,
+    Literal,
+    Protocol,
+    TypeVar,
+    cast,
+    runtime_checkable,
+)
 
 T = TypeVar("T")
 
@@ -128,22 +136,22 @@ class Fidelity(Resolvable, Generic[T]):
         return self._domain == other._domain
 
     @property
-    def min_value(self) -> int | float:
+    def lower(self) -> int | float:
         """Get the minimum value of the fidelity domain.
 
         Returns:
             The minimum value of the fidelity domain.
         """
-        return self._domain.min_value
+        return self._domain.lower
 
     @property
-    def max_value(self) -> int | float:
+    def upper(self) -> int | float:
         """Get the maximum value of the fidelity domain.
 
         Returns:
             The maximum value of the fidelity domain.
         """
-        return self._domain.max_value
+        return self._domain.upper
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the fidelity as a mapping.
@@ -420,13 +428,13 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
 
     @property
     @abc.abstractmethod
-    def min_value(self) -> T:
+    def lower(self) -> T:
         """Get the minimum value of the domain."""
         raise NotImplementedError()
 
     @property
     @abc.abstractmethod
-    def max_value(self) -> T:
+    def upper(self) -> T:
         """Get the maximum value of the domain."""
         raise NotImplementedError()
 
@@ -524,8 +532,8 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
 
 def _calculate_new_domain_bounds(
     number_type: type[int] | type[float],
-    min_value: int | float,
-    max_value: int | float,
+    lower: int | float,
+    upper: int | float,
     center: int | float,
     confidence: ConfidenceLevel,
 ) -> tuple[int, int] | tuple[float, float]:
@@ -536,8 +544,8 @@ def _calculate_new_domain_bounds(
 
     Args:
         number_type: The type of numbers in the domain (int or float).
-        min_value: The minimum value of the domain.
-        max_value: The maximum value of the domain.
+        lower: The minimum value of the domain.
+        upper: The maximum value of the domain.
         center: The center value around which to calculate the new bounds.
         confidence: The confidence level for the new bounds.
 
@@ -548,10 +556,9 @@ def _calculate_new_domain_bounds(
         ValueError: If the center value is not within the domain's range or if the
         number_type is not supported.
     """
-    if center < min_value or center > max_value:
+    if center < lower or center > upper:
         raise ValueError(
-            f"Center value {center!r} must be within domain range [{min_value!r},"
-            f" {max_value!r}]"
+            f"Center value {center!r} must be within domain range [{lower!r}, {upper!r}]"
         )
 
     # Determine a chunk size by splitting the domain range into a fixed number of chunks.
@@ -559,7 +566,7 @@ def _calculate_new_domain_bounds(
     # around the given center (on each side).
 
     number_of_chunks = 10.0
-    chunk_size = (max_value - min_value) / number_of_chunks
+    chunk_size = (upper - lower) / number_of_chunks
 
     # The numbers refer to how many segments to have on each side of the center.
     # TODO: [lum] we need to make sure that in the end the range does not just have the
@@ -575,11 +582,11 @@ def _calculate_new_domain_bounds(
 
     if number_type is int:
         # In this case we need to use ceil/floor so that we end up with ints.
-        new_min = max(min_value, math.floor(center - interval_radius))
-        new_max = min(max_value, math.ceil(center + interval_radius))
+        new_min = max(lower, math.floor(center - interval_radius))
+        new_max = min(upper, math.ceil(center + interval_radius))
     elif number_type is float:
-        new_min = max(min_value, center - interval_radius)
-        new_max = min(max_value, center + interval_radius)
+        new_min = max(lower, center - interval_radius)
+        new_max = min(upper, center + interval_radius)
     else:
         raise ValueError(f"Unsupported number type {number_type!r}.")
 
@@ -597,7 +604,12 @@ class Categorical(Domain[int], Generic[T]):
 
     def __init__(
         self,
-        choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T] | Resolvable,
+        choices: (
+            tuple[T | Domain[T] | Resolvable | Any, ...]
+            | Sequence[T | Domain[T] | Resolvable | Any]
+            | Domain[T]
+            | Resolvable
+        ),
         prior: int | Domain[int] | _Unset = _UNSET,
         prior_confidence: (
             ConfidenceLevel | Literal["low", "medium", "high"] | _Unset
@@ -606,12 +618,16 @@ class Categorical(Domain[int], Generic[T]):
         """Initialize the Categorical domain with choices and optional prior.
 
         Args:
-            choices: A tuple of choices or a Domain of choices.
+            choices: A tuple or list of choices or a Domain of choices.
             prior: The index of the prior choice in the choices tuple.
             prior_confidence: The confidence level of the prior choice.
 
         """
-        self._choices: tuple[T | Domain[T] | Resolvable | Any, ...] | Domain[T]
+        self._choices: (
+            tuple[T | Domain[T] | Resolvable | Any, ...]
+            | Sequence[T | Domain[T] | Resolvable | Any]
+            | Domain[T]
+        )
         if isinstance(choices, Sequence):
             self._choices = tuple(choice for choice in choices)
             if any(isinstance(choice, tuple) for choice in self._choices) and any(
@@ -658,13 +674,13 @@ class Categorical(Domain[int], Generic[T]):
         if not isinstance(other, Categorical):
             return False
         return (
-            self._prior == other._prior
-            and self._prior_confidence == other._prior_confidence
+            self._prior == other.prior
+            and self._prior_confidence == other.prior_confidence
             and self.choices == other.choices
         )
 
     @property
-    def min_value(self) -> int:
+    def lower(self) -> int:
         """Get the minimum value of the categorical domain.
 
         Returns:
@@ -674,7 +690,7 @@ class Categorical(Domain[int], Generic[T]):
         return 0
 
     @property
-    def max_value(self) -> int:
+    def upper(self) -> int:
         """Get the maximum value of the categorical domain.
 
         Returns:
@@ -692,7 +708,11 @@ class Categorical(Domain[int], Generic[T]):
             A tuple of choices or a Domain of choices.
 
         """
-        return self._choices
+        return (
+            self._choices
+            if not isinstance(self._choices, Sequence)
+            else tuple(self._choices)
+        )
 
     @property
     def has_prior(self) -> bool:
@@ -780,8 +800,8 @@ class Categorical(Domain[int], Generic[T]):
             tuple[int, int],
             _calculate_new_domain_bounds(
                 number_type=int,
-                min_value=self.min_value,
-                max_value=self.max_value,
+                lower=self.lower,
+                upper=self.upper,
                 center=center,
                 confidence=confidence,
             ),
@@ -798,8 +818,8 @@ class Float(Domain[float]):
     """A domain representing a continuous range of floating-point values.
 
     Attributes:
-        min_value: The minimum value of the domain.
-        max_value: The maximum value of the domain.
+        lower: The minimum value of the domain.
+        upper: The maximum value of the domain.
         log: Whether to sample values on a logarithmic scale.
         prior: The prior value for the domain, if any.
         prior_confidence: The confidence level of the prior value.
@@ -807,8 +827,8 @@ class Float(Domain[float]):
 
     def __init__(
         self,
-        min_value: float,
-        max_value: float,
+        lower: float,
+        upper: float,
         log: bool = False,  # noqa: FBT001, FBT002
         prior: float | _Unset = _UNSET,
         prior_confidence: (
@@ -818,15 +838,15 @@ class Float(Domain[float]):
         """Initialize the Float domain with min and max values, and optional prior.
 
         Args:
-            min_value: The minimum value of the domain.
-            max_value: The maximum value of the domain.
+            lower: The minimum value of the domain.
+            upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
 
         """
-        self._min_value = min_value
-        self._max_value = max_value
+        self._lower = lower
+        self._upper = upper
         self._log = log
         self._prior = prior
         self._prior_confidence = (
@@ -841,7 +861,7 @@ class Float(Domain[float]):
 
     def __str__(self) -> str:
         """Get a string representation of the floating-point domain."""
-        string = f"Float({self._min_value}, {self._max_value}"
+        string = f"Float({self._lower}, {self._upper}"
         if self._log:
             string += ", log"
         if self.has_prior:
@@ -865,38 +885,48 @@ class Float(Domain[float]):
         if not isinstance(other, Float):
             return False
         return (
-            self._prior == other._prior
-            and self._prior_confidence == other._prior_confidence
-            and self.min_value == other.min_value
-            and self.max_value == other.max_value
-            and self._log == other._log
+            self._prior == other.prior
+            and self._prior_confidence == other.prior_confidence
+            and self.lower == other.lower
+            and self.upper == other.upper
+            and self._log == other.log
         )
 
     @property
-    def min_value(self) -> float:
+    def lower(self) -> float:
         """Get the minimum value of the floating-point domain.
 
         Returns:
           The minimum value of the domain.
 
         Raises:
-          ValueError: If min_value is greater than max_value.
+          ValueError: If lower is greater than upper.
 
         """
-        return self._min_value
+        return self._lower
 
     @property
-    def max_value(self) -> float:
+    def upper(self) -> float:
         """Get the maximum value of the floating-point domain.
 
         Returns:
           The maximum value of the domain.
 
         Raises:
-          ValueError: If min_value is greater than max_value.
+          ValueError: If lower is greater than upper.
 
         """
-        return self._max_value
+        return self._upper
+
+    @property
+    def log(self) -> bool:
+        """Check if the floating-point domain uses logarithmic sampling.
+
+        Returns:
+            True if values should be sampled on a logarithmic scale, False otherwise.
+
+        """
+        return self._log
 
     @property
     def has_prior(self) -> bool:
@@ -948,7 +978,7 @@ class Float(Domain[float]):
             the domain is logarithmic.
 
         """
-        return f"{self._min_value}_{self._max_value}_{self._log}"
+        return f"{self._lower}_{self._upper}_{self._log}"
 
     def sample(self) -> float:
         """Sample a random floating-point value from the domain.
@@ -957,14 +987,14 @@ class Float(Domain[float]):
           A randomly selected floating-point value within the domain's range.
 
         Raises:
-          ValueError: If min_value is greater than max_value.
+          ValueError: If lower is greater than upper.
 
         """
         if self._log:
-            log_min = math.log(self._min_value)
-            log_max = math.log(self._max_value)
+            log_min = math.log(self._lower)
+            log_max = math.log(self._upper)
             return float(math.exp(random.uniform(log_min, log_max)))
-        return float(random.uniform(self._min_value, self._max_value))
+        return float(random.uniform(self._lower, self._upper))
 
     def centered_around(
         self,
@@ -988,14 +1018,14 @@ class Float(Domain[float]):
         """
         new_min, new_max = _calculate_new_domain_bounds(
             number_type=float,
-            min_value=self.min_value,
-            max_value=self.max_value,
+            lower=self.lower,
+            upper=self.upper,
             center=center,
             confidence=confidence,
         )
         return Float(
-            min_value=new_min,
-            max_value=new_max,
+            lower=new_min,
+            upper=new_max,
             log=self._log,
             prior=center,
             prior_confidence=confidence,
@@ -1006,8 +1036,8 @@ class Integer(Domain[int]):
     """A domain representing a range of integer values.
 
     Attributes:
-        min_value: The minimum value of the domain.
-        max_value: The maximum value of the domain.
+        lower: The minimum value of the domain.
+        upper: The maximum value of the domain.
         log: Whether to sample values on a logarithmic scale.
         prior: The prior value for the domain, if any.
         prior_confidence: The confidence level of the prior value.
@@ -1015,8 +1045,8 @@ class Integer(Domain[int]):
 
     def __init__(
         self,
-        min_value: int,
-        max_value: int,
+        lower: int,
+        upper: int,
         log: bool = False,  # noqa: FBT001, FBT002
         prior: float | int | _Unset = _UNSET,
         prior_confidence: (
@@ -1026,14 +1056,14 @@ class Integer(Domain[int]):
         """Initialize the Integer domain with min and max values, and optional prior.
 
         Args:
-            min_value: The minimum value of the domain.
-            max_value: The maximum value of the domain.
+            lower: The minimum value of the domain.
+            upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
         """
-        self._min_value = min_value
-        self._max_value = max_value
+        self._lower = lower
+        self._upper = upper
         self._log = log
         self._prior = prior
         self._prior_confidence = (
@@ -1048,7 +1078,7 @@ class Integer(Domain[int]):
 
     def __str__(self) -> str:
         """Get a string representation of the integer domain."""
-        string = f"Integer({self._min_value}, {self._max_value}"
+        string = f"Integer({self._lower}, {self._upper}"
         if self._log:
             string += ", log"
         if self.has_prior:
@@ -1072,38 +1102,48 @@ class Integer(Domain[int]):
         if not isinstance(other, Integer):
             return False
         return (
-            self._prior == other._prior
-            and self._prior_confidence == other._prior_confidence
-            and self.min_value == other.min_value
-            and self.max_value == other.max_value
-            and self._log == other._log
+            self._prior == other.prior
+            and self._prior_confidence == other.prior_confidence
+            and self.lower == other.lower
+            and self.upper == other.upper
+            and self._log == other.log
         )
 
     @property
-    def min_value(self) -> int:
+    def lower(self) -> int:
         """Get the minimum value of the integer domain.
 
         Returns:
           The minimum value of the domain.
 
         Raises:
-          ValueError: If min_value is greater than max_value.
+          ValueError: If lower is greater than upper.
 
         """
-        return self._min_value
+        return self._lower
 
     @property
-    def max_value(self) -> int:
+    def upper(self) -> int:
         """Get the maximum value of the integer domain.
 
         Returns:
           The maximum value of the domain.
 
         Raises:
-          ValueError: If min_value is greater than max_value.
+          ValueError: If lower is greater than upper.
 
         """
-        return self._max_value
+        return self._upper
+
+    @property
+    def log(self) -> bool:
+        """Check if the integer domain uses logarithmic sampling.
+
+        Returns:
+            True if values should be sampled on a logarithmic scale, False otherwise.
+
+        """
+        return self._log
 
     @property
     def has_prior(self) -> bool:
@@ -1154,7 +1194,7 @@ class Integer(Domain[int]):
             the domain is logarithmic.
 
         """
-        return f"{self._min_value}_{self._max_value}_{self._log}"
+        return f"{self._lower}_{self._upper}_{self._log}"
 
     def sample(self) -> int:
         """Sample a random integer value from the domain.
@@ -1165,11 +1205,9 @@ class Integer(Domain[int]):
         """
         if self._log:
             return int(
-                math.exp(
-                    random.uniform(math.log(self._min_value), math.log(self._max_value))
-                )
+                math.exp(random.uniform(math.log(self._lower), math.log(self._upper)))
             )
-        return int(random.randint(self._min_value, self._max_value))
+        return int(random.randint(self._lower, self._upper))
 
     def centered_around(
         self,
@@ -1195,15 +1233,15 @@ class Integer(Domain[int]):
             tuple[int, int],
             _calculate_new_domain_bounds(
                 number_type=int,
-                min_value=self.min_value,
-                max_value=self.max_value,
+                lower=self.lower,
+                upper=self.upper,
                 center=center,
                 confidence=confidence,
             ),
         )
         return Integer(
-            min_value=new_min,
-            max_value=new_max,
+            lower=new_min,
+            upper=new_max,
             log=self._log,
             prior=center,
             prior_confidence=confidence,

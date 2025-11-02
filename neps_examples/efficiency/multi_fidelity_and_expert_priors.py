@@ -14,25 +14,25 @@ def evaluate_pipeline(float1, float2, integer1, fidelity):
 
 class HPOSpace(neps.PipelineSpace):
     float1 = neps.Float(
-        min_value=1,
-        max_value=1000,
+        lower=1,
+        upper=1000,
         log=False,
         prior=600,
         prior_confidence="medium",
     )
     float2 = neps.Float(
-        min_value=-10,
-        max_value=10,
+        lower=-10,
+        upper=10,
         prior=0,
         prior_confidence="medium",
     )
     integer1 = neps.Integer(
-        min_value=0,
-        max_value=50,
+        lower=0,
+        upper=50,
         prior=35,
         prior_confidence="low",
     )
-    fidelity = neps.Fidelity(neps.Integer(min_value=1, max_value=10))
+    fidelity = neps.Fidelity(neps.Integer(lower=1, upper=10))
 
 
 logging.basicConfig(level=logging.INFO)
