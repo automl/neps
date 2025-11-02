@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence, ValuesView
+from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from neps.state.neps_state import TrialRepo
 from neps.state.pipeline_eval import UserResultDict
@@ -37,7 +38,7 @@ def load_trials_from_pickle(
     )
 
     return [
-        (trial.config, UserResultDict(**trial.report.__annotations__))
+        (trial.config, cast(UserResultDict, asdict(trial.report)))
         for trial in trials
         if trial.report is not None
     ]
