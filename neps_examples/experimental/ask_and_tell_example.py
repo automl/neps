@@ -96,10 +96,11 @@ def train_worker(trial_file):
         json.dump({"loss": loss}, f)
 
 def main(parallel: int, results_dir: Path):
-    space = neps.SearchSpace(
-        {"a": neps.Integer(1, 13, is_fidelity=True), "b": neps.Float(1, 5)}
-    )
-    opt = neps.algorithms.successive_halving(space, eta=3)
+    class MySpace(neps.PipelineSpace):
+        a = neps.Fidelity(neps.Integer(1, 13))
+        b = neps.Float(1, 5)
+    space = MySpace()
+    opt = neps.algorithms.neps_hyperband(space, eta=3)
     ask_tell = AskAndTell(opt)
 
     results_dir.mkdir(exist_ok=True, parents=True)
