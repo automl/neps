@@ -17,6 +17,7 @@ from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
     convert_classic_to_neps_search_space,
     convert_neps_to_classic_search_space,
+    resolve,
 )
 from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.space.parsing import convert_to_space
@@ -406,12 +407,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
             "'priorband', or 'complex_random_search'."
         )
 
-    if isinstance(space, PipelineSpace):
-        assert not isinstance(evaluate_pipeline, str)
-        evaluate_pipeline = adjust_evaluation_pipeline_for_neps_space(
-            evaluate_pipeline, space
-        )
-
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
     multi_fidelity_optimizers = {
@@ -458,6 +453,8 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
             "evaluate_pipeline must be a callable or a string in the format"
             "'module:function'."
         )
+    if isinstance(space, PipelineSpace):
+        _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
 
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
@@ -657,4 +654,24 @@ def import_trials(
     state.lock_and_import_trials(imported_trials, worker_id="external")
 
 
-__all__ = ["import_trials", "run", "save_pipeline_results"]
+def create_config(
+    pipeline_space: PipelineSpace,
+) -> tuple[Mapping[str, Any], PipelineSpace]:
+    """Create a configuration by prompting the user for input.
+
+    Args:
+        pipeline_space: The pipeline search space to create a configuration for.
+
+    Returns:
+        A tuple containing the created configuration dictionary and the sampled pipeline.
+    """
+    from neps.space.neps_spaces.neps_space import NepsCompatConverter
+    from neps.space.neps_spaces.sampling import IOSampler
+
+    resolved_pipeline, resolution_context = resolve(
+        pipeline_space, domain_sampler=IOSampler()
+    )
+    return NepsCompatConverter.to_neps_config(resolution_context), resolved_pipeline
+
+
+__all__ = ["create_config", "import_trials", "run", "save_pipeline_results"]

@@ -46,7 +46,10 @@ from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
-from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.neps_space import (
+    NepsCompatConverter,
+    convert_neps_to_classic_search_space,
+)
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
@@ -1662,6 +1665,7 @@ def _neps_bracket_optimizer(
         )
 
     fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
+    fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
         raise ValueError(

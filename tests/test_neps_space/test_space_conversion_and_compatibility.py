@@ -116,7 +116,7 @@ def test_convert_classic_to_neps():
     assert neps_attrs["cat_param"].prior_confidence == ConfidenceLevel.LOW
 
     assert isinstance(neps_attrs["fidelity_param"], Fidelity)
-    assert isinstance(neps_attrs["fidelity_param"]._domain, Integer)
+    assert isinstance(neps_attrs["fidelity_param"].domain, Integer)
 
     # Constant should be preserved as-is
     assert neps_attrs["constant_param"] == "constant_value"

@@ -260,6 +260,10 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
+"neps/space/neps_spaces/sampling.py" = [
+  "T201",   # print() is intentional for IOSampler user interaction
+  "RET508", # else after break is needed for error messages
+]
 # TODO
 "neps/optimizers/**.py" = [
   "D", # Documentation of everything

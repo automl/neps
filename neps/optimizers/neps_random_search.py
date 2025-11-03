@@ -69,13 +69,13 @@ class NePSRandomSearch:
                     " fidelity`."
                 )
             # Sample randomly from the fidelity bounds.
-            elif isinstance(fidelity_obj._domain, Integer):
+            elif isinstance(fidelity_obj.domain, Integer):
                 assert isinstance(fidelity_obj.lower, int)
                 assert isinstance(fidelity_obj.upper, int)
                 self._environment_values[fidelity_name] = random.randint(
                     fidelity_obj.lower, fidelity_obj.upper
                 )
-            elif isinstance(fidelity_obj._domain, Float):
+            elif isinstance(fidelity_obj.domain, Float):
                 self._environment_values[fidelity_name] = random.uniform(
                     fidelity_obj.lower, fidelity_obj.upper
                 )
@@ -176,13 +176,13 @@ class NePSComplexRandomSearch:
                     " `highest fidelity`."
                 )
             # Sample randomly from the fidelity bounds.
-            elif isinstance(fidelity_obj._domain, Integer):
+            elif isinstance(fidelity_obj.domain, Integer):
                 assert isinstance(fidelity_obj.lower, int)
                 assert isinstance(fidelity_obj.upper, int)
                 self._environment_values[fidelity_name] = random.randint(
                     fidelity_obj.lower, fidelity_obj.upper
                 )
-            elif isinstance(fidelity_obj._domain, Float):
+            elif isinstance(fidelity_obj.domain, Float):
                 self._environment_values[fidelity_name] = random.uniform(
                     fidelity_obj.lower, fidelity_obj.upper
                 )

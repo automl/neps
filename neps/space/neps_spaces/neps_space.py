@@ -30,6 +30,7 @@ from neps.space.neps_spaces.parameters import (
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
+    IOSampler,
     OnlyPredefinedValuesSampler,
     RandomSampler,
 )
@@ -37,6 +38,7 @@ from neps.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
+    from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 P = TypeVar("P", bound="PipelineSpace")
 
@@ -858,6 +860,8 @@ def resolve(
     if environment_values is None:
         # By default, have no environment values.
         environment_values = {}
+    if isinstance(domain_sampler, IOSampler):
+        environment_values = domain_sampler.sample_environment_values(pipeline)
 
     sampling_resolver = SamplingResolver()
     resolved_pipeline, context = sampling_resolver(
@@ -1146,10 +1150,10 @@ def _prepare_sampled_configs(
 
 
 def adjust_evaluation_pipeline_for_neps_space(
-    evaluation_pipeline: Callable,
+    evaluation_pipeline: Callable[..., EvaluatePipelineReturn],
     pipeline_space: P,
     operation_converter: Callable[[Operation], Any] = convert_operation_to_callable,
-) -> Callable | str:
+) -> Callable:
     """Adjust the evaluation pipeline to work with a NePS space.
     This function wraps the evaluation pipeline to sample from the NePS space
     and convert the sampled pipeline to a format compatible with the evaluation pipeline.
@@ -1268,24 +1272,24 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         ),
                     )
                 elif isinstance(value, Fidelity):
-                    if isinstance(value._domain, Integer):
+                    if isinstance(value.domain, Integer):
                         classic_space[key] = neps.HPOInteger(
-                            lower=value._domain.lower,
-                            upper=value._domain.upper,
+                            lower=value.domain.lower,
+                            upper=value.domain.upper,
                             log=(
-                                value._domain._log
-                                if hasattr(value._domain, "_log")
+                                value.domain._log
+                                if hasattr(value.domain, "_log")
                                 else False
                             ),
                             is_fidelity=True,
                         )
-                    elif isinstance(value._domain, Float):
+                    elif isinstance(value.domain, Float):
                         classic_space[key] = neps.HPOFloat(
-                            lower=value._domain.lower,
-                            upper=value._domain.upper,
+                            lower=value.domain.lower,
+                            upper=value.domain.upper,
                             log=(
-                                value._domain._log
-                                if hasattr(value._domain, "_log")
+                                value.domain._log
+                                if hasattr(value.domain, "_log")
                                 else False
                             ),
                             is_fidelity=True,

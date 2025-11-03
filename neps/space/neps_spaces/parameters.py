@@ -112,11 +112,11 @@ class Fidelity(Resolvable, Generic[T]):
                 "The domain of a Fidelity can not have priors, has prior:"
                 f" {domain.prior!r}."
             )
-        self._domain = domain
+        self.domain = domain
 
     def __str__(self) -> str:
         """Get a string representation of the fidelity."""
-        return f"Fidelity({self._domain.__str__()})"
+        return f"Fidelity({self.domain.__str__()})"
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this fidelity parameter is equivalent to another.
@@ -133,7 +133,7 @@ class Fidelity(Resolvable, Generic[T]):
         """
         if not isinstance(other, Fidelity):
             return False
-        return self._domain == other._domain
+        return self.domain == other.domain
 
     @property
     def lower(self) -> int | float:
@@ -142,7 +142,7 @@ class Fidelity(Resolvable, Generic[T]):
         Returns:
             The minimum value of the fidelity domain.
         """
-        return self._domain.lower
+        return self.domain.lower
 
     @property
     def upper(self) -> int | float:
@@ -151,7 +151,7 @@ class Fidelity(Resolvable, Generic[T]):
         Returns:
             The maximum value of the fidelity domain.
         """
-        return self._domain.upper
+        return self.domain.upper
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the fidelity as a mapping.
@@ -252,7 +252,7 @@ class PipelineSpace(Resolvable):
             for k, v in self.get_attrs().items()
             if not k.startswith("_") and not callable(v)
         )
-        return f"PipelineSpace {self.__class__.__name__} with parameters:\n\t{attrs}"
+        return f"{self.__class__.__name__} with parameters:\n\t{attrs}"
 
     def add(
         self,
@@ -652,7 +652,7 @@ class Categorical(Domain[int], Generic[T]):
 
     def __str__(self) -> str:
         """Get a string representation of the categorical domain."""
-        string = f"Categorical(choices={self._choices!s}"
+        string = f"Categorical(choices={tuple([str(choice) for choice in self.choices])})"  # type: ignore[union-attr]
         if self.has_prior:
             string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
         string += ")"

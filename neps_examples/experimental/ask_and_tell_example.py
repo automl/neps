@@ -140,7 +140,7 @@ if __name__ == "__main__":
         help="Number of trials to evaluate in parallel initially"
     )
     parser.add_argument(
-        "--results-dir", type=Path, default=Path("results"),
+        "--results-dir", type=Path, default=Path("results/ask_and_tell"),
         help="Path to save the results inside"
     )
     args = parser.parse_args()

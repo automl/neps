@@ -28,6 +28,12 @@ def _normalize_imported_config(  # noqa: C901, PLR0912
     """
     if isinstance(space, SearchSpace):
         all_param_keys = set(space.searchables.keys()) | set(space.fidelities.keys())
+        # copy to avoid modifying the original config
+        normalized_conf = dict(config)
+        for key, param in space.fidelities.items():
+            if key not in normalized_conf:
+                normalized_conf[key] = param.upper
+        extra_keys = set(normalized_conf.keys()) - all_param_keys
     else:
         # For PipelineSpace, we need to generate the prefixed keys
         # Import here to avoid circular import
@@ -57,38 +63,28 @@ def _normalize_imported_config(  # noqa: C901, PLR0912
                 f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
             )
 
-    # copy to avoid modifying the original config
-    normalized_conf = dict(config)
+        # copy to avoid modifying the original config
+        normalized_conf = dict(config)
 
-    fidelities = (
-        space.fidelities if isinstance(space, SearchSpace) else space.fidelity_attrs
-    )
-    for key, param in fidelities.items():
-        if key not in normalized_conf:
-            normalized_conf[key] = param.upper
-
-    if isinstance(space, SearchSpace):
-        extra_keys = set(normalized_conf.keys()) - all_param_keys
-    else:
+        for key, fid_param in space.fidelity_attrs.items():
+            if key not in normalized_conf:
+                normalized_conf[NepsCompatConverter._ENVIRONMENT_PREFIX + key] = (
+                    fid_param.upper
+                )
         # For PipelineSpace, filter out keys that match the expected patterns
         # Import here to avoid circular import (needed for prefix constants)
         from neps.space.neps_spaces.neps_space import NepsCompatConverter
 
         extra_keys = set()
         for key in normalized_conf:
-            if not (
-                key.startswith(
-                    (
-                        NepsCompatConverter._SAMPLING_PREFIX,
-                        NepsCompatConverter._ENVIRONMENT_PREFIX,
-                    )
+            if not key.startswith(
+                (
+                    NepsCompatConverter._SAMPLING_PREFIX,
+                    NepsCompatConverter._ENVIRONMENT_PREFIX,
                 )
             ):
-                # Check if it's a plain parameter name (without prefix)
-                if key not in space.get_attrs() and key not in space.fidelity_attrs:
-                    extra_keys.add(key)
-            elif key not in all_param_keys:
-                # It has a prefix but doesn't match expected sampling/environment keys
+                # It has no prefix.
+                # TODO: It might still be unnecessary, but it will not hurt.
                 extra_keys.add(key)
 
     if extra_keys:

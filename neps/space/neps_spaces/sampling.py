@@ -19,6 +19,7 @@ from neps.space.neps_spaces.parameters import (
     Integer,
     PipelineSpace,
 )
+from neps.validation import validate_parameter_value
 
 T = TypeVar("T")
 P = TypeVar("P", bound="PipelineSpace")
@@ -91,7 +92,7 @@ class OnlyPredefinedValuesSampler(DomainSampler):
         """
         if current_path not in self._predefined_samplings:
             raise ValueError(f"No predefined value for path: {current_path!r}.")
-        return cast(T, self._predefined_samplings[current_path])
+        return cast("T", self._predefined_samplings[current_path])
 
 
 class RandomSampler(DomainSampler):
@@ -141,8 +142,122 @@ class RandomSampler(DomainSampler):
         if current_path not in self._predefined_samplings:
             sampled_value = domain_obj.sample()
         else:
-            sampled_value = cast(T, self._predefined_samplings[current_path])
+            sampled_value = cast("T", self._predefined_samplings[current_path])
         return sampled_value
+
+
+class IOSampler(DomainSampler):
+    """A sampler that samples by asking the user at each decision."""
+
+    def __call__(
+        self,
+        *,
+        domain_obj: Domain[T],
+        current_path: str,
+    ) -> T:
+        """Sample a value from the predefined samplings or the domain.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The current path in the search space.
+
+        Returns:
+            A value from the user input.
+        """
+        if isinstance(domain_obj, Float | Integer):
+            print(
+                "Please provide"
+                f" {'a float' if isinstance(domain_obj, Float) else 'an integer'} value"
+                f" for \n\t'{current_path}'\nin the range [{domain_obj.lower},"  # type: ignore[attr-defined]
+                f" {domain_obj.upper}]: ",  # type: ignore[attr-defined]
+            )
+        elif isinstance(domain_obj, Categorical):
+            choices_list = "\n\t".join(
+                f"{n}: {choice!s}"
+                for n, choice in enumerate(domain_obj.choices)  # type: ignore[attr-defined, arg-type]
+            )
+            max_index = int(domain_obj.range_compatibility_identifier) - 1  # type: ignore[attr-defined]
+            print(
+                f"Please provide an index for '{current_path}'\n"
+                f"Choices:\n\t{choices_list}\n"
+                f"Valid range: [0, {max_index}]: "
+            )
+
+        while True:
+            sampled_value: str | int | float = input()
+            try:
+                if isinstance(domain_obj, Integer):
+                    sampled_value = int(sampled_value)
+                elif isinstance(domain_obj, Float):
+                    sampled_value = float(sampled_value)
+                elif isinstance(domain_obj, Categorical):
+                    sampled_value = int(sampled_value)
+                else:
+                    raise ValueError(
+                        f"Unsupported domain type: {type(domain_obj).__name__}"
+                    )
+
+                assert isinstance(domain_obj, Float | Integer | Categorical)
+
+                if validate_parameter_value(domain_obj, sampled_value):
+                    print(f"Value {sampled_value} recorded.\n")
+                    break
+                else:
+                    print(
+                        f"Invalid value '{sampled_value}' for domain '{current_path}'. "
+                        "Please try again: ",
+                    )
+            except ValueError:
+                print(
+                    f"Could not convert input '{sampled_value}' to the required type. "
+                    "Please try again: ",
+                )
+
+        return cast("T", sampled_value)
+
+    def sample_environment_values(self, pipeline_space: P) -> Mapping[str, Any]:
+        """Get the environment values for the sampler.
+
+        Returns:
+            The interactively chosen environment values.
+        """
+        environment_values = {}
+        for fidelity_name, fidelity_object in pipeline_space.fidelity_attrs.items():
+            domain_obj = fidelity_object.domain
+            print(
+                "Please provide"
+                f" {'a float' if isinstance(domain_obj, Float) else 'an integer'} value"
+                f" for the Fidelity '{fidelity_name}' in the range"
+                f" [{domain_obj.lower}, {domain_obj.upper}]: ",
+            )
+            while True:
+                sampled_value: str | int | float = input()
+                try:
+                    if isinstance(domain_obj, Integer):
+                        sampled_value = int(sampled_value)
+                    elif isinstance(domain_obj, Float):
+                        sampled_value = float(sampled_value)
+                    else:
+                        raise ValueError(
+                            f"Unsupported domain type: {type(domain_obj).__name__}"
+                        )
+
+                    if validate_parameter_value(domain_obj, sampled_value):
+                        print(f"Value {sampled_value} recorded.\n")
+                        break
+                    else:
+                        print(
+                            f"Invalid value '{sampled_value}' for Fidelity"
+                            f" '{fidelity_object!s}'. Please try again: ",
+                        )
+                except ValueError:
+                    print(
+                        f"Could not convert input '{sampled_value}' to the required type."
+                        " Please try again: ",
+                    )
+            environment_values[fidelity_name] = sampled_value
+
+        return environment_values
 
 
 class PriorOrFallbackSampler(DomainSampler):
@@ -228,10 +343,10 @@ class PriorOrFallbackSampler(DomainSampler):
                     scale=std_dev,
                 )
                 if isinstance(domain_obj, Integer):
-                    sampled_value = int(round(sampled_value))
+                    sampled_value = round(sampled_value)
                 else:
                     sampled_value = float(sampled_value)  # type: ignore
-                return cast(T, sampled_value)
+                return cast("T", sampled_value)
 
         return self._fallback_sampler(
             domain_obj=domain_obj,
@@ -410,7 +525,7 @@ class MutatateUsingCentersSampler(DomainSampler):
                 sampled_value = domain_obj.sample()
         else:
             # For this path we have chosen to keep the original value.
-            sampled_value = cast(T, self._kept_samplings_to_make[current_path])
+            sampled_value = cast("T", self._kept_samplings_to_make[current_path])
 
         return sampled_value
 
