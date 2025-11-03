@@ -19,9 +19,9 @@ def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
 
 
 class HPOSpace(neps.PipelineSpace):
-    float1 = neps.Float(min_value=0, max_value=1)
+    float1 = neps.Float(lower=0, upper=1)
     categorical = neps.Categorical(choices=(0, 1))
-    integer1 = neps.Integer(min_value=0, max_value=1)
+    integer1 = neps.Integer(lower=0, upper=1)
 
 
 logging.basicConfig(level=logging.INFO)

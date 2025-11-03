@@ -46,14 +46,14 @@ def hyperparameter_pipeline_to_optimize(
 
 class DemoHyperparameterSpace(PipelineSpace):
     float1 = Float(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     float2 = Float(
-        min_value=-10,
-        max_value=10,
+        lower=-10,
+        upper=10,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -63,14 +63,14 @@ class DemoHyperparameterSpace(PipelineSpace):
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer2 = Integer(
-        min_value=1,
-        max_value=1000,
+        lower=1,
+        upper=1000,
         prior=10,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -78,14 +78,14 @@ class DemoHyperparameterSpace(PipelineSpace):
 
 class DemoHyperparameterWithFidelitySpace(PipelineSpace):
     float1 = Float(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     float2 = Float(
-        min_value=-10,
-        max_value=10,
+        lower=-10,
+        upper=10,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -95,29 +95,29 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer2 = Fidelity(
         Integer(
-            min_value=1,
-            max_value=1000,
+            lower=1,
+            upper=1000,
         ),
     )
 
 
 class DemoHyperparameterComplexSpace(PipelineSpace):
     _small_float = Float(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     _big_float = Float(
-        min_value=10,
-        max_value=100,
+        lower=10,
+        upper=100,
         prior=20,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -145,14 +145,14 @@ class DemoHyperparameterComplexSpace(PipelineSpace):
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer2 = Integer(
-        min_value=1,
-        max_value=1000,
+        lower=1,
+        upper=1000,
         prior=10,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -286,8 +286,8 @@ class DemoOperationSpace(PipelineSpace):
 
     # The way to sample `factor` values
     _factor = Float(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
@@ -382,8 +382,8 @@ def test_pipeline_space_dynamic_methods():
 
     # Create a basic space
     class BasicSpace(PipelineSpace):
-        x = Float(min_value=0.0, max_value=1.0)
-        y = Integer(min_value=1, max_value=10)
+        x = Float(lower=0.0, upper=1.0)
+        y = Integer(lower=1, upper=10)
 
     space = BasicSpace()
 
@@ -499,8 +499,8 @@ def test_complex_neps_space_features():
     class ComplexNepsSpace(PipelineSpace):
         # Basic parameters
         factor = Float(
-            min_value=0.1,
-            max_value=2.0,
+            lower=0.1,
+            upper=2.0,
             prior=1.0,
             prior_confidence=ConfidenceLevel.MEDIUM,
         )
@@ -543,8 +543,8 @@ def test_trajectory_and_metrics(tmp_path):
         }
 
     class MetricsSpace(PipelineSpace):
-        x = Float(min_value=0.0, max_value=1.0)
-        y = Integer(min_value=1, max_value=10)
+        x = Float(lower=0.0, upper=1.0)
+        y = Integer(lower=1, upper=10)
 
     space = MetricsSpace()
     root_directory = tmp_path / "metrics_test"

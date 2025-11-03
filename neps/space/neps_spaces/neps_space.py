@@ -30,6 +30,7 @@ from neps.space.neps_spaces.parameters import (
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
+    IOSampler,
     OnlyPredefinedValuesSampler,
     RandomSampler,
 )
@@ -37,8 +38,55 @@ from neps.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
+    from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 P = TypeVar("P", bound="PipelineSpace")
+
+
+def construct_sampling_path(
+    path_parts: list[str],
+    domain_obj: Domain,
+) -> str:
+    """Construct a sampling path for a domain object.
+
+    The sampling path uniquely identifies a sampled value in the resolution context.
+    It consists of the hierarchical path through the pipeline space and a domain
+    identifier that includes type and range information.
+
+    Args:
+        path_parts: The hierarchical path parts (e.g., ["Resolvable", "integer1"]).
+        domain_obj: The domain object for which to construct the path.
+
+    Returns:
+        A string representing the full sampling path in the format:
+        "<path.parts>::<type>__<range_compatibility_identifier>"
+        Example: "Resolvable.integer1::integer__0_1_False"
+
+    Raises:
+        ValueError: If path_parts is empty or domain_obj is not a Domain.
+    """
+    if not path_parts:
+        raise ValueError("path_parts cannot be empty")
+    if not isinstance(domain_obj, Domain):
+        raise ValueError(f"domain_obj must be a Domain, got {type(domain_obj)}")
+
+    # Get the domain type name (e.g., "integer", "float", "categorical")
+    domain_obj_type_name = type(domain_obj).__name__.lower()
+
+    # Get the range compatibility identifier (e.g., "0_1_False" for
+    # Integer(0, 1, log=False))
+    range_compatibility_identifier = domain_obj.range_compatibility_identifier
+
+    # Combine type and range: "integer__0_1_False"
+    domain_obj_identifier = f"{domain_obj_type_name}__{range_compatibility_identifier}"
+
+    # Join path parts with dots: "Resolvable.integer1"
+    current_path = ".".join(path_parts)
+
+    # Append domain identifier: "Resolvable.integer1::integer__0_1_False"
+    current_path += "::" + domain_obj_identifier
+
+    return current_path
 
 
 class SamplingResolutionContext:
@@ -251,16 +299,11 @@ class SamplingResolutionContext:
                 f" {domain_obj!r}." + "\nThis should not be happening."
             )
 
-        # The range compatibility identifier is there to make sure when we say
-        # the path matches, that the range for the value we are looking up also matches.
-        domain_obj_type_name = type(domain_obj).__name__.lower()
-        range_compatibility_identifier = domain_obj.range_compatibility_identifier
-        domain_obj_identifier = (
-            f"{domain_obj_type_name}__{range_compatibility_identifier}"
+        # Construct the unique sampling path for this domain object
+        current_path = construct_sampling_path(
+            path_parts=self._current_path_parts,
+            domain_obj=domain_obj,
         )
-
-        current_path = ".".join(self._current_path_parts)
-        current_path += "::" + domain_obj_identifier
 
         if current_path in self._samplings_made:
             # We have already sampled a value for this path. This should not happen.
@@ -640,11 +683,11 @@ class SamplingResolver:
                 f" {fidelity_name!r}."
             ) from err
 
-        if not fidelity_obj.min_value <= result <= fidelity_obj.max_value:
+        if not fidelity_obj.lower <= result <= fidelity_obj.upper:
             raise ValueError(
                 f"Value for fidelity with name {fidelity_name!r} is outside its allowed"
                 " range "
-                + f"[{fidelity_obj.min_value!r}, {fidelity_obj.max_value!r}]. "
+                + f"[{fidelity_obj.lower!r}, {fidelity_obj.upper!r}]. "
                 + f"Received: {result!r}."
             )
 
@@ -817,6 +860,8 @@ def resolve(
     if environment_values is None:
         # By default, have no environment values.
         environment_values = {}
+    if isinstance(domain_sampler, IOSampler):
+        environment_values = domain_sampler.sample_environment_values(pipeline)
 
     sampling_resolver = SamplingResolver()
     resolved_pipeline, context = sampling_resolver(
@@ -1105,10 +1150,10 @@ def _prepare_sampled_configs(
 
 
 def adjust_evaluation_pipeline_for_neps_space(
-    evaluation_pipeline: Callable,
+    evaluation_pipeline: Callable[..., EvaluatePipelineReturn],
     pipeline_space: P,
     operation_converter: Callable[[Operation], Any] = convert_operation_to_callable,
-) -> Callable | str:
+) -> Callable:
     """Adjust the evaluation pipeline to work with a NePS space.
     This function wraps the evaluation pipeline to sample from the NePS space
     and convert the sampled pipeline to a format compatible with the evaluation pipeline.
@@ -1208,8 +1253,8 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                     )
                 elif isinstance(value, Integer):
                     classic_space[key] = neps.HPOInteger(
-                        lower=value.min_value,
-                        upper=value.max_value,
+                        lower=value.lower,
+                        upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
@@ -1218,8 +1263,8 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                     )
                 elif isinstance(value, Float):
                     classic_space[key] = neps.HPOFloat(
-                        lower=value.min_value,
-                        upper=value.max_value,
+                        lower=value.lower,
+                        upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
@@ -1227,24 +1272,24 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         ),
                     )
                 elif isinstance(value, Fidelity):
-                    if isinstance(value._domain, Integer):
+                    if isinstance(value.domain, Integer):
                         classic_space[key] = neps.HPOInteger(
-                            lower=value._domain.min_value,
-                            upper=value._domain.max_value,
+                            lower=value.domain.lower,
+                            upper=value.domain.upper,
                             log=(
-                                value._domain._log
-                                if hasattr(value._domain, "_log")
+                                value.domain._log
+                                if hasattr(value.domain, "_log")
                                 else False
                             ),
                             is_fidelity=True,
                         )
-                    elif isinstance(value._domain, Float):
+                    elif isinstance(value.domain, Float):
                         classic_space[key] = neps.HPOFloat(
-                            lower=value._domain.min_value,
-                            upper=value._domain.max_value,
+                            lower=value.domain.lower,
+                            upper=value.domain.upper,
                             log=(
-                                value._domain._log
-                                if hasattr(value._domain, "_log")
+                                value.domain._log
+                                if hasattr(value.domain, "_log")
                                 else False
                             ),
                             is_fidelity=True,
@@ -1294,8 +1339,8 @@ def convert_classic_to_neps_search_space(
             setattr(NEPSSpace, parameter_name, parameter.value)
         elif isinstance(parameter, neps.HPOInteger):
             new_integer = Integer(
-                min_value=parameter.lower,
-                max_value=parameter.upper,
+                lower=parameter.lower,
+                upper=parameter.upper,
                 log=parameter.log,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
@@ -1309,8 +1354,8 @@ def convert_classic_to_neps_search_space(
             )
         elif isinstance(parameter, neps.HPOFloat):
             new_float = Float(
-                min_value=parameter.lower,
-                max_value=parameter.upper,
+                lower=parameter.lower,
+                upper=parameter.upper,
                 log=parameter.log,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(

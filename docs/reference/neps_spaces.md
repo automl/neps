@@ -18,8 +18,8 @@ A **NePS space** is defined as a subclass of [`PipelineSpace`][neps.space.neps_s
 import neps
 
 class MySpace(neps.PipelineSpace):
-    float_param = neps.Float(min_value=0.1, max_value=1.0)
-    int_param = neps.Integer(min_value=1, max_value=10)
+    float_param = neps.Float(lower=0.1, upper=1.0)
+    int_param = neps.Integer(lower=1, upper=10)
     cat_param = neps.Categorical(choices=("A", "B", "C"))
 ```
 
@@ -64,9 +64,9 @@ For more details on how to use priors, see the [Priors](../reference/search_algo
     ```python
     space = MySpace()
     # Adding a new parameter, this will appear as param_n where n is the next available index
-    space = space + neps.Float(min_value=0.01, max_value=0.1)
+    space = space + neps.Float(lower=0.01, upper=0.1)
     # Or using the add() method, this allows you to specify a name
-    space = space.add(neps.Integer(min_value=5, max_value=15), name="new_int_param")
+    space = space.add(neps.Integer(lower=5, upper=15), name="new_int_param")
     # Removing a parameter by its name
     space = space.remove("cat_param")
     ```
@@ -103,7 +103,7 @@ Operation also allow for (keyword-)arguments to be defined, including other para
 
     batch_size = neps.Categorical(choices=(16, 32, 64))
 
-    _layer_size = neps.Integer(min_value=80, max_value=100)
+    _layer_size = neps.Integer(lower=80, upper=100)
 
     hidden_layer = neps.Operation(
         operator=torch.nn.Linear,
@@ -156,7 +156,7 @@ With `neps.Resampled` you can reuse a parameter, even themselves recursively, bu
 
 ```python
 class ResampledSpace(neps.PipelineSpace):
-    float_param = neps.Float(min_value=0, max_value=1)
+    float_param = neps.Float(lower=0, upper=1)
 
     # The resampled parameter will have the same range but will be sampled
     # independently, so it can take a different value than its source
@@ -167,7 +167,7 @@ This is especially useful for defining complex architectures, where e.g. a cell 
 
 ```python
 class CNN_Space(neps.PipelineSpace):
-    _kernel_size = neps.Integer(min_value=5, max_value=8)
+    _kernel_size = neps.Integer(lower=5, upper=8)
 
     # Define a cell block that can be resampled
     # It will resample a new kernel size from _kernel_size each time
@@ -205,7 +205,7 @@ def evaluate_pipeline(cnn: torch.nn.Module):
     )
     # This results in a (possibly infinite) tuple of independently sampled future_params
 
-    future_param = Float(min_value=0, max_value=5)
+    future_param = Float(lower=0, upper=5)
     ```
 
 !!! tip "Complex structural spaces"

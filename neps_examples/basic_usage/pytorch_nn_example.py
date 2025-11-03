@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import neps
-from neps.space.neps_spaces.parameters import (
+from neps import (
     PipelineSpace,
     Operation,
     Categorical,

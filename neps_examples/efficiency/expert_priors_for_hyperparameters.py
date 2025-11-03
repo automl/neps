@@ -24,15 +24,15 @@ def evaluate_pipeline(some_float, some_integer, some_cat):
 # that speeds up the search
 class HPOSpace(neps.PipelineSpace):
     some_float = neps.Float(
-        min_value=1,
-        max_value=1000,
+        lower=1,
+        upper=1000,
         log=True,
         prior=900,
         prior_confidence="medium",
     )
     some_integer = neps.Integer(
-        min_value=0,
-        max_value=50,
+        lower=0,
+        upper=50,
         prior=35,
         prior_confidence="low",
     )

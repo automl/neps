@@ -25,7 +25,7 @@ class HNASLikePipeline(PipelineSpace):
     # Adding `PReLU` with a float hyperparameter `init`
     # Note that the sampled `_prelu_init_value` will be shared across all `_PRELU` uses,
     #  since no `Resampled` was requested for it
-    _prelu_init_value = Float(min_value=0.1, max_value=0.9)
+    _prelu_init_value = Float(lower=0.1, upper=0.9)
     _PRELU = Operation(
         operator="ACT prelu",
         kwargs={"init": _prelu_init_value},

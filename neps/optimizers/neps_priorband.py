@@ -170,7 +170,7 @@ class NePSPriorBandSampler:
         _environment_values = {}
         _fidelity_attrs = self.space.fidelity_attrs
         for fidelity_name, fidelity_obj in _fidelity_attrs.items():
-            _environment_values[fidelity_name] = fidelity_obj.max_value
+            _environment_values[fidelity_name] = fidelity_obj.upper
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
@@ -185,7 +185,7 @@ class NePSPriorBandSampler:
         _environment_values = {}
         _fidelity_attrs = self.space.fidelity_attrs
         for fidelity_name, fidelity_obj in _fidelity_attrs.items():
-            _environment_values[fidelity_name] = fidelity_obj.max_value
+            _environment_values[fidelity_name] = fidelity_obj.upper
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,

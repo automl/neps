@@ -212,9 +212,9 @@ def training(
 
 def pipeline_space() -> neps.PipelineSpace:
     class HPOSpace(neps.PipelineSpace):
-        lr = neps.Float(min_value=1e-5, max_value=1e-1, log=True)
+        lr = neps.Float(lower=1e-5, upper=1e-1, log=True)
         optim = neps.Categorical(choices=("Adam", "SGD"))
-        weight_decay = neps.Float(min_value=1e-4, max_value=1e-1, log=True)
+        weight_decay = neps.Float(lower=1e-4, upper=1e-1, log=True)
 
     return HPOSpace()
 

@@ -35,28 +35,28 @@ def evaluate_pipeline(float1, float2, integer1, fidelity):
 
 class DemoHyperparameterWithFidelitySpace(PipelineSpace):
     float1 = Float(
-        min_value=1,
-        max_value=1000,
+        lower=1,
+        upper=1000,
         log=False,
         prior=600,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     float2 = Float(
-        min_value=-100,
-        max_value=100,
+        lower=-100,
+        upper=100,
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     integer1 = Integer(
-        min_value=0,
-        max_value=500,
+        lower=0,
+        upper=500,
         prior=35,
         prior_confidence=ConfidenceLevel.LOW,
     )
     fidelity = Fidelity(
         domain=Integer(
-            min_value=1,
-            max_value=100,
+            lower=1,
+            upper=100,
         ),
     )
 

@@ -21,16 +21,16 @@ from neps.space.neps_spaces.parameters import (
 class SimpleSpace(PipelineSpace):
     """Simple space for testing metrics functionality."""
 
-    x = Float(min_value=0.0, max_value=1.0)
-    y = Integer(min_value=1, max_value=10)
+    x = Float(lower=0.0, upper=1.0)
+    y = Integer(lower=1, upper=10)
 
 
 class SpaceWithFidelity(PipelineSpace):
     """Space with fidelity for testing multi-fidelity metrics."""
 
-    x = Float(min_value=0.0, max_value=1.0)
-    y = Integer(min_value=1, max_value=10)
-    epochs = Fidelity(Integer(min_value=1, max_value=50))
+    x = Float(lower=0.0, upper=1.0)
+    y = Integer(lower=1, upper=10)
+    epochs = Fidelity(Integer(lower=1, upper=50))
 
 
 def simple_evaluation(x: float, y: int) -> dict:

@@ -16,8 +16,8 @@ from neps.space.neps_spaces.parameters import (
 
 class ActPipelineSimpleFloat(PipelineSpace):
     prelu_init_value = Float(
-        min_value=0,
-        max_value=1000000,
+        lower=0,
+        upper=1000000,
         log=False,
         prior=0.25,
         prior_confidence=ConfidenceLevel.LOW,
@@ -53,7 +53,7 @@ class ActPipelineSimpleFloat(PipelineSpace):
 
 
 class ActPipelineComplexInteger(PipelineSpace):
-    prelu_init_value = Integer(min_value=0, max_value=1000000)
+    prelu_init_value = Integer(lower=0, upper=1000000)
 
     prelu_shared1 = Operation(
         operator="prelu",

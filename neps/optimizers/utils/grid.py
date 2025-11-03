@@ -89,10 +89,10 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     )
             elif isinstance(hp, Fidelity):
                 if ignore_fidelity == "highest fidelity":  # type: ignore[unreachable]
-                    fid_ranges[name] = [hp.max_value]
+                    fid_ranges[name] = [hp.upper]
                     continue
                 if ignore_fidelity is True:
-                    fid_ranges[name] = [hp.min_value, hp.max_value]
+                    fid_ranges[name] = [hp.lower, hp.upper]
                     continue
                 raise ValueError(
                     "Grid search does not support fidelity natively."
@@ -101,7 +101,7 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
             elif isinstance(hp, Integer | Float):
                 steps = size_per_numerical_hp  # type: ignore[unreachable]
                 xs = torch.linspace(0, 1, steps=steps)
-                numeric_values = xs * (hp.max_value - hp.min_value) + hp.min_value
+                numeric_values = xs * (hp.upper - hp.lower) + hp.lower
                 if isinstance(hp, Integer):
                     numeric_values = torch.round(numeric_values)
                 uniq_values = torch.unique(numeric_values).tolist()

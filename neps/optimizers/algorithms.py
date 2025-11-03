@@ -47,7 +47,10 @@ from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
-from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.neps_space import (
+    NepsCompatConverter,
+    convert_neps_to_classic_search_space,
+)
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
@@ -1663,6 +1666,7 @@ def _neps_bracket_optimizer(
         )
 
     fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
+    fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
         raise ValueError(
@@ -1677,7 +1681,7 @@ def _neps_bracket_optimizer(
         case "successive_halving":
             assert early_stopping_rate is not None
             rung_to_fidelity, rung_sizes = brackets.calculate_sh_rungs(
-                bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 eta=eta,
                 early_stopping_rate=early_stopping_rate,
             )
@@ -1689,7 +1693,7 @@ def _neps_bracket_optimizer(
         case "hyperband":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
-                bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 eta=eta,
             )
             create_brackets = partial(
@@ -1700,7 +1704,7 @@ def _neps_bracket_optimizer(
         case "asha":
             assert early_stopping_rate is not None
             rung_to_fidelity, _rung_sizes = brackets.calculate_sh_rungs(
-                bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 eta=eta,
                 early_stopping_rate=early_stopping_rate,
             )
@@ -1713,7 +1717,7 @@ def _neps_bracket_optimizer(
         case "async_hb":
             assert early_stopping_rate is None
             rung_to_fidelity, bracket_layouts = brackets.calculate_hb_bracket_layouts(
-                bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 eta=eta,
             )
             # We don't care about the capacity of each bracket, we need the rung layout
@@ -1735,7 +1739,7 @@ def _neps_bracket_optimizer(
                 early_stopping_rate=(
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
-                fid_bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
+                fid_bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 inc_ratio=inc_ratio,
             )
         case "uniform":
@@ -1754,6 +1758,7 @@ def _neps_bracket_optimizer(
         sampler=_sampler,
         sample_prior_first=sample_prior_first,
         create_brackets=create_brackets,
+        fid_name=fidelity_name,
     )
 
 

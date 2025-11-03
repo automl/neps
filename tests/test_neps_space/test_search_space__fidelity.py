@@ -18,15 +18,15 @@ from neps.space.neps_spaces.parameters import (
 class DemoHyperparametersWithFidelitySpace(PipelineSpace):
     constant1: int = 42
     float1 = Float(
-        min_value=0,
-        max_value=1,
+        lower=0,
+        upper=1,
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     fidelity_integer1 = Fidelity(
         domain=Integer(
-            min_value=1,
-            max_value=1000,
+            lower=1,
+            upper=1000,
         ),
     )
 
@@ -39,8 +39,8 @@ def test_fidelity_creation_raises_when_domain_has_prior():
     ):
         Fidelity(
             domain=Integer(
-                min_value=1,
-                max_value=1000,
+                lower=1,
+                upper=1000,
                 prior=10,
                 prior_confidence=ConfidenceLevel.MEDIUM,
             ),

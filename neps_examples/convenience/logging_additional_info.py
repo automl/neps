@@ -22,11 +22,11 @@ def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
 
 
 class HPOSpace(neps.PipelineSpace):
-    float1 = neps.Float(min_value=0, max_value=1)
-    float2 = neps.Float(min_value=-10, max_value=10)
+    float1 = neps.Float(lower=0, upper=1)
+    float2 = neps.Float(lower=-10, upper=10)
     categorical = neps.Categorical(choices=(0, 1))
-    integer1 = neps.Integer(min_value=0, max_value=1)
-    integer2 = neps.Integer(min_value=1, max_value=1000, log=True)
+    integer1 = neps.Integer(lower=0, upper=1)
+    integer2 = neps.Integer(lower=1, upper=1000, log=True)
 
 
 logging.basicConfig(level=logging.INFO)

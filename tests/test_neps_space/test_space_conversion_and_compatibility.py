@@ -26,10 +26,8 @@ from neps.space.neps_spaces.parameters import (
 class SimpleHPOSpace(PipelineSpace):
     """Simple hyperparameter-only space that can be converted to classic."""
 
-    x = Float(
-        min_value=0.0, max_value=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM
-    )
-    y = Integer(min_value=1, max_value=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
+    x = Float(lower=0.0, upper=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM)
+    y = Integer(lower=1, upper=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
     z = Categorical(
         choices=("a", "b", "c"), prior=1, prior_confidence=ConfidenceLevel.LOW
     )
@@ -38,11 +36,9 @@ class SimpleHPOSpace(PipelineSpace):
 class SimpleHPOWithFidelitySpace(PipelineSpace):
     """Simple hyperparameter space with fidelity."""
 
-    x = Float(
-        min_value=0.0, max_value=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM
-    )
-    y = Integer(min_value=1, max_value=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
-    epochs = Fidelity(Integer(min_value=1, max_value=100))
+    x = Float(lower=0.0, upper=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM)
+    y = Integer(lower=1, upper=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
+    epochs = Fidelity(Integer(lower=1, upper=100))
 
 
 class ComplexNepsSpace(PipelineSpace):
@@ -50,7 +46,7 @@ class ComplexNepsSpace(PipelineSpace):
 
     # Basic parameters
     factor = Float(
-        min_value=0.1, max_value=2.0, prior=1.0, prior_confidence=ConfidenceLevel.MEDIUM
+        lower=0.1, upper=2.0, prior=1.0, prior_confidence=ConfidenceLevel.MEDIUM
     )
 
     # Operation with resampled parameters
@@ -120,7 +116,7 @@ def test_convert_classic_to_neps():
     assert neps_attrs["cat_param"].prior_confidence == ConfidenceLevel.LOW
 
     assert isinstance(neps_attrs["fidelity_param"], Fidelity)
-    assert isinstance(neps_attrs["fidelity_param"]._domain, Integer)
+    assert isinstance(neps_attrs["fidelity_param"].domain, Integer)
 
     # Constant should be preserved as-is
     assert neps_attrs["constant_param"] == "constant_value"
@@ -448,10 +444,10 @@ def test_conversion_preserves_log_scaling():
     )
 
     neps_space = convert_classic_to_neps_search_space(classic_space)
-    # Access the Float parameter and check if it has a _log attribute
+    # Access the Float parameter and check if it has a log attribute
     log_param_neps = neps_space.get_attrs()["log_param"]
-    assert hasattr(log_param_neps, "_log")
-    assert log_param_neps._log is True
+    assert hasattr(log_param_neps, "log")
+    assert log_param_neps.log is True
 
     # Round-trip conversion should now preserve log scaling
     converted_back = convert_neps_to_classic_search_space(neps_space)

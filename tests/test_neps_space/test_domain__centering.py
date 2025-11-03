@@ -24,12 +24,12 @@ def test_centering_integer(
     int_prior = 50
 
     int1 = Integer(
-        min_value=1,
-        max_value=100,
+        lower=1,
+        upper=100,
     )
     int2 = Integer(
-        min_value=1,
-        max_value=100,
+        lower=1,
+        upper=100,
         prior=int_prior,
         prior_confidence=confidence_level,
     )
@@ -41,13 +41,13 @@ def test_centering_integer(
     assert (
         (
             int1_centered.prior,
-            int1_centered.min_value,
-            int1_centered.max_value,
+            int1_centered.lower,
+            int1_centered.upper,
         )
         == (
             int2_centered.prior,
-            int2_centered.min_value,
-            int2_centered.max_value,
+            int2_centered.lower,
+            int2_centered.upper,
         )
         == expected_prior_min_max
     )
@@ -78,12 +78,12 @@ def test_centering_float(
     float_prior = 50.0
 
     float1 = Float(
-        min_value=1.0,
-        max_value=100.0,
+        lower=1.0,
+        upper=100.0,
     )
     float2 = Float(
-        min_value=1.0,
-        max_value=100.0,
+        lower=1.0,
+        upper=100.0,
         prior=float_prior,
         prior_confidence=confidence_level,
     )
@@ -95,13 +95,13 @@ def test_centering_float(
     assert (
         (
             float1_centered.prior,
-            float1_centered.min_value,
-            float1_centered.max_value,
+            float1_centered.lower,
+            float1_centered.upper,
         )
         == (
             float2_centered.prior,
-            float2_centered.min_value,
-            float2_centered.max_value,
+            float2_centered.lower,
+            float2_centered.upper,
         )
         == expected_prior_min_max
     )
@@ -111,7 +111,7 @@ def test_centering_float(
 
 
 @pytest.mark.parametrize(
-    ("confidence_level", "expected_prior_min_max_value"),
+    ("confidence_level", "expected_prior_min_upper"),
     [
         (ConfidenceLevel.LOW, (40, 0, 80, 50)),
         (ConfidenceLevel.MEDIUM, (25, 0, 50, 50)),
@@ -120,7 +120,7 @@ def test_centering_float(
 )
 def test_centering_categorical(
     confidence_level,
-    expected_prior_min_max_value,
+    expected_prior_min_upper,
 ):
     # Construct domains manually and then with priors.
     # They are constructed in a way that after centering they both
@@ -145,22 +145,22 @@ def test_centering_categorical(
     )
 
     # During the centering of categorical objects, the prior index will change.
-    assert categorical_prior_index_original != expected_prior_min_max_value[0]
+    assert categorical_prior_index_original != expected_prior_min_upper[0]
 
     assert (
         (
             categorical1_centered.prior,
-            categorical1_centered.min_value,
-            categorical1_centered.max_value,
+            categorical1_centered.lower,
+            categorical1_centered.upper,
             categorical1_centered.choices[categorical1_centered.prior],
         )
         == (
             categorical2_centered.prior,
-            categorical2_centered.min_value,
-            categorical2_centered.max_value,
+            categorical2_centered.lower,
+            categorical2_centered.upper,
             categorical2_centered.choices[categorical2_centered.prior],
         )
-        == expected_prior_min_max_value
+        == expected_prior_min_upper
     )
 
     categorical1_centered.sample()
@@ -180,14 +180,14 @@ def test_centering_stranger_ranges_integer(
     expected_prior_min_max,
 ):
     int1 = Integer(
-        min_value=1,
-        max_value=13,
+        lower=1,
+        upper=13,
     )
     int1_centered = int1.centered_around(10, confidence_level)
 
     int2 = Integer(
-        min_value=1,
-        max_value=13,
+        lower=1,
+        upper=13,
         prior=10,
         prior_confidence=confidence_level,
     )
@@ -195,13 +195,13 @@ def test_centering_stranger_ranges_integer(
 
     assert (
         int1_centered.prior,
-        int1_centered.min_value,
-        int1_centered.max_value,
+        int1_centered.lower,
+        int1_centered.upper,
     ) == expected_prior_min_max
     assert (
         int2_centered.prior,
-        int2_centered.min_value,
-        int2_centered.max_value,
+        int2_centered.lower,
+        int2_centered.upper,
     ) == expected_prior_min_max
 
     int1_centered.sample()
@@ -224,14 +224,14 @@ def test_centering_stranger_ranges_float(
     expected_prior_min_max,
 ):
     float1 = Float(
-        min_value=0.0,
-        max_value=1.0,
+        lower=0.0,
+        upper=1.0,
     )
     float1_centered = float1.centered_around(0.5, confidence_level)
 
     float2 = Float(
-        min_value=0.0,
-        max_value=1.0,
+        lower=0.0,
+        upper=1.0,
         prior=0.5,
         prior_confidence=confidence_level,
     )
@@ -239,13 +239,13 @@ def test_centering_stranger_ranges_float(
 
     assert (
         float1_centered.prior,
-        float1_centered.min_value,
-        float1_centered.max_value,
+        float1_centered.lower,
+        float1_centered.upper,
     ) == expected_prior_min_max
     assert (
         float2_centered.prior,
-        float2_centered.min_value,
-        float2_centered.max_value,
+        float2_centered.lower,
+        float2_centered.upper,
     ) == expected_prior_min_max
 
     float1_centered.sample()
@@ -253,7 +253,7 @@ def test_centering_stranger_ranges_float(
 
 
 @pytest.mark.parametrize(
-    ("confidence_level", "expected_prior_min_max_value"),
+    ("confidence_level", "expected_prior_min_upper"),
     [
         (ConfidenceLevel.LOW, (2, 0, 5, 2)),
         (ConfidenceLevel.MEDIUM, (2, 0, 4, 2)),
@@ -262,7 +262,7 @@ def test_centering_stranger_ranges_float(
 )
 def test_centering_stranger_ranges_categorical(
     confidence_level,
-    expected_prior_min_max_value,
+    expected_prior_min_upper,
 ):
     categorical1 = Categorical(
         choices=tuple(range(7)),
@@ -280,17 +280,17 @@ def test_centering_stranger_ranges_categorical(
 
     assert (
         categorical1_centered.prior,
-        categorical1_centered.min_value,
-        categorical1_centered.max_value,
+        categorical1_centered.lower,
+        categorical1_centered.upper,
         categorical1_centered.choices[categorical1_centered.prior],
-    ) == expected_prior_min_max_value
+    ) == expected_prior_min_upper
 
     assert (
         categorical2_centered.prior,
-        categorical2_centered.min_value,
-        categorical2_centered.max_value,
+        categorical2_centered.lower,
+        categorical2_centered.upper,
         categorical2_centered.choices[categorical2_centered.prior],
-    ) == expected_prior_min_max_value
+    ) == expected_prior_min_upper
 
     categorical1_centered.sample()
     categorical2_centered.sample()

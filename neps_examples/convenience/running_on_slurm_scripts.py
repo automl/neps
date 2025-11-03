@@ -52,7 +52,7 @@ echo -10 > {pipeline_directory}/validation_error_from_slurm_job.txt
 
 class HPOSpace(neps.PipelineSpace):
     optimizer = neps.Categorical(choices=("sgd", "adam"))
-    learning_rate = neps.Float(min_value=10e-7, max_value=10e-3, log=True)
+    learning_rate = neps.Float(lower=10e-7, upper=10e-3, log=True)
 
 
 logging.basicConfig(level=logging.INFO)

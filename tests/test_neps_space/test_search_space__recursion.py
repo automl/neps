@@ -39,7 +39,7 @@ class Sum:
 
 class DemoRecursiveOperationSpace(PipelineSpace):
     # The way to sample `factor` values
-    _factor = Float(min_value=0, max_value=1)
+    _factor = Float(lower=0, upper=1)
 
     # Sum
     _sum = Operation(operator=Sum)
