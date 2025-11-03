@@ -1,24 +1,24 @@
 """
 # AskAndTell Example: Custom Trial Execution with NePS
 
-This script demonstrates how to use the `AskAndTell` interface from NePS to implement a custom trial execution workflow. 
-The `AskAndTell` interface provides full control over the evaluation loop, allowing you to manage how trials are executed 
+This script demonstrates how to use the `AskAndTell` interface from NePS to implement a custom trial execution workflow.
+The `AskAndTell` interface provides full control over the evaluation loop, allowing you to manage how trials are executed
 and results are reported back to the optimizer. This is particularly useful when you need to handle trial execution manually.
 
 ## Aim of This File
 
-The goal of this script is to run a **successive halving** optimization process with 3 rungs. The first rung will evaluate 
-9 trials in parallel. The trials are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used 
-to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate NePS 
+The goal of this script is to run a **successive halving** optimization process with 3 rungs. The first rung will evaluate
+9 trials in parallel. The trials are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used
+to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate NePS
 with external job schedulers.
 
 ## How to Use This Script
 
 1. **Define the Search Space**:
-   The search space is defined using `neps.SearchSpace`.
+   The search space is defined using `neps.PipelineSpace`.
 
 2. **Initialize the Optimizer**:
-   We use the `successive_halving` algorithm from NePS to optimize the search space. The optimizer is wrapped with 
+   We use the `hyperband` algorithm from NePS to optimize the search space. The optimizer is wrapped with
    the `AskAndTell` interface to enable manual control of the evaluation loop.
 
 3. **Submit Jobs**:
@@ -26,7 +26,7 @@ with external job schedulers.
    - The `get_job_script` function generates a SLURM job script that executes the `train_worker` function for a given trial.
 
 4. **Train Worker**:
-   - The `train_worker` function reads the trial configuration, evaluates a dummy objective function, and writes the 
+   - The `train_worker` function reads the trial configuration, evaluates a dummy objective function, and writes the
      results to a JSON file.
 
 5. **Main Loop**:
@@ -136,11 +136,11 @@ def main(parallel: int, results_dir: Path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--parallel", type=int, default=9, 
+        "--parallel", type=int, default=9,
         help="Number of trials to evaluate in parallel initially"
     )
     parser.add_argument(
-        "--results-dir", type=Path, default=Path("results"), 
+        "--results-dir", type=Path, default=Path("results"),
         help="Path to save the results inside"
     )
     args = parser.parse_args()
