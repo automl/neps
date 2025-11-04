@@ -652,9 +652,19 @@ class Categorical(Domain[int], Generic[T]):
 
     def __str__(self) -> str:
         """Get a string representation of the categorical domain."""
-        string = f"Categorical(choices={tuple([str(choice) for choice in self.choices])})"  # type: ignore[union-attr]
+        str_choices = [
+            (
+                choice.__name__  # type: ignore[union-attr]
+                if (callable(choice) and not isinstance(choice, Resolvable))
+                else str(choice)
+            )
+            for choice in self.choices  # type: ignore[union-attr]
+        ]
+        string = f"Categorical(choices = ({', '.join(str_choices)}))"
         if self.has_prior:
-            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
+            string += (
+                f", prior = {self._prior}, prior_confidence = {self._prior_confidence}"
+            )
         string += ")"
         return string
 
@@ -1288,9 +1298,33 @@ class Operation(Resolvable):
 
     def __str__(self) -> str:
         """Get a string representation of the operation."""
+        if self._args != ():
+            args_str = ", args = "
+            if isinstance(self._args, Resolvable):
+                args_str = str(self._args)
+            else:
+                args_str = "(" + ", ".join(str(arg) for arg in self._args) + ")"
+        else:
+            args_str = ""
+
+        if self._kwargs != {}:
+            kwargs_str = ", kwargs = "
+            if isinstance(self._kwargs, Resolvable):
+                kwargs_str += str(self._kwargs)
+            else:
+                kwargs_str += (
+                    "{" + ", ".join(f"{k}={v!s}" for k, v in self._kwargs.items()) + "}"
+                )
+        else:
+            kwargs_str = ""
+
         return (
-            f"Operation(operator={self._operator!s}, args={self._args!s},"
-            f" kwargs={self._kwargs!s})"
+            "Operation(operator ="
+            f" {
+                self._operator
+                if isinstance(self._operator, str)
+                else self._operator.__name__
+            }{args_str}{kwargs_str})"
         )
 
     def compare_domain_to(self, other: object) -> bool:
