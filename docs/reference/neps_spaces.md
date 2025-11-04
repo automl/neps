@@ -214,26 +214,15 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 ## Inspecting Configurations
 
-NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration from the `results/.../configs` directory using the [`NepsCompatConverter`][neps.space.neps_spaces.neps_space.NepsCompatConverter] class, which converts the configuration such that it can be used with the NePS Spaces API:
+NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration using `neps.load_config()`, which returns the resolved pipeline. You can print it, or convert specific operations to strings or callables using the utility functions `neps.convert_operation_to_string()` and `neps.convert_operation_to_callable()`:
 
 ```python
-from neps.space.neps_spaces import neps_space
-import yaml
+import neps
 
-with open("Path/to/config.yaml", "r") as f:
-    conf_dict = yaml.safe_load(f)
-config = NepsCompatConverter.from_neps_config(conf_dict)
-
-# Use the resolution context to sample the configuration using a
-# Sampler that follows the instructions in the configuration
-resolved_pipeline, resolution_context = neps_space.resolve(pipeline=NN_Space(),
-    # Predefined samplings are the decisions made at each sampling step
-    domain_sampler=neps_space.OnlyPredefinedValuesSampler(predefined_samplings=config.predefined_samplings),
-    # Environment values are the fidelities and any arguments of the evaluation function not part of the search space
-    environment_values=config.environment_values)
+pipeline = neps.load_config("Path/to/config.yaml", pipeline_space=SimpleSpace())
 
 # The resolved_pipeline now contains all the parameters and their values, e.g. the Callable model
-model_callable = neps_space.convert_operation_to_callable(operation=resolved_pipeline.model)
+model_callable = neps.convert_operation_to_callable(resolved_pipeline.model)
 ```
 
 ## Using ConfigSpace
