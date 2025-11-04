@@ -119,22 +119,6 @@ class NN_Space(PipelineSpace):
     )
 
 
-# Sampling and printing one random configuration of the pipeline
-pipeline = NN_Space()
-resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
-
-s = resolved_pipeline.model
-s_config_string = neps_space.convert_operation_to_string(s)
-pretty_config = neps_space.config_string.ConfigString(s_config_string).pretty_format()
-s_callable = neps_space.convert_operation_to_callable(s)
-
-print("Callable:\n")
-print(s_callable)
-
-print("\n\nConfig string:\n")
-print(pretty_config)
-
-
 # Defining the pipeline, using the model from the NN_space space as callable
 def evaluate_pipeline(model: nn.Sequential):
     x = torch.ones(size=[1, 3, 220, 220])

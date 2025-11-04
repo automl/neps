@@ -184,26 +184,21 @@ class Summary:
         return len(self.by_state[State.PENDING])
 
     def formatted(  # noqa: PLR0912, C901
-        self, pipeline_space_variables: tuple[PipelineSpace, list[str]] | None = None
+        self, pipeline_space: PipelineSpace | None = None
     ) -> str:
         """Return a formatted string of the summary.
 
         Args:
-            pipeline_space_variables: If provided, this tuple contains the Pipeline and a
-                list of variable names to format the config in the summary. This is useful
-                for pipelines that have a complex configuration structure, allowing for a
-                more readable output.
+            pipeline_space: The PipelineSpace used for the run. If provided, this is used
+                to format the best config in a more readable way.
 
                 !!! Warning:
 
-                    This is only supported when using NePS-only optimizers, such as
-                    `neps.algorithms.neps_random_search`,
-                    `neps.algorithms.complex_random_search`
-                    or `neps.algorithms.neps_priorband`. When the search space is
-                    simple enough, using `neps.algorithms.random_search` or
-                    `neps.algorithms.priorband` is not enough, as it will be transformed
-                    to a simpler HPO framework, which is incompatible with the
-                    `pipeline_space_variables` argument.
+                    This is only supported when using NePS-only optimizers. When the
+                    search space is simple enough, using `neps.algorithms.random_search`
+                    or `neps.algorithms.priorband` is not enough, as it will be
+                    transformed to a simpler HPO framework, which is incompatible with
+                    the `pipeline_space` argument.
 
         Returns:
             A formatted string of the summary.
@@ -227,22 +222,25 @@ class Summary:
             best_summary = (
                 f"# Best Found (config {best_trial.metadata.id}):"
                 "\n"
-                f"\n    objective_to_minimize: {best_objective_to_minimize}"
+                f"\n    objective_to_minimize: {best_objective_to_minimize}\n    config: "
             )
-            if pipeline_space_variables is None:
-                best_summary += f"\n    config: {best_trial.config}"
+            if not pipeline_space:
+                best_summary += f"{best_trial.config}"
             else:
                 best_config_resolve = NepsCompatConverter().from_neps_config(
                     best_trial.config
                 )
                 pipeline_configs = []
-                for variable in pipeline_space_variables[1]:
+                variables = list(pipeline_space.get_attrs().keys()) + list(
+                    pipeline_space.fidelity_attrs.keys()
+                )
+                for variable in variables:
                     pipeline_configs.append(
                         neps_space.config_string.ConfigString(
                             neps_space.convert_operation_to_string(
                                 getattr(
                                     neps_space.resolve(
-                                        pipeline_space_variables[0],
+                                        pipeline_space,
                                         OnlyPredefinedValuesSampler(
                                             best_config_resolve.predefined_samplings
                                         ),
@@ -277,10 +275,7 @@ class Summary:
                         formatted_config = "\n".join(indented_lines)
                     else:
                         formatted_config = pipeline_config  # type: ignore
-                    best_summary += (
-                        f"\n    config: {pipeline_space_variables[1][n_pipeline]}\n      "
-                        f"  {formatted_config}"
-                    )
+                    best_summary += f"\n\t{variables[n_pipeline]}: {formatted_config}"
 
             best_summary += f"\n    path: {best_trial.metadata.location}"
 
@@ -337,28 +332,23 @@ def status(
     root_directory: str | Path,
     *,
     print_summary: bool = False,
-    pipeline_space_variables: tuple[PipelineSpace, list[str]] | None = None,
+    pipeline_space: PipelineSpace | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Print status information of a neps run and return results.
 
     Args:
         root_directory: The root directory given to neps.run.
         print_summary: If true, print a summary of the current run state.
-        pipeline_space_variables: If provided, this tuple contains the Pipeline and a
-            list of variable names to format the config in the summary. This is useful
-            for pipelines that have a complex configuration structure, allowing for a
-            more readable output.
+        pipeline_space: The PipelineSpace used for the run. If provided, this is used to
+                format the best config in a more readable way.
 
-            !!! Warning:
+                !!! Warning:
 
-                This is only supported when using NePS-only optimizers, such as
-                `neps.algorithms.neps_random_search`,
-                `neps.algorithms.complex_random_search`
-                or `neps.algorithms.neps_priorband`. When the search space is
-                simple enough, using `neps.algorithms.random_search` or
-                `neps.algorithms.priorband` is not enough, as it will be transformed to a
-                simpler HPO framework, which is incompatible with the
-                `pipeline_space_variables` argument.
+                    This is only supported when using NePS-only optimizers. When the
+                    search space is simple enough, using `neps.algorithms.random_search`
+                    or `neps.algorithms.priorband` is not enough, as it will be
+                    transformed to a simpler HPO framework, which is incompatible with
+                    the `pipeline_space` argument.
 
     Returns:
         Dataframe of full results and short summary series.
@@ -367,7 +357,7 @@ def status(
     summary = Summary.from_directory(root_directory)
 
     if print_summary:
-        print(summary.formatted(pipeline_space_variables=pipeline_space_variables))
+        print(summary.formatted(pipeline_space=pipeline_space))
 
     df = summary.df()
 

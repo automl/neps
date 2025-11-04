@@ -1299,16 +1299,16 @@ class Operation(Resolvable):
     def __str__(self) -> str:
         """Get a string representation of the operation."""
         if self._args != ():
-            args_str = ", args = "
+            args_str = "args="
             if isinstance(self._args, Resolvable):
-                args_str = str(self._args)
+                args_str += str(self._args)
             else:
-                args_str = "(" + ", ".join(str(arg) for arg in self._args) + ")"
+                args_str += "(" + ", ".join(str(arg) for arg in self._args) + ")"
         else:
             args_str = ""
 
         if self._kwargs != {}:
-            kwargs_str = ", kwargs = "
+            kwargs_str = "kwargs="
             if isinstance(self._kwargs, Resolvable):
                 kwargs_str += str(self._kwargs)
             else:
@@ -1318,10 +1318,12 @@ class Operation(Resolvable):
         else:
             kwargs_str = ""
 
+        args_str += ", " if args_str and kwargs_str else ""
+
         operator_name = (
             self._operator if isinstance(self._operator, str) else self._operator.__name__
         )
-        return f"Operation(operator ={operator_name}{args_str}{kwargs_str})"
+        return f"{operator_name}({args_str}{kwargs_str})"
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this operation parameter is equivalent to another.

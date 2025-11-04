@@ -19,9 +19,10 @@ from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
     convert_classic_to_neps_search_space,
     convert_neps_to_classic_search_space,
+    convert_operation_to_callable,
     resolve,
 )
-from neps.space.neps_spaces.parameters import PipelineSpace
+from neps.space.neps_spaces.parameters import Operation, PipelineSpace
 from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
 from neps.status.status import post_run_csv
@@ -680,7 +681,7 @@ def load_config(
     config_path: Path | str,
     pipeline_space: PipelineSpace,
     config_id: str | None = None,
-) -> PipelineSpace:
+) -> dict[str, Any]:
     """Load a configuration from a neps config file.
 
     Args:
@@ -689,7 +690,7 @@ def load_config(
         config_id: Optional config id to load, when only giving results folder.
 
     Returns:
-        The loaded pipeline space.
+        The loaded configuration as a dictionary.
     """
     from neps.space.neps_spaces.neps_space import NepsCompatConverter
     from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
@@ -723,7 +724,17 @@ def load_config(
         environment_values=converted_dict.environment_values,
     )
 
-    return pipeline
+    pipeline_dict = dict(**pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = str(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return pipeline_dict
 
 
 __all__ = [
