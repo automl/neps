@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import heapq
 import random
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from neps.optimizers.optimizer import ImportedConfig
 from neps.space.neps_spaces.neps_space import (
     SamplingResolutionContext,
     _prepare_sampled_configs,
@@ -27,6 +28,7 @@ if TYPE_CHECKING:
     import neps.state.optimizer as optimizer_state
     import neps.state.trial as trial_state
     from neps.optimizers import optimizer
+    from neps.state.pipeline_eval import UserResultDict
     from neps.state.trial import Trial
 
 
@@ -97,20 +99,20 @@ class NePSRegularizedEvolution:
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
             # If the user specifically asked for the highest fidelity, use that.
             if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.max_value
+                self._environment_values[fidelity_name] = fidelity_obj.upper
             # If the user asked to ignore fidelities, sample a value randomly from the
             # domain.
             elif ignore_fidelity is True:
                 # Sample randomly from the fidelity bounds.
-                if isinstance(fidelity_obj._domain, Integer):
-                    assert isinstance(fidelity_obj.min_value, int)
-                    assert isinstance(fidelity_obj.max_value, int)
+                if isinstance(fidelity_obj.domain, Integer):
+                    assert isinstance(fidelity_obj.lower, int)
+                    assert isinstance(fidelity_obj.upper, int)
                     self._environment_values[fidelity_name] = random.randint(
-                        fidelity_obj.min_value, fidelity_obj.max_value
+                        fidelity_obj.lower, fidelity_obj.upper
                     )
-                elif isinstance(fidelity_obj._domain, Float):
+                elif isinstance(fidelity_obj.domain, Float):
                     self._environment_values[fidelity_name] = random.uniform(
-                        fidelity_obj.min_value, fidelity_obj.max_value
+                        fidelity_obj.lower, fidelity_obj.upper
                     )
             # By default we don't support fidelities unless explicitly requested.
             else:
@@ -372,3 +374,32 @@ class NePSRegularizedEvolution:
                 raise ValueError(f"Invalid mutation type: {self._mutation_type}")
 
         return _prepare_sampled_configs(return_pipelines, n_prev_trials, n_requested == 1)
+
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        """Import external evaluations as trials.
+
+        Args:
+            external_evaluations: A sequence of tuples containing configurations and
+                their evaluation results.
+            trials: A mapping of trial IDs to Trial objects, representing existing
+                trials.
+
+        Returns:
+            A list of ImportedConfig objects representing the imported trials.
+        """
+        n_trials = len(trials)
+        imported_configs = []
+        for i, (config, result) in enumerate(external_evaluations):
+            config_id = str(n_trials + i + 1)
+            imported_configs.append(
+                ImportedConfig(
+                    config=config,
+                    id=config_id,
+                    result=result,
+                )
+            )
+        return imported_configs
