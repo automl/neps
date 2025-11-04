@@ -5,7 +5,7 @@ and plotting utilities, making it easy to experiment with different configuratio
 and algorithms.
 """
 
-from neps.api import create_config, import_trials, run, save_pipeline_results
+from neps.api import create_config, import_trials, load_config, run, save_pipeline_results
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -25,6 +25,7 @@ from neps.space.neps_spaces.parameters import (
 from neps.state import BudgetInfo, Trial
 from neps.state.pipeline_eval import UserResultDict
 from neps.status.status import status
+from neps.utils import convert_operation_to_callable, convert_operation_to_string
 from neps.utils.files import load_and_merge_yamls
 
 __all__ = [
@@ -47,9 +48,12 @@ __all__ = [
     "Trial",
     "UserResultDict",
     "algorithms",
+    "convert_operation_to_callable",
+    "convert_operation_to_string",
     "create_config",
     "import_trials",
     "load_and_merge_yamls",
+    "load_config",
     "plot",
     "run",
     "save_pipeline_results",

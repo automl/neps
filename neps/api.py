@@ -9,6 +9,8 @@ from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
+import yaml
+
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
@@ -674,4 +676,60 @@ def create_config(
     return NepsCompatConverter.to_neps_config(resolution_context), resolved_pipeline
 
 
-__all__ = ["create_config", "import_trials", "run", "save_pipeline_results"]
+def load_config(
+    config_path: Path | str,
+    pipeline_space: PipelineSpace,
+    config_id: str | None = None,
+) -> PipelineSpace:
+    """Load a configuration from a neps config file.
+
+    Args:
+        config_path: Path to the neps config file.
+        pipeline_space: The search space used to generate the configuration.
+        config_id: Optional config id to load, when only giving results folder.
+
+    Returns:
+        The loaded pipeline space.
+    """
+    from neps.space.neps_spaces.neps_space import NepsCompatConverter
+    from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
+
+    str_path = str(config_path)
+    if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
+        if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
+            str_path += "/config.yaml"
+        else:
+            if config_id is None:
+                raise ValueError(
+                    "When providing a results folder, you must also provide a config_id."
+                )
+            str_path = (
+                str_path.removesuffix("/").removesuffix("configs")
+                + "/configs/"
+                + config_id
+                + "/config.yaml"
+            )
+
+    config_path = Path(str_path)
+
+    with config_path.open("r") as f:
+        config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+
+    converted_dict = NepsCompatConverter.from_neps_config(config_dict)
+
+    pipeline, _ = resolve(
+        pipeline_space,
+        domain_sampler=OnlyPredefinedValuesSampler(converted_dict.predefined_samplings),
+        environment_values=converted_dict.environment_values,
+    )
+
+    return pipeline
+
+
+__all__ = [
+    "create_config",
+    "import_trials",
+    "load_config",
+    "run",
+    "save_pipeline_results",
+]
