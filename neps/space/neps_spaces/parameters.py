@@ -1318,14 +1318,10 @@ class Operation(Resolvable):
         else:
             kwargs_str = ""
 
-        return (
-            "Operation(operator ="
-            f" {
-                self._operator
-                if isinstance(self._operator, str)
-                else self._operator.__name__
-            }{args_str}{kwargs_str})"
+        operator_name = (
+            self._operator if isinstance(self._operator, str) else self._operator.__name__
         )
+        return f"Operation(operator ={operator_name}{args_str}{kwargs_str})"
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this operation parameter is equivalent to another.
