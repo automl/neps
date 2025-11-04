@@ -11,6 +11,7 @@ from itertools import product
 from typing import TYPE_CHECKING, Any
 
 import gpytorch.constraints
+import numpy as np
 import torch
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
@@ -207,7 +208,6 @@ def optimize_acq(
         ]
         for name, transformer in cat_transformers.items()
     }
-
     # Second, generate all possible combinations
     fixed_cats: list[dict[int, float]]
     if len(cats) == 1:
@@ -226,15 +226,43 @@ def optimize_acq(
     with warning_context:
         # TODO: we should deterministically shuffle the fixed_categoricals
         # as the underlying function does not.
-        return optimize_acqf_mixed(  # type: ignore
-            acq_function=acq_fn,
-            bounds=bounds,
-            num_restarts=min(num_restarts // n_combos, 2),
-            raw_samples=n_intial_start_points,
-            q=n_candidates_required,
-            fixed_features_list=fixed_cats,
-            **acq_options,
-        )
+
+        # Sample a subset of the fixed cat combinations to form initial population
+        population = np.random.choice(
+            fixed_cats,
+            size=min(len(fixed_cats), 20),
+            replace=False,
+        ).tolist()
+
+        # Randomly shuffle the population
+        best_score = -np.inf
+        best_candidates = None
+        for _ in range(10):
+            np.random.shuffle(population)
+            candidates, scores = optimize_acqf_mixed(  # type: ignore
+                acq_function=acq_fn,
+                bounds=bounds,
+                num_restarts=2,
+                raw_samples=n_intial_start_points,
+                q=n_candidates_required,
+                fixed_features_list=population,
+                **acq_options,
+            )
+
+            # Randomly mutate one of the cats in the returned candidate
+            mutated_candidate = candidates[0].clone()
+            mutated_cat_idx = np.random.choice(list(cats.keys()))
+            mutate_value = np.random.choice(cats[mutated_cat_idx])
+            mutated_candidate[mutated_cat_idx] = mutate_value
+
+            # Randomly replace a candidate in the population with the mutated candidate
+            population.append({k: mutated_candidate[k].item() for k in cats})
+
+            # Keep best candidates and scores
+            if scores.item() > best_score:
+                best_score = scores.item()
+                best_candidates = mutated_candidate.unsqueeze(0)
+        return best_candidates, best_score
 
 
 def encode_trials_for_gp(
@@ -317,7 +345,7 @@ def fit_and_acquire_from_gp(
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
-    maximum_allowed_categorical_combinations: int = 30,
+    maximum_allowed_categorical_combinations: int = 300000,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
     hide_warnings: bool = False,
