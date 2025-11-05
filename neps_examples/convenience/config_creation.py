@@ -11,7 +11,17 @@ class ExampleSpace(neps.PipelineSpace):
     float1 = neps.Float(0.0, 1.0)
     cat1 = neps.Categorical(["a", "b", "c"])
     cat2 = neps.Categorical(["x", "y", float1])
-    cat4 = neps.Categorical([neps.Resampled(cat2), neps.Resampled(cat1)])
+    operation1 = neps.Categorical(
+        choices=[
+            "option1",
+            "option2",
+            neps.Operation(
+                operator="option3",
+                args=(float1, neps.Resampled(cat1)),
+                kwargs={"param1": neps.Resampled(float1)},
+            )
+        ]
+    )
 
 
 if __name__ == "__main__":
