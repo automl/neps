@@ -1439,6 +1439,8 @@ class Resampled(Resolvable):
         Args:
             source: The source of the resampling, can be a resolvable object or a string.
         """
+        if isinstance(source, Fidelity):
+            raise ValueError("Fidelity objects cannot be resampled.")
         self._source = source
 
     def __str__(self) -> str:
