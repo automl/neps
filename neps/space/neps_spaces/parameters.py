@@ -222,6 +222,17 @@ class PipelineSpace(Resolvable):
 
         return attrs
 
+    def has_priors(self) -> bool:
+        """Check if any parameter in the pipeline has priors defined.
+
+        Returns:
+            True if any parameter has priors, False otherwise.
+        """
+        for param in self.get_attrs().values():
+            if hasattr(param, "has_prior") and param.has_prior:
+                return True
+        return False
+
     def from_attrs(self, attrs: Mapping[str, Any]) -> PipelineSpace:
         """Create a new Pipeline instance from the given attributes.
 
