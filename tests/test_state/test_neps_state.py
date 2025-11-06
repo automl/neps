@@ -152,10 +152,7 @@ def optimizer_and_key_and_search_space(
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in NO_DEFAULT_PRIOR_SUPPORT and any(
-        parameter.has_prior if hasattr(parameter, "has_prior") else False
-        for parameter in search_space.get_attrs().values()
-    ):
+    if key in NO_DEFAULT_PRIOR_SUPPORT and search_space.has_priors():
         pytest.xfail(f"{key} crashed with a prior")
 
     if search_space.fidelity_attrs and key in NO_DEFAULT_FIDELITY_SUPPORT:
@@ -164,10 +161,7 @@ def optimizer_and_key_and_search_space(
     if key in REQUIRES_FIDELITY and not search_space.fidelity_attrs:
         pytest.xfail(f"{key} requires a fidelity parameter")
 
-    if key in REQUIRES_PRIOR and not any(
-        parameter.has_prior if hasattr(parameter, "has_prior") else False
-        for parameter in search_space.get_attrs().values()
-    ):
+    if key in REQUIRES_PRIOR and not search_space.has_priors():
         pytest.xfail(f"{key} requires a prior")
 
     if key in REQUIRES_FIDELITY_MO and not search_space.fidelity_attrs:

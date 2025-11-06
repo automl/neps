@@ -51,11 +51,7 @@ from neps.space.neps_spaces.neps_space import (
     convert_neps_to_classic_search_space,
 )
 from neps.space.neps_spaces.parameters import (
-    Categorical,
-    Float,
-    Integer,
     PipelineSpace,
-    Resolvable,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -434,10 +430,13 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     )
 
 
-def determine_optimizer_automatically(space: SearchSpace | PipelineSpace) -> str:
+def determine_optimizer_automatically(space: SearchSpace | PipelineSpace) -> str:  # noqa: PLR0911
     if isinstance(space, PipelineSpace):
-        if space.fidelity_attrs:
+        has_prior = space.has_priors()
+        if space.fidelity_attrs and has_prior:
             return "neps_priorband"
+        if space.fidelity_attrs and not has_prior:
+            return "neps_hyperband"
         return "complex_random_search"
     has_prior = any(
         parameter.prior is not None for parameter in space.searchables.values()
@@ -620,18 +619,7 @@ def neps_grid_search(
             "This optimizer only supports NePS spaces, please use a classic"
             " search space-compatible optimizer."
         )
-    parameters = pipeline_space.get_attrs().values()
-    non_fid_parameters = [
-        parameter
-        for parameter in parameters
-        if parameter not in pipeline_space.fidelity_attrs.values()
-    ]
-    if any(
-        parameter.has_prior  # type: ignore
-        for parameter in non_fid_parameters
-        if isinstance(parameter, Resolvable)
-        and isinstance(parameter, Integer | Float | Categorical)
-    ):
+    if pipeline_space.has_priors():
         logger.warning("Grid search does not support priors, they will be ignored.")
     if not pipeline_space.fidelity_attrs and ignore_fidelity:
         logger.warning(
@@ -1625,18 +1613,7 @@ def neps_random_search(
             "You are using ignore_fidelity, but no fidelity is defined in the"
             " search space. Consider setting ignore_fidelity to False."
         )
-    parameters = pipeline_space.get_attrs().values()
-    non_fid_parameters = [
-        parameter
-        for parameter in parameters
-        if parameter not in pipeline_space.fidelity_attrs.values()
-    ]
-    if use_priors and not any(
-        parameter.has_prior  # type: ignore
-        for parameter in non_fid_parameters
-        if isinstance(parameter, Resolvable)
-        and isinstance(parameter, Integer | Float | Categorical)
-    ):
+    if use_priors and not pipeline_space.has_priors():
         logger.warning(
             "You have set use_priors=True, but no priors are defined in the search space."
         )
@@ -1785,18 +1762,7 @@ def neps_priorband(
     Returns:
         An instance of _BracketOptimizer configured for PriorBand sampling.
     """
-    parameters = pipeline_space.get_attrs().values()
-    non_fid_parameters = [
-        parameter
-        for parameter in parameters
-        if parameter not in pipeline_space.fidelity_attrs.values()
-        and isinstance(parameter, Integer | Float | Categorical)
-    ]
-    if not any(
-        parameter.has_prior  # type: ignore
-        for parameter in non_fid_parameters
-        if isinstance(parameter, Resolvable)
-    ):
+    if not pipeline_space.has_priors():
         logger.warning(
             "Warning: No priors are defined in the search space, priorband will sample"
             " uniformly. Consider using hyperband instead."

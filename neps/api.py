@@ -659,7 +659,7 @@ def import_trials(
 
 def create_config(
     pipeline_space: PipelineSpace,
-) -> tuple[Mapping[str, Any], PipelineSpace]:
+) -> tuple[Mapping[str, Any], dict[str, Any]]:
     """Create a configuration by prompting the user for input.
 
     Args:
@@ -674,7 +674,18 @@ def create_config(
     resolved_pipeline, resolution_context = resolve(
         pipeline_space, domain_sampler=IOSampler()
     )
-    return NepsCompatConverter.to_neps_config(resolution_context), resolved_pipeline
+
+    pipeline_dict = dict(**resolved_pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = str(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return NepsCompatConverter.to_neps_config(resolution_context), pipeline_dict
 
 
 def load_config(

@@ -19,20 +19,20 @@ class ExampleSpace(neps.PipelineSpace):
                 operator="option3",
                 args=(float1, neps.Resampled(cat1)),
                 kwargs={"param1": neps.Resampled(float1)},
-            )
+            ),
         ]
     )
 
 
 if __name__ == "__main__":
     # We create a configuration interactively and receive both
-    # the configuration dictionary and a the corresponding pipeline.
+    # the configuration dictionary and a dictionary of the sampled parameters.
     config, pipeline = neps.create_config(ExampleSpace())
     print("Created configuration:")
     pprint(config)
     print("Sampled pipeline:")
-    print(pipeline, "\n")
-    # We can access the sampled values via e.g. pipeline.int1
+    pprint(pipeline)
+
 
     logging.basicConfig(level=logging.INFO)
     # The created configuration can then be used as an imported trial in NePS optimizers.
