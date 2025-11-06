@@ -248,7 +248,6 @@ def encode_trials_for_gp(
 
     Args:
         trials: The trials to encode.
-        space: The search space.
         encoder: The encoder to use. If `None`, one will be created.
         device: The device to use.
 

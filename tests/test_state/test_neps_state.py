@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 from pytest_cases import case, fixture, parametrize, parametrize_with_cases
 
+import neps
 from neps.optimizers import (
     AskFunction,
     OptimizerInfo,
@@ -19,64 +20,61 @@ from neps.optimizers import (
     load_optimizer,
 )
 from neps.optimizers.ask_and_tell import AskAndTell
-from neps.space import (
+from neps.space import SearchSpace
+from neps.space.neps_spaces.parameters import (
     Categorical,
-    Constant,
+    Fidelity,
     Float,
     Integer,
-    SearchSpace,
+    PipelineSpace,
 )
 from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
 
 
 @case
-def case_search_space_no_fid() -> SearchSpace:
-    return SearchSpace(
-        {
-            "a": Float(0, 1),
-            "b": Categorical(["a", "b", "c"]),
-            "c": Constant("a"),
-            "d": Integer(0, 10),
-        }
-    )
+def case_search_space_no_fid() -> PipelineSpace:
+    class Space(PipelineSpace):
+        a = Float(0, 1)
+        b = Categorical(("a", "b", "c"))
+        c = "a"
+        d = Integer(0, 10)
+
+    return Space()
 
 
 @case
-def case_search_space_with_fid() -> SearchSpace:
-    return SearchSpace(
-        {
-            "a": Float(0, 1),
-            "b": Categorical(["a", "b", "c"]),
-            "c": Constant("a"),
-            "d": Integer(0, 10),
-            "e": Integer(1, 10, is_fidelity=True),
-        }
-    )
+def case_search_space_with_fid() -> PipelineSpace:
+    class SpaceFid(PipelineSpace):
+        a = Float(0, 1)
+        b = Categorical(("a", "b", "c"))
+        c = "a"
+        d = Integer(0, 10)
+        e = Fidelity(Integer(1, 10))
+
+    return SpaceFid()
 
 
 @case
-def case_search_space_no_fid_with_prior() -> SearchSpace:
-    return SearchSpace(
-        {
-            "a": Float(0, 1, prior=0.5),
-            "b": Categorical(["a", "b", "c"], prior="a"),
-            "c": Constant("a"),
-            "d": Integer(0, 10, prior=5),
-        }
-    )
+def case_search_space_no_fid_with_prior() -> PipelineSpace:
+    class SpacePrior(PipelineSpace):
+        a = Float(0, 1, prior=0.5, prior_confidence="medium")
+        b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
+        c = "a"
+        d = Integer(0, 10, prior=5, prior_confidence="medium")
+
+    return SpacePrior()
 
 
 @case
-def case_search_space_fid_with_prior() -> SearchSpace:
-    return SearchSpace(
-        {
-            "a": Float(0, 1, prior=0.5),
-            "b": Categorical(["a", "b", "c"], prior="a"),
-            "c": Constant("a"),
-            "d": Integer(0, 10, prior=5),
-            "e": Integer(1, 10, is_fidelity=True),
-        }
-    )
+def case_search_space_fid_with_prior() -> PipelineSpace:
+    class SpaceFidPrior(PipelineSpace):
+        a = Float(0, 1, prior=0.5, prior_confidence="medium")
+        b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
+        c = "a"
+        d = Integer(0, 10, prior=5, prior_confidence="medium")
+        e = Fidelity(Integer(1, 10))
+
+    return SpaceFidPrior()
 
 
 # See issue #121
@@ -96,12 +94,18 @@ REQUIRES_FIDELITY = [
     "async_hb",
     "ifbo",
     "priorband",
+    "moasha",
+    "mo_hyperband",
+    "neps_priorband",
+    "neps_hyperband",
 ]
 NO_DEFAULT_FIDELITY_SUPPORT = [
     "random_search",
     "grid_search",
     "bayesian_optimization",
     "pibo",
+    "neps_random_search",
+    "complex_random_search",
 ]
 NO_DEFAULT_PRIOR_SUPPORT = [
     "grid_search",
@@ -112,6 +116,10 @@ NO_DEFAULT_PRIOR_SUPPORT = [
     "hyperband",
     "async_hb",
     "random_search",
+    "moasha",
+    "mo_hyperband",
+    "neps_random_search",
+    "complex_random_search",
 ]
 REQUIRES_PRIOR = [
     "pibo",
@@ -127,33 +135,36 @@ REQUIRES_MO_PRIOR = [
     "primo",
 ]
 
+REQUIRES_NEPS_SPACE = [
+    "neps_priorband",
+    "neps_random_search",
+    "complex_random_search",
+    "neps_hyperband",
+]
+
 
 @fixture
 @parametrize("key", list(PredefinedOptimizers.keys()))
 @parametrize_with_cases("search_space", cases=".", prefix="case_search_space")
 def optimizer_and_key_and_search_space(
-    key: str, search_space: SearchSpace
-) -> tuple[AskFunction, str, SearchSpace]:
+    key: str, search_space: PipelineSpace
+) -> tuple[AskFunction, str, PipelineSpace | SearchSpace]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
 
-    if key in NO_DEFAULT_PRIOR_SUPPORT and any(
-        parameter.prior is not None for parameter in search_space.searchables.values()
-    ):
+    if key in NO_DEFAULT_PRIOR_SUPPORT and search_space.has_priors():
         pytest.xfail(f"{key} crashed with a prior")
 
-    if search_space.fidelity is not None and key in NO_DEFAULT_FIDELITY_SUPPORT:
+    if search_space.fidelity_attrs and key in NO_DEFAULT_FIDELITY_SUPPORT:
         pytest.xfail(f"{key} crashed with a fidelity")
 
-    if key in REQUIRES_FIDELITY and search_space.fidelity is None:
+    if key in REQUIRES_FIDELITY and not search_space.fidelity_attrs:
         pytest.xfail(f"{key} requires a fidelity parameter")
 
-    if key in REQUIRES_PRIOR and all(
-        parameter.prior is None for parameter in search_space.searchables.values()
-    ):
+    if key in REQUIRES_PRIOR and not search_space.has_priors():
         pytest.xfail(f"{key} requires a prior")
 
-    if key in REQUIRES_FIDELITY_MO and search_space.fidelity is None:
+    if key in REQUIRES_FIDELITY_MO and not search_space.fidelity_attrs:
         pytest.xfail(f"Multi-objective optimizer {key} requires a fidelity parameter")
 
     if key in REQUIRES_MO_PRIOR:
@@ -161,7 +172,20 @@ def optimizer_and_key_and_search_space(
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
-    return opt, key, search_space
+    converted_space = (
+        neps.space.neps_spaces.neps_space.convert_neps_to_classic_search_space(
+            search_space
+        )
+    )
+    return (
+        opt,
+        key,
+        (
+            converted_space
+            if converted_space and key not in REQUIRES_NEPS_SPACE
+            else search_space
+        ),
+    )
 
 
 @parametrize("optimizer_info", [OptimizerInfo(name="blah", info={"a": "b"})])
@@ -188,7 +212,9 @@ def case_neps_state_filebased(
 @parametrize_with_cases("neps_state", cases=".", prefix="case_neps_state")
 def test_sample_trial(
     neps_state: NePSState,
-    optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
+    optimizer_and_key_and_search_space: tuple[
+        AskFunction, str, PipelineSpace | SearchSpace
+    ],
     capsys,
 ) -> None:
     optimizer, key, search_space = optimizer_and_key_and_search_space
@@ -202,8 +228,24 @@ def test_sample_trial(
     for k, v in trial1.config.items():
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
-    for name in search_space:
-        assert name in trial1.config, f"'{name}' is not in {trial1.config}"
+    if isinstance(search_space, SearchSpace):
+        for name in search_space:
+            assert name in trial1.config, f"'{name}' is not in {trial1.config}"
+    else:
+        config = neps.space.neps_spaces.neps_space.NepsCompatConverter().from_neps_config(
+            trial1.config
+        )
+        resolved_pipeline, _ = neps.space.neps_spaces.neps_space.resolve(
+            pipeline=search_space,
+            domain_sampler=neps.space.neps_spaces.neps_space.OnlyPredefinedValuesSampler(
+                predefined_samplings=config.predefined_samplings
+            ),
+            environment_values=config.environment_values,
+        )
+        for name in search_space.get_attrs():
+            assert name in resolved_pipeline.get_attrs(), (
+                f"'{name}' is not in {resolved_pipeline.get_attrs()}"
+            )
 
     # HACK: Unfortunatly due to windows, who's time.time() is not very
     # precise, we need to introduce a sleep -_-
@@ -218,8 +260,24 @@ def test_sample_trial(
     for k, v in trial1.config.items():
         assert v is not None, f"'{k}' is None in {trial1.config}"
 
-    for name in search_space:
-        assert name in trial1.config, f"'{name}' is not in {trial1.config}"
+    if isinstance(search_space, SearchSpace):
+        for name in search_space:
+            assert name in trial1.config, f"'{name}' is not in {trial1.config}"
+    else:
+        config = neps.space.neps_spaces.neps_space.NepsCompatConverter().from_neps_config(
+            trial1.config
+        )
+        resolved_pipeline, _ = neps.space.neps_spaces.neps_space.resolve(
+            pipeline=search_space,
+            domain_sampler=neps.space.neps_spaces.neps_space.OnlyPredefinedValuesSampler(
+                predefined_samplings=config.predefined_samplings
+            ),
+            environment_values=config.environment_values,
+        )
+        for name in search_space.get_attrs():
+            assert name in resolved_pipeline.get_attrs(), (
+                f"'{name}' is not in {resolved_pipeline.get_attrs()}"
+            )
 
     assert trial1 != trial2
 
@@ -230,7 +288,9 @@ def test_sample_trial(
 
 
 def test_optimizers_work_roughly(
-    optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
+    optimizer_and_key_and_search_space: tuple[
+        AskFunction, str, PipelineSpace | SearchSpace
+    ],
 ) -> None:
     opt, key, search_space = optimizer_and_key_and_search_space
     ask_and_tell = AskAndTell(opt)

@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
+from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.parameters import PipelineSpace
 
 if TYPE_CHECKING:
     from neps.sampling import Sampler
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 class RandomSearch:
     """A simple random search optimizer."""
 
-    space: SearchSpace
+    space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
 
@@ -27,6 +29,15 @@ class RandomSearch:
         budget_info: BudgetInfo | None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
+        if isinstance(self.space, PipelineSpace):
+            converted_space = convert_neps_to_classic_search_space(self.space)
+            if converted_space is not None:
+                self.space = converted_space
+            else:
+                raise ValueError(
+                    "This optimizer only supports HPO search spaces, please use a NePS"
+                    " space-compatible optimizer."
+                )
         n_trials = len(trials)
         _n = 1 if n is None else n
         configs = self.sampler.sample(_n, to=self.encoder.domains)

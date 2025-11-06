@@ -3,17 +3,29 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import warnings
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
+import yaml
+
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
+from neps.space.neps_spaces.neps_space import (
+    adjust_evaluation_pipeline_for_neps_space,
+    check_neps_space_compatibility,
+    convert_classic_to_neps_search_space,
+    convert_neps_to_classic_search_space,
+    convert_operation_to_callable,
+    resolve,
+)
+from neps.space.neps_spaces.parameters import Operation, PipelineSpace
 from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
-from neps.status.status import post_run_csv, trajectory_of_improvements
+from neps.status.status import post_run_csv
 from neps.utils.common import dynamic_load_object
 from neps.validation import _validate_imported_config, _validate_imported_result
 
@@ -21,20 +33,15 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
-    from neps.space import Parameter, SearchSpace
-    from neps.state import EvaluatePipelineReturn
-    from neps.state.pipeline_eval import UserResultDict
+    from neps.space import SearchSpace
+    from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResultDict
 
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: C901, D417, PLR0913
+def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: (
-        Mapping[str, dict | str | int | float | Parameter]
-        | SearchSpace
-        | ConfigurationSpace
-    ),
+    pipeline_space: ConfigurationSpace | PipelineSpace,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
@@ -55,7 +62,9 @@ def run(  # noqa: C901, D417, PLR0913
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
@@ -79,30 +88,29 @@ def run(  # noqa: C901, D417, PLR0913
         validation_error = -some_parameter
         return validation_error
 
-    pipeline_space = dict(some_parameter=neps.Float(lower=0, upper=1))
+    class MySpace(PipelineSpace):
+        dataset = "mnist"               # constant
+        nlayers = neps.Integer(2,10)    # integer
+        alpha = neps.Float(0.1, 1.0)    # float
+        optimizer = neps.Categorical(   # categorical
+            ("adam", "sgd", "rmsprop")
+        )
+        learning_rate = neps.Float(     # log spaced float
+            lower=1e-5, upper=1, log=True
+        )
+        epochs = neps.Fidelity(         # fidelity integer
+            neps.Integer(1, 100)
+        )
+        batch_size = neps.Integer(      # integer with a prior
+            lower=32,
+            upper=512,
+            prior=128,
+            prior_confidence="medium"
+        )
+
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space={
-            "some_parameter": (0.0, 1.0),   # float
-            "another_parameter": (0, 10),   # integer
-            "optimizer": ["sgd", "adam"],   # categorical
-            "epoch": neps.Integer(          # fidelity integer
-                lower=1,
-                upper=100,
-                is_fidelity=True
-            ),
-            "learning_rate": neps.Float(    # log spaced float
-                lower=1e-5,
-                upper=1,
-                log=True
-            ),
-            "alpha": neps.Float(            # float with a prior
-                lower=0.1,
-                upper=1.0,
-                prior=0.99,
-                prior_confidence="high",
-            )
-        },
+        pipeline_space=MySpace(),
         root_directory="usage_example",
         evaluations_to_spend=5,
         max_evaluations_per_run=10,
@@ -137,25 +145,28 @@ def run(  # noqa: C901, D417, PLR0913
             This most direct way to specify the search space is as follows:
 
             ```python
-            neps.run(
-                pipeline_space={
-                    "dataset": "mnist",             # constant
-                    "nlayers": (2, 10),             # integer
-                    "alpha": (0.1, 1.0),            # float
-                    "optimizer": [                  # categorical
-                        "adam", "sgd", "rmsprop"
-                    ],
-                    "learning_rate": neps.Float(,   # log spaced float
-                        lower=1e-5, upper=1, log=True
-                    ),
-                    "epochs": neps.Integer(         # fidelity integer
-                        lower=1, upper=100, is_fidelity=True
-                    ),
-                    "batch_size": neps.Integer(     # integer with a prior
-                        lower=32, upper=512, prior=128
-                    ),
+            MySpace(PipelineSpace):
+                dataset = "mnist"               # constant
+                nlayers = neps.Integer(2,10)    # integer
+                alpha = neps.Float(0.1, 1.0)    # float
+                optimizer = neps.Categorical(   # categorical
+                    ("adam", "sgd", "rmsprop")
+                )
+                learning_rate = neps.Float(     # log spaced float
+                    lower=1e-5, upper=1, log=True
+                )
+                epochs = neps.Fidelity(         # fidelity integer
+                    neps.Integer(1, 100)
+                )
+                batch_size = neps.Integer(      # integer with a prior
+                    lower=32,
+                    upper=512,
+                    prior=128,
+                    prior_confidence="medium"
+                )
 
-                }
+            neps.run(
+                pipeline_space=MySpace()
             )
             ```
 
@@ -167,29 +178,8 @@ def run(  # noqa: C901, D417, PLR0913
 
             * `prior=`: If you have a good idea about what a good setting
                 for a parameter may be, you can set this as the prior for
-                a parameter. You can specify this along with `prior_confidence`
-                if you would like to assign a `"low"`, `"medium"`, or `"high"`
-                confidence to the prior.
-
-
-            !!! note "Yaml support"
-
-                To support spaces defined in yaml, you may also define the parameters
-                as dictionarys, e.g.,
-
-                ```python
-                neps.run(
-                    pipeline_space={
-                        "dataset": "mnist",
-                        "nlayers": {"type": "int", "lower": 2, "upper": 10},
-                        "alpha": {"type": "float", "lower": 0.1, "upper": 1.0},
-                        "optimizer": {"type": "cat", "choices": ["adam", "sgd", "rmsprop"]},
-                        "learning_rate": {"type": "float", "lower": 1e-5, "upper": 1, "log": True},
-                        "epochs": {"type": "int", "lower": 1, "upper": 100, "is_fidelity": True},
-                        "batch_size": {"type": "int", "lower": 32, "upper": 512, "prior": 128},
-                    }
-                )
-                ```
+                a parameter. You specify this along with `prior_confidence`
+                to assign a `"low"`, `"medium"`, or `"high"`confidence to the prior.
 
             !!! note "ConfigSpace support"
 
@@ -205,10 +195,11 @@ def run(  # noqa: C901, D417, PLR0913
             holding summary information about the configs and results.
 
         max_evaluations_per_run: Number of evaluations this specific call should do.
-        ??? note "Limitation on Async mode"
-            Currently, there is no specific number to control number of parallel evaluations running with
-            the same worker, so in case you want to limit the number of parallel evaluations,
-            it's crucial to limit the number of evaluations per run.
+
+            ??? note "Limitation on Async mode"
+                Currently, there is no specific number to control number of parallel evaluations running with
+                the same worker, so in case you want to limit the number of parallel evaluations,
+                it's crucial to limit the number of evaluations per run.
 
         evaluations_to_spend: Number of evaluations after which to terminate.
             This is shared between all workers operating in the same `root_directory`.
@@ -282,98 +273,7 @@ def run(  # noqa: C901, D417, PLR0913
 
             ??? note "Available optimizers"
 
-                ---
-
-                * `#!python "bayesian_optimization"`,
-
-                    ::: neps.optimizers.algorithms.bayesian_optimization
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "ifbo"`
-
-                    ::: neps.optimizers.algorithms.ifbo
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "successive_halving"`:
-
-                    ::: neps.optimizers.algorithms.successive_halving
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "hyperband"`:
-
-                    ::: neps.optimizers.algorithms.hyperband
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "priorband"`:
-
-                    ::: neps.optimizers.algorithms.priorband
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "asha"`:
-
-                    ::: neps.optimizers.algorithms.asha
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "async_hb"`:
-
-                    ::: neps.optimizers.algorithms.async_hb
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "random_search"`:
-
-                    ::: neps.optimizers.algorithms.random_search
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
-                * `#!python "grid_search"`:
-
-                    ::: neps.optimizers.algorithms.grid_search
-                        options:
-                            show_root_heading: false
-                            show_signature: false
-                            show_source: false
-
-                ---
-
+                See the [optimizers documentation](../../reference/search_algorithms/landing_page_algo.md) for a list of available optimizers.
 
             With any optimizer choice, you also may provide some additional parameters to the optimizers.
             We do not recommend this unless you are familiar with the optimizer you are using. You
@@ -383,10 +283,11 @@ def run(  # noqa: C901, D417, PLR0913
             ```python
             neps.run(
                 ...,
-                optimzier={
-                    "name": "priorband",
-                    "sample_prior_first": True,
-                }
+                optimzier=("priorband",
+                    {
+                        "sample_prior_first": True,
+                    }
+                )
             )
             ```
 
@@ -478,7 +379,37 @@ def run(  # noqa: C901, D417, PLR0913
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
+
+    # Check if the pipeline_space only contains basic HPO parameters.
+    # If yes, we convert it to a classic SearchSpace, to use with the old optimizers.
+    # If no, we use adjust_evaluation_pipeline_for_neps_space to convert the
+    # pipeline_space and only use the new NEPS optimizers.
+
+    # If the optimizer is not a NEPS algorithm, we try to convert the pipeline_space
+
+    neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
+    if neps_classic_space_compatibility in ["both", "classic"] and isinstance(
+        pipeline_space, PipelineSpace
+    ):
+        converted_space = convert_neps_to_classic_search_space(pipeline_space)
+        if converted_space:
+            pipeline_space = converted_space
     space = convert_to_space(pipeline_space)
+
+    if neps_classic_space_compatibility == "neps" and not isinstance(
+        space, PipelineSpace
+    ):
+        space = convert_classic_to_neps_search_space(space)
+
+    # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
+    # algorithm, we raise an error, as the optimizer is not compatible.
+    if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
+        raise ValueError(
+            "The provided optimizer is not compatible with this complex search space. "
+            "Please use one that is, such as 'random_search', 'hyperband', "
+            "'priorband', or 'complex_random_search'."
+        )
+
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
     multi_fidelity_optimizers = {
@@ -491,6 +422,9 @@ def run(  # noqa: C901, D417, PLR0913
         "moasha",
         "mo_hyperband",
         "primo",
+        "neps_priorband",
+        "neps_bracket_optimizer",
+        "neps_hyperband",
     }
 
     is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
@@ -522,6 +456,8 @@ def run(  # noqa: C901, D417, PLR0913
             "evaluate_pipeline must be a callable or a string in the format"
             "'module:function'."
         )
+    if isinstance(space, PipelineSpace):
+        _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
 
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
@@ -545,10 +481,9 @@ def run(  # noqa: C901, D417, PLR0913
     post_run_csv(root_directory)
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
-    if not write_summary_to_disk:
-        trajectory_of_improvements(root_directory)
+    if write_summary_to_disk:
         logger.info(
-            "The summary folder has been created, which contains csv and txt files with"
+            "The summary folder has been created, which contains csv and txt files with "
             "the output of all data in the run (short.csv - only the best; full.csv - "
             "all runs; best_config_trajectory.txt for incumbent trajectory; and "
             "best_config.txt for final incumbent)."
@@ -596,9 +531,10 @@ def save_pipeline_results(
 
 
 def import_trials(
-    pipeline_space: SearchSpace,
+    pipeline_space: SearchSpace | PipelineSpace,
     evaluated_trials: Sequence[tuple[Mapping[str, Any], UserResultDict],],
     root_directory: Path | str,
+    overwrite_root_directory: bool = False,  # noqa: FBT001, FBT002
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
@@ -621,6 +557,8 @@ def import_trials(
             A sequence of tuples, each containing a configuration dictionary
             and its corresponding result.
         root_directory (Path or str): The root directory of the NePS run.
+        overwrite_root_directory (bool, optional): If True, overwrite the existing
+            root directory. Defaults to False.
         optimizer: The optimizer to use for importing trials.
             Can be a string, mapping, tuple, callable, or CustomOptimizer.
             Defaults to "auto".
@@ -646,7 +584,37 @@ def import_trials(
     if isinstance(root_directory, str):
         root_directory = Path(root_directory)
 
-    optimizer_ask, optimizer_info = load_optimizer(optimizer, pipeline_space)
+    neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
+    if neps_classic_space_compatibility in ["both", "classic"] and isinstance(
+        pipeline_space, PipelineSpace
+    ):
+        converted_space = convert_neps_to_classic_search_space(pipeline_space)
+        if converted_space:
+            pipeline_space = converted_space
+    space = convert_to_space(pipeline_space)
+
+    if neps_classic_space_compatibility == "neps" and not isinstance(
+        space, PipelineSpace
+    ):
+        space = convert_classic_to_neps_search_space(space)
+
+    # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
+    # algorithm, we raise an error, as the optimizer is not compatible.
+    if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
+        raise ValueError(
+            "The provided optimizer is not compatible with this complex search space. "
+            "Please use one that is, such as 'random_search', 'hyperband', "
+            "'priorband', or 'complex_random_search'."
+        )
+
+    optimizer_ask, optimizer_info = load_optimizer(optimizer, space)
+
+    if overwrite_root_directory and root_directory.exists():
+        logger.info(
+            f"Overwriting root directory '{root_directory}' as"
+            " `overwrite_root_directory=True`."
+        )
+        shutil.rmtree(root_directory)
 
     state = NePSState.create_or_load(
         root_directory,
@@ -658,9 +626,9 @@ def import_trials(
 
     normalized_trials = []
     for config, result in evaluated_trials:
-        _validate_imported_config(pipeline_space, config)
+        _validate_imported_config(space, config)
         _validate_imported_result(result)
-        normalized_config = _normalize_imported_config(pipeline_space, config)
+        normalized_config = _normalize_imported_config(space, config)
         normalized_trials.append((normalized_config, result))
 
     with state._trial_lock.lock():
@@ -669,11 +637,17 @@ def import_trials(
         existing_configs = [
             tuple(sorted(t.config.items())) for t in state_trials.values()
         ]
+        num_before_dedup = len(normalized_trials)
         normalized_trials = [
             t
             for t in normalized_trials
             if tuple(sorted(t[0].items())) not in existing_configs
         ]
+        num_duplicates = num_before_dedup - len(normalized_trials)
+        if num_duplicates > 0:
+            logger.info(
+                f"Skipped {num_duplicates} duplicate trial(s) (already exist in state)."
+            )
 
         imported_trials = optimizer_ask.import_trials(
             external_evaluations=normalized_trials,
@@ -683,4 +657,101 @@ def import_trials(
     state.lock_and_import_trials(imported_trials, worker_id="external")
 
 
-__all__ = ["import_trials", "run", "save_pipeline_results"]
+def create_config(
+    pipeline_space: PipelineSpace,
+) -> tuple[Mapping[str, Any], dict[str, Any]]:
+    """Create a configuration by prompting the user for input.
+
+    Args:
+        pipeline_space: The pipeline search space to create a configuration for.
+
+    Returns:
+        A tuple containing the created configuration dictionary and the sampled pipeline.
+    """
+    from neps.space.neps_spaces.neps_space import NepsCompatConverter
+    from neps.space.neps_spaces.sampling import IOSampler
+
+    resolved_pipeline, resolution_context = resolve(
+        pipeline_space, domain_sampler=IOSampler()
+    )
+
+    pipeline_dict = dict(**resolved_pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = str(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return NepsCompatConverter.to_neps_config(resolution_context), pipeline_dict
+
+
+def load_config(
+    config_path: Path | str,
+    pipeline_space: PipelineSpace,
+    config_id: str | None = None,
+) -> dict[str, Any]:
+    """Load a configuration from a neps config file.
+
+    Args:
+        config_path: Path to the neps config file.
+        pipeline_space: The search space used to generate the configuration.
+        config_id: Optional config id to load, when only giving results folder.
+
+    Returns:
+        The loaded configuration as a dictionary.
+    """
+    from neps.space.neps_spaces.neps_space import NepsCompatConverter
+    from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
+
+    str_path = str(config_path)
+    if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
+        if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
+            str_path += "/config.yaml"
+        else:
+            if config_id is None:
+                raise ValueError(
+                    "When providing a results folder, you must also provide a config_id."
+                )
+            str_path = (
+                str_path.removesuffix("/").removesuffix("configs")
+                + "/configs/"
+                + config_id
+                + "/config.yaml"
+            )
+
+    config_path = Path(str_path)
+
+    with config_path.open("r") as f:
+        config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+
+    converted_dict = NepsCompatConverter.from_neps_config(config_dict)
+
+    pipeline, _ = resolve(
+        pipeline_space,
+        domain_sampler=OnlyPredefinedValuesSampler(converted_dict.predefined_samplings),
+        environment_values=converted_dict.environment_values,
+    )
+
+    pipeline_dict = dict(**pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = str(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return pipeline_dict
+
+
+__all__ = [
+    "create_config",
+    "import_trials",
+    "load_config",
+    "run",
+    "save_pipeline_results",
+]

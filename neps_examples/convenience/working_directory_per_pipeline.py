@@ -18,16 +18,16 @@ def evaluate_pipeline(pipeline_directory: Path, float1, categorical, integer1):
     return objective_to_minimize
 
 
-pipeline_space = dict(
-    float1=neps.Float(lower=0, upper=1),
-    categorical=neps.Categorical(choices=[0, 1]),
-    integer1=neps.Integer(lower=0, upper=1),
-)
+class HPOSpace(neps.PipelineSpace):
+    float1 = neps.Float(lower=0, upper=1)
+    categorical = neps.Categorical(choices=(0, 1))
+    integer1 = neps.Integer(lower=0, upper=1)
+
 
 logging.basicConfig(level=logging.INFO)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
+    pipeline_space=HPOSpace(),
     root_directory="results/working_directory_per_pipeline",
     evaluations_to_spend=5,
 )

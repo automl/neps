@@ -202,9 +202,7 @@ def training(
         optimizer.step()
 
     # Calculate validation objective_to_minimize using the objective_to_minimize_ev function.
-    validation_objective_to_minimize = objective_to_minimize_ev(
-        model, validation_loader
-    )
+    validation_objective_to_minimize = objective_to_minimize_ev(model, validation_loader)
     return validation_objective_to_minimize
 
 
@@ -212,14 +210,13 @@ def training(
 # Design the pipeline search spaces.
 
 
-def pipeline_space() -> dict:
-    pipeline = dict(
-        lr=neps.Float(lower=1e-5, upper=1e-1, log=True),
-        optim=neps.Categorical(choices=["Adam", "SGD"]),
-        weight_decay=neps.Float(lower=1e-4, upper=1e-1, log=True),
-    )
+def pipeline_space() -> neps.PipelineSpace:
+    class HPOSpace(neps.PipelineSpace):
+        lr = neps.Float(lower=1e-5, upper=1e-1, log=True)
+        optim = neps.Categorical(choices=("Adam", "SGD"))
+        weight_decay = neps.Float(lower=1e-4, upper=1e-1, log=True)
 
-    return pipeline
+    return HPOSpace()
 
 
 #############################################################
@@ -229,13 +226,9 @@ def evaluate_pipeline(lr, optim, weight_decay):
     model = MLP()
 
     if optim == "Adam":
-        optimizer = torch.optim.Adam(
-            model.parameters(), lr=lr, weight_decay=weight_decay
-        )
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
     elif optim == "SGD":
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=lr, weight_decay=weight_decay
-        )
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=weight_decay)
     else:
         raise ValueError(
             "Optimizer choices are defined differently in the pipeline_space"
