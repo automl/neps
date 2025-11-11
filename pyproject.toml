@@ -65,6 +65,7 @@ dependencies = [
     "botorch>=0.12",
     "gpytorch==1.13.0",
     "ifbo>=0.4.0",
+    "pymoo",
 ]
 
 [project.urls]
