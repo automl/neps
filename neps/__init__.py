@@ -1,4 +1,4 @@
-from neps.api import import_trials, run, save_pipeline_results
+from neps.api import import_trials, run, save_pipeline_results, scaling_studies
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -29,4 +29,5 @@ __all__ = [
     "save_pipeline_results",
     "status",
     "tblogger",
+    "scaling_studies"
 ]

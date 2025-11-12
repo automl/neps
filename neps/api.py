@@ -682,5 +682,167 @@ def import_trials(
     # create Trial objects and add to state
     state.lock_and_import_trials(imported_trials, worker_id="external")
 
+def scaling_studies(
+    evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
+    pipeline_space: (
+        Mapping[str, dict | str | int | float | Parameter]
+        | SearchSpace
+        | ConfigurationSpace
+    ),
+    get_number_of_parameters: Callable[[SearchSpace], int],
+    get_total_flops: Callable[[SearchSpace], int],
+    scaling_parameters: Sequence[str],
+    *,
+    max_cost_total: int | float,
+    root_directory: str | Path = "neps_results",
+    overwrite_root_directory: bool = False,
+    evaluations_to_spend: int | None = None,
+    write_summary_to_disk: bool = True,
+    max_evaluations_total: int | None = None,
+    max_evaluations_per_run: int | None = None,
+    continue_until_max_evaluation_completed: bool = False,
+    cost_to_spend: int | float | None = None,
+    fidelities_to_spend: int | float | None = None,
+    ignore_errors: bool = False,
+    objective_value_on_error: float | None = None,
+    cost_value_on_error: float | None = None,
+    sample_batch_size: int | None = None,
+    worker_id: str | None = None,
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+) -> None:
+        if (
+            evaluations_to_spend is None
+            and max_evaluations_total is None
+            and max_evaluations_per_run is None
+            and cost_to_spend is None
+            and max_cost_total is None
+            and fidelities_to_spend is None):
+            warnings.warn(
+                "None of the following were set, this will run idefinitely until the worker"
+                " process is stopped."
+                f"\n * {evaluations_to_spend=}"
+                f"\n * {max_evaluations_per_run=}"
+                f"\n * {cost_to_spend=}"
+                f"\n * {fidelities_to_spend}",
+                UserWarning,
+                stacklevel=2,
+            )
 
-__all__ = ["import_trials", "run", "save_pipeline_results"]
+        if max_evaluations_total is not None:
+            warnings.warn(
+                "`max_evaluations_total` is deprecated and will be removed in"
+                " a future release. Please use `evaluations_to_spend` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            evaluations_to_spend = max_evaluations_total
+
+        if max_cost_total is not None:
+            warnings.warn(
+                "`max_cost_total` is deprecated and will be removed in a future release. "
+                "Please use `cost_to_spend` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            cost_to_spend = max_cost_total
+
+        criteria = {
+            "evaluations_to_spend": evaluations_to_spend,
+            "max_evaluations_per_run": max_evaluations_per_run,
+            "cost_to_spend": cost_to_spend,
+            "fidelities_to_spend": fidelities_to_spend,
+        }
+        set_criteria = [k for k, v in criteria.items() if v is not None]
+        if len(set_criteria) > 1:
+            raise ValueError(
+                f"Multiple stopping criteria specified: {', '.join(set_criteria)}. "
+                "Only one is allowed."
+            )
+
+        logger.info(f"Starting neps.run using root directory {root_directory}")
+        space = convert_to_space(pipeline_space)
+        _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+
+        multi_fidelity_optimizers = {
+            "successive_halving",
+            "asha",
+            "hyperband",
+            "async_hb",
+            "ifbo",
+            "priorband",
+            "moasha",
+            "mo_hyperband",
+            "primo",
+        }
+
+        is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
+
+        if is_multi_fidelity:
+            if evaluations_to_spend is not None:
+                raise ValueError(
+                    "`evaluations_to_spend` is not allowed for multi-fidelity optimizers. "
+                    "Only `fidelities_to_spend` or `cost_to_spend`"
+                )
+        elif fidelities_to_spend is not None:
+            raise ValueError(
+                "`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers."
+            )
+
+        _eval: Callable
+        if isinstance(evaluate_pipeline, str):
+            module, funcname = evaluate_pipeline.rsplit(":", 1)
+            eval_pipeline = dynamic_load_object(module, funcname)
+            if not callable(eval_pipeline):
+                raise ValueError(
+                    f"'{funcname}' in module '{module}' is not a callable function."
+                )
+            _eval = eval_pipeline
+        elif callable(evaluate_pipeline):
+            _eval = evaluate_pipeline
+        else:
+            raise ValueError(
+                "evaluate_pipeline must be a callable or a string in the format"
+                "'module:function'."
+            )
+
+        _launch_runtime(
+            evaluation_fn=_eval,  # type: ignore
+            optimizer=_optimizer_ask,
+            optimizer_info=_optimizer_info,
+            cost_to_spend=cost_to_spend,
+            fidelities_to_spend=fidelities_to_spend,
+            optimization_dir=Path(root_directory),
+            evaluations_to_spend=evaluations_to_spend,
+            max_evaluations_for_worker=max_evaluations_per_run,
+            continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+            objective_value_on_error=objective_value_on_error,
+            cost_value_on_error=cost_value_on_error,
+            ignore_errors=ignore_errors,
+            overwrite_optimization_dir=overwrite_root_directory,
+            sample_batch_size=sample_batch_size,
+            write_summary_to_disk=write_summary_to_disk,
+            worker_id=worker_id,
+        )
+
+        post_run_csv(root_directory)
+        root_directory = Path(root_directory)
+        summary_dir = root_directory / "summary"
+        if not write_summary_to_disk:
+            trajectory_of_improvements(root_directory)
+            logger.info(
+                "The summary folder has been created, which contains csv and txt files with"
+                "the output of all data in the run (short.csv - only the best; full.csv - "
+                "all runs; best_config_trajectory.txt for incumbent trajectory; and "
+                "best_config.txt for final incumbent)."
+                f"\nYou can find summary folder at: {summary_dir}."
+            )
+
+
+__all__ = ["import_trials", "run", "save_pipeline_results", "scaling_studies"]
