@@ -434,16 +434,16 @@ def run(  # noqa: C901, D417, PLR0913
         numpy_rng: An optional numpy random number generator.
         torch_rng: An optional torch random number generator.
 
-        ??? tip "RNG Priority and Control"
-            When a previously created NePS state is loaded (by reusing the same root_directory),
-            all RNGs are reconstructed from the saved state. In this case, the parameters seed, numpy_rng,
-            and torch_rng are ignored, because the experiment continues from the exact stored RNG states.
-            If you provide numpy_rng or torch_rng explicitly, these generators take precedence and are used directly.
-            The seed parameter is not used to create new RNGs in this situation.
-            The overall priority is:
-            1. Saved NePS state — highest priority
-            2. User-provided numpy_rng and torch_rng
-            3. seed — used only when no RNG objects and no saved state are available
+    !!! tip "RNG Priority and Control"
+        When a previously created NePS state is loaded (by reusing the same root_directory),
+        all RNGs are reconstructed from the saved state. In this case, the parameters seed, numpy_rng,
+        and torch_rng are ignored, because the experiment continues from the exact stored RNG states.
+        If you provide numpy_rng or torch_rng explicitly, these generators take precedence and are used directly.
+        The seed parameter is not used to create new RNGs in this situation.
+        The overall priority is:
+        1. Saved NePS state — highest priority
+        2. User-provided numpy_rng and torch_rng
+        3. seed — used only when no RNG objects and no saved state are available
     """  # noqa: E501
     if (
         evaluations_to_spend is None
@@ -660,14 +660,16 @@ def import_trials(
         Exception: For unexpected errors during trial import.
 
     Example:
-        >>> import neps
-        >>> from neps.state.pipeline_eval import UserResultDict
-        >>> pipeline_space = neps.SearchSpace({...})
-        >>> evaluated_trials = [
-        ...     ({"param1": 0.5, "param2": 10},
-        ...     UserResultDict(objective_to_minimize=-5.0)),
-        ... ]
-        >>> neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+        ```python
+        import neps
+        from neps.state.pipeline_eval import UserResultDict
+        pipeline_space = neps.SearchSpace({...})
+        evaluated_trials = [
+            ({"param1": 0.5, "param2": 10},
+            UserResultDict(objective_to_minimize=-5.0)),
+        ]
+        neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+        ```
     """
     if isinstance(root_directory, str):
         root_directory = Path(root_directory)
