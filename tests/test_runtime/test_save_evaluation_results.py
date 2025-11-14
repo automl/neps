@@ -14,7 +14,7 @@ from neps.state import (
     NePSState,
     OnErrorPossibilities,
     OptimizationState,
-    SeedSnapshot,
+    RNGStateManager,
     Trial,
     WorkerSettings,
 )
@@ -26,13 +26,15 @@ def neps_state(tmp_path: Path) -> NePSState:
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
-            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+            budget=None, rng_state_manager=RNGStateManager.new_capture(), shared_state={}
         ),
     )
 
 
 def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(

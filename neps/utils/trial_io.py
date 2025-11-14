@@ -7,8 +7,6 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from neps.state.neps_state import TrialRepo
-
 if TYPE_CHECKING:
     from neps.state.trial import Trial
 
@@ -26,6 +24,8 @@ def load_trials_from_pickle(
         each containing the trial configuration and its corresponding report
         as a dictionary.
     """
+    from neps.state.neps_state import TrialRepo
+
     if isinstance(root_dir, str):
         root_dir = Path(root_dir)
     trials: ValuesView[Trial] = (

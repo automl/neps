@@ -167,9 +167,6 @@ class Sobol(Sampler):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
-        if seed is not None:
-            raise NotImplementedError("Setting the seed is not supported yet")
-
         # Sobol can only produce 2d tensors. To handle batches or arbitrary
         # dimensions, we get a count of the total number of samples needed
         # and reshape the output tensor to the desired shape, if needed.

@@ -17,7 +17,7 @@ from neps.state import (
     NePSState,
     OnErrorPossibilities,
     OptimizationState,
-    SeedSnapshot,
+    RNGStateManager,
     Trial,
     WorkerSettings,
 )
@@ -30,7 +30,7 @@ def neps_state(tmp_path: Path) -> NePSState:
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
-            seed_snapshot=SeedSnapshot.new_capture(),
+            rng_state_manager=RNGStateManager.new_capture(),
             shared_state=None,
         ),
     )
@@ -44,7 +44,9 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -85,7 +87,9 @@ def test_worker_raises_when_error_in_self(
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -146,7 +150,9 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),

@@ -14,6 +14,7 @@ from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 def _load_optimizer_from_string(
@@ -21,7 +22,7 @@ def _load_optimizer_from_string(
     space: SearchSpace,
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
-) -> tuple[AskFunction, OptimizerInfo]:
+) -> tuple[Callable[[RNGStateManager], AskFunction], OptimizerInfo]:
     if optimizer == "auto":
         _optimizer = determine_optimizer_automatically(space)
     else:
@@ -37,7 +38,9 @@ def _load_optimizer_from_string(
 
     keywords = extract_keyword_defaults(optimizer_build)
     optimizer_kwargs = optimizer_kwargs or {}
-    opt = optimizer_build(space, **optimizer_kwargs)
+    opt = lambda rng_manager: optimizer_build(
+        space, rng_manager=rng_manager, **optimizer_kwargs
+    )
     info = OptimizerInfo(name=_optimizer, info={**keywords, **optimizer_kwargs})
     return opt, info
 
@@ -52,7 +55,7 @@ def load_optimizer(
         | Literal["auto"]
     ),
     space: SearchSpace,
-) -> tuple[AskFunction, OptimizerInfo]:
+) -> tuple[Callable[[RNGStateManager], AskFunction], OptimizerInfo]:
     match optimizer:
         # Predefined string (including "auto")
         case str():
@@ -60,22 +63,32 @@ def load_optimizer(
 
         # Predefined string with kwargs
         case (opt, kwargs) if isinstance(opt, str):
-            return _load_optimizer_from_string(opt, space, optimizer_kwargs=kwargs)  # type: ignore
+            return _load_optimizer_from_string(
+                opt,  # type: ignore
+                space,
+                optimizer_kwargs=kwargs,  # type: ignore
+            )
 
         # Mapping with a name
         case {"name": name, **_kwargs}:
-            return _load_optimizer_from_string(name, space, optimizer_kwargs=_kwargs)  # type: ignore
+            return _load_optimizer_from_string(
+                name,
+                space,
+                optimizer_kwargs=_kwargs,  # type: ignore
+            )
 
         # Provided optimizer initializer
         case _ if callable(optimizer):
             keywords = extract_keyword_defaults(optimizer)
-            _optimizer = optimizer(space)
+            _optimizer = lambda rng_manager: optimizer(space, rng_manager=rng_manager)
             info = OptimizerInfo(name=optimizer.__name__, info=keywords)
             return _optimizer, info
 
         # Custom optimizer, we create it
         case CustomOptimizer(initialized=False):
-            _optimizer = optimizer.create(space)
+            _optimizer = lambda rng_manager=None: optimizer.create(  # type: ignore
+                space, rng_manager=rng_manager
+            )
             keywords = extract_keyword_defaults(optimizer.optimizer)
             info = OptimizerInfo(
                 name=optimizer.name, info={**keywords, **optimizer.kwargs}

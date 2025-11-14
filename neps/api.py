@@ -12,12 +12,14 @@ from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
 from neps.space.parsing import convert_to_space
-from neps.state import NePSState, OptimizationState, SeedSnapshot
+from neps.state import NePSState, OptimizationState, RNGStateManager
 from neps.status.status import post_run_csv, trajectory_of_improvements
 from neps.utils.common import dynamic_load_object
 from neps.validation import _validate_imported_config, _validate_imported_result
 
 if TYPE_CHECKING:
+    import numpy as np
+    import torch
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
@@ -59,6 +61,9 @@ def run(  # noqa: C901, D417, PLR0913
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
+    seed: int | None = None,
+    numpy_rng: np.random.Generator | None = None,
+    torch_rng: torch.Generator | None = None,
 ) -> None:
     """Run the optimization.
 
@@ -425,7 +430,20 @@ def run(  # noqa: C901, D417, PLR0913
 
                 This is mainly meant for internal development but allows you to use the NePS
                 runtime to run your optimizer.
+        seed: An optional seed for the random number generators.
+        numpy_rng: An optional numpy random number generator.
+        torch_rng: An optional torch random number generator.
 
+    !!! tip "RNG Priority and Control"
+        When a previously created NePS state is loaded (by reusing the same root_directory),
+        all RNGs are reconstructed from the saved state. In this case, the parameters seed, numpy_rng,
+        and torch_rng are ignored, because the experiment continues from the exact stored RNG states.
+        If you provide numpy_rng or torch_rng explicitly, these generators take precedence and are used directly.
+        The seed parameter is not used to create new RNGs in this situation.
+        The overall priority is:
+        1. Saved NePS state — highest priority
+        2. User-provided numpy_rng and torch_rng
+        3. seed — used only when no RNG objects and no saved state are available
     """  # noqa: E501
     if (
         evaluations_to_spend is None
@@ -479,7 +497,10 @@ def run(  # noqa: C901, D417, PLR0913
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
     space = convert_to_space(pipeline_space)
-    _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+
+    _optimizer_ask_wrapper, _optimizer_info = load_optimizer(
+        optimizer=optimizer, space=space
+    )
 
     multi_fidelity_optimizers = {
         "successive_halving",
@@ -523,9 +544,13 @@ def run(  # noqa: C901, D417, PLR0913
             "'module:function'."
         )
 
+    rng_manager = RNGStateManager.new_capture(
+        seed=seed, np_rng=numpy_rng, torch_rng=torch_rng
+    )
+
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
-        optimizer=_optimizer_ask,
+        optimizer_fn=_optimizer_ask_wrapper,
         optimizer_info=_optimizer_info,
         cost_to_spend=cost_to_spend,
         fidelities_to_spend=fidelities_to_spend,
@@ -540,6 +565,7 @@ def run(  # noqa: C901, D417, PLR0913
         sample_batch_size=sample_batch_size,
         write_summary_to_disk=write_summary_to_disk,
         worker_id=worker_id,
+        rng_manager=rng_manager,
     )
 
     post_run_csv(root_directory)
@@ -634,25 +660,32 @@ def import_trials(
         Exception: For unexpected errors during trial import.
 
     Example:
-        >>> import neps
-        >>> from neps.state.pipeline_eval import UserResultDict
-        >>> pipeline_space = neps.SearchSpace({...})
-        >>> evaluated_trials = [
-        ...     ({"param1": 0.5, "param2": 10},
-        ...     UserResultDict(objective_to_minimize=-5.0)),
-        ... ]
-        >>> neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+        ```python
+        import neps
+        from neps.state.pipeline_eval import UserResultDict
+        pipeline_space = neps.SearchSpace({...})
+        evaluated_trials = [
+            ({"param1": 0.5, "param2": 10},
+            UserResultDict(objective_to_minimize=-5.0)),
+        ]
+        neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+        ```
     """
     if isinstance(root_directory, str):
         root_directory = Path(root_directory)
 
-    optimizer_ask, optimizer_info = load_optimizer(optimizer, pipeline_space)
+    rng_manager = RNGStateManager.new_capture()
+
+    optimizer_ask_fn, optimizer_info = load_optimizer(
+        optimizer,
+        pipeline_space,
+    )
 
     state = NePSState.create_or_load(
         root_directory,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
-            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+            budget=None, rng_state_manager=rng_manager, shared_state={}
         ),
     )
 
@@ -675,7 +708,7 @@ def import_trials(
             if tuple(sorted(t[0].items())) not in existing_configs
         ]
 
-        imported_trials = optimizer_ask.import_trials(
+        imported_trials = optimizer_ask_fn(rng_manager).import_trials(
             external_evaluations=normalized_trials,
             trials=state_trials,
         )

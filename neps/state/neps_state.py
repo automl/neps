@@ -421,8 +421,6 @@ class NePSState:
         with self._optimizer_state_path.open("rb") as f:
             opt_state: OptimizationState = pickle.load(f)  # noqa: S301
 
-        opt_state.seed_snapshot.set_as_global_seed_state()
-
         assert callable(optimizer)
         if opt_state.budget is not None:
             # NOTE: All other values of budget are ones that should remain
@@ -480,7 +478,7 @@ class NePSState:
             sampled_trials.append(trial)
 
         opt_state.shared_state = shared_state
-        opt_state.seed_snapshot.recapture()
+        opt_state.rng_state_manager.capture_local()
         with self._optimizer_state_path.open("wb") as f:
             pickle.dump(opt_state, f, protocol=pickle.HIGHEST_PROTOCOL)
 

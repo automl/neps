@@ -5,7 +5,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
 import torch
 
 from neps.optimizers.models.ftpfn import (
@@ -23,6 +22,7 @@ from neps.space import ConfigEncoder, Domain, Float, Integer, SearchSpace
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
+    from neps.state.seed_snapshot import RNGStateManager
 
 # NOTE: Ifbo was trained using 32 bit
 FTPFN_DTYPE = torch.float32
@@ -130,9 +130,11 @@ class IFBO:
 
     n_fidelity_bins: int
     """The number of bins to divide the fidelity domain into.
-
     Each one will be treated as an individual fidelity level.
     """
+
+    rng_manager: RNGStateManager
+    """The RNG state manager to use for seeding."""
 
     def __call__(
         self,
@@ -180,7 +182,7 @@ class IFBO:
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first,
                 sampler="sobol" if self.prior is None else self.prior,
-                seed=None,  # TODO:
+                seed=self.rng_manager.torch_manual_rng,
                 sample_size=self.n_initial_design,
             )
 
@@ -216,14 +218,15 @@ class IFBO:
         # objective_to_minimize
         # 2. The budget is the second column
         # 3. The budget is encoded between 1/max_fid and 1
-        rng = np.random.RandomState(len(trials))
         # Cast the a random budget index into the ftpfn budget domain
         horizon_increment = budget_domain.cast_one(
-            rng.randint(*budget_index_domain.bounds) + 1,
+            self.rng_manager.np_rng.integers(*budget_index_domain.bounds) + 1,
             frm=budget_index_domain,
         )
         f_best = y.max().item()
-        threshold = f_best + (10 ** rng.uniform(-4, -1)) * (1 - f_best)
+        threshold = f_best + (10 ** self.rng_manager.np_rng.uniform(-4, -1)) * (
+            1 - f_best
+        )
 
         def _mfpi_random(samples: torch.Tensor) -> torch.Tensor:
             # HACK: Because we are modifying the samples inplace, we do,
@@ -254,7 +257,7 @@ class IFBO:
                 (Sampler.uniform(ndim=sample_dims), 512),
                 (Sampler.borders(ndim=sample_dims), 256),
             ],
-            seed=None,  # TODO: Seeding
+            seed=self.rng_manager.torch_manual_rng,
             # A next step local sampling around best point found by initial_samplers
             local_search_sample_size=256,
             local_search_confidence=0.95,

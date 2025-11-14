@@ -19,6 +19,7 @@ import torch
 
 from neps.sampling.distributions import (
     UNIT_UNIFORM_DIST,
+    CategoricalWithGenerator,
     TorchDistributionWithDomain,
     TruncatedNormal,
 )
@@ -140,6 +141,7 @@ class Prior(Sampler):
                 used for determining the strength of the prior. Values should
                 be between 0 and 1. Overwrites whatever is set by default in
                 the `.prior-confidence`.
+            seed: custom torch random number generator
 
         Returns:
             The prior distribution
@@ -211,6 +213,7 @@ class Prior(Sampler):
                     domain. All confidence levels should be within the `[0, 1]` range.
 
             device: Device to place the tensors on for distributions.
+            seed: custom torch random number generator
 
         Returns:
             A prior for the search space.
@@ -231,8 +234,10 @@ class Prior(Sampler):
                     # Uniform categorical
                     n_cats = domain.cardinality
                     assert n_cats is not None
+                    # hack: torch.distributions.Categorical does not support generators,
+                    # but in sample function we are using multinomial, which needs seed.
                     dist = TorchDistributionWithDomain(
-                        distribution=torch.distributions.Categorical(
+                        distribution=CategoricalWithGenerator(
                             probs=torch.ones(n_cats, device=device) / n_cats,
                             validate_args=False,
                         ),
@@ -266,7 +271,7 @@ class Prior(Sampler):
                 weights[int(center_index)] = conf
 
                 dist = TorchDistributionWithDomain(
-                    distribution=torch.distributions.Categorical(
+                    distribution=CategoricalWithGenerator(
                         probs=weights, validate_args=False
                     ),
                     domain=domain,
@@ -418,9 +423,6 @@ class CenteredPrior(Prior):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
-        if seed is not None:
-            raise NotImplementedError("Seeding is not yet implemented.")
-
         _out_shape = (
             torch.Size((n, self.ncols))
             if isinstance(n, int)
@@ -430,7 +432,10 @@ class CenteredPrior(Prior):
 
         out = torch.empty(_out_shape, device=device, dtype=dtype)
         for i, dist in enumerate(self.distributions):
-            out[..., i] = dist.distribution.sample(_n)
+            # the abstract torch.distributions.Distribution
+            # does not suppor generator in its signiture.
+            # but whichever class we add here should
+            out[..., i] = dist.distribution.sample(_n, generator=seed)
 
         return Domain.translate(out, frm=self._distribution_domains, to=to, dtype=dtype)
 
@@ -471,9 +476,6 @@ class Uniform(Prior):
         device: torch.device | None = None,
         dtype: torch.dtype | None = None,
     ) -> torch.Tensor:
-        if seed is not None:
-            raise NotImplementedError("Seeding is not yet implemented.")
-
         _n = (
             torch.Size((n, self.ndim))
             if isinstance(n, int)
@@ -481,8 +483,8 @@ class Uniform(Prior):
         )
         # Doesn't like integer dtypes
         if dtype is not None and dtype.is_floating_point:
-            samples = torch.rand(_n, device=device, dtype=dtype)
+            samples = torch.rand(_n, device=device, dtype=dtype, generator=seed)
         else:
-            samples = torch.rand(_n, device=device)
+            samples = torch.rand(_n, device=device, generator=seed)
 
         return Domain.translate(samples, frm=Domain.unit_float(), to=to, dtype=dtype)

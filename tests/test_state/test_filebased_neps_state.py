@@ -16,7 +16,7 @@ from neps.optimizers import OptimizerInfo
 from neps.state.err_dump import ErrDump
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState
-from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.seed_snapshot import RNGStateManager
 
 
 @fixture
@@ -28,7 +28,7 @@ def optimizer_state(
 ) -> OptimizationState:
     return OptimizationState(
         budget=budget_info,
-        seed_snapshot=SeedSnapshot.new_capture(),
+        rng_state_manager=RNGStateManager.new_capture(),
         shared_state=shared_state,
     )
 
@@ -82,7 +82,7 @@ def test_create_or_load_with_load_filebased_neps_state(
     # was passed in.
     different_state = OptimizationState(
         budget=BudgetInfo(cost_to_spend=20, used_cost_budget=10),
-        seed_snapshot=SeedSnapshot.new_capture(),
+        rng_state_manager=RNGStateManager.new_capture(),
         shared_state=None,
     )
     neps_state2 = NePSState.create_or_load(

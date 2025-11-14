@@ -9,6 +9,7 @@ from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -17,6 +18,8 @@ class GridSearch:
 
     configs_list: list[dict[str, Any]]
     """The list of configurations to evaluate."""
+
+    rng_manager: RNGStateManager
 
     def __call__(
         self,

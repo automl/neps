@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 
     from neps.optimizers.utils.brackets import Bracket
     from neps.space import SearchSpace
+    from neps.state import RNGStateManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ def _bo(
     use_priors: bool,
     cost_aware: bool | Literal["log"],
     sample_prior_first: bool,
+    rng_manager: RNGStateManager,
     ignore_fidelity: bool = False,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
@@ -130,6 +132,7 @@ def _bo(
         prior=Prior.from_parameters(parameters) if use_priors is True else None,
         sample_prior_first=sample_prior_first,
         device=device,
+        rng_manager=rng_manager,
         reference_point=reference_point,
     )
 
@@ -143,6 +146,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     | PriorBandSampler
     | MOPriorSampler
     | Sampler,
+    rng_manager: RNGStateManager,
     bayesian_optimization_kick_in_point: int | float | None,
     sample_prior_first: bool | Literal["highest_fidelity"],
     # NOTE: This is the only argument to get a default, since it
@@ -264,6 +268,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 rung_sizes=rung_sizes,
                 is_multi_objective=multi_objective,
                 mo_selector=mo_selector,
+                np_rng=rng_manager.np_rng,
             )
 
         case "hyperband":
@@ -277,6 +282,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 bracket_layouts=bracket_layouts,
                 is_multi_objective=multi_objective,
                 mo_selector=mo_selector,
+                np_rng=rng_manager.np_rng,
             )
 
         case "asha":
@@ -292,6 +298,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 eta=eta,
                 is_multi_objective=multi_objective,
                 mo_selector=mo_selector,
+                np_rng=rng_manager.np_rng,
             )
 
         case "async_hb":
@@ -308,6 +315,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 eta=eta,
                 is_multi_objective=multi_objective,
                 mo_selector=mo_selector,
+                np_rng=rng_manager.np_rng,
             )
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
@@ -319,7 +327,9 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
         case "uniform":
             _sampler = Sampler.uniform(ndim=encoder.ndim)
         case "prior":
-            _sampler = Prior.from_parameters(parameters)
+            _sampler = Prior.from_parameters(
+                parameters,
+            )
         case "priorband":
             _sampler = PriorBandSampler(
                 parameters=parameters,
@@ -331,6 +341,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity.lower, fidelity.upper),
+                rng_manager=rng_manager,
             )
         case "mopriorsampler":
             assert prior_centers is not None
@@ -340,6 +351,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 prior_centers=prior_centers,
                 confidence_values=prior_confidences,
                 encoder=encoder,
+                rng_manager=rng_manager,
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
@@ -386,6 +398,7 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
         sampler=_sampler,
         sample_prior_first=sample_prior_first,
         create_brackets=create_brackets,
+        rng_manager=rng_manager,
     )
 
 
@@ -413,6 +426,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    rng_manager: RNGStateManager,
 ) -> RandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -476,12 +490,15 @@ def random_search(
             if use_priors
             else Uniform(ndim=len(parameters))
         ),
+        rng_manager=rng_manager,
     )
 
 
 def grid_search(
     pipeline_space: SearchSpace,
     ignore_fidelity: bool = False,  # noqa: FBT001, FBT002
+    *,
+    rng_manager: RNGStateManager,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -504,7 +521,8 @@ def grid_search(
         )
 
     return GridSearch(
-        configs_list=make_grid(pipeline_space, ignore_fidelity=ignore_fidelity)
+        configs_list=make_grid(pipeline_space, ignore_fidelity=ignore_fidelity),
+        rng_manager=rng_manager,
     )
 
 
@@ -518,6 +536,7 @@ def ifbo(
     device: torch.device | str | None = None,
     surrogate_path: str | Path | None = None,
     surrogate_version: str = "0.0.1",
+    rng_manager: RNGStateManager,
 ) -> IFBO:
     """A transformer that has been trained to predict loss curves of deep-learing
     models, used to guide the optimization procedure and select configurations which
@@ -624,6 +643,7 @@ def ifbo(
                 for cat_name, cat in space.categoricals.items()
             },
         ),
+        rng_manager=rng_manager,
     )
 
 
@@ -634,6 +654,7 @@ def successive_halving(
     eta: int = 3,
     early_stopping_rate: int = 0,
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """
     A bandit-based optimization algorithm that uses a _fidelity_ parameter
@@ -706,6 +727,7 @@ def successive_halving(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+        rng_manager=rng_manager,
     )
 
 
@@ -715,6 +737,7 @@ def hyperband(
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """Another bandit-based optimization algorithm that uses a _fidelity_ parameter,
     very similar to [`successive_halving`][neps.optimizers.algorithms.successive_halving],
@@ -770,6 +793,7 @@ def hyperband(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+        rng_manager=rng_manager,
     )
 
 
@@ -780,6 +804,7 @@ def mo_hyperband(
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """Multi-objective version of hyperband using the same
     candidate selection method as MOASHA.
@@ -796,6 +821,7 @@ def mo_hyperband(
         device=None,
         multi_objective=True,
         mo_selector=mo_selector,
+        rng_manager=rng_manager,
     )
 
 
@@ -806,6 +832,7 @@ def asha(
     early_stopping_rate: int = 0,
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """A bandit-based optimization algorithm that uses a _fidelity_ parameter,
     the _asynchronous_ version of
@@ -860,6 +887,7 @@ def asha(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+        rng_manager=rng_manager,
     )
 
 
@@ -871,6 +899,7 @@ def moasha(
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     return _bracket_optimizer(
         pipeline_space=space,
@@ -884,6 +913,7 @@ def moasha(
         device=None,
         multi_objective=True,
         mo_selector=mo_selector,
+        rng_manager=rng_manager,
     )
 
 
@@ -893,6 +923,7 @@ def async_hb(
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool = False,
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """An _asynchronous_ version of [`hyperband`][neps.optimizers.algorithms.hyperband],
     where the brackets are run asynchronously, and the promotion rule is based on the
@@ -944,6 +975,7 @@ def async_hb(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+        rng_manager=rng_manager,
     )
 
 
@@ -954,6 +986,7 @@ def priorband(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
     bayesian_optimization_kick_in_point: int | float | None = None,
+    rng_manager: RNGStateManager,
 ) -> BracketOptimizer:
     """Priorband is also a bandit-based optimization algorithm that uses a _fidelity_,
     providing a general purpose sampling extension to other algorithms. It makes better
@@ -1006,6 +1039,7 @@ def priorband(
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
         bayesian_optimization_kick_in_point=bayesian_optimization_kick_in_point,
         device=None,
+        rng_manager=rng_manager,
     )
 
 
@@ -1017,6 +1051,7 @@ def bayesian_optimization(
     ignore_fidelity: bool = False,
     device: torch.device | str | None = None,
     reference_point: tuple[float, ...] | None = None,
+    rng_manager: RNGStateManager,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -1101,6 +1136,7 @@ def bayesian_optimization(
         sample_prior_first=False,
         ignore_fidelity=ignore_fidelity,
         reference_point=reference_point,
+        rng_manager=rng_manager,
     )
 
 
@@ -1112,6 +1148,7 @@ def pibo(
     device: torch.device | str | None = None,
     sample_prior_first: bool = False,
     ignore_fidelity: bool = False,
+    rng_manager: RNGStateManager,
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -1162,6 +1199,7 @@ def pibo(
         use_priors=True,
         sample_prior_first=sample_prior_first,
         ignore_fidelity=ignore_fidelity,
+        rng_manager=rng_manager,
     )
 
 
@@ -1172,13 +1210,14 @@ def primo(
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
     eta: int = 3,
     epsilon: float = 0.25,
-    prior_centers: Mapping[str, Mapping[str, Any]],
+    prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
     mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
     prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,  # noqa: ARG001
     device: torch.device | str | None = None,
     bo_scalar_weights: dict[str, float] | None = None,
+    rng_manager: RNGStateManager,
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
@@ -1193,6 +1232,7 @@ def primo(
         sample_prior_first=False,
         early_stopping_rate=0,
         device=device,
+        rng_manager=rng_manager,
     )
 
     parameters = space.searchables
@@ -1232,6 +1272,7 @@ def primo(
         device=device,
         priors=_priors,
         epsilon=epsilon,
+        rng_manager=rng_manager,
     )
 
 
@@ -1248,9 +1289,15 @@ class CustomOptimizer:
     kwargs: Mapping[str, Any] = field(default_factory=dict)
     initialized: bool = False
 
-    def create(self, space: SearchSpace) -> AskFunction:
+    def create(
+        self, space: SearchSpace, rng_manager: RNGStateManager | None = None
+    ) -> AskFunction:
         assert not self.initialized, "Custom optimizer already initialized."
-        return self.optimizer(space, **self.kwargs)  # type: ignore
+        args = dict(self.kwargs)
+        if rng_manager is not None:
+            args["rng_manager"] = rng_manager
+
+        return self.optimizer(space, **args)  # type: ignore
 
 
 def custom(

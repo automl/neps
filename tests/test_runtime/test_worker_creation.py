@@ -13,7 +13,7 @@ from neps.runtime import (
     WorkerSettings,
 )
 from neps.space import Float, SearchSpace
-from neps.state import NePSState, OptimizationState, SeedSnapshot
+from neps.state import NePSState, OptimizationState, RNGStateManager
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def neps_state(tmp_path: Path) -> NePSState:
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
-            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+            budget=None, rng_state_manager=RNGStateManager.new_capture(), shared_state={}
         ),
     )
 
@@ -47,7 +47,9 @@ def test_create_worker_manual_id(neps_state: NePSState) -> None:
         return 1.0
 
     test_worker_id = "my_worker_123"
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
 
     worker = DefaultWorker.new(
         state=neps_state,
@@ -80,7 +82,9 @@ def test_create_worker_auto_id(neps_state: NePSState) -> None:
     def eval_fn(config: dict) -> float:
         return 1.0
 
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(
+        SearchSpace({"a": Float(0, 1)}), rng_manager=RNGStateManager.new_capture()
+    )
 
     worker = DefaultWorker.new(
         state=neps_state,

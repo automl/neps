@@ -26,7 +26,9 @@ from neps.space import (
     Integer,
     SearchSpace,
 )
-from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
+from neps.state import BudgetInfo, NePSState, OptimizationState, RNGStateManager
+
+rng_manager = RNGStateManager.new_capture()
 
 
 @case
@@ -179,7 +181,7 @@ def case_neps_state_filebased(
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
             budget=cost_to_spend,
-            seed_snapshot=SeedSnapshot.new_capture(),
+            rng_state_manager=rng_manager,
             shared_state=shared_state,
         ),
     )
@@ -191,7 +193,8 @@ def test_sample_trial(
     optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
     capsys,
 ) -> None:
-    optimizer, key, search_space = optimizer_and_key_and_search_space
+    optimizer_fn, key, search_space = optimizer_and_key_and_search_space
+    optimizer = optimizer_fn(rng_manager)
 
     assert neps_state.lock_and_read_trials() == {}
     assert neps_state.lock_and_get_next_pending_trial() is None
@@ -233,7 +236,7 @@ def test_optimizers_work_roughly(
     optimizer_and_key_and_search_space: tuple[AskFunction, str, SearchSpace],
 ) -> None:
     opt, key, search_space = optimizer_and_key_and_search_space
-    ask_and_tell = AskAndTell(opt)
+    ask_and_tell = AskAndTell(opt(rng_manager))
 
     for _ in range(20):
         trial = ask_and_tell.ask()
