@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from neps.space.encoding import ConfigEncoder
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -56,6 +57,9 @@ class PriMO:
 
     fid_name: str
     """The name of the fidelity in the BracketOptimizer's search space."""
+
+    rng_manager: RNGStateManager
+    """The RNG state manager to use for sampling."""
 
     scalarization_weights: dict[str, float] | None = None
     """The scalarization weights to use for the objectives for BO."""
@@ -123,7 +127,9 @@ class PriMO:
 
         # Set scalarization weights if not set
         if self.scalarization_weights is None:
-            self.scalarization_weights = np.random.uniform(size=num_objectives)
+            self.scalarization_weights = self.rng_manager.np_rng.uniform(
+                size=num_objectives
+            )
             self.scalarization_weights /= np.sum(self.scalarization_weights)
 
         # Scalarize trials.report.objective_to_minimize and remove fidelity
@@ -249,11 +255,11 @@ class PriMO:
 
         selected_prior = None
         if self.priors is not None:
-            selected_prior = np.random.choice(
+            selected_prior = self.rng_manager.np_rng.choice(
                 list(self.priors.values()),
             )
 
-        selected_prior = np.random.choice(
+        selected_prior = self.rng_manager.np_rng.choice(
             [selected_prior, None],
             p=[1 - self.epsilon, self.epsilon],
         )
@@ -292,6 +298,7 @@ class PriMO:
             n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
             hide_warnings=True,
+            seed=self.rng_manager.torch_manual_rng,
         )
 
         return encoder.decode_one(candidates)

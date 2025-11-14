@@ -42,7 +42,7 @@ from neps.state import (
     NePSState,
     OnErrorPossibilities,
     OptimizationState,
-    SeedSnapshot,
+    RNGStateManager,
     Trial,
     UserResult,
     WorkerSettings,
@@ -542,7 +542,7 @@ class DefaultWorker:
             _trace_lock_path.touch(exist_ok=True)
 
             logger.info(
-                "Summary files can be found in the “summary” folder inside"
+                "Summary files are stored in the “summary” folder inside "
                 "the root directory: %s",
                 summary_dir,
             )
@@ -952,7 +952,7 @@ def _launch_ddp_runtime(
 def _launch_runtime(  # noqa: PLR0913
     *,
     evaluation_fn: Callable[..., EvaluatePipelineReturn],
-    optimizer: AskFunction,
+    optimizer_fn: Callable[[RNGStateManager], AskFunction],
     optimizer_info: OptimizerInfo,
     optimization_dir: Path,
     cost_to_spend: float | None,
@@ -967,6 +967,7 @@ def _launch_runtime(  # noqa: PLR0913
     sample_batch_size: int | None,
     write_summary_to_disk: bool = True,
     worker_id: str | None = None,
+    rng_manager: RNGStateManager,
 ) -> None:
     default_report_values = _make_default_report_values(
         objective_value_on_error=objective_value_on_error,
@@ -991,12 +992,12 @@ def _launch_runtime(  # noqa: PLR0913
 
     for _retry_count in range(MAX_RETRIES_CREATE_LOAD_STATE):
         try:
-            neps_state = NePSState.create_or_load(
+            neps_state: NePSState = NePSState.create_or_load(
                 path=optimization_dir,
                 load_only=False,
                 optimizer_info=optimizer_info,
                 optimizer_state=OptimizationState(
-                    seed_snapshot=SeedSnapshot.new_capture(),
+                    rng_state_manager=rng_manager,
                     budget=(
                         BudgetInfo(
                             cost_to_spend=cost_to_spend,
@@ -1023,6 +1024,7 @@ def _launch_runtime(  # noqa: PLR0913
             f" {MAX_RETRIES_CREATE_LOAD_STATE} attempts. Bailing!"
             " Please enable debug logging to see the errors that occured."
         )
+    optimizer = optimizer_fn(neps_state._optimizer_state.rng_state_manager)
 
     settings = WorkerSettings(
         on_error=(

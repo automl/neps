@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, ClassVar
 from typing_extensions import override
 
 import torch
-from torch.distributions import Distribution, Uniform, constraints
+from torch.distributions import Categorical, Distribution, Uniform, constraints
 from torch.distributions.utils import broadcast_all
 
 from neps.space import Domain
@@ -147,15 +147,66 @@ class TruncatedStandardNormal(Distribution):
             self._validate_sample(value)
         return CONST_LOG_INV_SQRT_2PI - self._log_Z - (value**2) * 0.5  # type: ignore
 
-    @override  # type: ignore
-    def rsample(self, sample_shape: torch.Size | None = None) -> torch.Tensor:
+    # Not overrided becuase we changed the signiture by passing
+    # generator through arguments
+    def sample(  # noqa: D102
+        self,
+        sample_shape: torch.Size | None = None,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        with torch.no_grad():
+            return self.rsample(sample_shape=sample_shape, generator=generator)
+
+    # Not overrided becuase we changed the signiture by passing
+    # generator through arguments
+    def rsample(  # noqa: D102
+        self,
+        sample_shape: torch.Size | None = None,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
         if sample_shape is None:
             sample_shape = torch.Size([])
         shape = self._extended_shape(sample_shape)
         p = torch.empty(shape, device=self.a.device).uniform_(
-            self._dtype_min_gt_0, self._dtype_max_lt_1
+            self._dtype_min_gt_0, self._dtype_max_lt_1, generator=generator
         )
         return self.icdf(p)
+
+
+class CategoricalWithGenerator(Categorical):  # noqa: D101
+    def sample(  # noqa: D102
+        self,
+        sample_shape: torch.Size = torch.Size(),  # noqa: B008
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        if not isinstance(sample_shape, torch.Size):
+            sample_shape = torch.Size(sample_shape)
+        probs_2d = self.probs.reshape(-1, self._num_events)
+        samples_2d = torch.multinomial(
+            probs_2d, sample_shape.numel(), replacement=True, generator=generator
+        ).T
+        return samples_2d.reshape(self._extended_shape(sample_shape))
+
+
+class UniformWithGenerator(Uniform):  # noqa: D101
+    def sample(  # noqa: D102
+        self,
+        sample_shape: torch.Size = torch.Size(),  # noqa: B008
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        with torch.no_grad():
+            return self.rsample(sample_shape=sample_shape, generator=generator)
+
+    def rsample(  # noqa: D102
+        self,
+        sample_shape: torch.Size = torch.Size(),  # noqa: B008
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        shape = self._extended_shape(sample_shape)
+        rand = torch.rand(
+            shape, dtype=self.low.dtype, device=self.low.device, generator=generator
+        )
+        return self.low + rand * (self.high - self.low)
 
 
 class TruncatedNormal(TruncatedStandardNormal):
@@ -229,7 +280,7 @@ class TruncatedNormal(TruncatedStandardNormal):
         return super().log_prob(value) - self._log_scale  # type: ignore
 
 
-class UniformWithUpperBound(Uniform):
+class UniformWithUpperBound(UniformWithGenerator):
     """Uniform distribution with upper bound inclusive.
 
     This is mostly a hack because torch's version of Uniform does not include

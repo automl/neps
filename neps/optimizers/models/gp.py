@@ -24,6 +24,7 @@ from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
+from neps.state.seed_snapshot import use_generator_globally
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -314,7 +315,7 @@ def fit_and_acquire_from_gp(
     costs: torch.Tensor | None = None,
     cost_percentage_used: float | None = None,
     costs_on_log_scale: bool = True,
-    seed: int | None = None,
+    seed: torch.Generator | None = None,
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
@@ -372,80 +373,78 @@ def fit_and_acquire_from_gp(
         The encoded next configuration(s) to evaluate. Use the encoder you provided
         to decode the configuration.
     """
-    if seed is not None:
-        raise NotImplementedError("Seed is not implemented yet for gps")
+    with use_generator_globally(generator=seed):
+        fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
 
-    fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
+        if prior:
+            if pibo_exp_term is None:
+                raise ValueError(
+                    "If providing a prior, you must provide the `pibo_exp_term`."
+                )
 
-    if prior:
-        if pibo_exp_term is None:
-            raise ValueError(
-                "If providing a prior, you must provide the `pibo_exp_term`."
+            acquisition = pibo_acquisition(
+                acquisition,
+                prior=prior,
+                prior_exponent=pibo_exp_term,
+                x_domain=encoder.domains,
             )
 
-        acquisition = pibo_acquisition(
+        if costs is not None:
+            if cost_percentage_used is None:
+                raise ValueError(
+                    "If providing costs, you must provide `cost_percentage_used`."
+                )
+
+            # We simply ignore missing costs when training the cost GP.
+            missing_costs = torch.isnan(costs)
+            if missing_costs.any():
+                raise ValueError(
+                    "Must have at least some configurations reported with a cost"
+                    " if using costs with a GP."
+                )
+
+            if missing_costs.any():
+                not_missing_mask = ~missing_costs
+                x_train_cost = costs[not_missing_mask]
+                y_train_cost = x_train[not_missing_mask]
+            else:
+                x_train_cost = x_train
+                y_train_cost = costs
+
+            if costs_on_log_scale:
+                transform = ChainedOutcomeTransform(
+                    log=Log(),
+                    standardize=Standardize(m=1),
+                )
+            else:
+                transform = Standardize(m=1)
+
+            cost_gp = make_default_single_obj_gp(
+                x_train_cost,
+                y_train_cost,
+                encoder=encoder,
+                y_transform=transform,
+            )
+            fit_gpytorch_mll(
+                ExactMarginalLogLikelihood(likelihood=cost_gp.likelihood, model=cost_gp)
+            )
+            acquisition = cost_cooled_acq(
+                acq_fn=acquisition,
+                model=cost_gp,
+                used_max_cost_total_percentage=cost_percentage_used,
+            )
+
+        _n = n_candidates_required if n_candidates_required is not None else 1
+
+        candidates, _scores = optimize_acq(
             acquisition,
-            prior=prior,
-            prior_exponent=pibo_exp_term,
-            x_domain=encoder.domains,
+            encoder,
+            n_candidates_required=_n,
+            num_restarts=num_restarts,
+            n_intial_start_points=n_initial_start_points,
+            fixed_features=fixed_acq_features,
+            acq_options=acq_options,
+            maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
+            hide_warnings=hide_warnings,
         )
-
-    if costs is not None:
-        if cost_percentage_used is None:
-            raise ValueError(
-                "If providing costs, you must provide `cost_percentage_used`."
-            )
-
-        # We simply ignore missing costs when training the cost GP.
-        missing_costs = torch.isnan(costs)
-        if missing_costs.any():
-            raise ValueError(
-                "Must have at least some configurations reported with a cost"
-                " if using costs with a GP."
-            )
-
-        if missing_costs.any():
-            not_missing_mask = ~missing_costs
-            x_train_cost = costs[not_missing_mask]
-            y_train_cost = x_train[not_missing_mask]
-        else:
-            x_train_cost = x_train
-            y_train_cost = costs
-
-        if costs_on_log_scale:
-            transform = ChainedOutcomeTransform(
-                log=Log(),
-                standardize=Standardize(m=1),
-            )
-        else:
-            transform = Standardize(m=1)
-
-        cost_gp = make_default_single_obj_gp(
-            x_train_cost,
-            y_train_cost,
-            encoder=encoder,
-            y_transform=transform,
-        )
-        fit_gpytorch_mll(
-            ExactMarginalLogLikelihood(likelihood=cost_gp.likelihood, model=cost_gp)
-        )
-        acquisition = cost_cooled_acq(
-            acq_fn=acquisition,
-            model=cost_gp,
-            used_max_cost_total_percentage=cost_percentage_used,
-        )
-
-    _n = n_candidates_required if n_candidates_required is not None else 1
-
-    candidates, _scores = optimize_acq(
-        acquisition,
-        encoder,
-        n_candidates_required=_n,
-        num_restarts=num_restarts,
-        n_intial_start_points=n_initial_start_points,
-        fixed_features=fixed_acq_features,
-        acq_options=acq_options,
-        maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
-        hide_warnings=hide_warnings,
-    )
     return candidates

@@ -6,7 +6,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from neps.state.seed_snapshot import SeedSnapshot
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -31,7 +31,7 @@ class OptimizationState:
     budget: BudgetInfo | None
     """Information regarind the budget used by the optimization trajectory."""
 
-    seed_snapshot: SeedSnapshot
+    rng_state_manager: RNGStateManager
     """The state of the random number generators at the time of the last sample."""
 
     shared_state: dict[str, Any] | None

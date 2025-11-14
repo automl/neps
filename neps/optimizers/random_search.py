@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -20,6 +21,7 @@ class RandomSearch:
     space: SearchSpace
     encoder: ConfigEncoder
     sampler: Sampler
+    rng_manager: RNGStateManager
 
     def __call__(
         self,
@@ -29,7 +31,9 @@ class RandomSearch:
     ) -> SampledConfig | list[SampledConfig]:
         n_trials = len(trials)
         _n = 1 if n is None else n
-        configs = self.sampler.sample(_n, to=self.encoder.domains)
+        configs = self.sampler.sample(
+            _n, to=self.encoder.domains, seed=self.rng_manager.torch_manual_rng
+        )
 
         config_dicts = self.encoder.decode(configs)
         for config in config_dicts:

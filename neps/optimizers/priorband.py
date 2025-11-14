@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
     from neps.space.parameters import Parameter
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -47,6 +48,9 @@ class PriorBandSampler:
     fid_bounds: tuple[int, int] | tuple[float, float]
     """The fidelity bounds."""
 
+    rng_manager: RNGStateManager
+    """The RNG state manager to use for seeding."""
+
     def sample_config(self, table: pd.DataFrame, rung: int) -> dict[str, Any]:
         """Samples a configuration using the PriorBand algorithm.
 
@@ -64,7 +68,9 @@ class PriorBandSampler:
         )
         max_rung = max(rung_sizes)
 
-        prior_dist = Prior.from_parameters(self.parameters)
+        prior_dist = Prior.from_parameters(
+            self.parameters,
+        )
 
         # Below we will follow the "geomtric" spacing
         w_random = 1 / (1 + self.eta**rung)
@@ -103,13 +109,19 @@ class PriorBandSampler:
             or spent_one_sh_bracket_worth_of_fidelity is False
             or any_rung_with_eta_evals is False
         ):
-            policy = np.random.choice(["prior", "random"], p=[w_prior, w_random])
+            policy = self.rng_manager.np_rng.choice(
+                ["prior", "random"], p=[w_prior, w_random]
+            )
             match policy:
                 case "prior":
-                    config = prior_dist.sample_config(to=self.encoder)
+                    config = prior_dist.sample_config(
+                        to=self.encoder, seed=self.rng_manager.torch_manual_rng
+                    )
                 case "random":
                     _sampler = Sampler.uniform(ndim=self.encoder.ndim)
-                    config = _sampler.sample_config(to=self.encoder)
+                    config = _sampler.sample_config(
+                        to=self.encoder, seed=self.rng_manager.torch_manual_rng
+                    )
 
             return config
 
@@ -126,7 +138,10 @@ class PriorBandSampler:
 
         # 2. Get the global incumbent, and build a prior distribution around it
         inc = completed.loc[completed["perf"].idxmin()]["config"]
-        inc_dist = Prior.from_parameters(self.parameters, center_values=inc)
+        inc_dist = Prior.from_parameters(
+            self.parameters,
+            center_values=inc,
+        )
 
         # 3. Calculate a ratio score of how likely each of the top K configs are under
         # the prior and inc distribution, weighing them by their position in the top K
@@ -148,7 +163,7 @@ class PriorBandSampler:
         assert np.isclose(w_prior + w_inc + w_random, 1.0)
 
         # Now we use these weights to choose which sampling distribution to sample from
-        policy = np.random.choice(
+        policy = self.rng_manager.np_rng.choice(
             ["prior", "inc", "random"],
             p=[w_prior, w_inc, w_random],
         )
@@ -165,7 +180,7 @@ class PriorBandSampler:
                     parameters=self.parameters,
                     mutation_rate=self.mutation_rate,
                     std=self.mutation_std,
-                    seed=None,
+                    seed=self.rng_manager.torch_manual_rng,
                 )
 
         raise RuntimeError(f"Unknown policy: {policy}")
@@ -179,9 +194,6 @@ def mutate_config(
     std: float = 0.25,
     seed: torch.Generator | None = None,
 ) -> dict[str, Any]:
-    if seed is not None:
-        raise NotImplementedError("Seed is not implemented yet.")
-
     # This prior places a guassian on the numericals and places a 0 probability on the
     # current value of the categoricals.
     mutatation_prior = Prior.from_parameters(
@@ -196,7 +208,7 @@ def mutate_config(
     )
     config_encoder = ConfigEncoder.from_parameters(parameters)
 
-    mutant: dict[str, Any] = mutatation_prior.sample_config(to=config_encoder)
+    mutant: dict[str, Any] = mutatation_prior.sample_config(to=config_encoder, seed=seed)
     mutatant_selection = torch.rand(len(config), generator=seed) < mutation_rate
 
     return {

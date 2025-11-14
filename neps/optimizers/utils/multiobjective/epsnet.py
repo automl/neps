@@ -43,7 +43,11 @@ def pareto_efficient(X: np.ndarray) -> np.ndarray:
     return mask
 
 
-def compute_epsilon_net(X: np.ndarray, dim: int | None = None) -> np.ndarray:
+def compute_epsilon_net(
+    X: np.ndarray,
+    np_rng: np.random.Generator,
+    dim: int | None = None,
+) -> np.ndarray:
     """
     Outputs an order of the items in the provided array such that the items are
     spaced well. This means that after choosing a seed item, the next item is
@@ -71,7 +75,7 @@ def compute_epsilon_net(X: np.ndarray, dim: int | None = None) -> np.ndarray:
 
     # Choose the seed item according to dim
     if dim is None:
-        initial_index = np.random.choice(X.shape[0])
+        initial_index = np_rng.choice(X.shape[0])
     else:
         initial_index = np.argmin(X, axis=0)[dim]
 
@@ -104,6 +108,7 @@ def nondominated_sort(
     max_items: int | None = None,
     *,
     flatten: bool = True,
+    np_rng: np.random.Generator,
 ) -> list[int] | list[list[int]]:
     """
     Performs a multi-objective sort by iteratively computing the Pareto front
@@ -138,7 +143,7 @@ def nondominated_sort(
         # Compute the Pareto front and sort the items within
         pareto_mask = pareto_efficient(X[remaining])
         pareto_front = remaining[pareto_mask]
-        pareto_order = compute_epsilon_net(X[pareto_front], dim=dim)
+        pareto_order = compute_epsilon_net(X[pareto_front], dim=dim, np_rng=np_rng)
 
         # Add order to the indices
         indices.append(pareto_front[pareto_order].tolist())

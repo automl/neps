@@ -27,7 +27,7 @@ from neps.optimizers.utils.initial_design import make_initial_design
 if TYPE_CHECKING:
     from neps.sampling import Prior
     from neps.space import ConfigEncoder, SearchSpace
-    from neps.state import BudgetInfo, Trial
+    from neps.state import BudgetInfo, RNGStateManager, Trial
     from neps.state.pipeline_eval import UserResultDict
 
 
@@ -86,6 +86,9 @@ class BayesianOptimization:
     device: torch.device | None
     """The device to use for the optimization."""
 
+    rng_manager: RNGStateManager
+    """The RNG state manager to use for seeding."""
+
     reference_point: tuple[float, ...] | None = None
     """The reference point to use for the multi-objective optimization."""
 
@@ -124,7 +127,7 @@ class BayesianOptimization:
                 encoder=self.encoder,
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
-                seed=None,  # TODO: Seeding, however we need to avoid repeating configs
+                seed=self.rng_manager.torch_manual_rng,
                 sample_size=self.n_initial_design,
             )
 
@@ -271,6 +274,7 @@ class BayesianOptimization:
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
             hide_warnings=True,
+            seed=self.rng_manager.torch_manual_rng,
         )
 
         configs = encoder.decode(candidates)

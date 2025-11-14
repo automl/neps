@@ -4,13 +4,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-import numpy as np
-
 from neps.sampling.priors import Prior
 
 if TYPE_CHECKING:
     from neps.space import ConfigEncoder
     from neps.space.parameters import Parameter
+    from neps.state.seed_snapshot import RNGStateManager
 
 
 @dataclass
@@ -23,6 +22,8 @@ class MOPriorSampler:
     parameters: Mapping[str, Parameter]
 
     encoder: ConfigEncoder
+
+    rng_manager: RNGStateManager
 
     @classmethod
     def dists_from_centers_and_confidences(
@@ -62,6 +63,7 @@ class MOPriorSampler:
         prior_centers: Mapping[str, Mapping[str, float]],
         confidence_values: Mapping[str, Mapping[str, float]],
         encoder: ConfigEncoder,
+        rng_manager: RNGStateManager,
     ) -> MOPriorSampler:
         """Creates a MOPriorSampler instance.
 
@@ -85,6 +87,7 @@ class MOPriorSampler:
             prior_dists=_priors,
             parameters=parameters,
             encoder=encoder,
+            rng_manager=rng_manager,
         )
 
     def sample_config(self) -> dict[str, Any]:
@@ -93,9 +96,11 @@ class MOPriorSampler:
         Returns:
             The sampled configuration.
         """
-        _prior_choice: Prior = np.random.choice(
+        _prior_choice: Prior = self.rng_manager.np_rng.choice(
             list(self.prior_dists.values()),
         )
 
         # Sample a configuration from the chosen prior
-        return _prior_choice.sample_config(to=self.encoder)
+        return _prior_choice.sample_config(
+            to=self.encoder, seed=self.rng_manager.torch_manual_rng
+        )

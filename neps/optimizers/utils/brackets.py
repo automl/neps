@@ -83,7 +83,9 @@ def calculate_hb_bracket_layouts(
     return rung_to_fidelity, bracket_layouts
 
 
-def async_hb_sample_bracket_to_run(max_rung: int, eta: int) -> int:
+def async_hb_sample_bracket_to_run(
+    max_rung: int, eta: int, np_rng: np.random.Generator
+) -> int:
     # Sampling distribution derived from Appendix A (https://arxiv.org/abs/2003.10865)
     # Adapting the distribution based on the current optimization state
     # s \in [0, max_rung] and to with the denominator's constraint, we have K > s - 1
@@ -92,7 +94,7 @@ def async_hb_sample_bracket_to_run(max_rung: int, eta: int) -> int:
     K = max_rung
     bracket_probs = [eta ** (K - s) * (K + 1) / (K - s + 1) for s in range(max_rung + 1)]
     bracket_probs = np.array(bracket_probs) / sum(bracket_probs)
-    return int(np.random.choice(range(max_rung + 1), p=bracket_probs))
+    return int(np_rng.choice(range(max_rung + 1), p=bracket_probs))
 
 
 @dataclass
@@ -143,6 +145,7 @@ class Rung(Sized):
         k: int,
         exclude: Sequence[Hashable] = [],
         mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+        np_rng: np.random.Generator,
     ) -> tuple[int, dict[str, Any], float] | None:
         """Selects the best configurations based on Pareto front for
         sync bracket optimizers.
@@ -157,6 +160,7 @@ class Rung(Sized):
             selector=mo_selector,
             contenders=contenders,
             k=k,
+            np_rng=np_rng,
         )
         _idx, _rung = _df.index[0]
         row = _df.loc[(_idx, _rung)]
@@ -173,6 +177,7 @@ class Rung(Sized):
         selector: Literal["nsga2", "epsnet"] = "epsnet",
         contenders: pd.DataFrame | None = None,
         k: int,
+        np_rng: np.random.Generator,
     ) -> pd.DataFrame:
         """Replaces top_k in single objective Bracket Optimizers
         with a multi-objective selector, which selects the best
@@ -191,6 +196,7 @@ class Rung(Sized):
                 return self.epsnet_selector(
                     k=k,
                     contenders=contenders,
+                    np_rng=np_rng,
                 )
             case _:
                 raise ValueError(
@@ -210,6 +216,7 @@ class Rung(Sized):
         *,
         k: int,
         contenders: pd.DataFrame,
+        np_rng: np.random.Generator,
     ) -> pd.DataFrame:
         """Selects the best configurations based on epsilon-net sorting strategy.
         Uses Epsilon-net based sorting from SyneTune.
@@ -220,6 +227,7 @@ class Rung(Sized):
         indices = nondominated_sort(
             X=mo_costs,
             max_items=k,
+            np_rng=np_rng,
         )
         return contenders.iloc[indices]
 
@@ -238,6 +246,8 @@ class Sync:
 
     mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
+
+    np_rng: np.random.Generator = field(default=False)
 
     def __post_init__(self) -> None:
         if not all_unique(rung.value for rung in self.rungs):
@@ -282,6 +292,7 @@ class Sync:
                 mo_selector=self.mo_selector,
                 k=1,
                 exclude=upper.config_ids,
+                np_rng=self.np_rng,
             )
         else:
             promote_config = lower.best_to_promote(exclude=upper.config_ids)
@@ -305,6 +316,7 @@ class Sync:
         rung_sizes: dict[int, int],
         is_multi_objective: bool = False,
         mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+        np_rng: np.random.Generator,
     ) -> list[Sync]:
         """Create a list of brackets from the table.
 
@@ -384,6 +396,7 @@ class Sync:
                 ],
                 is_multi_objective=is_multi_objective,
                 mo_selector=mo_selector,
+                np_rng=np_rng,
             )
             for bracket_data in all_N_bracket_datas
         ]
@@ -411,6 +424,8 @@ class Async:
     mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
 
+    np_rng: np.random.Generator = field(default=False)
+
     def __post_init__(self) -> None:
         self.rungs = sorted(self.rungs, key=lambda rung: rung.value)
         if any(rung.capacity is not None for rung in self.rungs):
@@ -437,7 +452,9 @@ class Async:
                 continue  # Not enough configs to promote yet
 
             if self.is_multi_objective:
-                best_k = lower_dropped.mo_selector(selector=self.mo_selector, k=k)
+                best_k = lower_dropped.mo_selector(
+                    selector=self.mo_selector, k=k, np_rng=self.np_rng
+                )
             else:
                 best_k = lower_dropped.top_k(k)
             candidates = best_k.copy(deep=True)
@@ -461,6 +478,7 @@ class Async:
         eta: int,
         is_multi_objective: bool = False,
         mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+        np_rng: np.random.Generator,
     ) -> Async:
         return cls(
             rungs=[
@@ -474,6 +492,7 @@ class Async:
             eta=eta,
             is_multi_objective=is_multi_objective,
             mo_selector=mo_selector,
+            np_rng=np_rng,
         )
 
 
@@ -506,6 +525,7 @@ class Hyperband:
         bracket_layouts: list[dict[int, int]],
         is_multi_objective: bool = False,
         mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+        np_rng: np.random.Generator,
     ) -> list[Hyperband]:
         """Create a list of brackets from the table.
 
@@ -597,6 +617,7 @@ class Hyperband:
                     ],
                     is_multi_objective=is_multi_objective,
                     mo_selector=mo_selector,
+                    np_rng=np_rng,
                 )
                 sh_brackets.append(bracket)
 
@@ -648,6 +669,9 @@ class AsyncHyperband:
     is_multi_objective: bool = field(default=False)
     """Whether the BracketOptimizer is multi-objective or not."""
 
+    np_rng: np.random.Generator = field(default=False)
+    """The random number generator to use for sampling."""
+
     mo_selector: Literal["nsga2", "epsnet"] = field(default="epsnet")
     """The selector to use for multi-objective optimization."""
 
@@ -671,6 +695,7 @@ class AsyncHyperband:
         eta: int,
         is_multi_objective: bool = False,
         mo_selector: Literal["nsga2", "epsnet"] = "epsnet",
+        np_rng: np.random.Generator,
     ) -> AsyncHyperband:
         """Create an AsyncHyperbandBrackets from the table.
 
@@ -705,15 +730,17 @@ class AsyncHyperband:
                     eta=eta,
                     is_multi_objective=is_multi_objective,
                     mo_selector=mo_selector,
+                    np_rng=np_rng,
                 )
                 for layout in bracket_rungs
             ],
             eta=eta,
+            np_rng=np_rng,
         )
 
     def next(self) -> BracketAction:
         # Each ASHA bracket always has an action, sample which to take
-        bracket_ix = async_hb_sample_bracket_to_run(self._max_rung, self.eta)
+        bracket_ix = async_hb_sample_bracket_to_run(self._max_rung, self.eta, self.np_rng)
         bracket = self.asha_brackets[bracket_ix]
         return bracket.next()
 

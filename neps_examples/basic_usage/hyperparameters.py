@@ -23,11 +23,12 @@ pipeline_space = dict(
     integer2=neps.Integer(lower=1, upper=1000, log=True),
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=pipeline_space,
     root_directory="results/hyperparameters_example",
     evaluations_to_spend=30,
     worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
+    optimizer="bayesian_optimization"
 )

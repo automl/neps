@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from neps.space.parameters import Parameter
     from neps.state.optimizer import BudgetInfo
     from neps.state.pipeline_eval import UserResultDict
+    from neps.state.seed_snapshot import RNGStateManager
     from neps.state.trial import Trial
 
 
@@ -132,6 +133,7 @@ class GPSampler:
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         target_fidelity: int | float,
+        seed: torch.Generator | None = None,
     ) -> dict[str, Any]:
         """Samples a configuration using the GP model.
 
@@ -186,6 +188,7 @@ class GPSampler:
             cost_percentage_used=None,
             costs_on_log_scale=False,
             hide_warnings=True,
+            seed=seed,
         )
         assert len(candidates) == N
 
@@ -257,6 +260,9 @@ class BracketOptimizer:
 
     fid_name: str
     """The name of the fidelity in the space."""
+
+    rng_manager: RNGStateManager
+    """The RNG state manager to use for seeding."""
 
     def __call__(  # noqa: C901, PLR0912
         self,
@@ -356,6 +362,7 @@ class BracketOptimizer:
                     trials,
                     budget_info=None,  # TODO: budget_info not supported yet
                     target_fidelity=target_fidelity,
+                    seed=self.rng_manager.torch_manual_rng,
                 )
                 config.update(space.constants)
                 return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
@@ -366,7 +373,9 @@ class BracketOptimizer:
                 # Otherwise, we proceed with the original sampler
                 match self.sampler:
                     case Sampler():
-                        config = self.sampler.sample_config(to=self.encoder)
+                        config = self.sampler.sample_config(
+                            to=self.encoder, seed=self.rng_manager.torch_manual_rng
+                        )
                         config = {
                             **config,
                             **space.constants,
