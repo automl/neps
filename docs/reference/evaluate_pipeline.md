@@ -45,7 +45,6 @@ All other values raise a `TypeError` inside NePS.
        user_result=result_dict,
        pipeline_id=pipeline_id,
        root_directory=root_directory,
-       post_run_summary=True,
    )
    ```
 
@@ -122,11 +121,8 @@ neps.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
-    post_run_summary=False,
 )
 ```
-
-the default value for `post_run_summary` is True, if you want to prevent any summary creation, you should specify in the arguments.
 
 ### 3.3 Why this matters
 

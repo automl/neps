@@ -39,11 +39,7 @@ python -m neps.plot ROOT_DIRECTORY
 Currently, this creates one plot that shows the best error value across the number of evaluations.
 
 ## What's on disk?
-In the root directory, NePS maintains several files at all times that are human readable and can be useful
-If you pass the `write_summary_to_disk=` argument to [`neps.run()`][neps.api.run],
-NePS will generate a summary CSV and TXT files for you.  
-
-=== "`neps.run(..., write_summary_to_disk=True)`"
+NePS maintains several human-readable files in the `ROOT_DIRECTORY`. Additionally, it generates a summary folder (located at `ROOT_DIRECTORY/summary/`) which contains useful reports on the run.
 
     ```
     ROOT_DIRECTORY
@@ -60,21 +56,6 @@ NePS will generate a summary CSV and TXT files for you.
     ├── optimizer_info.yaml
     └── optimizer_state.pkl
     ```
-
-
-=== "`neps.run(..., write_summary_to_disk=False)`"
-
-    ```
-    ROOT_DIRECTORY
-    ├── results
-    │  └── config_1
-    │      ├── config.yaml
-    │      ├── metadata.yaml
-    │      └── report.yaml
-    ├── optimizer_info.yaml
-    └── optimizer_state.pkl
-    ```
-
 
 The `full.csv` contains all configuration details in CSV format.
 Details include configuration hyperparameters and any returned result and cost from the `evaluate_pipeline` function.
