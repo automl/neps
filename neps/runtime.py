@@ -181,15 +181,6 @@ class DefaultWorker:
     worker_id: str
     """The id of the worker."""
 
-    worker_cumulative_eval_count: int = 0
-    """The number of evaluations done by this worker."""
-
-    worker_cumulative_eval_cost: float = 0.0
-    """The cost of the evaluations done by this worker."""
-
-    worker_cumulative_evaluation_time_seconds: float = 0.0
-    """The time spent evaluating configurations by this worker."""
-
     _GRACE: ClassVar = FS_SYNC_GRACE_BASE
 
     @classmethod
@@ -251,46 +242,13 @@ class DefaultWorker:
                 raise WorkerRaiseError(msg) from error_from_this_worker
             return msg
 
-        if (
-            self.settings.max_evaluations_for_worker is not None
-            and self.worker_cumulative_eval_count
-            >= self.settings.max_evaluations_for_worker
-        ):
-            return (
-                "Worker has reached the maximum number of evaluations it is allowed to do"
-                f" as given by `{self.settings.max_evaluations_for_worker=}`."
-                "\nTo allow more evaluations, increase this value or use a different"
-                " stopping criterion."
-            )
-
-        if (
-            self.settings.max_cost_for_worker is not None
-            and self.worker_cumulative_eval_cost >= self.settings.max_cost_for_worker
-        ):
-            return (
-                "Worker has reached the maximum cost it is allowed to spend"
-                f" which is given by `{self.settings.max_cost_for_worker=}`."
-                f" This worker has spend '{self.worker_cumulative_eval_cost}'."
-                "\n To allow more evaluations, increase this value or use a different"
-                " stopping criterion."
-            )
-
-        if self.settings.max_wallclock_time_for_worker_seconds is not None and (
+        if self.settings.max_wallclock_time_seconds is not None and (
             time.monotonic() - time_monotonic_start
-            >= self.settings.max_wallclock_time_for_worker_seconds
+            >= self.settings.max_wallclock_time_seconds
         ):
             return (
                 "Worker has reached the maximum wallclock time it is allowed to spend"
-                f", given by `{self.settings.max_wallclock_time_for_worker_seconds=}`."
-            )
-
-        if self.settings.max_evaluation_time_for_worker_seconds is not None and (
-            self.worker_cumulative_evaluation_time_seconds
-            >= self.settings.max_evaluation_time_for_worker_seconds
-        ):
-            return (
-                "Worker has reached the maximum evaluation time it is allowed to spend"
-                f", given by `{self.settings.max_evaluation_time_for_worker_seconds=}`."
+                f", given by `{self.settings.max_wallclock_time_seconds=}`."
             )
 
         return False
@@ -328,23 +286,30 @@ class DefaultWorker:
         self,
         trials: Mapping[str, Trial],
     ) -> str | Literal[False]:
+        # worker related stopping criterion
+        worker_trials = {
+            _id: trial
+            for _id, trial in trials.items()
+            if trial.metadata.evaluating_worker_id == self.worker_id
+        }
         if self.settings.evaluations_to_spend is not None:
             if self.settings.include_in_progress_evaluations_towards_maximum:
                 count = sum(
                     1
-                    for _, trial in trials.items()
-                    if trial.metadata.state
-                    not in (Trial.State.PENDING, Trial.State.SUBMITTED)
+                    for _, trial in worker_trials.items()
+                    if trial.metadata.state != Trial.State.PENDING
                 )
             else:
                 # This indicates they have completed.
-                count = sum(1 for _, trial in trials.items() if trial.report is not None)
+                count = sum(
+                    1 for _, trial in worker_trials.items() if trial.report is not None
+                )
 
             if count >= self.settings.evaluations_to_spend:
                 return (
-                    "The total number of evaluations has reached the maximum allowed of"
-                    f" `{self.settings.evaluations_to_spend=}`."
-                    " To allow more evaluations, increase this value or use a different"
+                    "Worker has reached the maximum number of evaluations it is allowed"
+                    f" to do as given by `{self.settings.evaluations_to_spend=}`."
+                    "\nTo allow more evaluations, increase this value or use a different"
                     " stopping criterion."
                 )
 
@@ -354,7 +319,7 @@ class DefaultWorker:
             fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
             count = sum(
                 trial.config[fidelity_name]
-                for _, trial in trials.items()
+                for _, trial in worker_trials.items()
                 if trial.report is not None and trial.config[fidelity_name] is not None
             )
             if count >= self.settings.fidelities_to_spend:
@@ -368,20 +333,22 @@ class DefaultWorker:
         if self.settings.cost_to_spend is not None:
             cost = sum(
                 trial.report.cost
-                for _, trial in trials.items()
+                for _, trial in worker_trials.items()
                 if trial.report is not None and trial.report.cost is not None
             )
             if cost >= self.settings.cost_to_spend:
                 return (
-                    f"The maximum cost `{self.settings.cost_to_spend=}` has been"
-                    " reached by all of the evaluated trials. To allow more evaluations,"
-                    " increase this value or use a different stopping criterion."
+                    "Worker has reached the maximum cost it is allowed to spend"
+                    f" which is given by `{self.settings.cost_to_spend=}`."
+                    f" This worker has spend '{cost}'."
+                    "\n To allow more evaluations, increase this value or use a different"
+                    " stopping criterion."
                 )
 
         if self.settings.max_evaluation_time_total_seconds is not None:
             time_spent = sum(
                 trial.report.evaluation_duration
-                for _, trial in trials.items()
+                for _, trial in worker_trials.items()
                 if trial.report is not None
                 if trial.report.evaluation_duration is not None
             )
@@ -658,13 +625,6 @@ class DefaultWorker:
                     evaluation_fn=self.evaluation_fn,
                     default_report_values=self.settings.default_report_values,
                 )
-                evaluation_duration = evaluated_trial.metadata.evaluation_duration
-                assert (evaluation_duration is not None) | (report is None)
-                self.worker_cumulative_evaluation_time_seconds += (
-                    evaluation_duration if evaluation_duration else 0
-                )
-
-            self.worker_cumulative_eval_count += 1
 
             if report is None:
                 logger.info(
@@ -680,9 +640,6 @@ class DefaultWorker:
                 evaluated_trial.id,
                 evaluated_trial.metadata.state,
             )
-
-            if report.cost is not None:
-                self.worker_cumulative_eval_cost += report.cost
 
             if report.err is not None:
                 logger.error(
@@ -960,7 +917,6 @@ def _launch_runtime(  # noqa: PLR0913
     overwrite_optimization_dir: bool,
     evaluations_to_spend: int | None,
     fidelities_to_spend: int | float | None,
-    max_evaluations_for_worker: int | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
 ) -> None:
@@ -1034,11 +990,8 @@ def _launch_runtime(  # noqa: PLR0913
             not continue_until_max_evaluation_completed
         ),
         cost_to_spend=cost_to_spend,
-        max_evaluations_for_worker=max_evaluations_for_worker,
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
-        max_wallclock_time_for_worker_seconds=None,  # TODO: User can't specify yet
-        max_evaluation_time_for_worker_seconds=None,  # TODO: User can't specify yet
-        max_cost_for_worker=None,  # TODO: User can't specify yet
+        max_wallclock_time_seconds=None,  # TODO: User can't specify yet
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.

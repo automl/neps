@@ -167,8 +167,7 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        evaluations_to_spend=100,
-        max_evaluations_per_run=10, # (1)!
+        evaluations_to_spend=100, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
         overwrite_root_directory=False, #!!!
     )
@@ -220,7 +219,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `evaluations_to_spend` or `max_evaluations_per_run`.
+    Any runs that error will still count towards the total `evaluations_to_spend`.
 
 ### Re-running Failed Configurations
 
