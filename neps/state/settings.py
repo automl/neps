@@ -77,18 +77,18 @@ class WorkerSettings:
     batch_size: int | None
     """The number of configurations to sample in a single batch."""
 
-    # --------- Global Stopping Criterion ---------
+    # --------- Stopping Criterion ---------
     evaluations_to_spend: int | None
     """The maximum number of evaluations to run in total.
 
-    Once this evaluation total is reached, **all** workers will stop evaluating
+    Once this evaluation total is reached, worker will stop evaluating
     new configurations.
 
     To control whether currently evaluating configurations are included in this
     total, see
     [`include_in_progress_evaluations_towards_maximum`][neps.state.settings.WorkerSettings.include_in_progress_evaluations_towards_maximum].
 
-    If `None`, there is no limit and workers will continue to evaluate
+    If `None`, there is no limit and worker will continue to evaluate
     indefinitely.
     """
 
@@ -101,82 +101,48 @@ class WorkerSettings:
     cost_to_spend: float | None
     """The maximum cost to run in total.
 
-    Once this cost total is reached, **all** workers will stop evaluating new
+    Once this cost total is reached, worker will stop evaluating new
     configurations.
 
     This cost is the sum of `'cost'` values that are returned by evaluation
     of the target function.
 
-    If `None`, there is no limit and workers will continue to evaluate
+    If `None`, there is no limit and worker will continue to evaluate
     indefinitely or until another stopping criterion is met.
     """
 
     fidelities_to_spend: int | float | None
     """The maximum number of evaluations to run in case of multi-fidelity.
 
-    Once this evaluation total is reached, **all** workers will stop evaluating
+    Once this evaluation total is reached, worker will stop evaluating
     new configurations.
 
     To control whether currently evaluating configurations are included in this
     total, see
     [`include_in_progress_evaluations_towards_maximum`][neps.state.settings.WorkerSettings.include_in_progress_evaluations_towards_maximum].
 
-    If `None`, there is no limit and workers will continue to evaluate
+    If `None`, there is no limit and worker will continue to evaluate
     indefinitely.
     """
 
     max_evaluation_time_total_seconds: float | None
-    """The maximum wallclock time allowed for evaluation in total.
+    """The maximum time allowed for evaluation duration in total.
+    This is the cumulative time reported by user for evaluation durations.
 
     !!! note
         This does not include time for sampling new configurations.
 
-    Once this wallclock time is reached, **all** workers will stop once their
+    Once this wallclock time is reached, worker will stop once its
     current evaluation is finished.
 
     If `None`, there is no limit and workers will continue to evaluate
     indefinitely or until another stopping criterion is met.
     """
 
-    # --------- Local Worker Stopping Criterion ---------
-    max_evaluations_for_worker: int | None
-    """The maximum number of evaluations to run for the worker.
-
-    This count is specific to each worker spawned by NePS.
-    **only** the current worker will stop evaluating new configurations once
-    this limit is reached.
-
-    If `None`, there is no limit and this worker will continue to evaluate
-    indefinitely or until another stopping criterion is met.
-    """
-
-    max_cost_for_worker: float | None
-    """The maximum cost incurred by a worker before finisihng.
-
-    Once this cost total is reached, **only** this worker will stop evaluating new
-    configurations.
-
-    This cost is the sum of `'cost'` values that are returned by evaluation
-    of the target function.
-
-    If `None`, there is no limit and the worker will continue to evaluate
-    indefinitely or until another stopping criterion is met.
-    """
-
-    max_evaluation_time_for_worker_seconds: float | None
-    """The maximum time to allow this worker for evaluating configurations.
-
-    !!! note
-        This does not include time for sampling new configurations.
-
-    If `None`, there is no limit and this worker will continue to evaluate
-    indefinitely or until another stopping criterion is met.
-    """
-
-    max_wallclock_time_for_worker_seconds: float | None
+    max_wallclock_time_seconds: float | None
     """The maximum wallclock time to run for this worker.
 
-    Once this wallclock time is reached, **only** this worker will stop evaluating
+    Once this wallclock time is reached, worker will stop evaluating
     new configurations.
 
     !!! warning

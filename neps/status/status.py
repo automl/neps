@@ -42,6 +42,8 @@ class Summary:
             itertools.chain(*self.by_state.values()),
             key=lambda t: t.metadata.time_sampled,
         )
+        if len(trials) == 0:
+            return pd.DataFrame()
 
         # Config dataframe, config columns prefixed with `config.`
         config_df = (
@@ -244,6 +246,9 @@ def trajectory_of_improvements(
         return []
 
     df = summary.df()
+
+    if len(df) == 0:
+        return []
 
     if "time_sampled" not in df.columns:
         raise ValueError("Missing `time_sampled` column in summary DataFrame.")
