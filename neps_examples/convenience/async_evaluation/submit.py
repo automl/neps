@@ -42,5 +42,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=ExampleSpace(),
     root_directory="results/async_evaluation",
-    max_evaluations_per_run=2,
+    evaluations_to_spend=2,
 )

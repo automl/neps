@@ -39,19 +39,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
+def run(  # noqa: C901, D417, PLR0913
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | PipelineSpace,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
     evaluations_to_spend: int | None = None,
-    write_summary_to_disk: bool = True,
-    max_evaluations_total: int | None = None,
-    max_evaluations_per_run: int | None = None,
+    max_evaluations_per_run: int | None = None,  # deprecated
     continue_until_max_evaluation_completed: bool = False,
     cost_to_spend: int | float | None = None,
-    max_cost_total: int | float | None = None,
     fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
@@ -113,7 +110,6 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         pipeline_space=MySpace(),
         root_directory="usage_example",
         evaluations_to_spend=5,
-        max_evaluations_per_run=10,
     )
     ```
 
@@ -191,22 +187,15 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
-        write_summary_to_disk: If True, creates a csv and txt files after each worker is done,
-            holding summary information about the configs and results.
-
-        max_evaluations_per_run: Number of evaluations this specific call should do.
-
-            ??? note "Limitation on Async mode"
-                Currently, there is no specific number to control number of parallel evaluations running with
-                the same worker, so in case you want to limit the number of parallel evaluations,
-                it's crucial to limit the number of evaluations per run.
-
-        evaluations_to_spend: Number of evaluations after which to terminate.
-            This is shared between all workers operating in the same `root_directory`.
+        evaluations_to_spend: Number of evaluations this specific call/worker should do.
+        ??? note "Limitation on Async mode"
+            Currently, there is no specific number to control number of parallel evaluations running with
+            the same worker, so in case you want to limit the number of parallel evaluations,
+            it's crucial to limit the `evaluations_to_spend` accordingly.
 
         continue_until_max_evaluation_completed:
-            If true, only stop after evaluations_to_spend have been completed.
-            This is only relevant in the parallel setting.
+            If true, stop only after evaluations_to_spend have fully completed. In other words,
+            pipelines that are still running do not count toward the stopping criterion.
 
         cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
@@ -328,54 +317,24 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
                 runtime to run your optimizer.
 
     """  # noqa: E501
-    if (
-        evaluations_to_spend is None
-        and max_evaluations_total is None
-        and max_evaluations_per_run is None
-        and cost_to_spend is None
-        and max_cost_total is None
-        and fidelities_to_spend is None
-    ):
-        warnings.warn(
-            "None of the following were set, this will run idefinitely until the worker"
-            " process is stopped."
-            f"\n * {evaluations_to_spend=}"
-            f"\n * {max_evaluations_per_run=}"
-            f"\n * {cost_to_spend=}"
-            f"\n * {fidelities_to_spend}",
-            UserWarning,
-            stacklevel=2,
+    if max_evaluations_per_run is not None:
+        raise ValueError(
+            "`max_evaluations_per_run` is deprecated, please use "
+            "`evaluations_to_spend` for limiting the number of evaluations for this run.",
         )
 
-    if max_evaluations_total is not None:
-        warnings.warn(
-            "`max_evaluations_total` is deprecated and will be removed in"
-            " a future release. Please use `evaluations_to_spend` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        evaluations_to_spend = max_evaluations_total
-
-    if max_cost_total is not None:
-        warnings.warn(
-            "`max_cost_total` is deprecated and will be removed in a future release. "
-            "Please use `cost_to_spend` instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        cost_to_spend = max_cost_total
-
-    criteria = {
+    controling_params = {
         "evaluations_to_spend": evaluations_to_spend,
-        "max_evaluations_per_run": max_evaluations_per_run,
         "cost_to_spend": cost_to_spend,
         "fidelities_to_spend": fidelities_to_spend,
     }
-    set_criteria = [k for k, v in criteria.items() if v is not None]
-    if len(set_criteria) > 1:
-        raise ValueError(
-            f"Multiple stopping criteria specified: {', '.join(set_criteria)}. "
-            "Only one is allowed."
+    if all(x is None for x in controling_params.values()):
+        warnings.warn(
+            "None of the following were set, this will run idefinitely until the worker"
+            " process is stopped."
+            f"{', '.join(list(controling_params.keys()))}.",
+            UserWarning,
+            stacklevel=2,
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
@@ -429,13 +388,7 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
 
     is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
 
-    if is_multi_fidelity:
-        if evaluations_to_spend is not None:
-            raise ValueError(
-                "`evaluations_to_spend` is not allowed for multi-fidelity optimizers. "
-                "Only `fidelities_to_spend` or `cost_to_spend`"
-            )
-    elif fidelities_to_spend is not None:
+    if not is_multi_fidelity and fidelities_to_spend is not None:
         raise ValueError(
             "`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers."
         )
@@ -467,36 +420,31 @@ def run(  # noqa: C901, D417, PLR0913, PLR0912, PLR0915
         fidelities_to_spend=fidelities_to_spend,
         optimization_dir=Path(root_directory),
         evaluations_to_spend=evaluations_to_spend,
-        max_evaluations_for_worker=max_evaluations_per_run,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,
         ignore_errors=ignore_errors,
         overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
-        write_summary_to_disk=write_summary_to_disk,
         worker_id=worker_id,
     )
 
     post_run_csv(root_directory)
     root_directory = Path(root_directory)
     summary_dir = root_directory / "summary"
-    if write_summary_to_disk:
-        logger.info(
-            "The summary folder has been created, which contains csv and txt files with "
-            "the output of all data in the run (short.csv - only the best; full.csv - "
-            "all runs; best_config_trajectory.txt for incumbent trajectory; and "
-            "best_config.txt for final incumbent)."
-            f"\nYou can find summary folder at: {summary_dir}."
-        )
+    logger.info(
+        "The summary folder has been created, which contains csv and txt files with"
+        "the output of all data in the run (short.csv - only the best; full.csv - "
+        "all runs; best_config_trajectory.txt for incumbent trajectory; and "
+        "best_config.txt for final incumbent)."
+        f"\nYou can find summary folder at: {summary_dir}."
+    )
 
 
 def save_pipeline_results(
     user_result: dict,
     pipeline_id: str,
     root_directory: Path,
-    *,
-    post_run_summary: bool = True,
 ) -> None:
     """Persist the outcome of one pipeline evaluation.
 
@@ -510,8 +458,6 @@ def save_pipeline_results(
             neps.core.trial.Trial object inside the optimisation state.
         root_directory (Path): Root directory of the NePS run (contains
             optimizer_info.yaml and configs/ folder).
-        post_run_summary (bool, optional): If True, creates a CSV file after
-            trial completion, holding summary info about configs and results.
 
     """
     _save_results(
@@ -520,14 +466,13 @@ def save_pipeline_results(
         root_directory=root_directory,
     )
 
-    if post_run_summary:
-        full_frame_path, short_path = post_run_csv(root_directory)
-        logger.info(
-            "The post run summary has been created, which is a csv file with the "
-            "output of all data in the run."
-            f"\nYou can find a full dataframe at: {full_frame_path}."
-            f"\nYou can find a quick summary at: {short_path}."
-        )
+    full_frame_path, short_path = post_run_csv(root_directory)
+    logger.info(
+        "The post run summary has been created, which is a csv file with the "
+        "output of all data in the run."
+        f"\nYou can find a full dataframe at: {full_frame_path}."
+        f"\nYou can find a quick summary at: {short_path}."
+    )
 
 
 def import_trials(

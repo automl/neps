@@ -127,6 +127,8 @@ class Summary:
             itertools.chain(*self.by_state.values()),
             key=lambda t: t.metadata.time_sampled,
         )
+        if len(trials) == 0:
+            return pd.DataFrame()
 
         # Config dataframe, config columns prefixed with `config.`
         config_df = (

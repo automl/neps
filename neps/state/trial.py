@@ -25,7 +25,6 @@ class State(str, Enum):
 
     EXTERNAL = "external"
     PENDING = "pending"
-    SUBMITTED = "submitted"
     EVALUATING = "evaluating"
     SUCCESS = "success"
     FAILED = "failed"
@@ -191,11 +190,6 @@ class Trial:
     def id(self) -> str:
         """Return the id of the trial."""
         return self.metadata.id  # type: ignore
-
-    def set_submitted(self, *, time_submitted: float) -> None:
-        """Set the trial as submitted."""
-        self.metadata.time_submitted = time_submitted
-        self.metadata.state = State.SUBMITTED
 
     def set_evaluating(self, *, time_started: float, worker_id: int | str) -> None:
         """Set the trial as in progress."""

@@ -39,18 +39,15 @@ def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
-            cost_if_not_provided=1.2,
-        ),
-        cost_to_spend=None,
-        max_evaluations_for_worker=2,
-        max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
-        batch_size=None,
+            cost_if_not_provided=10
+        ),  # <- it is ignored
+        evaluations_to_spend=2,
+        include_in_progress_evaluations_towards_maximum=True,
+        cost_to_spend=1,
         fidelities_to_spend=None,
-        evaluations_to_spend=1,
-        include_in_progress_evaluations_towards_maximum=False,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
     )
 
     callback_holder: list[callable] = []
@@ -81,7 +78,8 @@ def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
 
     result_dict = {"objective_to_minimize": 0.3, "cost": 1.2}
     callback_holder[0](result_dict)
-    trial_iter = iter(neps_state.lock_and_read_trials().values())
+    trials = neps_state.lock_and_read_trials()
+    trial_iter = iter(trials.values())
     trial_after = next(trial_iter)
     assert trial_after.metadata.state == Trial.State.SUCCESS
     assert trial_after.report.objective_to_minimize == 0.3
@@ -90,3 +88,11 @@ def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
     # second trial is not submitted yet
     trial_after = next(trial_iter)
     assert trial_after.metadata.state == Trial.State.EVALUATING
+
+    result_dict = {"objective_to_minimize": 10}  # cost not provided
+    callback_holder[1](result_dict)
+    trials = neps_state.lock_and_read_trials()
+    trial_after = list(trials.values())[1]
+    assert trial_after.metadata.state == Trial.State.SUCCESS
+    assert trial_after.report.objective_to_minimize == 10
+    assert trial_after.report.cost is None  # default is always None
