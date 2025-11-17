@@ -39,46 +39,11 @@ def test_trial_creation() -> None:
     )
 
 
-def test_trial_as_submitted() -> None:
-    trial_id = "1"
-    time_sampled = 0
-    time_submitted = 1
-    previous_trial = "0"
-    worker_id = str(os.getpid())
-
-    trial = Trial.new(
-        trial_id=trial_id,
-        config={"a": "b"},
-        previous_trial_location="0",
-        location="1",
-        time_sampled=time_sampled,
-        previous_trial=previous_trial,
-        worker_id=worker_id,
-    )
-    trial.set_submitted(time_submitted=time_submitted)
-
-    assert trial.metadata.state == Trial.State.SUBMITTED
-    assert trial.id == trial_id
-    assert trial.config == {"a": "b"}
-    assert trial.metadata == Trial.MetaData(
-        id=trial_id,
-        state=Trial.State.SUBMITTED,
-        time_sampled=time_sampled,
-        previous_trial_location="0",
-        location="1",
-        previous_trial_id=previous_trial,
-        sampling_worker_id=worker_id,
-        time_submitted=time_submitted,
-        time_started=None,
-        time_end=None,
-    )
-
-
 def test_trial_as_in_progress_with_different_evaluating_worker() -> None:
     trial_id = "1"
     time_sampled = 0
-    time_submitted = 1
     time_started = 2
+    time_completed = 3
     previous_trial = "0"
     sampling_worker_id = "42"
     evaluating_worker_id = "43"
@@ -92,31 +57,40 @@ def test_trial_as_in_progress_with_different_evaluating_worker() -> None:
         previous_trial=previous_trial,
         worker_id=sampling_worker_id,
     )
-    trial.set_submitted(time_submitted=time_submitted)
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
+    trial.set_complete(
+        report_as="success",
+        time_end=time_completed,
+        objective_to_minimize=10,
+        cost=None,
+        learning_curve=None,
+        err=None,
+        tb=None,
+        extra=None,
+        evaluation_duration=10,
+    )
 
-    assert trial.metadata.state == Trial.State.EVALUATING
+    assert trial.metadata.state == Trial.State.SUCCESS
     assert trial.id == trial_id
     assert trial.config == {"a": "b"}
     assert trial.metadata == Trial.MetaData(
         id=trial_id,
-        state=Trial.State.EVALUATING,
+        state=Trial.State.SUCCESS,
         time_sampled=time_sampled,
         previous_trial_id=previous_trial,
         previous_trial_location="0",
         location="1",
         sampling_worker_id=sampling_worker_id,
         evaluating_worker_id=evaluating_worker_id,
-        time_submitted=time_submitted,
+        evaluation_duration=10,
         time_started=time_started,
-        time_end=None,
+        time_end=time_completed,
     )
 
 
 def test_trial_as_success_after_being_progress() -> None:
     trial_id = "1"
     time_sampled = 0
-    time_submitted = 1
     time_started = 2
     time_end = 3
     previous_trial = "0"
@@ -135,7 +109,6 @@ def test_trial_as_success_after_being_progress() -> None:
         previous_trial_location="0",
         worker_id=sampling_worker_id,
     )
-    trial.set_submitted(time_submitted=time_submitted)
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="success",
@@ -162,7 +135,6 @@ def test_trial_as_success_after_being_progress() -> None:
         sampling_worker_id=sampling_worker_id,
         evaluating_worker_id=evaluating_worker_id,
         evaluation_duration=time_end - time_started,
-        time_submitted=time_submitted,
         time_started=time_started,
         time_end=time_end,
     )
@@ -181,7 +153,6 @@ def test_trial_as_success_after_being_progress() -> None:
 def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
     trial_id = "1"
     time_sampled = 0
-    time_submitted = 1
     time_started = 2
     time_end = 3
     previous_trial = "0"
@@ -200,7 +171,6 @@ def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
         previous_trial=previous_trial,
         worker_id=sampling_worker_id,
     )
-    trial.set_submitted(time_submitted=time_submitted)
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="failed",
@@ -223,7 +193,6 @@ def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
         previous_trial_id=previous_trial,
         sampling_worker_id=sampling_worker_id,
         evaluating_worker_id=evaluating_worker_id,
-        time_submitted=time_submitted,
         previous_trial_location="0",
         location="1",
         time_started=time_started,
@@ -245,7 +214,6 @@ def test_trial_as_failed_with_nan_objective_to_minimize_and_in_cost() -> None:
 def test_trial_as_crashed_with_err_and_tb() -> None:
     trial_id = "1"
     time_sampled = 0
-    time_submitted = 1
     time_started = 2
     time_end = 3
     err = ValueError("Something went wrong")
@@ -264,7 +232,6 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         previous_trial=previous_trial,
         worker_id=sampling_worker_id,
     )
-    trial.set_submitted(time_submitted=time_submitted)
     trial.set_evaluating(time_started=time_started, worker_id=evaluating_worker_id)
     report = trial.set_complete(
         report_as="crashed",
@@ -288,7 +255,6 @@ def test_trial_as_crashed_with_err_and_tb() -> None:
         previous_trial_id=previous_trial,
         sampling_worker_id=sampling_worker_id,
         evaluating_worker_id=evaluating_worker_id,
-        time_submitted=time_submitted,
         previous_trial_location="42",
         location="1",
         time_started=time_started,
