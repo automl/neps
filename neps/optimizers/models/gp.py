@@ -18,7 +18,10 @@ from botorch.models import SingleTaskGP
 from botorch.models.gp_regression import Log, get_covar_module_with_dim_scaled_prior
 from botorch.models.gp_regression_mixed import CategoricalKernel, OutcomeTransform
 from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardize
-from botorch.optim import optimize_acqf, optimize_acqf_mixed
+from botorch.optim import (
+    optimize_acqf,
+    optimize_acqf_discrete_local_search,
+)
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
 from gpytorch.utils.warnings import NumericalWarning
@@ -124,7 +127,7 @@ def make_default_single_obj_gp(
     )
 
 
-def optimize_acq(
+def optimize_acq(  # noqa: C901, PLR0915
     acq_fn: AcquisitionFunction,
     encoder: ConfigEncoder,
     *,
@@ -162,6 +165,8 @@ def optimize_acq(
         )
     }
 
+    num_numericals = len(encoder.domains) - len(cat_transformers)
+
     # Proceed with regular numerical acquisition
     if not any(cat_transformers):
         # Small heuristic to increase the number of candidates as our
@@ -198,6 +203,8 @@ def optimize_acq(
             "dimensions or consider encoding your categoricals in some other format."
         )
 
+    # For a large number of categoricals, we need to generate a subset of all possible
+    # combinations to use as fixed features during acquisition function optimization.
     # Right, now we generate all possible combinations
     # First, just collect the possible values per cat column
     # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
@@ -208,9 +215,16 @@ def optimize_acq(
         ]
         for name, transformer in cat_transformers.items()
     }
-    # Second, generate all possible combinations
-    fixed_cats: list[dict[int, float]]
-    if len(cats) == 1:
+    fixed_cats: list[dict[int, float]] = []
+    if n_combos > 1000:
+        # randomly sample 1000 combinations if n_combos is too large
+        keys = list(cats.keys())
+        for _ in range(1000):
+            combo = {key: float(np.random.choice(cats[key])) for key in keys}
+            fixed_cats.append(combo)
+
+    # generate all possible combinations if n_combos is small enough
+    elif len(cats) == 1:
         col, choice_indices = next(iter(cats.items()))
         fixed_cats = [{col: i} for i in choice_indices]
     else:
@@ -223,46 +237,101 @@ def optimize_acq(
     if len(_fixed_features) > 0:
         fixed_cats = [{**cat, **_fixed_features} for cat in fixed_cats]
 
-    with warning_context:
-        # TODO: we should deterministically shuffle the fixed_categoricals
-        # as the underlying function does not.
+    if num_numericals > 0:
+        with warning_context:
+            # cats: dict[int, list[float]] as before
+            cat_keys = list(cats.keys())
+            choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
 
-        # Sample a subset of the fixed cat combinations to form initial population
-        population = np.random.choice(
-            fixed_cats,
-            size=min(len(fixed_cats), 20),
-            replace=False,
-        ).tolist()
+            # Sample a random categorical combination and keep it fixed during
+            # the continuous optimization step
+            random_fixed_cat = fixed_cats[np.random.randint(len(fixed_cats))]
 
-        # Randomly shuffle the population
-        best_score = -np.inf
-        best_candidates = None
-        for _ in range(10):
-            np.random.shuffle(population)
-            candidates, scores = optimize_acqf_mixed(  # type: ignore
+            # --- Step 1: Optimize acquisition function over the continuous space ---
+            best_x_continuous, _ = optimize_acqf(
                 acq_function=acq_fn,
                 bounds=bounds,
-                num_restarts=2,
-                raw_samples=n_intial_start_points,
                 q=n_candidates_required,
-                fixed_features_list=population,
+                num_restarts=num_restarts,
+                raw_samples=n_intial_start_points,
+                fixed_features=_fixed_features or random_fixed_cat,
                 **acq_options,
             )
 
-            # Randomly mutate one of the cats in the returned candidate
-            mutated_candidate = candidates[0].clone()
-            mutated_cat_idx = np.random.choice(list(cats.keys()))
-            mutate_value = np.random.choice(cats[mutated_cat_idx])
-            mutated_candidate[mutated_cat_idx] = mutate_value
+            # Extract the numerical dims from the optimized continuous vector
+            cont_dims = [i for i in range(len(encoder.domains)) if i not in cat_keys]
 
-            # Randomly replace a candidate in the population with the mutated candidate
-            population.append({k: mutated_candidate[k].item() for k in cats})
+            # --- Step 2: Wrap acquisition function for discrete search ---
+            def acq_discrete_only(cat_tensor: torch.Tensor) -> torch.Tensor:
+                """
+                Evaluate the acquisition function at the optimized continuous vector
+                for a given categorical vector.
+                cat_tensor: shape [q, 1, num_cats]
+                """
 
-            # Keep best candidates and scores
-            if scores.item() > best_score:
-                best_score = scores.item()
-                best_candidates = mutated_candidate.unsqueeze(0)
-        return best_candidates, best_score
+                # cat_tensor is of shape [q, 1, num_cats]
+                # insert in each q dimension the continuous dims from
+                # best_x_continuous to form the full x
+
+                cat_tensor = cat_tensor.reshape(-1, len(cat_keys))  # [q, num_cats]
+                x_full: list[torch.Tensor] = []
+                for candidate in cat_tensor:
+                    combo = {k: float(v.item()) for k, v in zip(cat_keys, candidate)}  # noqa: B905
+                    combo.update(
+                        {i: float(best_x_continuous[0, i].item()) for i in cont_dims}
+                    )
+                    x_candidate = torch.tensor(
+                        [combo[i] for i in range(len(encoder.domains))],
+                        dtype=torch.float,
+                    )
+                    x_full.append(x_candidate)
+                x_full_tensor: torch.Tensor = torch.stack(x_full, dim=0)  # [q, num_dims]
+                # Expand to original dim
+                x_full_tensor = x_full_tensor.unsqueeze(1)  # [q, 1, num_dims]
+                return acq_fn(x_full_tensor)
+
+            # --- Step 3: Run BoTorch discrete local search over categorical space ---
+            best_cat_tensor, _ = optimize_acqf_discrete_local_search(
+                acq_function=acq_discrete_only,
+                discrete_choices=choices,
+                q=n_candidates_required,
+                num_restarts=num_restarts,
+                raw_samples=n_intial_start_points,
+            )
+
+            best_cat_dict = {
+                k: float(v.item())
+                for k, v in zip(cat_keys, best_cat_tensor[0], strict=False)
+            }
+
+            # --- Step 4: Return the final combined candidate ---
+            best_x_full = torch.tensor(
+                [
+                    best_cat_dict.get(i, float(best_x_continuous[0, i].item()))
+                    for i in range(len(encoder.domains))
+                ],
+                dtype=torch.float,
+            ).unsqueeze(0)
+
+            # Optional: evaluate the final acquisition value
+            with torch.no_grad():
+                best_val_final = acq_fn(best_x_full)
+
+            return best_x_full, best_val_final
+
+    else:
+        with warning_context:
+            torch_cats: list[torch.Tensor] = [
+                torch.tensor(v, dtype=torch.float64) for v in cats.values()
+            ]
+            return optimize_acqf_discrete_local_search(  # type: ignore
+                acq_function=acq_fn,
+                discrete_choices=torch_cats,
+                q=n_candidates_required,
+                num_restarts=num_restarts,
+                raw_samples=n_intial_start_points,
+                **acq_options,
+            )
 
 
 def encode_trials_for_gp(
@@ -346,7 +415,7 @@ def fit_and_acquire_from_gp(
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
-    maximum_allowed_categorical_combinations: int = 300000,
+    maximum_allowed_categorical_combinations: int = np.inf,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
     hide_warnings: bool = False,
