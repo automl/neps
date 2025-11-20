@@ -53,6 +53,7 @@ from neps.status.status import _build_trace_texts, _initiate_summary_csv, status
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
+    from neps import SearchSpace
     from neps.optimizers import OptimizerInfo
     from neps.optimizers.optimizer import AskFunction
 
@@ -1106,6 +1107,7 @@ def _launch_runtime(  # noqa: PLR0913
     optimizer: AskFunction,
     optimizer_info: OptimizerInfo,
     optimization_dir: Path,
+    pipeline_space: SearchSpace | PipelineSpace,
     cost_to_spend: float | None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None,
@@ -1158,8 +1160,13 @@ def _launch_runtime(  # noqa: PLR0913
                     shared_state=None,  # TODO: Unused for the time being...
                     worker_ids=None,
                 ),
+                pipeline_space=pipeline_space,
             )
             break
+        except NePSError:
+            # Don't retry on NePSError - these are user errors
+            # like pipeline space mismatch
+            raise
         except Exception:  # noqa: BLE001
             time.sleep(0.5)
             logger.debug(

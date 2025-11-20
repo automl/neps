@@ -1,8 +1,12 @@
-"""Functions to get the status of a run and save the status to CSV files."""
+"""Functions to get the status of a run and save the status to CSV files.
+
+This module provides utilities for monitoring NePS optimization runs.
+"""
 
 # ruff: noqa: T201
 from __future__ import annotations
 
+import contextlib
 import itertools
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
@@ -19,6 +23,9 @@ from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
 
 if TYPE_CHECKING:
+    from neps.space.neps_spaces.parameters import PipelineSpace
+    from neps.space.search_space import SearchSpace
+else:
     from neps.space.neps_spaces.parameters import PipelineSpace
 
 
@@ -186,21 +193,14 @@ class Summary:
         return len(self.by_state[State.PENDING])
 
     def formatted(  # noqa: PLR0912, C901
-        self, pipeline_space: PipelineSpace | None = None
+        self, pipeline_space: PipelineSpace | SearchSpace | None = None
     ) -> str:
         """Return a formatted string of the summary.
 
         Args:
-            pipeline_space: The PipelineSpace used for the run. If provided, this is used
-                to format the best config in a more readable way.
-
-                !!! Warning:
-
-                    This is only supported when using NePS-only optimizers. When the
-                    search space is simple enough, using `neps.algorithms.random_search`
-                    or `neps.algorithms.priorband` is not enough, as it will be
-                    transformed to a simpler HPO framework, which is incompatible with
-                    the `pipeline_space` argument.
+            pipeline_space: Optional PipelineSpace for the run. If provided, it is used
+                to format the best config in a more readable way. This is typically
+                auto-loaded from disk by the status() function.
 
         Returns:
             A formatted string of the summary.
@@ -228,7 +228,8 @@ class Summary:
             )
             if not pipeline_space:
                 best_summary += f"{best_trial.config}"
-            else:
+            elif isinstance(pipeline_space, PipelineSpace):
+                # Only PipelineSpace supports pretty formatting - SearchSpace doesn't
                 best_config_resolve = NepsCompatConverter().from_neps_config(
                     best_trial.config
                 )
@@ -278,6 +279,9 @@ class Summary:
                     else:
                         formatted_config = pipeline_config  # type: ignore
                     best_summary += f"\n\t{variables[n_pipeline]}: {formatted_config}"
+            else:
+                # SearchSpace or other space type - just use string representation
+                best_summary += f"{best_trial.config}"
 
             best_summary += f"\n    path: {best_trial.metadata.location}"
 
@@ -334,28 +338,27 @@ def status(
     root_directory: str | Path,
     *,
     print_summary: bool = False,
-    pipeline_space: PipelineSpace | None = None,
 ) -> tuple[pd.DataFrame, pd.Series]:
     """Print status information of a neps run and return results.
 
     Args:
         root_directory: The root directory given to neps.run.
         print_summary: If true, print a summary of the current run state.
-        pipeline_space: The PipelineSpace used for the run. If provided, this is used to
-                format the best config in a more readable way.
-
-                !!! Warning:
-
-                    This is only supported when using NePS-only optimizers. When the
-                    search space is simple enough, using `neps.algorithms.random_search`
-                    or `neps.algorithms.priorband` is not enough, as it will be
-                    transformed to a simpler HPO framework, which is incompatible with
-                    the `pipeline_space` argument.
 
     Returns:
         Dataframe of full results and short summary series.
     """
     root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk for pretty printing
+    pipeline_space = None
+    if print_summary:
+        from neps.api import load_pipeline_space
+
+        with contextlib.suppress(FileNotFoundError, ValueError):
+            pipeline_space = load_pipeline_space(root_directory)
+            # Note: pipeline_space can still be None if it wasn't saved, which is fine
+
     summary = Summary.from_directory(root_directory)
 
     if print_summary:

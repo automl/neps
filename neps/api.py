@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal
 import yaml
 
 from neps.normalization import _normalize_imported_config
-from neps.optimizers import AskFunction, OptimizerChoice, load_optimizer
+from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
 from neps.space.neps_spaces.neps_space import (
     adjust_evaluation_pipeline_for_neps_space,
@@ -39,9 +39,9 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: C901, D417, PLR0913
+def run(  # noqa: C901, D417, PLR0912, PLR0913
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: ConfigurationSpace | PipelineSpace,
+    pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
@@ -136,9 +136,18 @@ def run(  # noqa: C901, D417, PLR0913
                 to specify the function to call. You may also directly provide
                 an mode to import, e.g., `"my.module.something:evaluate_pipeline"`.
 
-        pipeline_space: The search space to minimize over.
+        pipeline_space: The pipeline space to minimize over.
 
-            This most direct way to specify the search space is as follows:
+            !!! tip "Optional for continuing runs"
+
+                This parameter is **required** for the first run but **optional** when
+                continuing an existing optimization. If not provided, NePS will
+                automatically load the pipeline space from `root_directory/pipeline_space.pkl`.
+
+                When provided for a continuing run, NePS will validate that it matches
+                the one saved on disk to prevent inconsistencies.
+
+            This most direct way to specify the pipeline space is as follows:
 
             ```python
             MySpace(PipelineSpace):
@@ -258,7 +267,7 @@ def run(  # noqa: C901, D417, PLR0913
         optimizer: Which optimizer to use.
 
             Not sure which to use? Leave this at `"auto"` and neps will
-            choose the optimizer based on the search space given.
+            choose the optimizer based on the pipeline space given.
 
             ??? note "Available optimizers"
 
@@ -272,7 +281,7 @@ def run(  # noqa: C901, D417, PLR0913
             ```python
             neps.run(
                 ...,
-                optimzier=("priorband",
+                optimizer=("priorband",
                     {
                         "sample_prior_first": True,
                     }
@@ -323,6 +332,27 @@ def run(  # noqa: C901, D417, PLR0913
             "`evaluations_to_spend` for limiting the number of evaluations for this run.",
         )
 
+    # Try to load pipeline_space from disk if not provided
+    if pipeline_space is None:
+        root_path = Path(root_directory)
+        if root_path.exists() and not overwrite_root_directory:
+            try:
+                pipeline_space = load_pipeline_space(root_path)
+                logger.info(
+                    "Loaded pipeline space from disk. Continuing optimization with "
+                    f"existing pipeline space from {root_path}"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                # If loading fails, we'll error below
+                logger.debug(f"Could not load pipeline space from disk: {e}")
+
+        # If still None, raise error
+        if pipeline_space is None:
+            raise ValueError(
+                "pipeline_space is required for the first run. For continuing an"
+                " existing run, the pipeline space will be loaded from disk. No existing"
+                f" pipeline space found at: {root_directory}"
+            )
     controling_params = {
         "evaluations_to_spend": evaluations_to_spend,
         "cost_to_spend": cost_to_spend,
@@ -427,6 +457,7 @@ def run(  # noqa: C901, D417, PLR0913
         overwrite_optimization_dir=overwrite_root_directory,
         sample_batch_size=sample_batch_size,
         worker_id=worker_id,
+        pipeline_space=pipeline_space,
     )
 
     post_run_csv(root_directory)
@@ -475,10 +506,10 @@ def save_pipeline_results(
     )
 
 
-def import_trials(
-    pipeline_space: SearchSpace | PipelineSpace,
+def import_trials(  # noqa: C901
     evaluated_trials: Sequence[tuple[Mapping[str, Any], UserResultDict],],
     root_directory: Path | str,
+    pipeline_space: SearchSpace | PipelineSpace | None = None,
     overwrite_root_directory: bool = False,  # noqa: FBT001, FBT002
     optimizer: (
         OptimizerChoice
@@ -497,11 +528,14 @@ def import_trials(
     removes duplicates, and updates the optimization state accordingly.
 
     Args:
-        pipeline_space (SearchSpace): The search space used for the optimization.
         evaluated_trials (Sequence[tuple[Mapping[str, Any], UserResultDict]]):
             A sequence of tuples, each containing a configuration dictionary
             and its corresponding result.
         root_directory (Path or str): The root directory of the NePS run.
+        pipeline_space (SearchSpace | PipelineSpace | None): The pipeline space
+            used for the optimization. If None, will attempt to load from the
+            root_directory. If provided and a pipeline space exists on disk, they
+            will be validated to match.
         overwrite_root_directory (bool, optional): If True, overwrite the existing
             root directory. Defaults to False.
         optimizer: The optimizer to use for importing trials.
@@ -512,7 +546,8 @@ def import_trials(
         None
 
     Raises:
-        ValueError: If any configuration or result is invalid.
+        ValueError: If any configuration or result is invalid, or if pipeline_space
+            cannot be determined (neither provided nor found on disk).
         FileNotFoundError: If the root directory does not exist.
         Exception: For unexpected errors during trial import.
 
@@ -524,10 +559,33 @@ def import_trials(
         ...     ({"param1": 0.5, "param2": 10},
         ...     UserResultDict(objective_to_minimize=-5.0)),
         ... ]
-        >>> neps.import_trials(pipeline_space, evaluated_trials, "my_results")
+        >>> neps.import_trials(evaluated_trials, "my_results", pipeline_space)
     """
     if isinstance(root_directory, str):
         root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk if not provided
+    if pipeline_space is None:
+        if root_directory.exists() and not overwrite_root_directory:
+            try:
+                pipeline_space = load_pipeline_space(root_directory)
+                logger.info(
+                    "Loaded pipeline space from disk. Importing trials with "
+                    f"existing pipeline space from {root_directory}"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                # If loading fails, we'll error below
+                logger.debug(f"Could not load pipeline space from disk: {e}")
+
+        # If still None, raise error
+        if pipeline_space is None:
+            raise ValueError(
+                "pipeline_space is required when importing trials to a new run. "
+                "For importing to an existing run, the pipeline space will be loaded "
+                f"from disk. No existing pipeline space found at: {root_directory}"
+            )
+    # Note: If pipeline_space is provided, it will be validated against the one on disk
+    # by NePSState.create_or_load() after necessary conversions are applied
 
     neps_classic_space_compatibility = check_neps_space_compatibility(optimizer)
     if neps_classic_space_compatibility in ["both", "classic"] and isinstance(
@@ -543,11 +601,11 @@ def import_trials(
     ):
         space = convert_classic_to_neps_search_space(space)
 
-    # Optimizer check, if the search space is a Pipeline and the optimizer is not a NEPS
+    # Optimizer check, if the pipeline space is a Pipeline and the optimizer is not a NEPS
     # algorithm, we raise an error, as the optimizer is not compatible.
     if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
         raise ValueError(
-            "The provided optimizer is not compatible with this complex search space. "
+            "The provided optimizer is not compatible with this complex pipeline space. "
             "Please use one that is, such as 'random_search', 'hyperband', "
             "'priorband', or 'complex_random_search'."
         )
@@ -567,6 +625,7 @@ def import_trials(
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=space,
     )
 
     normalized_trials = []
@@ -608,7 +667,7 @@ def create_config(
     """Create a configuration by prompting the user for input.
 
     Args:
-        pipeline_space: The pipeline search space to create a configuration for.
+        pipeline_space: The pipeline space to create a configuration for.
 
     Returns:
         A tuple containing the created configuration dictionary and the sampled pipeline.
@@ -633,45 +692,145 @@ def create_config(
     return NepsCompatConverter.to_neps_config(resolution_context), pipeline_dict
 
 
-def load_config(
+def load_config(  # noqa: C901, PLR0912, PLR0915
     config_path: Path | str,
-    pipeline_space: PipelineSpace,
+    pipeline_space: PipelineSpace | SearchSpace | None = None,
     config_id: str | None = None,
 ) -> dict[str, Any]:
     """Load a configuration from a neps config file.
 
     Args:
         config_path: Path to the neps config file.
-        pipeline_space: The search space used to generate the configuration.
+        pipeline_space: The pipeline space used to generate the configuration.
+            If None, will attempt to load from the NePSState directory.
         config_id: Optional config id to load, when only giving results folder.
 
     Returns:
         The loaded configuration as a dictionary.
+
+    Raises:
+        ValueError: If pipeline_space is not provided and cannot be loaded from disk.
     """
     from neps.space.neps_spaces.neps_space import NepsCompatConverter
     from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
 
+    # Try to load pipeline_space from NePSState if not provided
+    state = None  # Track state for later use in config loading
+
+    if pipeline_space is None:
+        try:
+            # Extract the root directory from config_path
+            str_path_temp = str(config_path)
+            if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                root_dir = Path(
+                    str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                )
+            else:
+                root_dir = Path(str_path_temp).parent.parent
+
+            state = NePSState.create_or_load(path=root_dir, load_only=True)
+            pipeline_space = state.lock_and_get_search_space()
+
+            if pipeline_space is None:
+                raise ValueError(
+                    "Could not load pipeline_space from disk. "
+                    "Please provide pipeline_space argument or ensure "
+                    "the NePSState was created with search_space saved."
+                )
+        except Exception as e:
+            raise ValueError(
+                f"pipeline_space not provided and could not be loaded from disk: {e}"
+            ) from e
+    else:
+        # User provided a pipeline_space - validate it matches the one on disk
+        from neps.exceptions import NePSError
+
+        try:
+            str_path_temp = str(config_path)
+            if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                root_dir = Path(
+                    str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                )
+            else:
+                root_dir = Path(str_path_temp).parent.parent
+
+            state = NePSState.create_or_load(path=root_dir, load_only=True)
+            disk_space = state.lock_and_get_search_space()
+
+            if disk_space is not None:
+                # Validate that provided space matches disk space
+                import pickle
+
+                if pickle.dumps(disk_space) != pickle.dumps(pipeline_space):
+                    raise NePSError(
+                        "The pipeline_space provided does not match the one saved on"
+                        " disk.\\nPipeline space location:"
+                        f" {root_dir / 'pipeline_space.pkl'}\\nPlease either:\\n  1."
+                        " Don't provide pipeline_space (it will be loaded"
+                        " automatically), or\\n  2. Provide the same pipeline_space that"
+                        " was used in neps.run()"
+                    )
+        except NePSError:
+            raise
+        except Exception:  # noqa: S110, BLE001
+            # If we can't load/validate, just continue with provided space
+            pass
+
+    # Determine config_id from path
     str_path = str(config_path)
+    trial_id = None
+
     if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
         if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
-            str_path += "/config.yaml"
+            # Extract trial_id from path like "configs/config_1"
+            # or "configs/config_1_rung_0"
+            trial_id = str_path.removesuffix("/").split("/")[-1]
         else:
             if config_id is None:
                 raise ValueError(
                     "When providing a results folder, you must also provide a config_id."
                 )
-            str_path = (
-                str_path.removesuffix("/").removesuffix("configs")
-                + "/configs/"
-                + config_id
-                + "/config.yaml"
-            )
+            trial_id = config_id
+    else:
+        # Extract trial_id from yaml path like "configs/config_1/config.yaml"
+        path_parts = str_path.replace("\\", "/").split("/")
+        for i, part in enumerate(path_parts):
+            if part == "configs" and i + 1 < len(path_parts):
+                trial_id = path_parts[i + 1]
+                break
 
-    config_path = Path(str_path)
+    # Use the locked method from NePSState to safely read the trial
+    if trial_id is not None and state is not None:
+        try:
+            trial = state.lock_and_get_trial_by_id(trial_id)
+            config_dict = dict(trial.config)  # Convert Mapping to dict
+        except Exception:  # noqa: BLE001
+            # Fallback to direct file read if trial can't be loaded
+            str_path_fallback = str(config_path)
+            if not str_path_fallback.endswith(".yaml") and not str_path_fallback.endswith(
+                ".yml"
+            ):
+                str_path_fallback += "/config.yaml"
+            config_path = Path(str_path_fallback)
+            with config_path.open("r") as f:
+                config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+    else:
+        # Fallback to direct file read
+        str_path_fallback = str(config_path)
+        if not str_path_fallback.endswith(".yaml") and not str_path_fallback.endswith(
+            ".yml"
+        ):
+            str_path_fallback += "/config.yaml"
+        config_path = Path(str_path_fallback)
+        with config_path.open("r") as f:
+            config_dict = yaml.load(f, Loader=yaml.SafeLoader)
 
-    with config_path.open("r") as f:
-        config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+    # Handle different pipeline space types
+    if not isinstance(pipeline_space, PipelineSpace):
+        # For SearchSpace (classic), just return the config dict
+        return dict(config_dict) if isinstance(config_dict, Mapping) else config_dict
 
+    # For PipelineSpace, resolve it
     converted_dict = NepsCompatConverter.from_neps_config(config_dict)
 
     pipeline, _ = resolve(
@@ -693,10 +852,119 @@ def load_config(
     return pipeline_dict
 
 
+def load_pipeline_space(
+    root_directory: str | Path,
+) -> PipelineSpace | SearchSpace:
+    """Load the pipeline space from a neps run directory.
+
+    This is a convenience function that loads the pipeline space that was saved
+    during a neps.run() call. The pipeline space is automatically saved to disk
+    and can be loaded to inspect it or use it with other neps utilities.
+
+    Args:
+        root_directory: Path to the neps results directory (the same path
+            that was passed to neps.run()).
+
+    Returns:
+        The pipeline space that was used in the neps run.
+
+    Raises:
+        FileNotFoundError: If no neps state is found at the given path.
+        ValueError: If no pipeline space was saved in the neps run.
+
+    Example:
+        ```python
+        # After running neps
+        neps.run(
+            evaluate_pipeline=my_function,
+            pipeline_space=MySpace(),
+            root_directory="results",
+        )
+
+        # Later, load the space
+        space = neps.load_pipeline_space("results")
+        ```
+    """
+    from neps.state import NePSState
+
+    root_directory = Path(root_directory)
+
+    try:
+        state = NePSState.create_or_load(path=root_directory, load_only=True)
+        pipeline_space = state.lock_and_get_search_space()
+
+        if pipeline_space is None:
+            raise ValueError(
+                f"No pipeline space was saved in the neps run at: {root_directory}\n"
+                "This can happen if the run was created before pipeline space "
+                "persistence was added, or if the pipeline_space.pkl file was deleted."
+            )
+
+        return pipeline_space
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"No neps state found at: {root_directory}\n"
+            "Please provide a valid neps results directory."
+        ) from e
+
+
+def load_optimizer_info(
+    root_directory: str | Path,
+) -> OptimizerInfo:
+    """Load the optimizer information from a neps run directory.
+
+    This function loads the optimizer metadata that was saved during a neps.run()
+    call, including the optimizer name and its configuration parameters. This is
+    useful for inspecting what optimizer was used and with what settings.
+
+    Args:
+        root_directory: Path to the neps results directory (the same path
+            that was passed to neps.run()).
+
+    Returns:
+        A dictionary containing:
+            - 'name': The name of the optimizer (e.g., 'bayesian_optimization')
+            - 'info': Additional optimizer configuration (e.g., initialization kwargs)
+
+    Raises:
+        FileNotFoundError: If no neps state is found at the given path.
+
+    Example:
+        ```python
+        # After running neps
+        neps.run(
+            evaluate_pipeline=my_function,
+            pipeline_space=MySpace(),
+            root_directory="results",
+            searcher="bayesian_optimization",
+        )
+
+        # Later, check what optimizer was used
+        optimizer_info = neps.load_optimizer_info("results")
+        print(f"Optimizer: {optimizer_info['name']}")
+        print(f"Config: {optimizer_info['info']}")
+        ```
+    """
+    from neps.state import NePSState
+
+    root_directory = Path(root_directory)
+
+    try:
+        state = NePSState.create_or_load(path=root_directory, load_only=True)
+        return state.lock_and_get_optimizer_info()
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"No neps state found at: {root_directory}\n"
+            "Please provide a valid neps results directory."
+        ) from e
+
+
 __all__ = [
     "create_config",
     "import_trials",
     "load_config",
+    "load_optimizer_info",
+    "load_pipeline_space",
     "run",
     "save_pipeline_results",
 ]
