@@ -28,8 +28,39 @@ class _Unset:
     def __repr__(self) -> str:
         return "<UNSET>"
 
+    def __reduce__(self) -> tuple:
+        """Custom pickle support to maintain singleton pattern across contexts."""
+        return (_get_unset_singleton, ())
+
 
 _UNSET = _Unset()
+
+
+def _get_unset_singleton() -> _Unset:
+    """Return the global _UNSET singleton.
+
+    This function is used by _Unset.__reduce__ to ensure the singleton
+    pattern is maintained when pickling and unpickling.
+    """
+    return _UNSET
+
+
+def _reconstruct_pipeline_space(attrs: Mapping[str, Any]) -> PipelineSpace:
+    """Reconstruct a PipelineSpace from its attributes.
+
+    This function is used by __reduce__ to enable pickling of PipelineSpace
+    instances across different module contexts.
+
+    Args:
+        attrs: A mapping of attribute names to their values.
+
+    Returns:
+        A new PipelineSpace instance with the specified attributes.
+    """
+    space = PipelineSpace()
+    for name, value in attrs.items():
+        setattr(space, name, value)
+    return space
 
 
 def _parameters_are_equivalent(param1: Any, param2: Any) -> bool:
@@ -185,6 +216,20 @@ class Fidelity(Resolvable, Generic[T]):
 
 class PipelineSpace(Resolvable):
     """A class representing a pipeline in NePS spaces."""
+
+    def __reduce__(self) -> tuple:
+        """Custom pickle support to make PipelineSpace serializable across contexts.
+
+        This method enables PipelineSpace instances (including custom subclasses)
+        to be pickled and unpickled even when the original class definition is not
+        available (e.g., when defined in __main__ or a notebook).
+
+        Returns:
+            A tuple (callable, args) for reconstructing the object.
+        """
+        # Store the attributes instead of the class definition
+        attrs = dict(self.get_attrs())
+        return (_reconstruct_pipeline_space, (attrs,))
 
     @property
     def fidelity_attrs(self) -> Mapping[str, Fidelity]:

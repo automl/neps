@@ -341,12 +341,12 @@ class NePSState:
             return trials
 
     def lock_and_import_trials(
-        self, data: list, *, worker_id: str
+        self, imported_configs: list, *, worker_id: str
     ) -> Trial | list[Trial]:
         """Acquire the state lock and import trials from external data.
 
         Args:
-            data: List of trial dictionaries to import.
+            imported_configs: List of trial dictionaries to import.
             worker_id: The worker ID performing the import.
 
         Returns:
@@ -357,11 +357,15 @@ class NePSState:
             NePSError: If storing or reporting trials fails.
         """
         with self._optimizer_lock.lock(), gc_disabled():
-            trials = Trial.load_from_dict(data=data, worker_id=worker_id)
+            imported_configs = Trial.load_from_dict(
+                data=imported_configs,
+                worker_id=worker_id,
+                trial_directory=self._trial_repo.directory,
+            )
 
             with self._trial_lock.lock():
-                self._trial_repo.store_new_trial(trials)
-                for trial in trials:
+                self._trial_repo.store_new_trial(imported_configs)
+                for trial in imported_configs:
                     assert trial.report is not None
                     self._report_trial_evaluation(
                         trial=trial,
@@ -373,7 +377,7 @@ class NePSState:
                         f"Imported trial {trial.id} with result: "
                         f"{trial.report.objective_to_minimize}."
                     )
-            return trials
+            return imported_configs
 
     def lock_and_report_trial_evaluation(
         self,
