@@ -140,7 +140,6 @@ def run_import_trials(optimizer):
         integer1 = neps.Integer(lower=0, upper=1)
         integer2 = neps.Integer(lower=1, upper=1000, log=True)
 
-
     logging.info(
         f"{'-'*80} Running initial evaluations for optimizer {optimizer}. {'-'*80}"
     )
@@ -166,9 +165,9 @@ def run_import_trials(optimizer):
 
     # import trials been evaluated above
     neps.import_trials(
-        ExampleSpace(),
         evaluated_trials=trials,
         root_directory=f"results/trial_import/results_{optimizer}",
+        pipeline_space=ExampleSpace(),
         overwrite_root_directory=True,
         optimizer=optimizer,
     )
@@ -180,9 +179,9 @@ def run_import_trials(optimizer):
 
     # import some trials evaluated in some other setup
     neps.import_trials(
-        ExampleSpace(),
         evaluated_trials=get_evaluated_trials(optimizer),
         root_directory=f"results/trial_import/results_{optimizer}",
+        pipeline_space=ExampleSpace(),
         optimizer=optimizer,
     )
 
