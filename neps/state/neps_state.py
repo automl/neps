@@ -267,6 +267,47 @@ class NePSState:
     all_best_configs: list = field(default_factory=list)
     """Trajectory to the newest incbumbent"""
 
+    def __eq__(self, other: object) -> bool:
+        """Compare two NePSState objects for equality.
+
+        Pipeline spaces are compared by pickle dumps to handle cases where
+        the class type differs after unpickling but the content is equivalent.
+        """
+        if not isinstance(other, NePSState):
+            return NotImplemented
+
+        # Compare all fields except _pipeline_space
+        for field_name in [
+            "path",
+            "_trial_lock",
+            "_trial_repo",
+            "_optimizer_lock",
+            "_optimizer_info_path",
+            "_optimizer_info",
+            "_optimizer_state_path",
+            "_optimizer_state",
+            "_pipeline_space_path",
+            "_err_lock",
+            "_shared_errors_path",
+            "_shared_errors",
+            "new_score",
+            "all_best_configs",
+        ]:
+            if getattr(self, field_name) != getattr(other, field_name):
+                return False
+
+        # Compare pipeline spaces by pickle dumps
+        self_space = self._pipeline_space
+        other_space = other._pipeline_space
+
+        if self_space is None and other_space is None:
+            return True
+        if self_space is None or other_space is None:
+            return False
+
+        # Compare using pickle dumps - safe and handles all cases
+        return pickle.dumps(self_space) == pickle.dumps(other_space)
+
     def lock_and_set_new_worker_id(self, worker_id: str | None = None) -> str:
         """Acquire the state lock and set a new worker id in the optimizer state.
 
@@ -698,7 +739,7 @@ class NePSState:
         else:
             assert optimizer_info is not None
             assert optimizer_state is not None
-            assert pipeline_space is not None
+            # TODO: assert pipeline_space is None -> optional for backward compatibility
 
         path.mkdir(parents=True, exist_ok=True)
         config_dir = path / "configs"

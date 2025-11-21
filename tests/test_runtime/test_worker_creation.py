@@ -24,6 +24,7 @@ def neps_state(tmp_path: Path) -> NePSState:
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=ASpace(),
     )
 
 

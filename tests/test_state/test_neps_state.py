@@ -197,6 +197,9 @@ def case_neps_state_filebased(
     optimizer_info: OptimizerInfo,
     shared_state: dict[str, Any],
 ) -> NePSState:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     new_path = tmp_path / "neps_state"
     return NePSState.create_or_load(
         path=new_path,
@@ -206,6 +209,7 @@ def case_neps_state_filebased(
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state=shared_state,
         ),
+        pipeline_space=TestSpace(),
     )
 
 

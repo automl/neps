@@ -30,14 +30,14 @@ class SimpleSpace(PipelineSpace):
     c = Integer(0, 10)
 
 
-class TestSpace1(PipelineSpace):
+class Space1(PipelineSpace):
     """First test space for validation."""
 
     x = Float(0, 10)
     y = Integer(1, 10)
 
 
-class TestSpace2(PipelineSpace):
+class Space2(PipelineSpace):
     """Second test space (different from TestSpace1)."""
 
     x = Float(0, 10)
@@ -254,6 +254,7 @@ def test_load_optimizer_info_function(tmp_path: Path) -> None:
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
+        pipeline_space=SimpleSpace(),
     )
 
     # Load using the utility function
@@ -292,14 +293,14 @@ def test_import_trials_saves_search_space(tmp_path: Path) -> None:
     import_trials(
         evaluated_trials=evaluated_trials,
         root_directory=root_dir,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
     )
 
     # Verify the search space was saved
     loaded_space = load_pipeline_space(root_dir)
     assert loaded_space is not None
     # import_trials may convert PipelineSpace to SearchSpace, so check for SearchSpace
-    assert isinstance(loaded_space, TestSpace1 | SearchSpace)
+    assert isinstance(loaded_space, Space1 | SearchSpace)
     # Verify it has the correct parameters by checking the keys
     if isinstance(loaded_space, SearchSpace):
         assert "x" in loaded_space
@@ -321,7 +322,7 @@ def test_import_trials_validates_search_space(tmp_path: Path) -> None:
     import_trials(
         evaluated_trials=evaluated_trials,
         root_directory=root_dir,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
     )
 
     # Try to import again with a different space - should raise error
@@ -329,7 +330,7 @@ def test_import_trials_validates_search_space(tmp_path: Path) -> None:
         import_trials(
             evaluated_trials=evaluated_trials,
             root_directory=root_dir,
-            pipeline_space=TestSpace2(),
+            pipeline_space=Space2(),
         )
 
 
@@ -348,7 +349,7 @@ def test_import_trials_without_space_loads_from_disk(tmp_path: Path) -> None:
     import_trials(
         evaluated_trials=evaluated_trials_1,
         root_directory=root_dir,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
     )
 
     # Second import without providing space - should load from disk
@@ -406,7 +407,7 @@ def test_import_trials_validates_provided_space_against_disk(tmp_path: Path) -> 
     import_trials(
         evaluated_trials=evaluated_trials_1,
         root_directory=root_dir,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
     )
 
     # Second import explicitly providing the same space - should work
@@ -417,7 +418,7 @@ def test_import_trials_validates_provided_space_against_disk(tmp_path: Path) -> 
     import_trials(
         evaluated_trials=evaluated_trials_2,
         root_directory=root_dir,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
     )
 
     # Third import with different space - should fail
@@ -425,7 +426,7 @@ def test_import_trials_validates_provided_space_against_disk(tmp_path: Path) -> 
         import_trials(
             evaluated_trials=evaluated_trials_2,
             root_directory=root_dir,
-            pipeline_space=TestSpace2(),
+            pipeline_space=Space2(),
         )
 
 

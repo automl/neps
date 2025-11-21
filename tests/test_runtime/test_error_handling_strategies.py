@@ -11,7 +11,7 @@ from neps.exceptions import WorkerRaiseError
 from neps.optimizers import OptimizerInfo
 from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.space import HPOFloat, SearchSpace
+from neps.space.neps_spaces.parameters import Float, PipelineSpace
 from neps.state import (
     DefaultReportValues,
     NePSState,
@@ -25,6 +25,9 @@ from neps.state import (
 
 @fixture
 def neps_state(tmp_path: Path) -> NePSState:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
@@ -33,6 +36,7 @@ def neps_state(tmp_path: Path) -> NePSState:
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state=None,
         ),
+        pipeline_space=TestSpace(),
     )
 
 
@@ -44,7 +48,10 @@ def test_worker_raises_when_error_in_self(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": HPOFloat(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(TestSpace())
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -82,7 +89,10 @@ def test_worker_raises_when_error_in_self(
 
 
 def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
-    optimizer = random_search(SearchSpace({"a": HPOFloat(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(TestSpace())
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.RAISE_ANY_ERROR,  # <- Highlight
         default_report_values=DefaultReportValues(),
@@ -140,7 +150,10 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     neps_state: NePSState,
     on_error: OnErrorPossibilities,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": HPOFloat(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(TestSpace())
     settings = WorkerSettings(
         on_error=on_error,  # <- Highlight
         default_report_values=DefaultReportValues(),

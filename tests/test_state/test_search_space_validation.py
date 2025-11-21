@@ -23,14 +23,14 @@ from neps.space.neps_spaces.parameters import Float, Integer, PipelineSpace
 from neps.state import NePSState
 
 
-class TestSpace1(PipelineSpace):
+class Space1(PipelineSpace):
     """First test pipeline space."""
 
     x = Float(0.0, 1.0)
     y = Integer(1, 10)
 
 
-class TestSpace2(PipelineSpace):
+class Space2(PipelineSpace):
     """Different test pipeline space."""
 
     a = Float(0.0, 2.0)
@@ -56,7 +56,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
     # Create initial state with TestSpace1
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -65,7 +65,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
     with pytest.raises(NePSError, match="pipeline space on disk does not match"):
         neps.run(
             evaluate_pipeline=eval_fn2,
-            pipeline_space=TestSpace2(),
+            pipeline_space=Space2(),
             root_directory=str(root_dir),
             evaluations_to_spend=2,
         )
@@ -78,7 +78,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     # Create initial state with TestSpace1
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -117,7 +117,7 @@ def test_load_only_does_not_validate(tmp_path: Path, caplog):
     # Create initial state
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -146,7 +146,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
     # Create run with TestSpace1
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -162,7 +162,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
 
     # Try to load with wrong pipeline_space - should raise error
     with pytest.raises(NePSError, match="pipeline_space provided does not match"):
-        neps.load_config(config_path, pipeline_space=TestSpace2())
+        neps.load_config(config_path, pipeline_space=Space2())
 
 
 def test_load_config_without_space_auto_loads(tmp_path: Path):
@@ -172,7 +172,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
     # Create run
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -199,7 +199,7 @@ def test_ddp_runtime_loads_search_space(tmp_path: Path):
     # Create initial state with search space
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -220,7 +220,7 @@ def test_status_without_space_works(tmp_path: Path):
     # Create a run
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -237,7 +237,7 @@ def test_status_handles_missing_search_space_gracefully(tmp_path: Path):
     # Create a run
     neps.run(
         evaluate_pipeline=eval_fn1,
-        pipeline_space=TestSpace1(),
+        pipeline_space=Space1(),
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
