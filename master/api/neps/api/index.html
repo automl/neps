@@ -5883,6 +5883,12 @@ the run. This is, e.g., useful when debugging a evaluate_pipeline function.</p>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>Number of evaluations this specific call/worker should do.</p>
+<details class="note">
+<summary>Limitation on Async mode</summary>
+<p>Currently, there is no specific number to control number of parallel evaluations running with
+the same worker, so in case you want to limit the number of parallel evaluations,
+it's crucial to limit the <code>evaluations_to_spend</code> accordingly.</p>
+</details>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -6784,10 +6790,10 @@ runtime to run your optimizer.</p>
 <a id="__codelineno-0-197" name="__codelineno-0-197"></a><span class="sd">            the run. This is, e.g., useful when debugging a evaluate_pipeline function.</span>
 <a id="__codelineno-0-198" name="__codelineno-0-198"></a>
 <a id="__codelineno-0-199" name="__codelineno-0-199"></a><span class="sd">        evaluations_to_spend: Number of evaluations this specific call/worker should do.</span>
-<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">        ??? note &quot;Limitation on Async mode&quot;</span>
-<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">            Currently, there is no specific number to control number of parallel evaluations running with</span>
-<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">            the same worker, so in case you want to limit the number of parallel evaluations,</span>
-<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">            it&#39;s crucial to limit the `evaluations_to_spend` accordingly.</span>
+<a id="__codelineno-0-200" name="__codelineno-0-200"></a><span class="sd">            ??? note &quot;Limitation on Async mode&quot;</span>
+<a id="__codelineno-0-201" name="__codelineno-0-201"></a><span class="sd">                Currently, there is no specific number to control number of parallel evaluations running with</span>
+<a id="__codelineno-0-202" name="__codelineno-0-202"></a><span class="sd">                the same worker, so in case you want to limit the number of parallel evaluations,</span>
+<a id="__codelineno-0-203" name="__codelineno-0-203"></a><span class="sd">                it&#39;s crucial to limit the `evaluations_to_spend` accordingly.</span>
 <a id="__codelineno-0-204" name="__codelineno-0-204"></a>
 <a id="__codelineno-0-205" name="__codelineno-0-205"></a><span class="sd">        continue_until_max_evaluation_completed:</span>
 <a id="__codelineno-0-206" name="__codelineno-0-206"></a><span class="sd">            If true, stop only after evaluations_to_spend have fully completed. In other words,</span>
