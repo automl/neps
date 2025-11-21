@@ -649,7 +649,7 @@ class NePSState:
             ]
 
     @classmethod
-    def create_or_load(  # noqa: C901, PLR0912
+    def create_or_load(  # noqa: C901, PLR0912, PLR0915
         cls,
         path: Path,
         *,
@@ -671,6 +671,8 @@ class NePSState:
 
             In principal, we could allow multiple optimizers to be run and share
             the same set of trials.
+
+            We do the same check for the pipeline space, if provided.
 
         Args:
             path: The directory to create the state in.
@@ -696,6 +698,7 @@ class NePSState:
         else:
             assert optimizer_info is not None
             assert optimizer_state is not None
+            assert pipeline_space is not None
 
         path.mkdir(parents=True, exist_ok=True)
         config_dir = path / "configs"
@@ -719,8 +722,9 @@ class NePSState:
             if not load_only and existing_info != optimizer_info:
                 raise NePSError(
                     "The optimizer info on disk does not match the one provided."
-                    f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
-                    f"\n\nLoaded the one on disk from {path}."
+                    f"\nOn disk: {existing_info}"
+                    f"\n   Loaded from {path}."
+                    f"\nProvided: {optimizer_info}"
                 )
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
@@ -738,22 +742,40 @@ class NePSState:
                     )
                     existing_space = None
                 else:
-                    if (
-                        not load_only
-                        and pipeline_space is not None
-                        and pickle.dumps(existing_space) != pickle.dumps(pipeline_space)
-                    ):
-                        # Strictly validate that pipeline spaces match
-                        # We use pickle dumps to compare since pipeline spaces may not
-                        # implement __eq__
-                        raise NePSError(
-                            "The pipeline space on disk does not match the one"
-                            " provided.\nPipeline space is saved at:"
-                            f" {pipeline_space_path}\nIf you want to start a new"
-                            " run with a different pipeline space, use a"
-                            " different root_directory or set"
-                            " overwrite_root_directory=True."
-                        )
+                    if not load_only and pipeline_space is not None:
+                        # Compare semantic attributes instead of raw pickle bytes
+                        # This allows trivial changes like renaming the space class
+                        from neps.space.neps_spaces.parameters import PipelineSpace as PS
+
+                        if isinstance(existing_space, PS) and isinstance(
+                            pipeline_space, PS
+                        ):
+                            # Compare the actual parameter definitions
+                            if pickle.dumps(existing_space.get_attrs()) != pickle.dumps(
+                                pipeline_space.get_attrs()
+                            ):
+                                raise NePSError(
+                                    "The pipeline space parameters on disk do not match"
+                                    " those provided.\nPipeline space is saved at:"
+                                    f" {pipeline_space_path}\n\nTo continue this run:"
+                                    " either omit the pipeline_space parameter or use"
+                                    " neps.load_pipeline_space() to load the existing"
+                                    " one.\n\nTo start a new run with different"
+                                    " parameters, use a different root_directory or set"
+                                    " overwrite_root_directory=True."
+                                )
+                        elif pickle.dumps(existing_space) != pickle.dumps(pipeline_space):
+                            # Fallback for non-PipelineSpace objects (SearchSpace)
+                            raise NePSError(
+                                "The pipeline space on disk does not match the one"
+                                " provided.\nPipeline space is saved at:"
+                                f" {pipeline_space_path}\n\nTo continue this run: either"
+                                " omit the pipeline_space parameter or use"
+                                " neps.load_pipeline_space() to load the existing"
+                                " one.\n\nTo start a new run with a different pipeline"
+                                " space, use a different root_directory or set"
+                                " overwrite_root_directory=True."
+                            )
                     pipeline_space = existing_space
             elif pipeline_space is None and not load_only:
                 # No pipeline space on disk and none provided for a new/continued run

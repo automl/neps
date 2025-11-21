@@ -39,7 +39,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: C901, D417, PLR0912, PLR0913
+def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
     *,
@@ -197,10 +197,10 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
         evaluations_to_spend: Number of evaluations this specific call/worker should do.
-        ??? note "Limitation on Async mode"
-            Currently, there is no specific number to control number of parallel evaluations running with
-            the same worker, so in case you want to limit the number of parallel evaluations,
-            it's crucial to limit the `evaluations_to_spend` accordingly.
+            ??? note "Limitation on Async mode"
+                Currently, there is no specific number to control number of parallel evaluations running with
+                the same worker, so in case you want to limit the number of parallel evaluations,
+                it's crucial to limit the `evaluations_to_spend` accordingly.
 
         continue_until_max_evaluation_completed:
             If true, stop only after evaluations_to_spend have fully completed. In other words,
@@ -368,6 +368,29 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
+
+    # Check if we're continuing an existing run and should load the optimizer from disk
+    root_path = Path(root_directory)
+    optimizer_info_path = root_path / "optimizer_info.yaml"
+    is_continuing_run = optimizer_info_path.exists() and not overwrite_root_directory
+
+    # If continuing a run and optimizer is "auto" (default), load existing optimizer
+    # with its parameters
+    if is_continuing_run and optimizer == "auto":
+        try:
+            existing_optimizer_info = load_optimizer_info(root_path)
+            logger.info(
+                "Continuing optimization with existing optimizer: "
+                f"{existing_optimizer_info['name']}"
+            )
+            # Use the existing optimizer with its original parameters
+            optimizer = (
+                existing_optimizer_info["name"],
+                existing_optimizer_info["info"],
+            )  # type: ignore
+        except (FileNotFoundError, KeyError) as e:
+            # No existing optimizer found or invalid format, proceed with auto
+            logger.debug(f"Could not load existing optimizer info: {e}")
 
     # Check if the pipeline_space only contains basic HPO parameters.
     # If yes, we convert it to a classic SearchSpace, to use with the old optimizers.
