@@ -45,7 +45,7 @@ classifiers = [
 requires-python = ">=3.10,<3.13"
 
 dependencies = [
-    "numpy>=1.0,<2.0",
+    "numpy>=2.0",
     "pandas>=2.0,<3.0",
     "networkx>=2.6.3,<3.0",
     "scipy>=1.13.1",
@@ -55,6 +55,7 @@ dependencies = [
     "portalocker>=2.0,<3.0",
     "seaborn>=0.13,<0.14",
     "pyyaml>=6.0,<7.0",
+    "pymoo>=0.6.1.5",
     "tensorboard>=2.0,<3.0",
     "typing-extensions",
     "torchvision>=0.8.0",
