@@ -1,4 +1,4 @@
-# The `evaluate_pipeline` function
+# The `evaluate_pipeline` function
 
 > **TL;DR**
 > *Sync*: return a scalar or a dict ⟶ NePS records it automatically.
@@ -6,33 +6,33 @@
 
 ---
 
-## 1  Return types
+## 1 Return types
 
 | Allowed return | When to use                                 | Minimal example                              |
 | -------------- | ------------------------------------------- | -------------------------------------------- |
 | **Scalar**     | simple objective, single fidelity           | `return loss`                                |
 | **Dict**       | need cost/extra metrics                     | `{"objective_to_minimize": loss, "cost": 3}` |
-| **`None`**     | you launch the job elsewhere (SLURM, k8s …) | *see § 3 Async*                              |
+| **`None`**     | you launch the job elsewhere (SLURM, k8s …) | *see § 3 Async*                              |
 
 All other values raise a `TypeError` inside NePS.
 
-## 2  Result dictionary keys
+## 2 Result dictionary keys
 
 | key                     | purpose                                                                      | required?                     |
 | ----------------------- | ---------------------------------------------------------------------------- | ----------------------------- |
 | `objective_to_minimize` | scalar NePS will minimise                                                    | **yes**                       |
-| `cost`                  | wall‑clock, GPU‑hours, … — only if you passed `cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
+| `cost`                  | wall‑clock, GPU‑hours, … — only if you passed `cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
 | `learning_curve`        | list/np.array of intermediate objectives                                     | optional                      |
 | `extra`                 | any JSON‑serialisable blob                                                   | optional                      |
 | `exception`                 | any Exception illustrating the error in evaluation                                                   | optional                      |
 
-> **Tip**  Return exactly what you need; extra keys are preserved in the trial’s `report.yaml`.
+> **Tip**  Return exactly what you need; extra keys are preserved in the trial’s `report.yaml`.
 
 ---
 
-## 3  Asynchronous evaluation (advanced)
+## 3 Asynchronous evaluation (advanced)
 
-### 3.1 Design
+### 3.1 Design
 
 1. **The Python side** (your `evaluate_pipeline` function)
 
@@ -51,9 +51,9 @@ All other values raise a `TypeError` inside NePS.
    when it finishes.
    This writes `report.yaml` and marks the trial *SUCCESS* / *CRASHED*.
 
-### 3.2 Code walk‑through
+### 3.2 Code walk‑through
 
-`submit.py` – called by NePS synchronously
+`submit.py` – called by NePS synchronously
 
 ```python
 from pathlib import Path
@@ -67,7 +67,7 @@ def evaluate_pipeline(
     learning_rate: float,
     optimizer: str,
 ):
-    # 1) write a Slurm script
+    # 1) write a Slurm script
     script = f"""#!/bin/bash
 #SBATCH --time=0-00:10
 #SBATCH --job-name=trial_{pipeline_id}
@@ -82,15 +82,15 @@ python run_pipeline.py \
        --root_dir {root_directory}
 """)
 
-    # 2) submit and RETURN None (async)
+    # 2) submit and RETURN None (async)
     script_path = pipeline_directory / "submit.sh"
     script_path.write_text(script)
     os.system(f"sbatch {script_path}")
 
-    return None  # ⟵ signals async mode
+    return None  # ⟵ signals async mode
 ```
 
-`run_pipeline.py` – executed on the compute node
+`run_pipeline.py` – executed on the compute node
 
 ```python
 import argparse, json, time, neps
@@ -124,8 +124,6 @@ neps.save_pipeline_results(
 )
 ```
 
-### 3.3 Why this matters
-
 * No worker idles while your job is in the queue ➜ better throughput.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
 * Compatible with Successive‑Halving/ASHA — NePS just waits for `report.yaml`.
@@ -134,7 +132,7 @@ neps.save_pipeline_results(
 
 * When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `evaluations_to_spend` when calling `neps.run`.
 
-## 4  Extra injected arguments
+## 4 Extra injected arguments
 
 | name                          | provided when           | description                                                |
 | ----------------------------- | ----------------------- | ---------------------------------------------------------- |
@@ -146,7 +144,7 @@ Use them to handle warm‑starts, logging and result persistence.
 
 ---
 
-## 5  Checklist
+## 5 Checklist
 
 * [x] Return scalar **or** dict **or** `None`.
 * [x] Include `cost` when using cost budgets.

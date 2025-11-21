@@ -9,7 +9,14 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
-from neps.space.parameters import Categorical, Constant, Float, Integer, Parameter
+from neps.space.neps_spaces.parameters import PipelineSpace
+from neps.space.parameters import (
+    HPOCategorical,
+    HPOConstant,
+    HPOFloat,
+    HPOInteger,
+    Parameter,
+)
 from neps.space.search_space import SearchSpace
 
 if TYPE_CHECKING:
@@ -55,7 +62,9 @@ SerializedParameter: TypeAlias = (
 )
 
 
-def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa: C901, PLR0911, PLR0912
+def as_parameter(  # noqa: C901, PLR0911, PLR0912
+    details: SerializedParameter,
+) -> Parameter | HPOConstant:
     """Deduces the parameter type from details.
 
     Args:
@@ -73,7 +82,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
         # Constant
         case str() | int() | float():
             val = scientific_parse(details)
-            return Constant(val)
+            return HPOConstant(val)
 
         # Bounds of float or int
         case tuple((x, y)):
@@ -81,9 +90,9 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
             _y = scientific_parse(y)
             match (_x, _y):
                 case (int(), int()):
-                    return Integer(_x, _y)
+                    return HPOInteger(_x, _y)
                 case (float(), float()):
-                    return Float(_x, _y)
+                    return HPOFloat(_x, _y)
                 case _:
                     raise ValueError(
                         f"Expected both 'int' or 'float' for bounds but got {type(_x)=}"
@@ -100,9 +109,9 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
             _y = scientific_parse(y)
             match (_x, _y):
                 case (int(), int()) if _x <= _y:  # 2./3.
-                    return Integer(_x, _y)
+                    return HPOInteger(_x, _y)
                 case (float(), float()) if _x <= _y:  # 2./3.
-                    return Float(_x, _y)
+                    return HPOFloat(_x, _y)
 
                 # Error case:
                 # We do have two numbers, but of different types. This could
@@ -120,7 +129,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
                     )
                 # At least one of them is a string, so we treat is as categorical.
                 case _:
-                    return Categorical(choices=[_x, _y])
+                    return HPOCategorical(choices=[_x, _y])
 
         ## Categorical list of choices (tuple is reserved for bounds)
         case Sequence() if not isinstance(details, tuple):
@@ -129,7 +138,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
             # when specifying a grid. Hence, we map over the list and convert
             # what we can
             details = [scientific_parse(d) for d in details]
-            return Categorical(details)
+            return HPOCategorical(details)
 
         # Categorical dict declartion
         case {"choices": choices, **rest}:
@@ -139,7 +148,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
 
             # See note above about scientific notation elements
             choices = [scientific_parse(c) for c in choices]
-            return Categorical(choices, **rest)  # type: ignore
+            return HPOCategorical(choices, **rest)  # type: ignore
 
         # Constant dict declartion
         case {"value": v, **_rest}:
@@ -150,7 +159,7 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
                     f" which indicates to treat value `{v}` a constant."
                 )
 
-            return Constant(v, **_rest)  # type: ignore
+            return HPOConstant(v, **_rest)  # type: ignore
 
         # Bounds dict declartion
         case {"lower": l, "upper": u, **rest}:
@@ -160,18 +169,18 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
             _type = rest.pop("type", None)
             match _type:
                 case "int" | "integer":
-                    return Integer(_x, _y, **rest)  # type: ignore
+                    return HPOInteger(_x, _y, **rest)  # type: ignore
                 case "float" | "floating":
-                    return Float(_x, _y, **rest)  # type: ignore
+                    return HPOFloat(_x, _y, **rest)  # type: ignore
                 case None:
                     match (_x, _y):
                         case (int(), int()):
-                            return Integer(_x, _y, **rest)  # type: ignore
+                            return HPOInteger(_x, _y, **rest)  # type: ignore
                         case (float(), float()):
-                            return Float(_x, _y, **rest)  # type: ignore
+                            return HPOFloat(_x, _y, **rest)  # type: ignore
                         case _:
                             raise ValueError(
-                                f"Expected both 'int' or 'float' for bounds but"
+                                "Expected both 'int' or 'float' for bounds but"
                                 f" got {type(_x)=} and {type(_y)=}."
                             )
                 case _:
@@ -188,10 +197,10 @@ def as_parameter(details: SerializedParameter) -> Parameter | Constant:  # noqa:
 
 def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     """Converts a dictionary to a SearchSpace object."""
-    parameters: dict[str, Parameter | Constant] = {}
+    parameters: dict[str, Parameter | HPOConstant] = {}
     for name, details in pipeline_space.items():
         match details:
-            case Float() | Integer() | Categorical() | Constant():
+            case HPOFloat() | HPOInteger() | HPOCategorical() | HPOConstant():
                 parameters[name] = dataclasses.replace(details)  # copy
             case str() | int() | float() | Mapping():
                 try:
@@ -199,7 +208,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
                 except (TypeError, ValueError) as e:
                     raise ValueError(f"Error parsing parameter '{name}'") from e
             case None:
-                parameters[name] = Constant(None)
+                parameters[name] = HPOConstant(None)
             case _:
                 raise ValueError(
                     f"Unrecognized parameter type '{type(details)}' for '{name}'."
@@ -208,7 +217,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     return SearchSpace(parameters)
 
 
-def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
+def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:  # noqa: C901
     """Constructs a [`SearchSpace`][neps.space.SearchSpace]
     from a [`ConfigurationSpace`](https://automl.github.io/ConfigSpace/latest/).
 
@@ -220,19 +229,20 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
     """
     import ConfigSpace as CS
 
-    space: dict[str, Parameter | Constant] = {}
-    if any(configspace.conditions) or any(configspace.forbidden_clauses):
-        raise NotImplementedError(
-            "The ConfigurationSpace has conditions or forbidden clauses, "
-            "which are not supported by neps."
-        )
+    space: dict[str, Parameter | HPOConstant] = {}
+    if hasattr(configspace, "conditions") and hasattr(configspace, "forbidden_clauses"):  # noqa: SIM102
+        if any(configspace.conditions) or any(configspace.forbidden_clauses):
+            raise NotImplementedError(
+                "The ConfigurationSpace has conditions or forbidden clauses, "
+                "which are not supported by neps."
+            )
 
     for name, hyperparameter in configspace.items():
         match hyperparameter:
             case CS.Constant():
-                space[name] = Constant(value=hyperparameter.value)
+                space[name] = HPOConstant(value=hyperparameter.value)
             case CS.CategoricalHyperparameter():
-                space[name] = Categorical(hyperparameter.choices)  # type: ignore
+                space[name] = HPOCategorical(hyperparameter.choices)  # type: ignore
             case CS.OrdinalHyperparameter():
                 raise ValueError(
                     "NePS does not support ordinals yet, please"
@@ -240,14 +250,14 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
                     " categorical hyperparameter."
                 )
             case CS.UniformIntegerHyperparameter():
-                space[name] = Integer(
+                space[name] = HPOInteger(
                     lower=hyperparameter.lower,
                     upper=hyperparameter.upper,
                     log=hyperparameter.log,
                     prior=None,
                 )
             case CS.UniformFloatHyperparameter():
-                space[name] = Float(
+                space[name] = HPOFloat(
                     lower=hyperparameter.lower,
                     upper=hyperparameter.upper,
                     log=hyperparameter.log,
@@ -263,7 +273,7 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
                     UserWarning,
                     stacklevel=2,
                 )
-                space[name] = Float(
+                space[name] = HPOFloat(
                     lower=hyperparameter.lower,
                     upper=hyperparameter.upper,
                     log=hyperparameter.log,
@@ -278,7 +288,7 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
                     UserWarning,
                     stacklevel=2,
                 )
-                space[name] = Integer(
+                space[name] = HPOInteger(
                     lower=hyperparameter.lower,
                     upper=hyperparameter.upper,
                     log=hyperparameter.log,
@@ -295,8 +305,9 @@ def convert_to_space(
         Mapping[str, dict | str | int | float | Parameter]
         | SearchSpace
         | ConfigurationSpace
+        | PipelineSpace
     ),
-) -> SearchSpace:
+) -> SearchSpace | PipelineSpace:
     """Converts a search space to a SearchSpace object.
 
     Args:
@@ -305,7 +316,7 @@ def convert_to_space(
     Returns:
         The SearchSpace object representing the search space.
     """
-    # We quickly check ConfigSpace becuse it inherits from Mapping
+    # We quickly check ConfigSpace because it inherits from Mapping
     try:
         from ConfigSpace import ConfigurationSpace
 
@@ -319,6 +330,8 @@ def convert_to_space(
             return space
         case Mapping():
             return convert_mapping(space)
+        case PipelineSpace():
+            return space
         case _:
             raise ValueError(
                 f"Unsupported type '{type(space)}' for conversion to SearchSpace."

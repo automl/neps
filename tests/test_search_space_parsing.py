@@ -4,7 +4,14 @@ from typing import Any
 
 import pytest
 
-from neps.space import Categorical, Constant, Float, Integer, Parameter, parsing
+from neps.space import (
+    HPOCategorical,
+    HPOConstant,
+    HPOFloat,
+    HPOInteger,
+    Parameter,
+    parsing,
+)
 
 
 @pytest.mark.parametrize(
@@ -12,27 +19,27 @@ from neps.space import Categorical, Constant, Float, Integer, Parameter, parsing
     [
         (
             (0, 1),
-            Integer(0, 1),
+            HPOInteger(0, 1),
         ),
         (
             ("1e3", "1e5"),
-            Integer(1e3, 1e5),
+            HPOInteger(1e3, 1e5),
         ),
         (
             ("1e-3", "1e-1"),
-            Float(1e-3, 1e-1),
+            HPOFloat(1e-3, 1e-1),
         ),
         (
             (1e-5, 1e-1),
-            Float(1e-5, 1e-1),
+            HPOFloat(1e-5, 1e-1),
         ),
         (
             {"type": "float", "lower": 0.00001, "upper": "1e-1", "log": True},
-            Float(0.00001, 0.1, log=True),
+            HPOFloat(0.00001, 0.1, log=True),
         ),
         (
             {"type": "int", "lower": 3, "upper": 30, "is_fidelity": True},
-            Integer(3, 30, is_fidelity=True),
+            HPOInteger(3, 30, is_fidelity=True),
         ),
         (
             {
@@ -42,27 +49,27 @@ from neps.space import Categorical, Constant, Float, Integer, Parameter, parsing
                 "log": True,
                 "is_fidelity": False,
             },
-            Integer(100, 30000, log=True, is_fidelity=False),
+            HPOInteger(100, 30000, log=True, is_fidelity=False),
         ),
         (
             {"type": "float", "lower": "3.3e-5", "upper": "1.5E-1"},
-            Float(3.3e-5, 1.5e-1),
+            HPOFloat(3.3e-5, 1.5e-1),
         ),
         (
             {"type": "cat", "choices": [2, "sgd", "10e-3"]},
-            Categorical([2, "sgd", 0.01]),
+            HPOCategorical([2, "sgd", 0.01]),
         ),
         (
             0.5,
-            Constant(0.5),
+            HPOConstant(0.5),
         ),
         (
             "1e3",
-            Constant(1000),
+            HPOConstant(1000),
         ),
         (
             {"type": "cat", "choices": ["adam", "sgd", "rmsprop"]},
-            Categorical(["adam", "sgd", "rmsprop"]),
+            HPOCategorical(["adam", "sgd", "rmsprop"]),
         ),
         (
             {
@@ -72,7 +79,7 @@ from neps.space import Categorical, Constant, Float, Integer, Parameter, parsing
                 "prior": 3.3e-2,
                 "prior_confidence": "high",
             },
-            Float(0.00001, 0.1, log=True, prior=3.3e-2, prior_confidence="high"),
+            HPOFloat(0.00001, 0.1, log=True, prior=3.3e-2, prior_confidence="high"),
         ),
     ],
 )

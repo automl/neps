@@ -15,7 +15,7 @@ from typing_extensions import Protocol, override
 import torch
 
 from neps.space.domain import Domain
-from neps.space.parameters import Categorical, Float, Integer, Parameter
+from neps.space.parameters import HPOCategorical, HPOFloat, HPOInteger, Parameter
 
 V = TypeVar("V", int, float)
 
@@ -486,9 +486,9 @@ class ConfigEncoder:
                 continue
 
             match hp:
-                case Float() | Integer():
+                case HPOFloat() | HPOInteger():
                     transformers[name] = MinMaxNormalizer(hp.domain)  # type: ignore
-                case Categorical():
+                case HPOCategorical():
                     transformers[name] = CategoricalToIntegerTransformer(hp.choices)
                 case _:
                     raise ValueError(f"Unsupported parameter type: {type(hp)}.")

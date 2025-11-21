@@ -1,18 +1,110 @@
-"""Functions to get the status of a run and save the status to CSV files."""
+"""Functions to get the status of a run and save the status to CSV files.
+
+This module provides utilities for monitoring NePS optimization runs.
+"""
 
 # ruff: noqa: T201
 from __future__ import annotations
 
+import contextlib
 import itertools
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.neps_space import NepsCompatConverter
+from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
+
+if TYPE_CHECKING:
+    from neps.space.neps_spaces.parameters import PipelineSpace
+    from neps.space.search_space import SearchSpace
+else:
+    from neps.space.neps_spaces.parameters import PipelineSpace
+
+
+def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
+    """Build trace text and best config text from a list of best configurations.
+
+    Args:
+        best_configs: List of best configuration dictionaries containing
+                     'trial_id', 'score', 'config', and optional metrics.
+
+    Returns:
+        Tuple of (trace_text, best_config_text) strings.
+    """
+    trace_text = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
+
+    for best in best_configs:
+        trace_text += (
+            f"Config ID: {best['trial_id']}\nObjective to minimize: {best['score']}\n"
+            + (f"Cost: {best.get('cost', 0)}\n" if "cost" in best else "")
+            + (
+                f"Cumulative evaluations: {best.get('cumulative_evaluations', 0)}\n"
+                if "cumulative_evaluations" in best
+                else ""
+            )
+            + (
+                f"Cumulative fidelities: {best.get('cumulative_fidelities', 0)}\n"
+                if "cumulative_fidelities" in best
+                else ""
+            )
+            + (
+                f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
+                if "cumulative_cost" in best
+                else ""
+            )
+            + (
+                f"Cumulative time: {best.get('cumulative_time', 0)}\n"
+                if "cumulative_time" in best
+                else ""
+            )
+            + f"Config: {best['config']}\n"
+            + "-" * 80
+            + "\n"
+        )
+
+    best_config_text = ""
+    if best_configs:
+        # FIX: Find the actual best config by minimum score, not just the last one
+        best_config = min(best_configs, key=lambda c: c["score"])
+        best_config_text = (
+            "# Best config:"
+            f"\n\n    Config ID: {best_config['trial_id']}"
+            f"\n    Objective to minimize: {best_config['score']}"
+            + (f"\n    Cost: {best_config['cost']}" if "cost" in best_config else "")
+            + (
+                f"\n    Cumulative evaluations: {best_config['cumulative_evaluations']}"
+                if "cumulative_evaluations" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative fidelities: {best_config['cumulative_fidelities']}"
+                if "cumulative_fidelities" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
+                if "cumulative_cost" in best_config
+                else ""
+            )
+            + (
+                f"\n    Cumulative time: {best_config['cumulative_time']}"
+                if "cumulative_time" in best_config
+                else ""
+            )
+            + f"\n    Config: {best_config['config']}"
+        )
+
+    return trace_text, best_config_text
 
 
 @dataclass
@@ -69,12 +161,12 @@ class Summary:
         metadata_df = pd.DataFrame.from_records(
             [asdict(t.metadata) for t in trials]
         ).convert_dtypes()
-
-        return (
-            pd.concat([config_df, extra_df, report_df, metadata_df], axis="columns")
-            .set_index("id")
-            .dropna(how="all", axis="columns")
+        combined_df = pd.concat(
+            [config_df, extra_df, report_df, metadata_df], axis="columns"
         )
+        if combined_df.empty:
+            return combined_df
+        return combined_df.set_index("id").dropna(how="all", axis="columns")
 
     def completed(self) -> list[Trial]:
         """Return all trials which are in a completed state."""
@@ -100,8 +192,19 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(self) -> str:
-        """Return a formatted string of the summary."""
+    def formatted(  # noqa: PLR0912, C901
+        self, pipeline_space: PipelineSpace | SearchSpace | None = None
+    ) -> str:
+        """Return a formatted string of the summary.
+
+        Args:
+            pipeline_space: Optional PipelineSpace for the run. If provided, it is used
+                to format the best config in a more readable way. This is typically
+                auto-loaded from disk by the status() function.
+
+        Returns:
+            A formatted string of the summary.
+        """
         state_summary = "\n".join(
             f"    {state.name.lower()}: {len(trials)}"
             for state, trials in self.by_state.items()
@@ -115,13 +218,73 @@ class Summary:
                 best_summary = "No best found yet."
         else:
             best_trial, best_objective_to_minimize = self.best
+
+            # Format config based on whether pipeline_space_variables is provided
+
             best_summary = (
                 f"# Best Found (config {best_trial.metadata.id}):"
                 "\n"
-                f"\n    objective_to_minimize: {best_objective_to_minimize}"
-                f"\n    config: {best_trial.config}"
-                f"\n    path: {best_trial.metadata.location}"
+                f"\n    objective_to_minimize: {best_objective_to_minimize}\n    config: "
             )
+            if not pipeline_space:
+                best_summary += f"{best_trial.config}"
+            elif isinstance(pipeline_space, PipelineSpace):
+                # Only PipelineSpace supports pretty formatting - SearchSpace doesn't
+                best_config_resolve = NepsCompatConverter().from_neps_config(
+                    best_trial.config
+                )
+                pipeline_configs = []
+                variables = list(pipeline_space.get_attrs().keys()) + list(
+                    pipeline_space.fidelity_attrs.keys()
+                )
+                for variable in variables:
+                    pipeline_configs.append(
+                        neps_space.config_string.ConfigString(
+                            neps_space.convert_operation_to_string(
+                                getattr(
+                                    neps_space.resolve(
+                                        pipeline_space,
+                                        OnlyPredefinedValuesSampler(
+                                            best_config_resolve.predefined_samplings
+                                        ),
+                                        environment_values=best_config_resolve.environment_values,
+                                    )[0],
+                                    variable,
+                                )
+                            )
+                        ).pretty_format()
+                    )
+
+                for n_pipeline, pipeline_config in enumerate(pipeline_configs):
+                    if isinstance(pipeline_config, str):
+                        # Replace literal \t and \n with actual formatting
+                        formatted_config = pipeline_config.replace("\\t", "    ").replace(
+                            "\\n", "\n"
+                        )
+
+                        # Add proper indentation to each line
+                        lines = formatted_config.split("\n")
+                        indented_lines = []
+                        for i, line in enumerate(lines):
+                            if i == 0:
+                                indented_lines.append(
+                                    line
+                                )  # First line gets base indentation
+                            else:
+                                indented_lines.append(
+                                    "        " + line
+                                )  # Subsequent lines get extra indentation
+
+                        formatted_config = "\n".join(indented_lines)
+                    else:
+                        formatted_config = pipeline_config  # type: ignore
+                    best_summary += f"\n\t{variables[n_pipeline]}: {formatted_config}"
+            else:
+                # SearchSpace or other space type - just use string representation
+                best_summary += f"{best_trial.config}"
+
+            best_summary += f"\n    path: {best_trial.metadata.location}"
+
             assert best_trial.report is not None
             if best_trial.report.cost is not None:
                 best_summary += f"\n    cost: {best_trial.report.cost}"
@@ -180,16 +343,26 @@ def status(
 
     Args:
         root_directory: The root directory given to neps.run.
-        print_summary: If true, print a summary of the current run state
+        print_summary: If true, print a summary of the current run state.
 
     Returns:
         Dataframe of full results and short summary series.
     """
     root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk for pretty printing
+    pipeline_space = None
+    if print_summary:
+        from neps.api import load_pipeline_space
+
+        with contextlib.suppress(FileNotFoundError, ValueError):
+            pipeline_space = load_pipeline_space(root_directory)
+            # Note: pipeline_space can still be None if it wasn't saved, which is fine
+
     summary = Summary.from_directory(root_directory)
 
     if print_summary:
-        print(summary.formatted())
+        print(summary.formatted(pipeline_space=pipeline_space))
 
     df = summary.df()
 
@@ -226,82 +399,6 @@ def status(
     short = pd.concat([short, row])  # type: ignore
     assert isinstance(short, pd.Series)
     return df, short
-
-
-def trajectory_of_improvements(
-    root_directory: str | Path,
-) -> list[dict]:
-    """Track and write the trajectory of improving configurations over time.
-
-    Args:
-        root_directory: The root directory given to neps.run.
-
-    Returns:
-        List of dicts with improving scores and their configurations.
-    """
-    root_directory = Path(root_directory)
-    summary = Summary.from_directory(root_directory)
-
-    if summary.is_multiobjective:
-        return []
-
-    df = summary.df()
-
-    if len(df) == 0:
-        return []
-
-    if "time_sampled" not in df.columns:
-        raise ValueError("Missing `time_sampled` column in summary DataFrame.")
-
-    df = df.sort_values("time_sampled")
-
-    all_best_configs = []
-    best_score = float("inf")
-    trace_text = ""
-
-    for trial_id, row in df.iterrows():
-        if "objective_to_minimize" not in row or pd.isna(row["objective_to_minimize"]):
-            continue
-
-        score = row["objective_to_minimize"]
-        if score < best_score:
-            best_score = score
-            config = {
-                k.replace("config.", ""): v
-                for k, v in row.items()
-                if k.startswith("config.")
-            }
-
-            best = {
-                "score": score,
-                "trial_id": trial_id,
-                "config": config,
-            }
-            all_best_configs.append(best)
-
-            trace_text += (
-                f"Objective to minimize: {best['score']}\n"
-                f"Config ID: {best['trial_id']}\n"
-                f"Config: {best['config']}\n" + "-" * 80 + "\n"
-            )
-
-    summary_dir = root_directory / "summary"
-    summary_dir.mkdir(parents=True, exist_ok=True)
-    output_path = summary_dir / "best_config_trajectory.txt"
-    with output_path.open("w") as f:
-        f.write(trace_text)
-
-    if all_best_configs:
-        final_best = all_best_configs[-1]
-        best_path = summary_dir / "best_config.txt"
-        with best_path.open("w") as f:
-            f.write(
-                f"Objective to minimize: {final_best['score']}\n"
-                f"Config ID: {final_best['trial_id']}\n"
-                f"Config: {final_best['config']}\n"
-            )
-
-    return all_best_configs
 
 
 def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:

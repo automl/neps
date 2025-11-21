@@ -7,7 +7,7 @@ from pytest_cases import fixture
 from neps.optimizers import OptimizerInfo
 from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.space import Float, SearchSpace
+from neps.space.neps_spaces.parameters import Float, PipelineSpace
 from neps.state import (
     DefaultReportValues,
     NePSState,
@@ -21,19 +21,26 @@ from neps.state import (
 
 @fixture
 def neps_state(tmp_path: Path) -> NePSState:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     return NePSState.create_or_load(
         path=tmp_path / "neps_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=TestSpace(),
     )
 
 
 def test_default_values_on_error(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(pipeline_space=SearchSpace({"a": Float(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(pipeline_space=TestSpace())
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -83,7 +90,10 @@ def test_default_values_on_error(
 def test_default_values_on_not_specified(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(TestSpace())
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(
@@ -131,7 +141,10 @@ def test_default_values_on_not_specified(
 def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
     neps_state: NePSState,
 ) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(TestSpace())
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(

@@ -24,7 +24,6 @@ def make_initial_design(
     """Generate the initial design of the optimization process.
 
     Args:
-        space: The search space to use.
         encoder: The encoder to use for encoding/decoding configurations.
         sampler: The sampler to use for the initial design.
 

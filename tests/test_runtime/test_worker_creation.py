@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from neps import Float, PipelineSpace
 from neps.optimizers import OptimizerInfo
 from neps.optimizers.algorithms import random_search
 from neps.runtime import (
@@ -12,7 +13,6 @@ from neps.runtime import (
     OnErrorPossibilities,
     WorkerSettings,
 )
-from neps.space import Float, SearchSpace
 from neps.state import NePSState, OptimizationState, SeedSnapshot
 
 
@@ -24,7 +24,12 @@ def neps_state(tmp_path: Path) -> NePSState:
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=ASpace(),
     )
+
+
+class ASpace(PipelineSpace):
+    a = Float(0, 1)
 
 
 def test_create_worker_manual_id(neps_state: NePSState) -> None:
@@ -44,7 +49,8 @@ def test_create_worker_manual_id(neps_state: NePSState) -> None:
         return 1.0
 
     test_worker_id = "my_worker_123"
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+
+    optimizer = random_search(ASpace())
 
     worker = DefaultWorker.new(
         state=neps_state,
@@ -74,7 +80,7 @@ def test_create_worker_auto_id(neps_state: NePSState) -> None:
     def eval_fn(config: dict) -> float:
         return 1.0
 
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(ASpace())
 
     worker = DefaultWorker.new(
         state=neps_state,

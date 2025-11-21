@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import torch
 
-from neps.space import Categorical, ConfigEncoder, Float, Integer
+from neps.space import ConfigEncoder, HPOCategorical, HPOFloat, HPOInteger
 
 
 def test_config_encoder_pdist_calculation() -> None:
     parameters = {
-        "a": Categorical(["cat", "mouse", "dog"]),
-        "b": Integer(1, 10),
-        "c": Float(1, 10),
+        "a": HPOCategorical(["cat", "mouse", "dog"]),
+        "b": HPOInteger(1, 10),
+        "c": HPOFloat(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
@@ -43,9 +43,9 @@ def test_config_encoder_pdist_calculation() -> None:
 
 def test_config_encoder_pdist_squareform() -> None:
     parameters = {
-        "a": Categorical(["cat", "mouse", "dog"]),
-        "b": Integer(1, 10),
-        "c": Float(1, 10),
+        "a": HPOCategorical(["cat", "mouse", "dog"]),
+        "b": HPOInteger(1, 10),
+        "c": HPOFloat(1, 10),
     }
     encoder = ConfigEncoder.from_parameters(parameters)
     config1 = {"a": "cat", "b": 1, "c": 1.0}
