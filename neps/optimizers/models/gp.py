@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 import gpytorch.constraints
 import numpy as np
 import torch
+from botorch.exceptions.warnings import InputDataWarning
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
 from botorch.models.gp_regression import Log, get_covar_module_with_dim_scaled_prior
@@ -38,6 +40,8 @@ if TYPE_CHECKING:
     from neps.state.trial import Trial
 
 logger = logging.getLogger(__name__)
+
+warnings.filterwarnings("ignore", category=InputDataWarning)
 
 
 @dataclass
@@ -243,11 +247,11 @@ def optimize_acq(  # noqa: C901, PLR0915
             cat_keys = list(cats.keys())
             choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
 
+            # Step 1: Optimize acquisition function over the continuous space
             # Sample a random categorical combination and keep it fixed during
             # the continuous optimization step
             random_fixed_cat = fixed_cats[np.random.randint(len(fixed_cats))]
 
-            # --- Step 1: Optimize acquisition function over the continuous space ---
             best_x_continuous, _ = optimize_acqf(
                 acq_function=acq_fn,
                 bounds=bounds,
@@ -261,7 +265,7 @@ def optimize_acq(  # noqa: C901, PLR0915
             # Extract the numerical dims from the optimized continuous vector
             cont_dims = [i for i in range(len(encoder.domains)) if i not in cat_keys]
 
-            # --- Step 2: Wrap acquisition function for discrete search ---
+            # Step 2: Wrap acquisition function for discrete search
             def acq_discrete_only(cat_tensor: torch.Tensor) -> torch.Tensor:
                 """
                 Evaluate the acquisition function at the optimized continuous vector
@@ -290,7 +294,7 @@ def optimize_acq(  # noqa: C901, PLR0915
                 x_full_tensor = x_full_tensor.unsqueeze(1)  # [q, 1, num_dims]
                 return acq_fn(x_full_tensor)
 
-            # --- Step 3: Run BoTorch discrete local search over categorical space ---
+            # Step 3: Run BoTorch discrete local search over categorical space
             best_cat_tensor, _ = optimize_acqf_discrete_local_search(
                 acq_function=acq_discrete_only,
                 discrete_choices=choices,
@@ -304,7 +308,7 @@ def optimize_acq(  # noqa: C901, PLR0915
                 for k, v in zip(cat_keys, best_cat_tensor[0], strict=False)
             }
 
-            # --- Step 4: Return the final combined candidate ---
+            # Step 4: Final combined candidate
             best_x_full = torch.tensor(
                 [
                     best_cat_dict.get(i, float(best_x_continuous[0, i].item()))
@@ -313,7 +317,7 @@ def optimize_acq(  # noqa: C901, PLR0915
                 dtype=torch.float,
             ).unsqueeze(0)
 
-            # Optional: evaluate the final acquisition value
+            # Evaluate the final acquisition value
             with torch.no_grad():
                 best_val_final = acq_fn(best_x_full)
 
