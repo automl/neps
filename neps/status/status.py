@@ -29,7 +29,33 @@ else:
     from neps.space.neps_spaces.parameters import PipelineSpace
 
 
-def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
+def _format_config_entry(entry: dict, indent: str = "") -> str:
+    """Format a single best-config entry into a text block.
+
+    indent is a string prefixed to the first line for nicer indentation in
+    the `best_config_text` block.
+    """
+    parts: list[str] = []
+    parts.append(f"{indent}Config ID: {entry['trial_id']}")
+    parts.append(f"Objective to minimize: {entry['score']}")
+    if "cost" in entry:
+        parts.append(f"Cost: {entry['cost']}")
+
+    if "cumulative_evaluations" in entry:
+        parts.append(f"Cumulative evaluations: {entry['cumulative_evaluations']}")
+    if "cumulative_fidelities" in entry:
+        parts.append(f"Cumulative fidelities: {entry['cumulative_fidelities']}")
+    if "cumulative_cost" in entry:
+        parts.append(f"Cumulative cost: {entry['cumulative_cost']}")
+    if "cumulative_time" in entry:
+        parts.append(f"Cumulative time: {entry['cumulative_time']}")
+
+    parts.append(f"Config: {entry['config']}")
+
+    return "\n".join(parts) + "\n" + ("-" * 80) + "\n"
+
+
+def _build_incumbent_content(best_configs: list[dict]) -> str:
     """Build trace text and best config text from a list of best configurations.
 
     Args:
@@ -39,72 +65,31 @@ def _build_trace_texts(best_configs: list[dict]) -> tuple[str, str]:
     Returns:
         Tuple of (trace_text, best_config_text) strings.
     """
+    trace_content = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
+    for best in best_configs:
+        trace_content += _format_config_entry(best)
+
+    return trace_content
+
+
+def _build_optimal_set_content(best_configs: list[dict]) -> str:
+    """Build trace text and best config text from a list of best configurations.
+
+    Args:
+        best_configs: List of best configuration dictionaries containing
+                        'trial_id', 'score', 'config', and optional metrics.
+
+    Returns:
+        content: str.
+    """
     trace_text = (
         "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
     )
-
     for best in best_configs:
-        trace_text += (
-            f"Config ID: {best['trial_id']}\nObjective to minimize: {best['score']}\n"
-            + (f"Cost: {best.get('cost', 0)}\n" if "cost" in best else "")
-            + (
-                f"Cumulative evaluations: {best.get('cumulative_evaluations', 0)}\n"
-                if "cumulative_evaluations" in best
-                else ""
-            )
-            + (
-                f"Cumulative fidelities: {best.get('cumulative_fidelities', 0)}\n"
-                if "cumulative_fidelities" in best
-                else ""
-            )
-            + (
-                f"Cumulative cost: {best.get('cumulative_cost', 0)}\n"
-                if "cumulative_cost" in best
-                else ""
-            )
-            + (
-                f"Cumulative time: {best.get('cumulative_time', 0)}\n"
-                if "cumulative_time" in best
-                else ""
-            )
-            + f"Config: {best['config']}\n"
-            + "-" * 80
-            + "\n"
-        )
-
-    best_config_text = ""
-    if best_configs:
-        # FIX: Find the actual best config by minimum score, not just the last one
-        best_config = min(best_configs, key=lambda c: c["score"])
-        best_config_text = (
-            "# Best config:"
-            f"\n\n    Config ID: {best_config['trial_id']}"
-            f"\n    Objective to minimize: {best_config['score']}"
-            + (f"\n    Cost: {best_config['cost']}" if "cost" in best_config else "")
-            + (
-                f"\n    Cumulative evaluations: {best_config['cumulative_evaluations']}"
-                if "cumulative_evaluations" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative fidelities: {best_config['cumulative_fidelities']}"
-                if "cumulative_fidelities" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative cost: {best_config['cumulative_cost']}"
-                if "cumulative_cost" in best_config
-                else ""
-            )
-            + (
-                f"\n    Cumulative time: {best_config['cumulative_time']}"
-                if "cumulative_time" in best_config
-                else ""
-            )
-            + f"\n    Config: {best_config['config']}"
-        )
-
-    return trace_text, best_config_text
+        trace_text += _format_config_entry(best)
+    return trace_text
 
 
 @dataclass
@@ -297,11 +282,6 @@ class Summary:
     def from_directory(cls, root_directory: str | Path) -> Summary:
         """Create a summary from a neps run directory."""
         root_directory = Path(root_directory)
-
-        is_multiobjective: bool = False
-        best: tuple[Trial, float] | None = None
-        by_state: dict[State, list[Trial]] = {s: [] for s in State}
-
         # NOTE: We don't lock the shared state since we are just reading and don't need to
         # make decisions based on the state
         try:
@@ -313,7 +293,20 @@ class Summary:
 
         trials = shared_state.lock_and_read_trials()
 
-        for _trial_id, trial in trials.items():
+        return cls.from_trials(trials)
+
+    @classmethod
+    def from_trials(cls, trials: dict[str, Trial]) -> Summary:
+        """Summarize a mapping of trials into (by_state, is_multiobjective, best).
+
+        This extracts the core loop from `Summary.from_directory` so callers that
+        already have a `trials` mapping can reuse the logic without re-reading state.
+        """
+        is_multiobjective: bool = False
+        best: tuple[Trial, float] | None = None
+        by_state: dict[State, list[Trial]] = {s: [] for s in State}
+
+        for trial in trials.values():
             state = trial.metadata.state
             by_state[state].append(trial)
 
