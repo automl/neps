@@ -4,17 +4,33 @@ from __future__ import annotations
 
 import re
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
+from filelock import FileLock
 
 import neps
 from neps.optimizers import algorithms
+from neps.runtime import DefaultWorker
 from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
     PipelineSpace,
+)
+from neps.state.neps_state import NePSState
+from neps.state.optimizer import OptimizationState
+from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.settings import (
+    DefaultReportValues,
+    OnErrorPossibilities,
+    WorkerSettings,
+)
+from neps.state.trial import (
+    MetaData,
+    State as TrialState,
+    Trial,
 )
 
 
@@ -679,25 +695,6 @@ def test_best_config_multiobjective_frontier():
     Pareto-optimal configurations (two entries) when two non-dominated
     objective vectors are present.
     """
-    import time
-
-    from filelock import FileLock
-
-    from neps.runtime import DefaultWorker
-    from neps.state.neps_state import NePSState
-    from neps.state.optimizer import OptimizationState
-    from neps.state.seed_snapshot import SeedSnapshot
-    from neps.state.settings import (
-        DefaultReportValues,
-        OnErrorPossibilities,
-        WorkerSettings,
-    )
-    from neps.state.trial import (
-        MetaData,
-        State as TrialState,
-        Trial,
-    )
-
     with tempfile.TemporaryDirectory() as tmp_dir:
         root_directory = Path(tmp_dir) / "mo_test"
 
