@@ -12,7 +12,7 @@ import os
 import shutil
 import time
 import traceback
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -49,7 +49,12 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.status.status import _build_trace_texts, _initiate_summary_csv, status
+from neps.status.status import (
+    _build_incumbent_content,
+    _build_optimal_set_content,
+    _initiate_summary_csv,
+    status,
+)
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
@@ -453,44 +458,33 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
-    def _update_trajectory_history(
-        self, trial: Trial, score: float, resource_usage: ResourceUsage
-    ) -> None:
-        """Updates the state's internal list of best configurations."""
-        config_dict = {
-            "score": score,
-            "trial_id": trial.id,
-            "config": trial.config,
-        }
-        if trial.report is not None and trial.report.cost is not None:
-            config_dict["cost"] = trial.report.cost
-
-        config_dict.update(resource_usage.to_trajectory_dict())
-
-        self.state.all_best_configs.append(config_dict)
-
     def _write_trajectory_files(
         self,
+        incumbent_configs: list,
+        optimal_configs: list,
         trace_lock: FileLock,
         improvement_trace_path: Path,
         best_config_path: Path,
         final_stopping_criteria: ResourceUsage | None = None,
     ) -> None:
         """Writes the trajectory and best config files safely."""
+        trace_text = _build_incumbent_content(incumbent_configs)
+
+        best_config_text = _build_optimal_set_content(optimal_configs)
+
+        if final_stopping_criteria:
+            best_config_text += "\n" + "-" * 80
+            best_config_text += "\nFinal cumulative metrics (Assuming completed run):"
+            for metric, value in final_stopping_criteria.to_trajectory_dict().items():
+                best_config_text += f"\n{metric}: {value}"
+
         with trace_lock:
-            trace_text, best_config_text = _build_trace_texts(self.state.all_best_configs)
-
-            if final_stopping_criteria:
-                best_config_text += "\n" + "-" * 80
-                best_config_text += "\nFinal cumulative metrics (Assuming completed run):"
-                for metric, value in final_stopping_criteria.to_trajectory_dict().items():
-                    best_config_text += f"\n{metric}: {value}"
-
-            with improvement_trace_path.open(mode="w") as f:
-                f.write(trace_text)
-
-            with best_config_path.open(mode="w") as f:
-                f.write(best_config_text)
+            if incumbent_configs:
+                with improvement_trace_path.open(mode="w") as f:
+                    f.write(trace_text)
+            if optimal_configs:
+                with best_config_path.open(mode="w") as f:
+                    f.write(best_config_text)
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -513,21 +507,6 @@ class DefaultWorker:
                         trials
                     )
                     if should_stop is not False:
-                        main_dir = Path(self.state.path)
-                        summary_dir = main_dir / "summary"
-                        improvement_trace_path = (
-                            summary_dir / "best_config_trajectory.txt"
-                        )
-                        best_config_path = summary_dir / "best_config.txt"
-                        _trace_lock = FileLock(".trace.lock")
-
-                        self._write_trajectory_files(
-                            trace_lock=_trace_lock,
-                            improvement_trace_path=improvement_trace_path,
-                            best_config_path=best_config_path,
-                            final_stopping_criteria=stop_criteria,
-                        )
-
                         logger.info(should_stop)
                         return "break"
 
@@ -648,27 +627,6 @@ class DefaultWorker:
             " the root directory: %s",
             summary_dir,
         )
-
-        previous_trials = self.state.lock_and_read_trials()
-        if len(previous_trials):
-            self.load_incumbent_trace(
-                previous_trials,
-                _trace_lock,
-                self.state,
-                improvement_trace_path,
-                best_config_path,
-            )
-
-        # FIX: Use the actual best score from trajectory, not state.new_score
-        # state.new_score may have been set to the last processed trial, not the best
-        _best_score_so_far = float("inf")
-        if self.state.all_best_configs:
-            # Get the true minimum from all best configs
-            _best_score_so_far = min(
-                config["score"] for config in self.state.all_best_configs
-            )
-            # Update state.new_score to the actual best
-            self.state.new_score = _best_score_so_far
 
         optimizer_name = self.state._optimizer_info["name"]
         logger.info("Using optimizer: %s", optimizer_name)
@@ -801,39 +759,14 @@ class DefaultWorker:
                 for _key, callback in _TRIAL_END_CALLBACKS.items():
                     callback(trial_to_eval)
 
-            if (
-                report.objective_to_minimize is not None
-                and report.err is None
-                and not isinstance(report.objective_to_minimize, list)
-            ):
-                self.state.new_score = report.objective_to_minimize
-                if self.state.new_score < _best_score_so_far:
-                    _best_score_so_far = self.state.new_score
-                    logger.info(
-                        "New best: trial %s with objective %s",
-                        evaluated_trial.id,
-                        self.state.new_score,
-                    )
-
-                    # Note: accessing .latest() usually requires a lock, but we just
-                    # finished reporting, so this worker is roughly in sync.
-                    # For absolute safety on cumulative resource usage,
-                    # one might read from disk again,
-                    # but typically this is sufficient for the trace approximation.
-                    # but here we just recalc based on current state.
-                    current_resources = self._calculate_total_resource_usage(
-                        self.state._trial_repo.latest(),
-                        include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-                    )
-
-                    self._update_trajectory_history(
-                        evaluated_trial, self.state.new_score, current_resources
-                    )
-
-                    self._write_trajectory_files(
-                        trace_lock=_trace_lock,
-                        improvement_trace_path=improvement_trace_path,
-                        best_config_path=best_config_path,
+            if report.objective_to_minimize is not None and report.err is None:
+                with self.state._trial_lock.lock():
+                    trials = self.state._trial_repo.latest()
+                    self.load_incumbent_trace(
+                        trials,
+                        _trace_lock,
+                        improvement_trace_path,
+                        best_config_path,
                     )
 
                 full_df, short = status(main_dir)
@@ -850,9 +783,8 @@ class DefaultWorker:
 
     def load_incumbent_trace(
         self,
-        previous_trials: dict[str, Trial],
+        trials: dict[str, Trial],
         _trace_lock: FileLock,
-        state: NePSState,
         improvement_trace_path: Path,
         best_config_path: Path,
     ) -> None:
@@ -861,7 +793,7 @@ class DefaultWorker:
         configurations.
 
         Args:
-            previous_trials (dict): A dictionary of previous trials.
+            trials (dict): A dictionary of the trials.
             _trace_lock (FileLock): A file lock to ensure thread-safe writing.
             state (NePSState): The current NePS state.
             settings (WorkerSettings): The worker settings.
@@ -869,42 +801,67 @@ class DefaultWorker:
             best_config_path (Path): Path to the best configuration file.
             optimizer (AskFunction): The optimizer used for sampling configurations.
         """
-        # Clear any existing entries to prevent duplicates
-        state.all_best_configs.clear()
-        _best_score_so_far = float("inf")
+        if not trials:
+            return
+
+        # Clear any existing entries to prevent duplicates and rebuild a
+        # non-dominated frontier from previous trials in chronological order.
+        incumbent = []
 
         running_usage = ResourceUsage()
 
-        sorted_trials = sorted(
-            previous_trials.values(),
+        sorted_trials: list[Trial] = sorted(
+            trials.values(),
             key=lambda t: (
                 t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
             ),
         )
+        evaluated_trials: list[Trial] = [
+            trial
+            for trial in sorted_trials
+            if trial.report is not None and trial.report.objective_to_minimize is not None
+        ]
+        is_mo = any(
+            isinstance(trial.report.objective_to_minimize, list)  # type: ignore[union-attr]
+            for trial in evaluated_trials
+        )
 
-        for evaluated_trial in sorted_trials:
-            if (
-                evaluated_trial.report is not None
-                and evaluated_trial.report.objective_to_minimize is not None
-            ):
-                single_trial_usage = self._calculate_total_resource_usage(
-                    {evaluated_trial.id: evaluated_trial}
-                )
-                running_usage += single_trial_usage
+        frontier: list[Trial] = []
+        trajectory_confs: dict[str, dict[str, float | int]] = {}
 
-                if isinstance(evaluated_trial.report.objective_to_minimize, list):
-                    continue
+        for evaluated_trial in evaluated_trials:
+            single_trial_usage = self._calculate_total_resource_usage(
+                {evaluated_trial.id: evaluated_trial}
+            )
+            running_usage += single_trial_usage
 
-                state.new_score = evaluated_trial.report.objective_to_minimize
-                if state.new_score is not None and state.new_score < _best_score_so_far:
-                    _best_score_so_far = state.new_score
-                    current_snapshot = ResourceUsage(**asdict(running_usage))
+            assert evaluated_trial.report is not None  # for mypy
+            new_trial_obj = evaluated_trial.report.objective_to_minimize
 
-                    self._update_trajectory_history(
-                        evaluated_trial, state.new_score, current_snapshot
-                    )
+            if not _is_dominated(new_trial_obj, frontier):
+                frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
+                if not is_mo:
+                    incumbent.append(evaluated_trial)
+                current_snapshot = ResourceUsage(**asdict(running_usage))
+                config_dict = {
+                    "score": new_trial_obj,
+                    "trial_id": evaluated_trial.id,
+                    "config": evaluated_trial.config,
+                }
+                if evaluated_trial.report.cost is not None:
+                    config_dict["cost"] = evaluated_trial.report.cost
+
+                config_dict.update(current_snapshot.to_trajectory_dict())
+                trajectory_confs[evaluated_trial.id] = config_dict
+
+        optimal_configs: list[dict] = [trajectory_confs[trial.id] for trial in frontier]
+        incumbent_configs: list[dict] = [
+            trajectory_confs[trial.id] for trial in incumbent
+        ]
 
         self._write_trajectory_files(
+            incumbent_configs=incumbent_configs,
+            optimal_configs=optimal_configs,
             trace_lock=_trace_lock,
             improvement_trace_path=improvement_trace_path,
             best_config_path=best_config_path,
@@ -1174,3 +1131,59 @@ def _make_default_report_values(
         learning_curve_on_error=None,
         learning_curve_if_not_provided="objective_to_minimize",
     )
+
+
+def _to_sequence(score: float | Sequence[float]) -> list[float]:
+    """Normalize score to a list of floats for pareto comparisons.
+
+    Scalars become single-element lists. Sequences are converted to lists.
+    """
+    if isinstance(score, Sequence):
+        return [float(x) for x in score]
+    return [float(score)]
+
+
+def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
+    """Return True if `candidate` is dominated by any point in `frontier`.
+
+    `frontier` is a list of score sequences (as lists).
+    """
+    cand_seq = _to_sequence(candidate)
+
+    for t in frontier:
+        if t.report is None:
+            continue
+        f_seq = _to_sequence(t.report.objective_to_minimize)
+        if len(f_seq) != len(cand_seq):
+            continue
+        if all(fi <= ci for fi, ci in zip(f_seq, cand_seq, strict=False)) and any(
+            fi < ci for fi, ci in zip(f_seq, cand_seq, strict=False)
+        ):
+            return True
+    return False
+
+
+def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
+    """Add candidate Trial to frontier and remove frontier Trials dominated by it.
+
+    Frontier is a list of Trial objects (with reports). Returns the new frontier
+    as a list of Trials.
+    """
+    if candidate.report is None:
+        return frontier
+
+    cand_seq = _to_sequence(candidate.report.objective_to_minimize)
+    new_frontier: list[Trial] = []
+    for t in frontier:
+        if t.report is None:
+            continue
+        f_seq = _to_sequence(t.report.objective_to_minimize)
+        if (
+            len(f_seq) == len(cand_seq)
+            and all(ci <= fi for ci, fi in zip(cand_seq, f_seq, strict=False))
+            and any(ci < fi for ci, fi in zip(cand_seq, f_seq, strict=False))
+        ):
+            continue
+        new_frontier.append(t)
+    new_frontier.append(candidate)
+    return new_frontier

@@ -261,11 +261,6 @@ class NePSState:
 
     _pipeline_space: SearchSpace | PipelineSpace | None = field(repr=False, default=None)
 
-    new_score: float = float("inf")
-    """Tracking of the new incumbent"""
-
-    all_best_configs: list = field(default_factory=list)
-    """Trajectory to the newest incbumbent"""
 
     def __eq__(self, other: object) -> bool:
         """Compare two NePSState objects for equality.
@@ -290,8 +285,6 @@ class NePSState:
             "_err_lock",
             "_shared_errors_path",
             "_shared_errors",
-            "new_score",
-            "all_best_configs",
         ]:
             if getattr(self, field_name) != getattr(other, field_name):
                 return False
@@ -335,7 +328,7 @@ class NePSState:
                 )
                 if opt_state.worker_ids and worker_id in opt_state.worker_ids:
                     raise NePSError(
-                        f"Worker id '{worker_id}' already exists,                        "
+                        f"Worker id '{worker_id}' already exists,"
                         f" reserved worker ids: {opt_state.worker_ids}"
                     )
                 if opt_state.worker_ids is None:
