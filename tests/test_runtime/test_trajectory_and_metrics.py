@@ -4,17 +4,33 @@ from __future__ import annotations
 
 import re
 import tempfile
+import time
 from pathlib import Path
 
 import pytest
+from filelock import FileLock
 
 import neps
 from neps.optimizers import algorithms
+from neps.runtime import DefaultWorker
 from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
     PipelineSpace,
+)
+from neps.state.neps_state import NePSState
+from neps.state.optimizer import OptimizationState
+from neps.state.seed_snapshot import SeedSnapshot
+from neps.state.settings import (
+    DefaultReportValues,
+    OnErrorPossibilities,
+    WorkerSettings,
+)
+from neps.state.trial import (
+    MetaData,
+    State as TrialState,
+    Trial,
 )
 
 
@@ -672,3 +688,116 @@ def test_continue_finished_run_with_higher_budget(run_number):
         # Count config entries in trajectory (though trajectory only shows improvements)
         config_count = final_trajectory.count("Config ID:")
         assert config_count >= 1, "Should have at least one config entry"
+
+
+def test_best_config_multiobjective_frontier():
+    """Test that best_config.txt for a multi-objective run contains both
+    Pareto-optimal configurations (two entries) when two non-dominated
+    objective vectors are present.
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        root_directory = Path(tmp_dir) / "mo_test"
+
+        # Create an empty NePS state (optimizer info is minimal)
+        optimizer_info = {"name": "test_opt", "info": {}}
+        state = NePSState.create_or_load(
+            path=root_directory,
+            optimizer_info=optimizer_info,
+            optimizer_state=OptimizationState(
+                budget=None,
+                seed_snapshot=SeedSnapshot.new_capture(),
+                shared_state={},
+            ),
+        )
+
+        # Build two completed trials with multi-objective vectors (non-dominated)
+        t1_meta = MetaData(
+            id="t1",
+            location=str(state._trial_repo.directory / "config_t1"),
+            state=TrialState.SUCCESS,
+            previous_trial_id=None,
+            previous_trial_location=None,
+            sampling_worker_id="external",
+            time_sampled=1.0,
+        )
+        t1 = Trial(config={"which": 0}, metadata=t1_meta, report=None)
+        r1 = t1.set_complete(
+            report_as="success",
+            time_end=time.time(),
+            objective_to_minimize=[1.0, 0],
+            cost=None,
+            learning_curve=None,
+            err=None,
+            tb=None,
+            extra={},
+            evaluation_duration=0.0,
+        )
+        t1.report = r1
+
+        t2_meta = MetaData(
+            id="t2",
+            location=str(state._trial_repo.directory / "config_t2"),
+            state=TrialState.SUCCESS,
+            previous_trial_id=None,
+            previous_trial_location=None,
+            sampling_worker_id="external",
+            time_sampled=2.0,
+        )
+        t2 = Trial(config={"which": 1}, metadata=t2_meta, report=None)
+        r2 = t2.set_complete(
+            report_as="success",
+            time_end=time.time(),
+            objective_to_minimize=[0, 1],
+            cost=None,
+            learning_curve=None,
+            err=None,
+            tb=None,
+            extra={},
+            evaluation_duration=0.0,
+        )
+        t2.report = r2
+
+        trials = {t1.id: t1, t2.id: t2}
+
+        # Prepare summary paths and lock
+        summary_dir = root_directory / "summary"
+        summary_dir.mkdir(parents=True, exist_ok=True)
+        improvement_trace_path = summary_dir / "best_config_trajectory.txt"
+        best_config_path = summary_dir / "best_config.txt"
+        improvement_trace_path.touch()
+        best_config_path.touch()
+
+        trace_lock = FileLock(str(root_directory / ".trace.lock"))
+
+        # Create a minimal worker (optimizer/eval fn not used by load_incumbent_trace)
+        settings = WorkerSettings(
+            on_error=OnErrorPossibilities.IGNORE,
+            default_report_values=DefaultReportValues(),
+            batch_size=None,
+            evaluations_to_spend=None,
+            include_in_progress_evaluations_towards_maximum=False,
+            cost_to_spend=None,
+            fidelities_to_spend=None,
+            max_evaluation_time_total_seconds=None,
+            max_wallclock_time_seconds=None,
+        )
+
+        worker = DefaultWorker(
+            state=state,
+            settings=settings,
+            evaluation_fn=dict,
+            optimizer=lambda: None,
+            worker_id="w_external",
+        )
+
+        # Call the function that writes best_config for the given trials
+        worker.load_incumbent_trace(
+            trials, trace_lock, improvement_trace_path, best_config_path
+        )
+
+        content = best_config_path.read_text()
+
+        # Should contain two Config ID entries for the two non-dominated solutions
+        assert content.count("Config ID:") == 2
+        assert "t1" in content
+        assert "t2" in content

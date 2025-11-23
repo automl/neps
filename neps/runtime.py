@@ -12,9 +12,9 @@ import os
 import shutil
 import time
 import traceback
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
@@ -49,7 +49,12 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.status.status import _build_trace_texts, _initiate_summary_csv, status
+from neps.status.status import (
+    _build_incumbent_content,
+    _build_optimal_set_content,
+    _initiate_summary_csv,
+    status,
+)
 from neps.utils.common import gc_disabled
 
 if TYPE_CHECKING:
@@ -157,6 +162,33 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
     yield
 
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
+
+
+@dataclass
+class ResourceUsage:
+    """Container for tracking cumulative resource usage."""
+
+    evaluations: int = 0
+    cost: float = 0.0
+    fidelities: float = 0.0
+    time: float = 0.0
+
+    def __iadd__(self, other: ResourceUsage) -> ResourceUsage:
+        """Allows syntax: usage += other_usage."""
+        self.evaluations += other.evaluations
+        self.cost += other.cost
+        self.fidelities += other.fidelities
+        self.time += other.time
+        return self
+
+    def to_trajectory_dict(self) -> dict[str, float | int]:
+        """Converts usage to the dictionary keys expected by the trajectory file."""
+        return {
+            "cumulative_evaluations": self.evaluations,
+            "cumulative_cost": self.cost,
+            "cumulative_fidelities": self.fidelities,
+            "cumulative_time": self.time,
+        }
 
 
 # NOTE: This class is quite stateful and has been split up quite a bit to make testing
@@ -284,181 +316,138 @@ class DefaultWorker:
 
         return False
 
-    @staticmethod
-    def _get_evaluations_spent(
+    def _calculate_total_resource_usage(  # noqa: C901
+        self,
         trials: Mapping[str, Trial],
+        subset_worker_id: str | None = None,
         *,
         include_in_progress: bool = False,
-    ) -> int:
-        count_evals = sum(1 for _, trial in trials.items() if trial.report is not None)
-        if include_in_progress:
-            count_evals += sum(
-                1
-                for _, trial in trials.items()
-                if trial.metadata.state == Trial.State.EVALUATING
-            )
-        return count_evals
+    ) -> ResourceUsage:
+        """Calculates total resources returning a typed usage object.
 
-    @staticmethod
-    def _get_evaluation_time(
-        trials: Mapping[str, Trial],
-        *,
-        include_in_progress: bool = False,
-    ) -> float:
-        evaluation_time = sum(
-            trial.report.evaluation_duration
-            for _, trial in trials.items()
-            if trial.report is not None and trial.report.evaluation_duration is not None
-        )
-        if include_in_progress:
-            evaluation_time += sum(
-                trial.report.evaluation_duration
-                for _, trial in trials.items()
-                if trial.metadata.state == Trial.State.EVALUATING
-                and trial.report is not None
-                and trial.report.evaluation_duration is not None
-            )
-        return evaluation_time
+        Args:
+            trials: Dictionary of trials to calculate from.
+            subset_worker_id: If provided, only calculates for
+                trials evaluated by this worker ID.
+            include_in_progress: Whether to include incomplete trials.
+        """
+        relevant_trials = list(trials.values())
+        if subset_worker_id is not None:
+            relevant_trials = [
+                t
+                for t in relevant_trials
+                if t.metadata.evaluating_worker_id == subset_worker_id
+            ]
 
-    @staticmethod
-    def _get_cost_spent(
-        trials: Mapping[str, Trial],
-        *,
-        include_in_progress: bool = False,
-    ) -> float:
-        cost = sum(
-            trial.report.cost
-            for _, trial in trials.items()
-            if trial.report is not None and trial.report.cost is not None
-        )
-        if include_in_progress:
-            cost += sum(
-                trial.report.cost
-                for _, trial in trials.items()
-                if trial.metadata.state == Trial.State.EVALUATING
-                and trial.report is not None
-                and trial.report.cost is not None
-            )
-        return cost
+        fidelity_name = None
+        if hasattr(self.optimizer, "space"):
+            if isinstance(self.optimizer.space, PipelineSpace):
+                if self.optimizer.space.fidelity_attrs:
+                    fidelity_name = next(iter(self.optimizer.space.fidelity_attrs.keys()))
+                    fidelity_name = (
+                        f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
+                    )
+            elif self.optimizer.space.fidelities:
+                fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
 
-    @staticmethod
-    def _get_fidelities_spent(
-        trials: Mapping[str, Trial],
-        optimizer: AskFunction,
-        *,
-        include_in_progress: bool = False,
-    ) -> float | int:
-        if not hasattr(optimizer, "space"):
-            return 0
-        if isinstance(optimizer.space, PipelineSpace):
-            fidelity_name = next(iter(optimizer.space.fidelity_attrs.keys()))
-            fidelity_name = f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
-        else:
-            fidelity_name = next(iter(optimizer.space.fidelities.keys()))
+        usage = ResourceUsage()
 
-        fidelities_spent = sum(
-            trial.config[fidelity_name]
-            for _, trial in trials.items()
-            if trial.report is not None and trial.config[fidelity_name] is not None
-        )
-        if include_in_progress:
-            fidelities_spent += sum(
-                trial.config[fidelity_name]
-                for _, trial in trials.items()
-                if trial.metadata.state == Trial.State.EVALUATING
-                and trial.report is not None
+        for trial in relevant_trials:
+            if not (
+                trial.report is not None
+                or (
+                    include_in_progress and trial.metadata.state == Trial.State.EVALUATING
+                )
+            ):
+                continue
+            usage.evaluations += 1
+            if trial.report and trial.report.cost is not None:
+                usage.cost += trial.report.cost
+
+            # Handle time: either from report or calculate from metadata
+            if trial.report and trial.report.evaluation_duration is not None:
+                usage.time += trial.report.evaluation_duration
+            elif (
+                trial.metadata.time_started is not None
+                and trial.metadata.time_end is not None
+            ):
+                usage.time += trial.metadata.time_end - trial.metadata.time_started
+
+            if (
+                fidelity_name
+                and fidelity_name in trial.config
                 and trial.config[fidelity_name] is not None
-            )
-        return fidelities_spent
+            ):
+                usage.fidelities += trial.config[fidelity_name]
+
+        return usage
 
     def _check_global_stopping_criterion(
         self,
         trials: Mapping[str, Trial],
-    ) -> tuple[str | Literal[False], dict[str, float | int]]:
-        return_dict: dict[str, float | int] = {}
+    ) -> tuple[str | Literal[False], ResourceUsage]:
+        """Evaluates if any global stopping criterion has been met."""
+        worker_resource_usage = self._calculate_total_resource_usage(
+            trials,
+            subset_worker_id=self.worker_id,
+            include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        )
+
+        global_resource_usage = self._calculate_total_resource_usage(
+            trials,
+            subset_worker_id=None,
+            include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        )
+
         return_string: str | Literal[False] = False
-        # worker related stopping criterion
-        worker_trials = {
-            _id: trial
-            for _id, trial in trials.items()
-            if trial.metadata.evaluating_worker_id == self.worker_id
-        }
-        if self.settings.evaluations_to_spend is not None:
-            count = self._get_evaluations_spent(
-                trials=worker_trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-            )
-            cumulative_eval_count = self._get_evaluations_spent(
-                trials=trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-            )
-            return_dict["cumulative_evaluations"] = cumulative_eval_count
-            if count >= self.settings.evaluations_to_spend:
-                return_string = (
-                    "Worker has reached the maximum number of evaluations it is allowed"
-                    f" to do as given by `{self.settings.evaluations_to_spend=}`."
-                    "\nTo allow more evaluations, increase this value or use a different"
-                    " stopping criterion."
-                )
 
-        if self.settings.fidelities_to_spend is not None:
-            count_fidelities = self._get_fidelities_spent(
-                trials=worker_trials,
-                optimizer=self.optimizer,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        if (
+            self.settings.evaluations_to_spend is not None
+            and worker_resource_usage.evaluations >= self.settings.evaluations_to_spend
+        ):
+            return_string = (
+                "Worker has reached the maximum number of evaluations it is allowed"
+                f" to do as given by `{self.settings.evaluations_to_spend=}`."
+                "\nTo allow more evaluations, increase this value or use a different"
+                " stopping criterion."
             )
-            cumulative_fidelities = self._get_fidelities_spent(
-                trials=trials,
-                optimizer=self.optimizer,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-            )
-            return_dict["cumulative_fidelities"] = cumulative_fidelities
-            if count_fidelities >= self.settings.fidelities_to_spend:
-                return_string = (
-                    "The total number of fidelity evaluations has reached the maximum"
-                    f" allowed of `{self.settings.fidelities_to_spend=}`."
-                    " To allow more evaluations, increase this value or use a different"
-                    " stopping criterion."
-                )
 
-        if self.settings.cost_to_spend is not None:
-            cost = self._get_cost_spent(
-                trials=worker_trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        if (
+            self.settings.fidelities_to_spend is not None
+            and worker_resource_usage.fidelities >= self.settings.fidelities_to_spend
+        ):
+            return_string = (
+                "The total number of fidelity evaluations has reached the maximum"
+                f" allowed of `{self.settings.fidelities_to_spend=}`."
+                " To allow more evaluations, increase this value or use a different"
+                " stopping criterion."
             )
-            cumulative_cost = self._get_cost_spent(
-                trials=trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-            )
-            return_dict["cumulative_cost"] = cumulative_cost
-            if cost >= self.settings.cost_to_spend:
-                return_string = (
-                    "Worker has reached the maximum cost it is allowed to spend"
-                    f" which is given by `{self.settings.cost_to_spend=}`."
-                    f" This worker has spend '{cost}'."
-                    "\n To allow more evaluations, increase this value or use a different"
-                    " stopping criterion."
-                )
 
-        if self.settings.max_evaluation_time_total_seconds is not None:
-            time_spent = self._get_evaluation_time(
-                trials=worker_trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        if (
+            self.settings.cost_to_spend is not None
+            and worker_resource_usage.cost >= self.settings.cost_to_spend
+        ):
+            return_string = (
+                "Worker has reached the maximum cost it is allowed to spend"
+                f" which is given by `{self.settings.cost_to_spend=}`."
+                f" This worker has spend '{worker_resource_usage.cost}'."
+                "\n To allow more evaluations, increase this value or use a different"
+                " stopping criterion."
             )
-            cumulative_time = self._get_evaluation_time(
-                trials=trials,
-                include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
-            )
-            return_dict["cumulative_time"] = cumulative_time
-            if time_spent >= self.settings.max_evaluation_time_total_seconds:
-                return_string = (
-                    "The maximum evaluation time of"
-                    f" `{self.settings.max_evaluation_time_total_seconds=}` has been"
-                    " reached. To allow more evaluations, increase this value or use"
-                    " a different stopping criterion."
-                )
 
-        return (return_string, return_dict)
+        if (
+            self.settings.max_evaluation_time_total_seconds is not None
+            and worker_resource_usage.time
+            >= self.settings.max_evaluation_time_total_seconds
+        ):
+            return_string = (
+                "The maximum evaluation time of"
+                f" `{self.settings.max_evaluation_time_total_seconds=}` has been"
+                " reached. To allow more evaluations, increase this value or use"
+                " a different stopping criterion."
+            )
+
+        return (return_string, global_resource_usage)
 
     @property
     def _requires_global_stopping_criterion(self) -> bool:
@@ -469,7 +458,35 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
-    def _get_next_trial(self) -> Trial | Literal["break"]:  # noqa: PLR0915
+    def _write_trajectory_files(
+        self,
+        incumbent_configs: list,
+        optimal_configs: list,
+        trace_lock: FileLock,
+        improvement_trace_path: Path,
+        best_config_path: Path,
+        final_stopping_criteria: ResourceUsage | None = None,
+    ) -> None:
+        """Writes the trajectory and best config files safely."""
+        trace_text = _build_incumbent_content(incumbent_configs)
+
+        best_config_text = _build_optimal_set_content(optimal_configs)
+
+        if final_stopping_criteria:
+            best_config_text += "\n" + "-" * 80
+            best_config_text += "\nFinal cumulative metrics (Assuming completed run):"
+            for metric, value in final_stopping_criteria.to_trajectory_dict().items():
+                best_config_text += f"\n{metric}: {value}"
+
+        with trace_lock:
+            if incumbent_configs:
+                with improvement_trace_path.open(mode="w") as f:
+                    f.write(trace_text)
+            if optimal_configs:
+                with best_config_path.open(mode="w") as f:
+                    f.write(best_config_text)
+
+    def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock(worker_id=self.worker_id):
             # NOTE: It's important to release the trial lock before sampling
@@ -486,40 +503,10 @@ class DefaultWorker:
                 trials = self.state._trial_repo.latest()
 
                 if self._requires_global_stopping_criterion:
-                    should_stop, stop_dict = self._check_global_stopping_criterion(trials)
+                    should_stop, stop_criteria = self._check_global_stopping_criterion(
+                        trials
+                    )
                     if should_stop is not False:
-                        _trace_lock = FileLock(".trace.lock")
-                        _trace_lock_path = Path(str(_trace_lock.lock_file))
-                        _trace_lock_path.touch(exist_ok=True)
-
-                        # Update the best_config.txt to include the final cumulative
-                        # metrics
-                        main_dir = Path(self.state.path)
-                        summary_dir = main_dir / "summary"
-                        improvement_trace_path = (
-                            summary_dir / "best_config_trajectory.txt"
-                        )
-                        best_config_path = summary_dir / "best_config.txt"
-
-                        with _trace_lock:
-                            trace_text, best_config_text = _build_trace_texts(
-                                self.state.all_best_configs
-                            )
-
-                            # Add final cumulative metrics to the best config text
-                            best_config_text += "\n"
-                            best_config_text += "-" * 80
-                            best_config_text += (
-                                "\nFinal cumulative metrics (Assuming completed run):"
-                            )
-                            for metric, value in stop_dict.items():
-                                best_config_text += f"\n{metric}: {value}"
-
-                            with improvement_trace_path.open(mode="w") as f:
-                                f.write(trace_text)
-
-                            with best_config_path.open(mode="w") as f:
-                                f.write(best_config_text)
                         logger.info(should_stop)
                         return "break"
 
@@ -640,29 +627,6 @@ class DefaultWorker:
             " the root directory: %s",
             summary_dir,
         )
-
-        previous_trials = self.state.lock_and_read_trials()
-        if len(previous_trials):
-            self.load_incumbent_trace(
-                previous_trials,
-                _trace_lock,
-                self.state,
-                self.settings,
-                improvement_trace_path,
-                best_config_path,
-                self.optimizer,
-            )
-
-        # FIX: Use the actual best score from trajectory, not state.new_score
-        # state.new_score may have been set to the last processed trial, not the best
-        _best_score_so_far = float("inf")
-        if self.state.all_best_configs:
-            # Get the true minimum from all best configs
-            _best_score_so_far = min(
-                config["score"] for config in self.state.all_best_configs
-            )
-            # Update state.new_score to the actual best
-            self.state.new_score = _best_score_so_far
 
         optimizer_name = self.state._optimizer_info["name"]
         logger.info("Using optimizer: %s", optimizer_name)
@@ -795,54 +759,15 @@ class DefaultWorker:
                 for _key, callback in _TRIAL_END_CALLBACKS.items():
                     callback(trial_to_eval)
 
-            if (
-                report.objective_to_minimize is not None
-                and report.err is None
-                and not isinstance(report.objective_to_minimize, list)
-            ):
-                self.state.new_score = report.objective_to_minimize
-                if self.state.new_score < _best_score_so_far:
-                    _best_score_so_far = self.state.new_score
-                    logger.info(
-                        "New best: trial %s with objective %s",
-                        evaluated_trial.id,
-                        self.state.new_score,
+            if report.objective_to_minimize is not None and report.err is None:
+                with self.state._trial_lock.lock():
+                    trials = self.state._trial_repo.latest()
+                    self.load_incumbent_trace(
+                        trials,
+                        _trace_lock,
+                        improvement_trace_path,
+                        best_config_path,
                     )
-
-                    # Store in memory for later file re-writing
-                    global_stopping_criterion = self._check_global_stopping_criterion(
-                        self.state._trial_repo.latest()
-                    )[1]
-
-                    config_dict = {
-                        "score": self.state.new_score,
-                        "trial_id": evaluated_trial.id,
-                        "config": evaluated_trial.config,
-                    }
-                    if report.cost is not None:
-                        config_dict["cost"] = report.cost
-                    for metric in (
-                        "cumulative_evaluations",
-                        "cumulative_fidelities",
-                        "cumulative_cost",
-                        "cumulative_time",
-                    ):
-                        if metric in global_stopping_criterion:
-                            config_dict[metric] = global_stopping_criterion[metric]
-                    self.state.all_best_configs.append(config_dict)
-
-                    # Build trace text and best config text using shared function
-                    trace_text, best_config_text = _build_trace_texts(
-                        self.state.all_best_configs
-                    )
-
-                    # Write files from scratch
-                    with _trace_lock:
-                        with improvement_trace_path.open(mode="w") as f:
-                            f.write(trace_text)
-
-                        with best_config_path.open(mode="w") as f:
-                            f.write(best_config_text)
 
                 full_df, short = status(main_dir)
                 with csv_locker.lock():
@@ -856,22 +781,19 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-    def load_incumbent_trace(  # noqa: C901, PLR0912
+    def load_incumbent_trace(
         self,
-        previous_trials: dict[str, Trial],
+        trials: dict[str, Trial],
         _trace_lock: FileLock,
-        state: NePSState,
-        settings: WorkerSettings,
         improvement_trace_path: Path,
         best_config_path: Path,
-        optimizer: AskFunction,
     ) -> None:
         """Load the incumbent trace from previous trials and update the state.
-        This function also computes cumulative metrics and updates the best
+        This function also computes cumulative resource usage and updates the best
         configurations.
 
         Args:
-            previous_trials (dict): A dictionary of previous trials.
+            trials (dict): A dictionary of the trials.
             _trace_lock (FileLock): A file lock to ensure thread-safe writing.
             state (NePSState): The current NePS state.
             settings (WorkerSettings): The worker settings.
@@ -879,103 +801,71 @@ class DefaultWorker:
             best_config_path (Path): Path to the best configuration file.
             optimizer (AskFunction): The optimizer used for sampling configurations.
         """
-        # Clear any existing entries to prevent duplicates
-        state.all_best_configs.clear()
+        if not trials:
+            return
 
-        _best_score_so_far = float("inf")
+        # Clear any existing entries to prevent duplicates and rebuild a
+        # non-dominated frontier from previous trials in chronological order.
+        incumbent = []
 
-        metrics = {
-            "cumulative_evaluations": 0,
-            "cumulative_fidelities": 0.0,
-            "cumulative_cost": 0.0,
-            "cumulative_time": 0.0,
-        }
+        running_usage = ResourceUsage()
 
-        # FIX: Sort trials chronologically to maintain trajectory monotonicity
-        sorted_trials = sorted(
-            previous_trials.values(),
+        sorted_trials: list[Trial] = sorted(
+            trials.values(),
             key=lambda t: (
                 t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
             ),
         )
+        evaluated_trials: list[Trial] = [
+            trial
+            for trial in sorted_trials
+            if trial.report is not None and trial.report.objective_to_minimize is not None
+        ]
+        is_mo = any(
+            isinstance(trial.report.objective_to_minimize, list)  # type: ignore[union-attr]
+            for trial in evaluated_trials
+        )
 
-        for evaluated_trial in sorted_trials:
-            if (
-                evaluated_trial.report is not None
-                and evaluated_trial.report.objective_to_minimize is not None
-            ):
-                metrics["cumulative_evaluations"] += 1
-                if (
-                    settings.cost_to_spend is not None
-                    and evaluated_trial.report.cost is not None
-                ):
-                    metrics["cumulative_cost"] += evaluated_trial.report.cost
-                if (
-                    (
-                        settings.max_evaluation_time_total_seconds is not None
-                        or evaluated_trial.metadata.evaluation_duration is not None
-                        or settings.max_evaluation_time_total_seconds is not None
-                    )
-                    and evaluated_trial.metadata.time_started is not None
-                    and evaluated_trial.metadata.time_end is not None
-                ):
-                    metrics["cumulative_time"] += (
-                        evaluated_trial.metadata.time_end
-                        - evaluated_trial.metadata.time_started
-                    )
+        frontier: list[Trial] = []
+        trajectory_confs: dict[str, dict[str, float | int]] = {}
 
-                if hasattr(optimizer, "space"):
-                    fidelity_name = ""
-                    if not isinstance(optimizer.space, PipelineSpace):
-                        if optimizer.space.fidelities:
-                            fidelity_name = next(iter(optimizer.space.fidelities.keys()))
-                    elif optimizer.space.fidelity_attrs:
-                        fidelity_name = next(iter(optimizer.space.fidelity_attrs.keys()))
-                        fidelity_name = (
-                            f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
-                        )
-                    if (
-                        fidelity_name in evaluated_trial.config
-                        and evaluated_trial.config[fidelity_name] is not None
-                    ):
-                        metrics["cumulative_fidelities"] += evaluated_trial.config[
-                            fidelity_name
-                        ]
+        for evaluated_trial in evaluated_trials:
+            single_trial_usage = self._calculate_total_resource_usage(
+                {evaluated_trial.id: evaluated_trial}
+            )
+            running_usage += single_trial_usage
 
-                if isinstance(evaluated_trial.report.objective_to_minimize, list):
-                    # Skip list objectives for now in incumbent trace
-                    continue
-                state.new_score = evaluated_trial.report.objective_to_minimize
-                if state.new_score is not None and state.new_score < _best_score_so_far:
-                    _best_score_so_far = state.new_score
-                    config_dict = {
-                        "score": state.new_score,
-                        "trial_id": evaluated_trial.metadata.id,
-                        "config": evaluated_trial.config,
-                    }
+            assert evaluated_trial.report is not None  # for mypy
+            new_trial_obj = evaluated_trial.report.objective_to_minimize
 
-                    # Add cost if available
-                    if evaluated_trial.report.cost is not None:
-                        config_dict["cost"] = evaluated_trial.report.cost
-                    state.all_best_configs.append(config_dict)
+            if not _is_dominated(new_trial_obj, frontier):
+                frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
+                if not is_mo:
+                    incumbent.append(evaluated_trial)
+                current_snapshot = ResourceUsage(**asdict(running_usage))
+                config_dict = {
+                    "score": new_trial_obj,
+                    "trial_id": evaluated_trial.id,
+                    "config": evaluated_trial.config,
+                }
+                if evaluated_trial.report.cost is not None:
+                    config_dict["cost"] = evaluated_trial.report.cost
 
-                    for metric in (
-                        "cumulative_evaluations",
-                        "cumulative_fidelities",
-                        "cumulative_cost",
-                        "cumulative_time",
-                    ):
-                        if metrics[metric] > 0:
-                            config_dict[metric] = metrics[metric]
+                config_dict.update(current_snapshot.to_trajectory_dict())
+                trajectory_confs[evaluated_trial.id] = config_dict
 
-        # Use the shared function to build trace texts
-        trace_text, best_config_text = _build_trace_texts(state.all_best_configs)
+        optimal_configs: list[dict] = [trajectory_confs[trial.id] for trial in frontier]
+        incumbent_configs: list[dict] = [
+            trajectory_confs[trial.id] for trial in incumbent
+        ]
 
-        with _trace_lock:
-            with improvement_trace_path.open(mode="w") as f:
-                f.write(trace_text)
-            with best_config_path.open(mode="w") as f:
-                f.write(best_config_text)
+        self._write_trajectory_files(
+            incumbent_configs=incumbent_configs,
+            optimal_configs=optimal_configs,
+            trace_lock=_trace_lock,
+            improvement_trace_path=improvement_trace_path,
+            best_config_path=best_config_path,
+        )
 
 
 def _save_results(
@@ -1241,3 +1131,59 @@ def _make_default_report_values(
         learning_curve_on_error=None,
         learning_curve_if_not_provided="objective_to_minimize",
     )
+
+
+def _to_sequence(score: float | Sequence[float]) -> list[float]:
+    """Normalize score to a list of floats for pareto comparisons.
+
+    Scalars become single-element lists. Sequences are converted to lists.
+    """
+    if isinstance(score, Sequence):
+        return [float(x) for x in score]
+    return [float(score)]
+
+
+def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
+    """Return True if `candidate` is dominated by any point in `frontier`.
+
+    `frontier` is a list of score sequences (as lists).
+    """
+    cand_seq = _to_sequence(candidate)
+
+    for t in frontier:
+        if t.report is None:
+            continue
+        f_seq = _to_sequence(t.report.objective_to_minimize)
+        if len(f_seq) != len(cand_seq):
+            continue
+        if all(fi <= ci for fi, ci in zip(f_seq, cand_seq, strict=False)) and any(
+            fi < ci for fi, ci in zip(f_seq, cand_seq, strict=False)
+        ):
+            return True
+    return False
+
+
+def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
+    """Add candidate Trial to frontier and remove frontier Trials dominated by it.
+
+    Frontier is a list of Trial objects (with reports). Returns the new frontier
+    as a list of Trials.
+    """
+    if candidate.report is None:
+        return frontier
+
+    cand_seq = _to_sequence(candidate.report.objective_to_minimize)
+    new_frontier: list[Trial] = []
+    for t in frontier:
+        if t.report is None:
+            continue
+        f_seq = _to_sequence(t.report.objective_to_minimize)
+        if (
+            len(f_seq) == len(cand_seq)
+            and all(ci <= fi for ci, fi in zip(cand_seq, f_seq, strict=False))
+            and any(ci < fi for ci, fi in zip(cand_seq, f_seq, strict=False))
+        ):
+            continue
+        new_frontier.append(t)
+    new_frontier.append(candidate)
+    return new_frontier
