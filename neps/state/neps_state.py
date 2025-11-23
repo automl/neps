@@ -261,7 +261,6 @@ class NePSState:
 
     _pipeline_space: SearchSpace | PipelineSpace | None = field(repr=False, default=None)
 
-
     def __eq__(self, other: object) -> bool:
         """Compare two NePSState objects for equality.
 
