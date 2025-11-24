@@ -99,12 +99,54 @@ def run(learning_rate: float, epochs: int) -> float:
     return {"objective_to_minimize": loss, "cost": duration}
 
 neps.run(
-    # Increase the total number of trials from 10 as set previously to 50
+    # Increase the total number of trials from 10 as set previously to e.g. 50
     evaluations_to_spend=50,
 )
 ```
 
 If the run previously stopped due to reaching a budget and you specify the same budget, the worker will immediatly stop as it will remember the amount of budget it used previously.
+
+!!! note "Auto-loading"
+
+    When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify `pipeline_space=` or `searcher=` again - NePS will use the saved settings from the original run.
+
+## Reconstructing and Reproducing Runs
+
+Sometimes you want to inspect what settings were used in a previous run, or reproduce a run with the same or modified settings. NePS provides utility functions to load both the search space and optimizer information:
+
+```python
+import neps
+
+# Load everything from a previous run
+root_dir = "path/to/previous_run"
+
+pipeline_space = neps.load_pipeline_space(root_dir)
+optimizer_info = neps.load_optimizer_info(root_dir)
+
+print(f"Original optimizer: {optimizer_info['name']}")
+print(f"Original search space: {pipeline_space}")
+
+# Option 1: Continue the original run (auto-loads everything)
+neps.run(
+    evaluate_pipeline=my_function,
+    root_directory=root_dir,
+    evaluations_to_spend=100,  # Increase budget
+)
+
+# Option 2: Start a new run with the same settings
+neps.run(
+    evaluate_pipeline=my_function,
+    pipeline_space=pipeline_space,
+    root_directory="path/to/new_run",
+    searcher=optimizer_info['name'],
+    evaluations_to_spend=50,
+)
+```
+
+For details on:
+
+- [`neps.load_pipeline_space()`][neps.api.load_pipeline_space] - see [Search Space Reference](neps_spaces.md#loading-the-search-space-from-disk)
+- [`neps.load_optimizer_info()`][neps.api.load_optimizer_info] - see [Optimizer Reference](optimizers.md#loading-optimizer-information)
 
 ## Overwriting a Run
 
@@ -149,12 +191,6 @@ provided to [`neps.run()`][neps.api.run].
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
 
-=== "python"
-
-    ```python
-    neps.run(..., write_summary_to_disk=True)
-    ```
-
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
 closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
 
@@ -173,8 +209,7 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        evaluations_to_spend=100,
-        max_evaluations_per_run=10, # (1)!
+        evaluations_to_spend=100, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
         overwrite_root_directory=False, #!!!
     )
@@ -226,7 +261,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `evaluations_to_spend` or `max_evaluations_per_run`.
+    Any runs that error will still count towards the total `evaluations_to_spend`.
 
 ### Re-running Failed Configurations
 

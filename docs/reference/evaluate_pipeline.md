@@ -45,7 +45,6 @@ All other values raise a `TypeError` inside NePS.
        user_result=result_dict,
        pipeline_id=pipeline_id,
        root_directory=root_directory,
-       post_run_summary=True,
    )
    ```
 
@@ -122,13 +121,8 @@ neps.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
-    post_run_summary=False,
 )
 ```
-
-the default value for `post_run_summary` is True, if you want to prevent any summary creation, you should specify in the arguments.
-
-### 3.3 Why this matters
 
 * No worker idles while your job is in the queue ➜ better throughput.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
@@ -136,7 +130,7 @@ the default value for `post_run_summary` is True, if you want to prevent any sum
 
 ### 3.4 Common pitfalls
 
-* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `max_evaluations_per_run` when calling `neps.run`.
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `evaluations_to_spend` when calling `neps.run`.
 
 ## 4 Extra injected arguments
 

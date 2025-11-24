@@ -43,6 +43,8 @@ from neps.utils.files import atomic_write, deserialize, serialize
 if TYPE_CHECKING:
     from neps.optimizers import OptimizerInfo
     from neps.optimizers.optimizer import AskFunction
+    from neps.space import SearchSpace
+    from neps.space.neps_spaces.parameters import PipelineSpace
 
 from neps.utils.common import gc_disabled
 
@@ -251,15 +253,52 @@ class NePSState:
     _optimizer_state_path: Path = field(repr=False)
     _optimizer_state: OptimizationState = field(repr=False)
 
+    _pipeline_space_path: Path = field(repr=False)
+
     _err_lock: FileLocker = field(repr=False)
     _shared_errors_path: Path = field(repr=False)
     _shared_errors: ErrDump = field(repr=False)
 
-    new_score: float = float("inf")
-    """Tracking of the new incumbent"""
+    _pipeline_space: SearchSpace | PipelineSpace | None = field(repr=False, default=None)
 
-    all_best_configs: list = field(default_factory=list)
-    """Trajectory to the newest incbumbent"""
+    def __eq__(self, other: object) -> bool:
+        """Compare two NePSState objects for equality.
+
+        Pipeline spaces are compared by pickle dumps to handle cases where
+        the class type differs after unpickling but the content is equivalent.
+        """
+        if not isinstance(other, NePSState):
+            return NotImplemented
+
+        # Compare all fields except _pipeline_space
+        for field_name in [
+            "path",
+            "_trial_lock",
+            "_trial_repo",
+            "_optimizer_lock",
+            "_optimizer_info_path",
+            "_optimizer_info",
+            "_optimizer_state_path",
+            "_optimizer_state",
+            "_pipeline_space_path",
+            "_err_lock",
+            "_shared_errors_path",
+            "_shared_errors",
+        ]:
+            if getattr(self, field_name) != getattr(other, field_name):
+                return False
+
+        # Compare pipeline spaces by pickle dumps
+        self_space = self._pipeline_space
+        other_space = other._pipeline_space
+
+        if self_space is None and other_space is None:
+            return True
+        if self_space is None or other_space is None:
+            return False
+
+        # Compare using pickle dumps - safe and handles all cases
+        return pickle.dumps(self_space) == pickle.dumps(other_space)
 
     def lock_and_set_new_worker_id(self, worker_id: str | None = None) -> str:
         """Acquire the state lock and set a new worker id in the optimizer state.
@@ -288,7 +327,7 @@ class NePSState:
                 )
                 if opt_state.worker_ids and worker_id in opt_state.worker_ids:
                     raise NePSError(
-                        f"Worker id '{worker_id}' already exists,                        "
+                        f"Worker id '{worker_id}' already exists,"
                         f" reserved worker ids: {opt_state.worker_ids}"
                     )
                 if opt_state.worker_ids is None:
@@ -335,12 +374,12 @@ class NePSState:
             return trials
 
     def lock_and_import_trials(
-        self, data: list, *, worker_id: str
+        self, imported_configs: list, *, worker_id: str
     ) -> Trial | list[Trial]:
         """Acquire the state lock and import trials from external data.
 
         Args:
-            data: List of trial dictionaries to import.
+            imported_configs: List of trial dictionaries to import.
             worker_id: The worker ID performing the import.
 
         Returns:
@@ -351,11 +390,15 @@ class NePSState:
             NePSError: If storing or reporting trials fails.
         """
         with self._optimizer_lock.lock(), gc_disabled():
-            trials = Trial.load_from_dict(data=data, worker_id=worker_id)
+            imported_configs = Trial.load_from_dict(
+                data=imported_configs,
+                worker_id=worker_id,
+                trial_directory=self._trial_repo.directory,
+            )
 
             with self._trial_lock.lock():
-                self._trial_repo.store_new_trial(trials)
-                for trial in trials:
+                self._trial_repo.store_new_trial(imported_configs)
+                for trial in imported_configs:
                     assert trial.report is not None
                     self._report_trial_evaluation(
                         trial=trial,
@@ -367,7 +410,7 @@ class NePSState:
                         f"Imported trial {trial.id} with result: "
                         f"{trial.report.objective_to_minimize}."
                     )
-            return trials
+            return imported_configs
 
     def lock_and_report_trial_evaluation(
         self,
@@ -543,6 +586,18 @@ class NePSState:
         with self._optimizer_lock.lock():
             return _deserialize_optimizer_info(self._optimizer_info_path)
 
+    def lock_and_get_search_space(self) -> SearchSpace | PipelineSpace | None:
+        """Get the pipeline space, with the lock acquired.
+
+        Returns:
+            The pipeline space if it was saved to disk, None otherwise.
+        """
+        with self._optimizer_lock.lock():
+            if not self._pipeline_space_path.exists():
+                return None
+            with self._pipeline_space_path.open("rb") as f:
+                return pickle.load(f)  # noqa: S301
+
     def lock_and_get_optimizer_state(self) -> OptimizationState:
         """Get the optimizer state."""
         with self._optimizer_lock.lock():  # noqa: SIM117
@@ -627,13 +682,14 @@ class NePSState:
             ]
 
     @classmethod
-    def create_or_load(
+    def create_or_load(  # noqa: C901, PLR0912, PLR0915
         cls,
         path: Path,
         *,
         load_only: bool = False,
         optimizer_info: OptimizerInfo | None = None,
         optimizer_state: OptimizationState | None = None,
+        pipeline_space: SearchSpace | PipelineSpace | None = None,
     ) -> NePSState:
         """Create a new NePSState in a directory or load the existing one
         if it already exists, depending on the argument.
@@ -649,17 +705,23 @@ class NePSState:
             In principal, we could allow multiple optimizers to be run and share
             the same set of trials.
 
+            We do the same check for the pipeline space, if provided.
+
         Args:
             path: The directory to create the state in.
             load_only: If True, only load the state and do not create a new one.
             optimizer_info: The optimizer info to use.
             optimizer_state: The optimizer state to use.
+            pipeline_space: The pipeline space to save. Optional - if provided, it will be
+                saved to disk and validated on subsequent loads.
 
         Returns:
             The NePSState.
 
         Raises:
-            NePSError: If the optimizer info on disk does not match the one provided.
+            NePSError: If the optimizer info on disk does not match the one provided,
+                or if the pipeline space on disk does not match the one provided.
+            FileNotFoundError: If load_only=True and no NePSState exists at the path.
         """
         path = path.absolute().resolve()
         is_new = not path.exists()
@@ -669,6 +731,7 @@ class NePSState:
         else:
             assert optimizer_info is not None
             assert optimizer_state is not None
+            # TODO: assert pipeline_space is None -> optional for backward compatibility
 
         path.mkdir(parents=True, exist_ok=True)
         config_dir = path / "configs"
@@ -676,6 +739,7 @@ class NePSState:
 
         optimizer_info_path = path / "optimizer_info.yaml"
         optimizer_state_path = path / "optimizer_state.pkl"
+        pipeline_space_path = path / "pipeline_space.pkl"
         shared_errors_path = path / "shared_errors.jsonl"
 
         # We have to do one bit of sanity checking to ensure that the optimzier
@@ -691,11 +755,71 @@ class NePSState:
             if not load_only and existing_info != optimizer_info:
                 raise NePSError(
                     "The optimizer info on disk does not match the one provided."
-                    f"\nOn disk: {existing_info}\nProvided: {optimizer_info}"
-                    f"\n\nLoaded the one on disk from {path}."
+                    f"\nOn disk: {existing_info}"
+                    f"\n   Loaded from {path}."
+                    f"\nProvided: {optimizer_info}"
                 )
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
+
+            # Load and validate pipeline space if it exists
+            if pipeline_space_path.exists():
+                try:
+                    with pipeline_space_path.open("rb") as f:
+                        existing_space = pickle.load(f)  # noqa: S301
+                except (EOFError, pickle.UnpicklingError) as e:
+                    # File exists but is empty or corrupted (race condition during write)
+                    # Treat as if file doesn't exist yet
+                    logger.debug(
+                        f"Could not load pipeline_space.pkl (possibly being written): {e}"
+                    )
+                    existing_space = None
+                else:
+                    if not load_only and pipeline_space is not None:
+                        # Compare semantic attributes instead of raw pickle bytes
+                        # This allows trivial changes like renaming the space class
+                        from neps.space.neps_spaces.parameters import PipelineSpace as PS
+
+                        if isinstance(existing_space, PS) and isinstance(
+                            pipeline_space, PS
+                        ):
+                            # Compare the actual parameter definitions
+                            if pickle.dumps(existing_space.get_attrs()) != pickle.dumps(
+                                pipeline_space.get_attrs()
+                            ):
+                                raise NePSError(
+                                    "The pipeline space parameters on disk do not match"
+                                    " those provided.\nPipeline space is saved at:"
+                                    f" {pipeline_space_path}\n\nTo continue this run:"
+                                    " either omit the pipeline_space parameter or use"
+                                    " neps.load_pipeline_space() to load the existing"
+                                    " one.\n\nTo start a new run with different"
+                                    " parameters, use a different root_directory or set"
+                                    " overwrite_root_directory=True."
+                                )
+                        elif pickle.dumps(existing_space) != pickle.dumps(pipeline_space):
+                            # Fallback for non-PipelineSpace objects (SearchSpace)
+                            raise NePSError(
+                                "The pipeline space on disk does not match the one"
+                                " provided.\nPipeline space is saved at:"
+                                f" {pipeline_space_path}\n\nTo continue this run: either"
+                                " omit the pipeline_space parameter or use"
+                                " neps.load_pipeline_space() to load the existing"
+                                " one.\n\nTo start a new run with a different pipeline"
+                                " space, use a different root_directory or set"
+                                " overwrite_root_directory=True."
+                            )
+                    pipeline_space = existing_space
+            elif pipeline_space is None and not load_only:
+                # No pipeline space on disk and none provided for a new/continued run
+                # This is fine for backward compatibility (old runs) but log info
+                logger.info(
+                    "No pipeline space provided and none found on disk. "
+                    "This is fine for backward compatibility but consider providing one."
+                )
+            elif pipeline_space is None:
+                # load_only=True and no pipeline space on disk - fine for backward compat
+                pass
 
             optimizer_info = existing_info
             error_dump = ReaderWriterErrDump.read(shared_errors_path)
@@ -706,6 +830,11 @@ class NePSState:
             serialize(optimizer_info, path=optimizer_info_path)
             with optimizer_state_path.open("wb") as f:
                 pickle.dump(optimizer_state, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+            # Save pipeline space if provided
+            if pipeline_space is not None:
+                with atomic_write(pipeline_space_path, "wb") as f:
+                    pickle.dump(pipeline_space, f, protocol=pickle.HIGHEST_PROTOCOL)
 
             error_dump = ErrDump([])
 
@@ -733,8 +862,10 @@ class NePSState:
             _optimizer_info=optimizer_info,
             _optimizer_state_path=optimizer_state_path,
             _optimizer_state=optimizer_state,  # type: ignore
+            _pipeline_space_path=pipeline_space_path,
             _shared_errors_path=shared_errors_path,
             _shared_errors=error_dump,
+            _pipeline_space=pipeline_space,
         )
 
 

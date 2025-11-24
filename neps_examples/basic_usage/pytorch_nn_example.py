@@ -139,5 +139,4 @@ neps.run(
 neps.status(
     "results/neps_spaces_nn_example",
     print_summary=True,
-    pipeline_space=pipeline_space,
 )

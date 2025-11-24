@@ -24,6 +24,7 @@ def neps_state(tmp_path: Path) -> NePSState:
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=ASpace(),
     )
 
 
@@ -36,15 +37,12 @@ def test_create_worker_manual_id(neps_state: NePSState) -> None:
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
         evaluations_to_spend=1,
-        include_in_progress_evaluations_towards_maximum=True,
+        include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
-        max_evaluations_for_worker=None,
-        max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
-        batch_size=None,
         fidelities_to_spend=None,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
     )
 
     def eval_fn(config: dict) -> float:
@@ -71,15 +69,12 @@ def test_create_worker_auto_id(neps_state: NePSState) -> None:
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
         evaluations_to_spend=1,
-        include_in_progress_evaluations_towards_maximum=True,
+        include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
-        max_evaluations_for_worker=None,
-        max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
-        batch_size=None,
         fidelities_to_spend=None,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
     )
 
     def eval_fn(config: dict) -> float:

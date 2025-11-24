@@ -10,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from neps.optimizers.optimizer import ImportedConfig
+from neps.optimizers import optimizer
 from neps.space.neps_spaces.neps_space import _prepare_sampled_configs, resolve
 from neps.space.neps_spaces.parameters import Float, Integer
 from neps.space.neps_spaces.sampling import (
@@ -25,7 +25,6 @@ from neps.space.neps_spaces.sampling import (
 if TYPE_CHECKING:
     import neps.state.optimizer as optimizer_state
     import neps.state.trial as trial_state
-    from neps.optimizers import optimizer
     from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.state.pipeline_eval import UserResultDict
     from neps.state.trial import Trial
@@ -141,13 +140,13 @@ class NePSRandomSearch:
         self,
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
-    ) -> list[ImportedConfig]:
+    ) -> list[optimizer.ImportedConfig]:
         """Import external evaluations as trials.
 
         Args:
-            external_evaluations: A sequence of tuples containing configurations and
-                their evaluation results.
-            trials: A mapping of trial IDs to Trial objects, representing existing
+            external_evaluations: A sequence of tuples containing configuration
+                dictionaries and their corresponding results.
+            trials: A mapping of trial IDs to Trial objects, representing previous
                 trials.
 
         Returns:
@@ -158,7 +157,7 @@ class NePSRandomSearch:
         for i, (config, result) in enumerate(external_evaluations):
             config_id = str(n_trials + i + 1)
             imported_configs.append(
-                ImportedConfig(
+                optimizer.ImportedConfig(
                     config=config,
                     id=config_id,
                     result=result,
@@ -425,13 +424,13 @@ class NePSComplexRandomSearch:
         self,
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
-    ) -> list[ImportedConfig]:
+    ) -> list[optimizer.ImportedConfig]:
         """Import external evaluations as trials.
 
         Args:
-            external_evaluations: A sequence of tuples containing configurations and
-                their evaluation results.
-            trials: A mapping of trial IDs to Trial objects, representing existing
+            external_evaluations: A sequence of tuples containing configuration
+                dictionaries and their corresponding results.
+            trials: A mapping of trial IDs to Trial objects, representing previous
                 trials.
 
         Returns:
@@ -442,7 +441,7 @@ class NePSComplexRandomSearch:
         for i, (config, result) in enumerate(external_evaluations):
             config_id = str(n_trials + i + 1)
             imported_configs.append(
-                ImportedConfig(
+                optimizer.ImportedConfig(
                     config=config,
                     id=config_id,
                     result=result,

@@ -13,6 +13,7 @@ from pytest_cases import fixture, parametrize
 
 from neps.exceptions import NePSError, TrialNotFoundError
 from neps.optimizers import OptimizerInfo
+from neps.space.neps_spaces.parameters import Float, PipelineSpace
 from neps.state.err_dump import ErrDump
 from neps.state.neps_state import NePSState
 from neps.state.optimizer import BudgetInfo, OptimizationState
@@ -47,11 +48,15 @@ def test_create_with_new_filebased_neps_state(
     optimizer_info: OptimizerInfo,
     optimizer_state: OptimizationState,
 ) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     new_path = tmp_path / "neps_state"
     neps_state = NePSState.create_or_load(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
+        pipeline_space=TestSpace(),
     )
     assert neps_state.lock_and_get_optimizer_info() == optimizer_info
     assert neps_state.lock_and_get_optimizer_state() == optimizer_state
@@ -70,11 +75,15 @@ def test_create_or_load_with_load_filebased_neps_state(
     optimizer_info: OptimizerInfo,
     optimizer_state: OptimizationState,
 ) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     new_path = tmp_path / "neps_state"
     neps_state = NePSState.create_or_load(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
+        pipeline_space=TestSpace(),
     )
 
     # NOTE: This isn't a defined way to do this but we should check
@@ -89,6 +98,7 @@ def test_create_or_load_with_load_filebased_neps_state(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=different_state,
+        pipeline_space=TestSpace(),
     )
     assert neps_state == neps_state2
 
@@ -98,11 +108,15 @@ def test_load_on_existing_neps_state(
     optimizer_info: OptimizerInfo,
     optimizer_state: OptimizationState,
 ) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     new_path = tmp_path / "neps_state"
     neps_state = NePSState.create_or_load(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
+        pipeline_space=TestSpace(),
     )
 
     neps_state2 = NePSState.create_or_load(path=new_path, load_only=True)
@@ -114,11 +128,15 @@ def test_new_or_load_on_existing_neps_state_with_different_optimizer_info(
     optimizer_info: OptimizerInfo,
     optimizer_state: OptimizationState,
 ) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
     new_path = tmp_path / "neps_state"
     NePSState.create_or_load(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=optimizer_state,
+        pipeline_space=TestSpace(),
     )
 
     with pytest.raises(NePSError):
@@ -126,4 +144,5 @@ def test_new_or_load_on_existing_neps_state_with_different_optimizer_info(
             path=new_path,
             optimizer_info=OptimizerInfo(name="randomlll", info={"e": "f"}),
             optimizer_state=optimizer_state,
+            pipeline_space=TestSpace(),
         )

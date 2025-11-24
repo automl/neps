@@ -28,8 +28,39 @@ class _Unset:
     def __repr__(self) -> str:
         return "<UNSET>"
 
+    def __reduce__(self) -> tuple:
+        """Custom pickle support to maintain singleton pattern across contexts."""
+        return (_get_unset_singleton, ())
+
 
 _UNSET = _Unset()
+
+
+def _get_unset_singleton() -> _Unset:
+    """Return the global _UNSET singleton.
+
+    This function is used by _Unset.__reduce__ to ensure the singleton
+    pattern is maintained when pickling and unpickling.
+    """
+    return _UNSET
+
+
+def _reconstruct_pipeline_space(attrs: Mapping[str, Any]) -> PipelineSpace:
+    """Reconstruct a PipelineSpace from its attributes.
+
+    This function is used by __reduce__ to enable pickling of PipelineSpace
+    instances across different module contexts.
+
+    Args:
+        attrs: A mapping of attribute names to their values.
+
+    Returns:
+        A new PipelineSpace instance with the specified attributes.
+    """
+    space = PipelineSpace()
+    for name, value in attrs.items():
+        setattr(space, name, value)
+    return space
 
 
 def _parameters_are_equivalent(param1: Any, param2: Any) -> bool:
@@ -186,6 +217,20 @@ class Fidelity(Resolvable, Generic[T]):
 class PipelineSpace(Resolvable):
     """A class representing a pipeline in NePS spaces."""
 
+    def __reduce__(self) -> tuple:
+        """Custom pickle support to make PipelineSpace serializable across contexts.
+
+        This method enables PipelineSpace instances (including custom subclasses)
+        to be pickled and unpickled even when the original class definition is not
+        available (e.g., when defined in __main__ or a notebook).
+
+        Returns:
+            A tuple (callable, args) for reconstructing the object.
+        """
+        # Store the attributes instead of the class definition
+        attrs = dict(self.get_attrs())
+        return (_reconstruct_pipeline_space, (attrs,))
+
     @property
     def fidelity_attrs(self) -> Mapping[str, Fidelity]:
         """Get the fidelity attributes of the pipeline. Fidelity attributes are special
@@ -300,14 +345,10 @@ class PipelineSpace(Resolvable):
             )
         param_name = name if name else f"param_{len(self.get_attrs()) + 1}"
 
-        class NewSpace(PipelineSpace):
-            pass
-
-        NewSpace.__name__ = self.__class__.__name__
-
-        new_pipeline = NewSpace()
+        # Create a new class dynamically with the added parameter
+        # Get all existing attributes plus the new one
+        new_attrs = {}
         for exist_name, value in self.get_attrs().items():
-            setattr(new_pipeline, exist_name, value)
             if exist_name == param_name and not _parameters_are_equivalent(
                 value, new_param
             ):
@@ -317,9 +358,26 @@ class PipelineSpace(Resolvable):
                     f" {value}\n"
                     f" {new_param}"
                 )
-        if not hasattr(new_pipeline, param_name):
-            setattr(new_pipeline, param_name, new_param)
-        return new_pipeline
+            new_attrs[exist_name] = value
+
+        # Add the new parameter if it doesn't exist
+        if param_name not in new_attrs:
+            new_attrs[param_name] = new_param
+
+        # Create a new class with a unique name that can be pickled
+        new_class_name = f"{self.__class__.__name__}_added_{param_name}"
+        NewSpace = type(new_class_name, (self.__class__.__bases__[0],), new_attrs)
+
+        # Set module and qualname to match original for proper pickling
+        NewSpace.__module__ = self.__class__.__module__
+
+        # Register the new class in the module's namespace so pickle can find it
+        import sys
+
+        module = sys.modules[NewSpace.__module__]
+        setattr(module, new_class_name, NewSpace)
+
+        return cast(PipelineSpace, NewSpace())
 
     def remove(self, name: str) -> PipelineSpace:
         """Remove a parameter from the pipeline by its name. This is NOT an in-place
@@ -339,16 +397,28 @@ class PipelineSpace(Resolvable):
                 f"No parameter with the name {name!r} exists in the pipeline."
             )
 
-        class NewSpace(PipelineSpace):
-            pass
+        # Create a new class dynamically without the removed parameter
+        # Get all attributes except the one to remove
+        new_attrs = {}
+        for attr_name, attr_value in self.get_attrs().items():
+            if attr_name != name:
+                new_attrs[attr_name] = attr_value
 
-        NewSpace.__name__ = self.__class__.__name__
-        new_pipeline = NewSpace()
-        for exist_name, value in self.get_attrs().items():
-            if exist_name != name:
-                setattr(new_pipeline, exist_name, value)
+        # Create a new class with a unique name that can be pickled
+        # We use the original class as the base to maintain the class hierarchy
+        new_class_name = f"{self.__class__.__name__}_removed_{name}"
+        NewSpace = type(new_class_name, (self.__class__.__bases__[0],), new_attrs)
 
-        return new_pipeline
+        # Set module and qualname to match original for proper pickling
+        NewSpace.__module__ = self.__class__.__module__
+
+        # Register the new class in the module's namespace so pickle can find it
+        import sys
+
+        module = sys.modules[NewSpace.__module__]
+        setattr(module, new_class_name, NewSpace)
+
+        return cast(PipelineSpace, NewSpace())
 
     def add_prior(
         self,
@@ -376,11 +446,8 @@ class PipelineSpace(Resolvable):
                 f"No parameter with the name {parameter_name!r} exists in the pipeline."
             )
 
-        class NewSpace(PipelineSpace):
-            pass
-
-        NewSpace.__name__ = self.__class__.__name__
-        new_pipeline = NewSpace()
+        # Create a new class dynamically with the modified parameter
+        new_attrs = {}
         for exist_name, value in self.get_attrs().items():
             if exist_name == parameter_name:
                 if isinstance(value, Integer | Float | Categorical):
@@ -402,8 +469,22 @@ class PipelineSpace(Resolvable):
                     )
             else:
                 new_value = value
-            setattr(new_pipeline, exist_name, new_value)
-        return new_pipeline
+            new_attrs[exist_name] = new_value
+
+        # Create a new class with a unique name that can be pickled
+        new_class_name = f"{self.__class__.__name__}_prior_{parameter_name}"
+        NewSpace = type(new_class_name, (self.__class__.__bases__[0],), new_attrs)
+
+        # Set module and qualname to match original for proper pickling
+        NewSpace.__module__ = self.__class__.__module__
+
+        # Register the new class in the module's namespace so pickle can find it
+        import sys
+
+        module = sys.modules[NewSpace.__module__]
+        setattr(module, new_class_name, NewSpace)
+
+        return cast(PipelineSpace, NewSpace())
 
 
 class ConfidenceLevel(enum.Enum):

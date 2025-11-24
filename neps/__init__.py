@@ -5,7 +5,15 @@ and plotting utilities, making it easy to experiment with different configuratio
 and algorithms.
 """
 
-from neps.api import create_config, import_trials, load_config, run, save_pipeline_results
+from neps.api import (
+    create_config,
+    import_trials,
+    load_config,
+    load_optimizer_info,
+    load_pipeline_space,
+    run,
+    save_pipeline_results,
+)
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
 from neps.optimizers.optimizer import SampledConfig
@@ -54,6 +62,8 @@ __all__ = [
     "import_trials",
     "load_and_merge_yamls",
     "load_config",
+    "load_optimizer_info",
+    "load_pipeline_space",
     "plot",
     "run",
     "save_pipeline_results",

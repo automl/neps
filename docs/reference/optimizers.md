@@ -110,6 +110,31 @@ neps.run(
 )
 ```
 
+### 2.4 Loading Optimizer Information
+
+NePS automatically saves the optimizer metadata (name and configuration) when you run an optimization. You can retrieve this information later using `neps.load_optimizer_info()`:
+
+```python
+import neps
+
+# Load the optimizer info from a previous run
+optimizer_info = neps.load_optimizer_info("path/to/neps_folder")
+
+# Access the optimizer name and configuration
+print(f"Optimizer: {optimizer_info['name']}")
+print(f"Configuration: {optimizer_info['info']}")
+```
+
+This is useful for:
+
+- **Inspecting** what optimizer and settings were used in a previous run
+- **Reproducing** experiments with the same optimizer configuration
+- **Comparing** different optimizer settings across runs
+
+!!! tip "Reconstructing a Complete Run"
+
+    Combine `load_optimizer_info()` with `load_pipeline_space()` to fully reconstruct a previous optimization. See [Reconstructing and Reproducing Runs](neps_run.md#reconstructing-and-reproducing-runs) for a complete example.
+
 ## 3 Custom Optimizers
 
 To design entirely new optimizers, you can define them as class with a `__call__` method outside of NePS and pass them to the `neps.run()` function:

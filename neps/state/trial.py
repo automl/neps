@@ -6,6 +6,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any, ClassVar, Literal
 from typing_extensions import Self
 
@@ -25,7 +26,6 @@ class State(str, Enum):
 
     EXTERNAL = "external"
     PENDING = "pending"
-    SUBMITTED = "submitted"
     EVALUATING = "evaluating"
     SUCCESS = "success"
     FAILED = "failed"
@@ -149,11 +149,22 @@ class Trial:
         data: list,
         *,
         worker_id: str,
+        trial_directory: Path,
     ) -> list[Self]:
-        """Load a trial from a dictionary with state EXTERNAL."""
-        trials: list[Self] = []
+        """Load a trial from a dictionary with state EXTERNAL.
+
+        Args:
+            data: A list of ImportedConfig objects to load.
+            worker_id: The worker id that is importing the trials.
+            trial_directory: The directory where trials are stored.
+
+        Returns:
+            A list of Trial objects.
+        """
+        loaded_trials: list[Self] = []
         for i, imported_conf in enumerate(data):
             info_dict = imported_conf.result.get("info_dict") or {}
+            location = str(trial_directory / f"config_{imported_conf.id}")
 
             trial = cls(
                 config=imported_conf.config,
@@ -164,13 +175,13 @@ class Trial:
                     time_started=info_dict.get("time_started"),
                     time_end=info_dict.get("time_end"),
                     evaluation_duration=info_dict.get("evaluation_duration"),
-                    previous_trial_id=None if i == 0 else trials[i - 1].metadata.id,
+                    previous_trial_id=(
+                        None if i == 0 else loaded_trials[i - 1].metadata.id
+                    ),
                     sampling_worker_id=worker_id,
                     evaluating_worker_id=worker_id,
-                    location="external",
-                    previous_trial_location=None
-                    if i == 0
-                    else trials[i - 1].metadata.location,
+                    location=location,
+                    previous_trial_location=None,
                 ),
                 report=Report(
                     reported_as="success",
@@ -184,18 +195,13 @@ class Trial:
                 ),
                 source="imported",
             )
-            trials.append(trial)
-        return trials
+            loaded_trials.append(trial)
+        return loaded_trials
 
     @property
     def id(self) -> str:
         """Return the id of the trial."""
         return self.metadata.id  # type: ignore
-
-    def set_submitted(self, *, time_submitted: float) -> None:
-        """Set the trial as submitted."""
-        self.metadata.time_submitted = time_submitted
-        self.metadata.state = State.SUBMITTED
 
     def set_evaluating(self, *, time_started: float, worker_id: int | str) -> None:
         """Set the trial as in progress."""

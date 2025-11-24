@@ -226,6 +226,27 @@ pipeline = neps.load_config("Path/to/neps_folder", config_id="config_0", pipelin
 model = pipeline["model"]
 ```
 
+### Loading the Search Space from Disk
+
+NePS automatically saves the search space when you run an optimization. You can retrieve it later using `neps.load_pipeline_space()`:
+
+```python
+import neps
+
+# Load the search space from a previous run
+pipeline_space = neps.load_pipeline_space("Path/to/neps_folder")
+
+# Now you can use it to inspect configurations, continue runs, or analysis
+```
+
+!!! note "Auto-loading"
+
+    In most cases, you don't need to call `load_pipeline_space()` explicitly. When continuing a run, `neps.run()` automatically loads the search space from disk. See [Continuing Runs](neps_run.md#continuing-runs) for more details.
+
+!!! tip "Reconstructing a Run"
+
+    You can load both the search space and optimizer information to fully reconstruct a previous run. See [Reconstructing and Reproducing Runs](neps_run.md#reconstructing-and-reproducing-runs) for a complete example.
+
 ## Using ConfigSpace
 
 For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/main/) library,

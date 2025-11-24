@@ -390,5 +390,5 @@ def test_space_string_representation():
     # Should be able to get string representation without error
     str_repr = str(modified_space)
     assert "BasicSpace" in str_repr
-    assert "added_param" in str_repr
-    assert "y" not in str_repr  # Should be removed
+    assert "added_param = " in str_repr
+    assert "y = " not in str_repr  # Should be removed
