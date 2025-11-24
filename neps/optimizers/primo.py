@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
     from neps.state import BudgetInfo, Trial
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -264,7 +267,7 @@ class PriMO:
         assert n is None, "TODO"
         n_sampled = len(trials)
 
-        time.time()
+        start_time = time.time()
 
         data, encoder = encode_trials_for_gp(
             trials,
@@ -325,7 +328,8 @@ class PriMO:
             hide_warnings=True,
         )
 
-        time.time()
+        end_time = time.time()
+        logger.info(f"PriMO BO step took {end_time - start_time:.5f} seconds")
 
         return encoder.decode_one(candidates)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import logging
 import math
 import time
 from collections.abc import Mapping, Sequence
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
     from neps.sampling import Prior
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
+
+
+logger = logging.getLogger(__name__)
 
 
 def _pibo_exp_term(
@@ -150,7 +154,7 @@ class BayesianOptimization:
             if len(sampled_configs) >= n_to_sample:
                 return sampled_configs[0] if n is None else sampled_configs
 
-        time.time()
+        start_time = time.time()
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -271,7 +275,8 @@ class BayesianOptimization:
             hide_warnings=True,
         )
 
-        time.time()
+        end_time = time.time()
+        logger.info(f"BO step took {end_time - start_time:.5f} seconds")
 
         configs = encoder.decode(candidates)
         for config in configs:
