@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import itertools
 import math
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -149,6 +150,8 @@ class BayesianOptimization:
             if len(sampled_configs) >= n_to_sample:
                 return sampled_configs[0] if n is None else sampled_configs
 
+        time.time()
+
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
             trials,
@@ -267,6 +270,8 @@ class BayesianOptimization:
             costs_on_log_scale=self.cost_aware == "log",
             hide_warnings=True,
         )
+
+        time.time()
 
         configs = encoder.decode(candidates)
         for config in configs:

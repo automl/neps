@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -263,6 +264,8 @@ class PriMO:
         assert n is None, "TODO"
         n_sampled = len(trials)
 
+        time.time()
+
         data, encoder = encode_trials_for_gp(
             trials,
             self.space.searchables,
@@ -321,6 +324,8 @@ class PriMO:
             pibo_exp_term=primo_exp_term,
             hide_warnings=True,
         )
+
+        time.time()
 
         return encoder.decode_one(candidates)
 
