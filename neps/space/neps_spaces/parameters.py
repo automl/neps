@@ -936,6 +936,7 @@ class Float(Domain[float]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        **kwargs: object,
     ):
         """Initialize the Float domain with min and max values, and optional prior.
 
@@ -945,8 +946,18 @@ class Float(Domain[float]):
             log: Whether to sample values on a logarithmic scale.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
+            **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
+                for backward compatibility but ignored in PipelineSpace parameters.
 
         """
+        # Handle is_fidelity for backward compatibility
+        # Store it silently - user will get warning from neps.run about SearchSpace usage
+        # TODO: Remove this when removing SearchSpace support
+        if "is_fidelity" in kwargs:
+            self._is_fidelity_compat = bool(kwargs.get("is_fidelity", False))
+        if any(key != "is_fidelity" for key in kwargs):
+            raise TypeError(f"Unexpected keyword arguments: {', '.join(kwargs.keys())}.")
+
         self._lower = lower
         self._upper = upper
         self._log = log
@@ -1154,6 +1165,7 @@ class Integer(Domain[int]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        **kwargs: object,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
 
@@ -1163,7 +1175,17 @@ class Integer(Domain[int]):
             log: Whether to sample values on a logarithmic scale.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
+            **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
+                for backward compatibility but ignored in PipelineSpace parameters.
         """
+        # Handle is_fidelity for backward compatibility
+        # Store it silently - user will get warning from neps.run about SearchSpace usage
+        # TODO: Remove this when removing SearchSpace support
+        if "is_fidelity" in kwargs:
+            self._is_fidelity_compat = bool(kwargs.get("is_fidelity", False))
+        if any(key != "is_fidelity" for key in kwargs):
+            raise TypeError(f"Unexpected keyword arguments: {', '.join(kwargs.keys())}.")
+
         self._lower = lower
         self._upper = upper
         self._log = log

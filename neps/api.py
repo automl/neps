@@ -14,6 +14,7 @@ import yaml
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
 from neps.runtime import _launch_runtime, _save_results
+from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
     adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
@@ -33,7 +34,6 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
-    from neps.space import SearchSpace
     from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResultDict
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
+    pipeline_space: ConfigurationSpace | PipelineSpace | SearchSpace | dict | None = None,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
@@ -150,8 +150,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
             This most direct way to specify the pipeline space is as follows:
 
             ```python
-            MySpace(PipelineSpace):
-                dataset = "mnist"               # constant
+            class MySpace(PipelineSpace):
                 nlayers = neps.Integer(2,10)    # integer
                 alpha = neps.Float(0.1, 1.0)    # float
                 optimizer = neps.Categorical(   # categorical
@@ -330,6 +329,24 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         raise ValueError(
             "`max_evaluations_per_run` is deprecated, please use "
             "`evaluations_to_spend` for limiting the number of evaluations for this run.",
+        )
+
+    # If the pipeline_space is a SearchSpace, convert it to a PipelineSpace and throw a
+    # deprecation warning
+    if isinstance(pipeline_space, SearchSpace | dict):
+        if isinstance(pipeline_space, dict):
+            pipeline_space = SearchSpace(pipeline_space)
+        pipeline_space = convert_classic_to_neps_search_space(pipeline_space)
+        space_lines = str(pipeline_space).split("\n")
+        space_def = space_lines[1] if len(space_lines) > 1 else str(pipeline_space)
+        warnings.warn(
+            "Passing a SearchSpace or dictionary to neps.run is deprecated and will be"
+            " removed in a future version. Please pass a PipelineSpace instead, as"
+            " described in the NePS-Spaces documentation."
+            " This specific space should be given as:\n\n```python\nclass"
+            f" MySpace(PipelineSpace):\n{space_def}\n```\n",
+            DeprecationWarning,
+            stacklevel=2,
         )
 
     # Try to load pipeline_space from disk if not provided
@@ -532,7 +549,7 @@ def save_pipeline_results(
 def import_trials(  # noqa: C901
     evaluated_trials: Sequence[tuple[Mapping[str, Any], UserResultDict],],
     root_directory: Path | str,
-    pipeline_space: SearchSpace | PipelineSpace | None = None,
+    pipeline_space: SearchSpace | dict | PipelineSpace | None = None,
     overwrite_root_directory: bool = False,  # noqa: FBT001, FBT002
     optimizer: (
         OptimizerChoice
@@ -555,7 +572,7 @@ def import_trials(  # noqa: C901
             A sequence of tuples, each containing a configuration dictionary
             and its corresponding result.
         root_directory (Path or str): The root directory of the NePS run.
-        pipeline_space (SearchSpace | PipelineSpace | None): The pipeline space
+        pipeline_space (SearchSpace | dict | PipelineSpace | None): The pipeline space
             used for the optimization. If None, will attempt to load from the
             root_directory. If provided and a pipeline space exists on disk, they
             will be validated to match.

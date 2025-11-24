@@ -9,7 +9,12 @@ import warnings
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, TypeAlias
 
-from neps.space.neps_spaces.parameters import PipelineSpace
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    Float,
+    Integer,
+    PipelineSpace,
+)
 from neps.space.parameters import (
     HPOCategorical,
     HPOConstant,
@@ -202,6 +207,9 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
         match details:
             case HPOFloat() | HPOInteger() | HPOCategorical() | HPOConstant():
                 parameters[name] = dataclasses.replace(details)  # copy
+            # New PipelineSpace parameters - converted by SearchSpace.__post_init__
+            case Float() | Integer() | Categorical():
+                parameters[name] = details  # type: ignore[assignment]
             case str() | int() | float() | Mapping():
                 try:
                     parameters[name] = as_parameter(details)
@@ -217,7 +225,7 @@ def convert_mapping(pipeline_space: Mapping[str, Any]) -> SearchSpace:
     return SearchSpace(parameters)
 
 
-def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:  # noqa: C901
+def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:
     """Constructs a [`SearchSpace`][neps.space.SearchSpace]
     from a [`ConfigurationSpace`](https://automl.github.io/ConfigSpace/latest/).
 
@@ -230,12 +238,15 @@ def convert_configspace(configspace: ConfigurationSpace) -> SearchSpace:  # noqa
     import ConfigSpace as CS
 
     space: dict[str, Parameter | HPOConstant] = {}
-    if hasattr(configspace, "conditions") and hasattr(configspace, "forbidden_clauses"):  # noqa: SIM102
-        if any(configspace.conditions) or any(configspace.forbidden_clauses):
-            raise NotImplementedError(
-                "The ConfigurationSpace has conditions or forbidden clauses, "
-                "which are not supported by neps."
-            )
+    if (
+        hasattr(configspace, "conditions")
+        and hasattr(configspace, "forbidden_clauses")
+        and (any(configspace.conditions) or any(configspace.forbidden_clauses))
+    ):
+        raise NotImplementedError(
+            "The ConfigurationSpace has conditions or forbidden clauses, "
+            "which are not supported by neps."
+        )
 
     for name, hyperparameter in configspace.items():
         match hyperparameter:
