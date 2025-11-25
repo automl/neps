@@ -237,20 +237,20 @@ def optimize_acq(  # noqa: C901, PLR0915
             for combo in product(*cats.values())
         ]
 
-    # Make sure to include caller's fixed features if provided
-    if len(_fixed_features) > 0:
-        fixed_cats = [{**cat, **_fixed_features} for cat in fixed_cats]
+    cat_keys = list(cats.keys())
+    choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
 
     if num_numericals > 0:
         with warning_context:
             # cats: dict[int, list[float]] as before
-            cat_keys = list(cats.keys())
-            choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
 
             # Step 1: Optimize acquisition function over the continuous space
             # Sample a random categorical combination and keep it fixed during
             # the continuous optimization step
             random_fixed_cat = fixed_cats[np.random.randint(len(fixed_cats))]
+
+            if len(_fixed_features) > 0:
+                random_fixed_cat.update(_fixed_features)
 
             best_x_continuous, _ = optimize_acqf(
                 acq_function=acq_fn,
@@ -258,7 +258,7 @@ def optimize_acq(  # noqa: C901, PLR0915
                 q=n_candidates_required,
                 num_restarts=num_restarts,
                 raw_samples=n_intial_start_points,
-                fixed_features=_fixed_features or random_fixed_cat,
+                fixed_features=random_fixed_cat,
                 **acq_options,
             )
 
@@ -325,12 +325,9 @@ def optimize_acq(  # noqa: C901, PLR0915
 
     else:
         with warning_context:
-            torch_cats: list[torch.Tensor] = [
-                torch.tensor(v, dtype=torch.float64) for v in cats.values()
-            ]
             return optimize_acqf_discrete_local_search(  # type: ignore
                 acq_function=acq_fn,
-                discrete_choices=torch_cats,
+                discrete_choices=choices,
                 q=n_candidates_required,
                 num_restarts=num_restarts,
                 raw_samples=n_intial_start_points,
