@@ -10,6 +10,7 @@ import abc
 import enum
 import math
 import random
+import warnings
 from collections.abc import Callable, Mapping, Sequence
 from typing import (
     Any,
@@ -954,6 +955,12 @@ class Float(Domain[float]):
         # Store it silently - user will get warning from neps.run about SearchSpace usage
         # TODO: Remove this when removing SearchSpace support
         if "is_fidelity" in kwargs:
+            warnings.warn(
+                "`is_fidelity` argument is deprecated and will be removed in future"
+                " versions. Please update your code accordingly.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             self._is_fidelity_compat = bool(kwargs.get("is_fidelity", False))
         if any(key != "is_fidelity" for key in kwargs):
             raise TypeError(f"Unexpected keyword arguments: {', '.join(kwargs.keys())}.")
@@ -1182,6 +1189,12 @@ class Integer(Domain[int]):
         # Store it silently - user will get warning from neps.run about SearchSpace usage
         # TODO: Remove this when removing SearchSpace support
         if "is_fidelity" in kwargs:
+            warnings.warn(
+                "`is_fidelity` argument is deprecated and will be removed in future"
+                " versions. Please update your code accordingly.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             self._is_fidelity_compat = bool(kwargs.get("is_fidelity", False))
         if any(key != "is_fidelity" for key in kwargs):
             raise TypeError(f"Unexpected keyword arguments: {', '.join(kwargs.keys())}.")
