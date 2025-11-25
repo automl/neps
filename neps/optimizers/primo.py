@@ -267,8 +267,6 @@ class PriMO:
         assert n is None, "TODO"
         n_sampled = len(trials)
 
-        start_time = time.time()
-
         data, encoder = encode_trials_for_gp(
             trials,
             self.space.searchables,
@@ -302,6 +300,8 @@ class PriMO:
             prior = None if primo_exp_term < 1e-4 else selected_prior
 
         n_to_acquire = 1
+
+        start_time = time.time()
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
         with disable_warnings(NumericalWarning):
