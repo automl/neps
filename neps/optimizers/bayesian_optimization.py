@@ -154,8 +154,6 @@ class BayesianOptimization:
             if len(sampled_configs) >= n_to_sample:
                 return sampled_configs[0] if n is None else sampled_configs
 
-        start_time = time.time()
-
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
             trials,
@@ -218,6 +216,8 @@ class BayesianOptimization:
             "Either no trials have been completed or"
             " No trials reports have objective values."
         )
+
+        start_time = time.time()
 
         if num_objectives > 1:
             gp = make_default_single_obj_gp(
