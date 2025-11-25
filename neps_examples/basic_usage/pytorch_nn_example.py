@@ -17,8 +17,6 @@ from neps import (
     Categorical,
     Resampled,
 )
-from neps.space.neps_spaces import neps_space
-
 
 # Define the neural network architecture using PyTorch as usual
 class ReLUConvBN(nn.Module):

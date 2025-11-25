@@ -38,8 +38,8 @@ if __name__ == "__main__":
     # The created configuration can then be used as an imported trial in NePS optimizers.
     # We demonstrate this with the fictional result of objective_to_minimize = 0.5
     neps.import_trials(
-        ExampleSpace(),
-        [(config, neps.UserResultDict(objective_to_minimize=0.5))],
+        evaluated_trials=[(config, neps.UserResultDict(objective_to_minimize=0.5))],
         root_directory="results/created_config_example",
+        pipeline_space=ExampleSpace(),
         overwrite_root_directory=True,
     )

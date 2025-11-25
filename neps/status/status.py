@@ -11,22 +11,21 @@ import itertools
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from pprint import pformat
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
 from neps.space.neps_spaces import neps_space
-from neps.space.neps_spaces.neps_space import NepsCompatConverter
+from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
+from neps.space.neps_spaces.operation_formatter import ConfigString
 from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
 
 if TYPE_CHECKING:
-    from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.space.search_space import SearchSpace
-else:
-    from neps.space.neps_spaces.parameters import PipelineSpace
 
 
 def _format_config_entry(entry: dict, indent: str = "") -> str:
@@ -212,7 +211,13 @@ class Summary:
                 f"\n    objective_to_minimize: {best_objective_to_minimize}\n    config: "
             )
             if not pipeline_space:
-                best_summary += f"{best_trial.config}"
+                # Pretty-print dict configs with proper indentation
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
             elif isinstance(pipeline_space, PipelineSpace):
                 # Only PipelineSpace supports pretty formatting - SearchSpace doesn't
                 best_config_resolve = NepsCompatConverter().from_neps_config(
@@ -222,23 +227,15 @@ class Summary:
                 variables = list(pipeline_space.get_attrs().keys()) + list(
                     pipeline_space.fidelity_attrs.keys()
                 )
+                resolved_pipeline = neps_space.resolve(
+                    pipeline_space,
+                    OnlyPredefinedValuesSampler(best_config_resolve.predefined_samplings),
+                    environment_values=best_config_resolve.environment_values,
+                )[0]
+
                 for variable in variables:
-                    pipeline_configs.append(
-                        neps_space.config_string.ConfigString(
-                            neps_space.convert_operation_to_string(
-                                getattr(
-                                    neps_space.resolve(
-                                        pipeline_space,
-                                        OnlyPredefinedValuesSampler(
-                                            best_config_resolve.predefined_samplings
-                                        ),
-                                        environment_values=best_config_resolve.environment_values,
-                                    )[0],
-                                    variable,
-                                )
-                            )
-                        ).pretty_format()
-                    )
+                    operation = getattr(resolved_pipeline, variable)
+                    pipeline_configs.append(ConfigString(operation).pretty_format())
 
                 for n_pipeline, pipeline_config in enumerate(pipeline_configs):
                     if isinstance(pipeline_config, str):
@@ -265,8 +262,13 @@ class Summary:
                         formatted_config = pipeline_config  # type: ignore
                     best_summary += f"\n\t{variables[n_pipeline]}: {formatted_config}"
             else:
-                # SearchSpace or other space type - just use string representation
-                best_summary += f"{best_trial.config}"
+                # SearchSpace or other space type - pretty-print the dict
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
 
             best_summary += f"\n    path: {best_trial.metadata.location}"
 

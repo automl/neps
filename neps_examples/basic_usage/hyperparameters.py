@@ -15,7 +15,7 @@ def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
         np.sum([float1, float2, int(categorical), integer1, integer2])
     )
     return {"objective_to_minimize": objective_to_minimize, "cost": categorical,}
-    
+
 
 
 class HPOSpace(neps.PipelineSpace):
@@ -31,7 +31,6 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=HPOSpace(),
     root_directory="results/hyperparameters_example",
-    evaluations_to_spend=15,
-    cost_to_spend=2,
-    worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
+    evaluations_to_spend=5,
+    overwrite_root_directory=True,
 )

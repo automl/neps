@@ -1,4 +1,4 @@
-"""How to generate a summary (neps.status) and visualizations (neps.plot) of a run.
+"""How to generate a summary (neps.status) of a run.
 
 Before running this example analysis, run the hyperparameters example with:
 
@@ -15,6 +15,5 @@ import neps
 full, summary = neps.status("results/hyperparameters_example", print_summary=True)
 config_id = "1"
 
-print(full.head())
-print("")
+print("\n", full.head(), "\n")
 print(full.loc[config_id])

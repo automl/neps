@@ -748,7 +748,11 @@ class Categorical(Domain[int], Generic[T]):
         str_choices = [
             (
                 choice.__name__  # type: ignore[union-attr]
-                if (callable(choice) and not isinstance(choice, Resolvable))
+                if (
+                    callable(choice)
+                    and not isinstance(choice, Resolvable)
+                    and hasattr(choice, "__name__")
+                )
                 else str(choice)
             )
             for choice in self.choices  # type: ignore[union-attr]

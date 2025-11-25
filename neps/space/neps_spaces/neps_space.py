@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeVar, cast
 
 import neps
 from neps.optimizers import algorithms, optimizer
-from neps.space.neps_spaces import config_string
 from neps.space.neps_spaces.parameters import (
     _UNSET,
     Categorical,
@@ -930,95 +929,6 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
     return cast(Callable, operator(*operation_args, **operation_kwargs))
 
 
-def _serialize_operation(operation: Operation | str | Callable) -> str:
-    """Serialize an operation to its string representation.
-
-    This is a helper function to convert Operation objects to strings
-    for inclusion in the operands field of UnwrappedConfigStringPart.
-    """
-    if isinstance(operation, str):
-        return operation
-
-    # Handle non-Operation objects (e.g., resolved PyTorch modules, integers, etc.)
-    if not isinstance(operation, Operation):
-        return str(operation)
-
-    # For Operation objects, build the string representation
-    operator_name = (
-        operation.operator
-        if isinstance(operation.operator, str)
-        else operation.operator.__name__
-    )
-
-    if not operation.args:
-        # No operands - just return operator name
-        return operator_name
-
-    # Recursively serialize operands
-    operand_strs = [_serialize_operation(arg) for arg in operation.args]
-    return f"{operator_name}({', '.join(operand_strs)})"
-
-
-def _operation_to_unwrapped_config(
-    operation: Operation | str,
-    level: int = 1,
-    opening_index: int = 0,
-) -> tuple[list[config_string.UnwrappedConfigStringPart], int]:
-    """Convert an Operation to unwrapped config parts.
-
-    Returns:
-        A tuple of (list of parts, next available opening_index)
-    """
-    result = []
-
-    if isinstance(operation, Operation):
-        operator = operation.operator
-        kwargs = str(operation.kwargs)
-
-        # Build operands string and collect child parts
-        operand_strs = []
-        all_child_parts = []
-        next_opening = opening_index + 1
-
-        for operand in operation.args:
-            if isinstance(operand, Operation):
-                # Only create child parts if the operation has operands
-                # (otherwise it's just a simple name like "ReLU")
-                if operand.args:
-                    # Recursively get unwrapped parts for the nested operation
-                    child_parts, next_opening = _operation_to_unwrapped_config(
-                        operand, level + 1, next_opening
-                    )
-                    all_child_parts.extend(child_parts)
-                # Serialize this operand to a string for the operands field
-                operand_strs.append(_serialize_operation(operand))
-            else:
-                operand_strs.append(str(operand))
-
-        # Create operands string
-        operands_str = ", ".join(operand_strs)
-
-        item = config_string.UnwrappedConfigStringPart(
-            level=level,
-            opening_index=opening_index,
-            operator=operator,
-            hyperparameters=kwargs,
-            operands=operands_str,
-        )
-        result.append(item)
-        result.extend(all_child_parts)
-
-        return result, next_opening
-    item = config_string.UnwrappedConfigStringPart(
-        level=level,
-        opening_index=opening_index,
-        operator=operation,
-        hyperparameters="",
-        operands="",
-    )
-    return [item], opening_index + 1
-
-
 def convert_operation_to_string(operation: Operation | str | int | float) -> str:
     """Convert an Operation to a string representation.
 
@@ -1031,12 +941,13 @@ def convert_operation_to_string(operation: Operation | str | int | float) -> str
     Raises:
         ValueError: If the operation is not a valid Operation object.
     """
+    from neps.space.neps_spaces.operation_formatter import operation_to_string
+
     # Handle non-Operation values (resolved primitives)
     if not isinstance(operation, Operation):
         return str(operation)
 
-    unwrapped_config, _ = _operation_to_unwrapped_config(operation)
-    return config_string.wrap_config_into_string(tuple(unwrapped_config))
+    return operation_to_string(operation)
 
 
 # -------------------------------------------------
