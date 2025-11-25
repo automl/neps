@@ -249,6 +249,9 @@ def optimize_acq(  # noqa: C901, PLR0915
             # the continuous optimization step
             random_fixed_cat = fixed_cats[np.random.randint(len(fixed_cats))]
 
+            if len(_fixed_features) > 0:
+                random_fixed_cat.update(_fixed_features)
+
             best_x_continuous, _ = optimize_acqf(
                 acq_function=acq_fn,
                 bounds=bounds,
