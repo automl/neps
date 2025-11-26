@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import itertools
-import logging
 import math
-import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
@@ -29,9 +27,6 @@ if TYPE_CHECKING:
     from neps.sampling import Prior
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
-
-
-logger = logging.getLogger(__name__)
 
 
 def _pibo_exp_term(
@@ -217,8 +212,6 @@ class BayesianOptimization:
             " No trials reports have objective values."
         )
 
-        start_time = time.time()
-
         if num_objectives > 1:
             gp = make_default_single_obj_gp(
                 x=data.x,
@@ -274,9 +267,6 @@ class BayesianOptimization:
             costs_on_log_scale=self.cost_aware == "log",
             hide_warnings=True,
         )
-
-        end_time = time.time()
-        logger.info(f"BO step took {end_time - start_time:.5f} seconds")
 
         configs = encoder.decode(candidates)
         for config in configs:
