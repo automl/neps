@@ -7,7 +7,6 @@ import warnings
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
-from functools import reduce
 from typing import TYPE_CHECKING, Any
 
 import gpytorch.constraints
@@ -143,7 +142,6 @@ def optimize_acq(
     n_intial_start_points: int | None = None,
     acq_options: Mapping[str, Any] | None = None,
     fixed_features: dict[str, Any] | None = None,
-    maximum_allowed_categorical_combinations: int = 30,
     hide_warnings: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Optimize the acquisition function.
@@ -220,22 +218,6 @@ def optimize_acq(
                 fixed_features=_fixed_features,
                 **acq_options,
             )
-
-    # We need to generate the product of all possible combinations of categoricals,
-    # first we do a sanity check
-    n_combos = reduce(
-        lambda x, y: x * y,  # type: ignore
-        [t.domain.cardinality for t in cat_transformers.values()],
-        1,
-    )
-    if n_combos > maximum_allowed_categorical_combinations:
-        raise ValueError(
-            "The number of fixed categorical dimensions is too high. "
-            "This will lead to an explosion in the number of possible "
-            f"combinations. Got: {n_combos} while the setting for the function"
-            f" is: {maximum_allowed_categorical_combinations=}. Consider reducing the "
-            "dimensions or consider encoding your categoricals in some other format."
-        )
 
     # First, just collect the possible values per cat column
     # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
@@ -422,7 +404,6 @@ def fit_and_acquire_from_gp(
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int = 256,
-    maximum_allowed_categorical_combinations: int = np.inf,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
     hide_warnings: bool = False,
@@ -466,9 +447,6 @@ def fit_and_acquire_from_gp(
         num_restarts: The number of restarts to use during optimization.
         n_initial_start_points: The number of initial start points to use during
             optimization.
-        maximum_allowed_categorical_combinations: The maximum number of categorical
-            combinations to allow. If the number of combinations exceeds this, an error
-            will be raised.
         acq_options: Additional options to pass to the botorch `optimizer_acqf` function.
         hide_warnings: Whether to hide numerical warnings issued during GP routines.
 
@@ -549,7 +527,6 @@ def fit_and_acquire_from_gp(
         n_intial_start_points=n_initial_start_points,
         fixed_features=fixed_acq_features,
         acq_options=acq_options,
-        maximum_allowed_categorical_combinations=maximum_allowed_categorical_combinations,
         hide_warnings=hide_warnings,
     )
     return candidates
