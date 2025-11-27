@@ -51,12 +51,15 @@ def _format_value(
     if isinstance(value, dict):
         return _format_dict(value, indent, style)
 
-    # For strings that look like identifiers (operation names), don't add quotes
-    # to match the previous formatter's behavior
+    # For callables (functions, methods), show their name instead of repr
+    if callable(value) and (name := getattr(value, "__name__", None)):
+        return name
+
+    # For identifier strings, don't add quotes
     if isinstance(value, str) and value.isidentifier():
         return value
 
-    # For other primitives, use repr to get proper quoting
+    # For other values, use repr
     return repr(value)
 
 
@@ -77,8 +80,8 @@ def _format_sequence(
         return compact
 
     # Use expanded format for complex sequences
-    bracket_open = "[" if isinstance(seq, list) else "("
-    bracket_close = "]" if isinstance(seq, list) else ")"
+    is_list = isinstance(seq, list)
+    bracket_open, bracket_close = ("[", "]") if is_list else ("(", ")")
 
     indent_str = style.indent_str * indent
     inner_indent_str = style.indent_str * (indent + 1)
@@ -169,11 +172,10 @@ def _format_operation(
     )
 
     # Check if we have any args or kwargs
-    has_args = operation.args and len(operation.args) > 0
-    has_kwargs = operation.kwargs and len(operation.kwargs) > 0
+    has_args = bool(operation.args)
+    has_kwargs = bool(operation.kwargs)
 
-    if not has_args and not has_kwargs:
-        # Empty operation
+    if not (has_args or has_kwargs):
         return f"{operator_name}()" if style.show_empty_args else operator_name
 
     # Always use multi-line format for consistency and readability
@@ -263,7 +265,7 @@ class ConfigString:
         Raises:
             ValueError: If the config is None or empty.
         """
-        if config is None or (isinstance(config, str) and len(config) == 0):
+        if config is None or (isinstance(config, str) and not config):
             raise ValueError(f"Invalid config: {config}")
 
         self.config = config
@@ -284,12 +286,9 @@ class ConfigString:
         return str(self.config)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, self.__class__):
-            return str(self.config) == str(other.config)
-        raise NotImplementedError()  # let the other side check for equality
-
-    def __ne__(self, other: object) -> bool:
-        return not self.__eq__(other)
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return str(self.config) == str(other.config)
 
     def __hash__(self) -> int:
-        return str(self.config).__hash__()
+        return hash(str(self.config))

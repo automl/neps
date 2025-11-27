@@ -176,7 +176,7 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(  # noqa: PLR0912, C901
+    def formatted(  # noqa: PLR0912
         self, pipeline_space: PipelineSpace | SearchSpace | None = None
     ) -> str:
         """Return a formatted string of the summary.
@@ -238,29 +238,20 @@ class Summary:
                     pipeline_configs.append(ConfigString(operation).pretty_format())
 
                 for n_pipeline, pipeline_config in enumerate(pipeline_configs):
-                    if isinstance(pipeline_config, str):
-                        # Replace literal \t and \n with actual formatting
-                        formatted_config = pipeline_config.replace("\\t", "    ").replace(
-                            "\\n", "\n"
+                    formatted_config = str(pipeline_config)
+                    variable_name = variables[n_pipeline]
+
+                    # Multi-line configs: put on new line with proper indentation
+                    # Single-line configs: inline after variable name
+                    if "\n" in formatted_config:
+                        indented_config = "\n          ".join(
+                            formatted_config.split("\n")
                         )
-
-                        # Add proper indentation to each line
-                        lines = formatted_config.split("\n")
-                        indented_lines = []
-                        for i, line in enumerate(lines):
-                            if i == 0:
-                                indented_lines.append(
-                                    line
-                                )  # First line gets base indentation
-                            else:
-                                indented_lines.append(
-                                    "        " + line
-                                )  # Subsequent lines get extra indentation
-
-                        formatted_config = "\n".join(indented_lines)
+                        best_summary += (
+                            f"\n        {variable_name}:\n          {indented_config}"
+                        )
                     else:
-                        formatted_config = pipeline_config  # type: ignore
-                    best_summary += f"\n\t{variables[n_pipeline]}: {formatted_config}"
+                        best_summary += f"\n        {variable_name}: {formatted_config}"
             else:
                 # SearchSpace or other space type - pretty-print the dict
                 config_str = pformat(

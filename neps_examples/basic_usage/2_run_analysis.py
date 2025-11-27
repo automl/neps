@@ -1,7 +1,5 @@
 """How to generate a summary (neps.status) of a run.
-
 Before running this example analysis, run the hyperparameters example with:
-
     python -m neps_examples.basic_usage.hyperparameters
 """
 
@@ -11,7 +9,6 @@ import neps
 # read-able and can be useful
 
 # 2. Printing a summary and reading in results.
-# Alternatively use `python -m neps.status results/hyperparameters_example`
 full, summary = neps.status("results/hyperparameters_example", print_summary=True)
 config_id = "1"
 

@@ -19,10 +19,8 @@ class NN_Space(neps.PipelineSpace):
 
     _kernel_size = neps.Integer(2, 7)
 
-    # Regular parameter (not prefixed with _) - will be sampled and shown in results
-    learning_rate = neps.Float(0.0001, 0.01, log=True)
-    optimizer_name = neps.Categorical(["adam", "sgd", "rmsprop"])
-
+    # Building blocks of the neural network architecture
+    # The convolution layer with sampled kernel size
     _conv = neps.Operation(
         operator=nn.Conv2d,
         kwargs={
@@ -33,6 +31,7 @@ class NN_Space(neps.PipelineSpace):
         },
     )
 
+    # Non-linearity layer sampled from a set of choices
     _nonlinearity = neps.Categorical(
         choices=(
             nn.ReLU(),
@@ -41,6 +40,7 @@ class NN_Space(neps.PipelineSpace):
         )
     )
 
+    # A cell consisting of a convolution followed by a non-linearity
     _cell = neps.Operation(
         operator=nn.Sequential,
         args=(
@@ -49,6 +49,7 @@ class NN_Space(neps.PipelineSpace):
         ),
     )
 
+    # The full model consisting of three cells stacked sequentially
     model = neps.Operation(
         operator=nn.Sequential,
         args=(
@@ -60,26 +61,24 @@ class NN_Space(neps.PipelineSpace):
 
 
 # Defining the pipeline, using the model from the NN_space space as callable
-def evaluate_pipeline(model: nn.Sequential, learning_rate: float, optimizer_name: str):
+def evaluate_pipeline(model: torch.nn.Module) -> float:
     x = torch.ones(size=[1, 3, 220, 220])
     result = np.sum(model(x).detach().numpy().flatten())
-    # Use learning_rate and optimizer_name in a simple way to show they're being passed
-    optimizer_multiplier = {"adam": 1.0, "sgd": 1.1, "rmsprop": 0.9}.get(
-        optimizer_name, 1.0
+
+    return result
+
+
+if __name__ == "__main__":
+    # Run NePS with the defined pipeline and space and show the best configuration
+    pipeline_space = NN_Space()
+    neps.run(
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=pipeline_space,
+        root_directory="results/architecture_search_example",
+        evaluations_to_spend=5,
+        overwrite_root_directory=True,
     )
-    return result * learning_rate * optimizer_multiplier
-
-
-# Run NePS with the defined pipeline and space and show the best configuration
-pipeline_space = NN_Space()
-neps.run(
-    evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
-    root_directory="results/architecture_search_example",
-    evaluations_to_spend=5,
-    overwrite_root_directory=True,
-)
-neps.status(
-    "results/architecture_search_example",
-    print_summary=True,
-)
+    neps.status(
+        "results/architecture_search_example",
+        print_summary=True,
+    )
