@@ -41,15 +41,12 @@ def test_default_values_on_error(
             cost_value_on_error=2.4,  # <- Highlight
             learning_curve_on_error=[2.4, 2.5],  # <- Highlight
         ),
-        evaluations_to_spend=None,
+        evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
         fidelities_to_spend=None,
-        max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
+        max_wallclock_time_seconds=None,
         batch_size=None,
     )
 
@@ -93,15 +90,12 @@ def test_default_values_on_not_specified(
             cost_if_not_provided=2.4,
             learning_curve_if_not_provided=[2.4, 2.5],
         ),
-        evaluations_to_spend=None,
+        evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
         fidelities_to_spend=None,
-        max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
+        max_wallclock_time_seconds=None,
         batch_size=None,
     )
 
@@ -143,15 +137,12 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
         default_report_values=DefaultReportValues(
             learning_curve_if_not_provided="objective_to_minimize"
         ),
-        evaluations_to_spend=None,
+        evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=False,
         cost_to_spend=None,
         fidelities_to_spend=None,
-        max_evaluations_for_worker=1,
         max_evaluation_time_total_seconds=None,
-        max_wallclock_time_for_worker_seconds=None,
-        max_evaluation_time_for_worker_seconds=None,
-        max_cost_for_worker=None,
+        max_wallclock_time_seconds=None,
         batch_size=None,
     )
 

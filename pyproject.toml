@@ -64,7 +64,7 @@ dependencies = [
     "torchvision>=0.8.0",
     "botorch>=0.12",
     "gpytorch==1.13.0",
-    "ifbo>=0.3.10",
+    "ifbo>=0.3.13",
     "pymoo>=0.6.1.5"
 ]
 
@@ -332,6 +332,3 @@ replace = "version = \"v{new_version}\""
 filename = "CITATION.cff"
 search = "version: {current_version}"
 replace = "version: {new_version}"
-
-[tool.uv.sources]
-ifbo = { git = "https://github.com/automl/ifBO", rev = "53f1207" }

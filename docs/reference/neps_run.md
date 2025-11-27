@@ -149,12 +149,6 @@ provided to [`neps.run()`][neps.api.run].
     └── optimizer_state.pkl     # The optimizer's state, shared between workers
     ```
 
-=== "python"
-
-    ```python
-    neps.run(..., write_summary_to_disk=True)
-    ```
-
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
 closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
 
@@ -173,8 +167,7 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        evaluations_to_spend=100,
-        max_evaluations_per_run=10, # (1)!
+        evaluations_to_spend=100, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
         overwrite_root_directory=False, #!!!
     )
@@ -226,7 +219,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `evaluations_to_spend` or `max_evaluations_per_run`.
+    Any runs that error will still count towards the total `evaluations_to_spend`.
 
 ### Re-running Failed Configurations
 
