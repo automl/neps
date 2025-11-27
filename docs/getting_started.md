@@ -58,7 +58,7 @@ The [reference](reference/neps_run.md) section provides detailed information on 
 
 Or discover the features of NePS through these practical examples:
 
-* **[Hyperparameter Optimization (HPO)](examples/basic_usage/ex1_hyperparameters.md)**:
+* **[Hyperparameter Optimization (HPO)](examples/basic_usage/1_hyperparameters.md)**:
 Learn the essentials of hyperparameter optimization with NePS.
 
 * **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**:
