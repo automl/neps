@@ -32,11 +32,11 @@ core_examples = [  # Run locally and on github actions
     "basic_usage/4_architecture_and_hyperparameters",
     "basic_usage/5_optimizer_search",
     "efficiency/multi_fidelity",
+    "efficiency/expert_priors_for_hyperparameters",
+    "efficiency/multi_fidelity_and_expert_priors",
 ]
 
 ci_examples = [  # Run on github actions
-    "experimental/hierarchical_architecture",
-    "efficiency/expert_priors_for_hyperparameters",
     "convenience/logging_additional_info",
     "convenience/working_directory_per_pipeline",
     "convenience/neps_tblogger_tutorial",
