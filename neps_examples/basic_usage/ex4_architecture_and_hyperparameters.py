@@ -6,7 +6,7 @@ search with hyperparameter optimization using NePS.
 import neps
 import torch
 import numpy as np
-from architecture_search import NN_Space
+from ex3_architecture_search import NN_Space
 
 # Extend the architecture search space with a hyperparameter
 extended_space = NN_Space().add(neps.Integer(16, 128), name="batch_size")
