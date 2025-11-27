@@ -27,7 +27,11 @@ from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
 from gpytorch.utils.warnings import NumericalWarning
 
-from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
+from neps.optimizers.acquisition import (
+    WrappedAcquisition,
+    cost_cooled_acq,
+    pibo_acquisition,
+)
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 from neps.utils.common import disable_warnings
 
@@ -142,7 +146,34 @@ def optimize_acq(
     maximum_allowed_categorical_combinations: int = 30,
     hide_warnings: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Optimize the acquisition function."""
+    """Optimize the acquisition function.
+
+    For purely numerical spaces, this uses botorch's `optimize_acqf()`.
+    For purely categorical spaces, this uses `optimize_acqf_discrete_local_search()`.
+    For mixed spaces, this uses a two step sequential optimization:
+    1. Optimize acquisition over continuous space, sampling a random
+        categorical combination to fix the continuous acquisition function
+    2. Wrap the acquisition function to fix the numerical dimensions
+        and optimize over the categorical space using
+        `optimize_acqf_discrete_local_search()`
+        NOTE: `optimize_acqf_discrete_local_search()` scales much better than
+        `optimize_acqf_mixed()` for large categorical dimensions in the search space.
+
+
+    Args:
+        acq_fn: The acquisition function to optimize.
+        encoder: The encoder used for encoding the configurations
+        n_candidates_required: The number of candidates to return.
+        num_restarts: The number of restarts to use during optimization.
+        n_intial_start_points: The number of initial start points to use during
+            optimization.
+        acq_options: Additional options to pass to the botorch `optimizer_acqf` function.
+        fixed_features: The features to fix to a certain value during acquisition.
+        hide_warnings: Whether to hide numerical warnings issued during GP routines.
+
+    Returns:
+        The (encoded) optimized candidate(s) and corresponding acquisition value(s).
+    """
     warning_context = (
         disable_warnings(NumericalWarning) if hide_warnings else nullcontext()
     )
@@ -206,9 +237,6 @@ def optimize_acq(
             "dimensions or consider encoding your categoricals in some other format."
         )
 
-    # For a large number of categoricals, we need to generate a subset of all possible
-    # combinations to use as fixed features during acquisition function optimization.
-    # Right, now we generate all possible combinations
     # First, just collect the possible values per cat column
     # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
     cats: dict[int, list[float]] = {
@@ -224,13 +252,11 @@ def optimize_acq(
 
     if num_numericals > 0:
         with warning_context:
-            fixed_cat = {key: float(np.random.choice(cats[key])) for key in cat_keys}
-
-            # cats: dict[int, list[float]] as before
-
-            # Step 1: Optimize acquisition function over the continuous space
             # Sample a random categorical combination and keep it fixed during
             # the continuous optimization step
+            fixed_cat = {key: float(np.random.choice(cats[key])) for key in cat_keys}
+
+            # Step 1: Optimize acquisition function over the continuous space
 
             if len(_fixed_features) > 0:
                 fixed_cat.update(_fixed_features)
@@ -246,59 +272,57 @@ def optimize_acq(
             )
 
             # Extract the numerical dims from the optimized continuous vector
-            cont_dims = [i for i in range(len(encoder.domains)) if i not in cat_keys]
+            fixed_numericals = {
+                i: float(best_x_continuous[0, i].item())
+                for i in range(len(encoder.domains))
+                if i not in cat_keys
+            }
+
+            # Update fixed_numericals with _fixed_features
+            fixed_numericals.update(_fixed_features)
 
             # Step 2: Wrap acquisition function for discrete search
-            def acq_discrete_only(cat_tensor: torch.Tensor) -> torch.Tensor:
-                """
-                Evaluate the acquisition function at the optimized continuous vector
-                for a given categorical vector.
-                cat_tensor: shape [q, 1, num_cats]
-                """
+            wrapped_acq = WrappedAcquisition(
+                acq=acq_fn,
+                encoder=encoder,
+                fixed_numericals=fixed_numericals,
+            )
 
-                # cat_tensor is of shape [q, 1, num_cats]
-                # insert in each q dimension the continuous dims from
-                # best_x_continuous to form the full x
-
-                cat_tensor = cat_tensor.reshape(-1, len(cat_keys))  # [q, num_cats]
-                x_full: list[torch.Tensor] = []
-                for candidate in cat_tensor:
-                    combo = {k: float(v.item()) for k, v in zip(cat_keys, candidate)}  # noqa: B905
-                    combo.update(
-                        {i: float(best_x_continuous[0, i].item()) for i in cont_dims}
-                    )
-                    x_candidate = torch.tensor(
-                        [combo[i] for i in range(len(encoder.domains))],
-                        dtype=torch.float,
-                    )
-                    x_full.append(x_candidate)
-                x_full_tensor: torch.Tensor = torch.stack(x_full, dim=0)  # [q, num_dims]
-                # Expand to original dim
-                x_full_tensor = x_full_tensor.unsqueeze(1)  # [q, 1, num_dims]
-                return acq_fn(x_full_tensor)
-
-            # Step 3: Run BoTorch discrete local search over categorical space
+            # Step 3: Run discrete local search over the categorical space
+            # with the wrapped acquisition function
             best_cat_tensor, _ = optimize_acqf_discrete_local_search(
-                acq_function=acq_discrete_only,
+                acq_function=wrapped_acq,
                 discrete_choices=choices,
                 q=n_candidates_required,
                 num_restarts=num_restarts,
                 raw_samples=n_intial_start_points,
             )
 
-            best_cat_dict = {
-                k: float(v.item())
-                for k, v in zip(cat_keys, best_cat_tensor[0], strict=False)
-            }
+            # Step 4: Concatenate best categorical and numerical dims, along with
+            # any fixed features provided by the caller
 
-            # Step 4: Final combined candidate
-            best_x_full = torch.tensor(
-                [
-                    best_cat_dict.get(i, float(best_x_continuous[0, i].item()))
-                    for i in range(len(encoder.domains))
-                ],
-                dtype=torch.float,
-            ).unsqueeze(0)
+            q, c_dims = best_cat_tensor.shape
+            n_dims = len(fixed_numericals)
+            new_X_shape = (q, c_dims + n_dims)
+
+            # Create a new tensor to hold the concatenated dimensions
+            best_x_full: torch.Tensor = torch.empty(
+                new_X_shape, dtype=best_cat_tensor.dtype, device=best_cat_tensor.device
+            )
+
+            # Create a mask to identify positions of categorical and numerical dimensions
+            mask = torch.ones(
+                c_dims + n_dims, dtype=torch.bool, device=best_cat_tensor.device
+            )
+            insert_idxs = torch.tensor(
+                list(fixed_numericals.keys()), device=best_cat_tensor.device
+            )
+            mask[insert_idxs] = False
+
+            # Fill in the fixed numerical values and the input categorical values
+            for idx, val in fixed_numericals.items():
+                best_x_full[:, idx] = val
+            best_x_full[:, mask] = best_cat_tensor
 
             # Evaluate the final acquisition value
             with torch.no_grad():
