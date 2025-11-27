@@ -8,7 +8,6 @@ from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
-from itertools import product
 from typing import TYPE_CHECKING, Any
 
 import gpytorch.constraints
@@ -131,7 +130,7 @@ def make_default_single_obj_gp(
     )
 
 
-def optimize_acq(  # noqa: C901, PLR0915
+def optimize_acq(
     acq_fn: AcquisitionFunction,
     encoder: ConfigEncoder,
     *,
@@ -219,38 +218,22 @@ def optimize_acq(  # noqa: C901, PLR0915
         ]
         for name, transformer in cat_transformers.items()
     }
-    fixed_cats: list[dict[int, float]] = []
-    if n_combos > 1000:
-        # randomly sample 1000 combinations if n_combos is too large
-        keys = list(cats.keys())
-        for _ in range(1000):
-            combo = {key: float(np.random.choice(cats[key])) for key in keys}
-            fixed_cats.append(combo)
-
-    # generate all possible combinations if n_combos is small enough
-    elif len(cats) == 1:
-        col, choice_indices = next(iter(cats.items()))
-        fixed_cats = [{col: i} for i in choice_indices]
-    else:
-        fixed_cats = [
-            dict(zip(cats.keys(), combo, strict=False))
-            for combo in product(*cats.values())
-        ]
-
     cat_keys = list(cats.keys())
     choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
+    fixed_cat: dict[int, float] = {}
 
     if num_numericals > 0:
         with warning_context:
+            fixed_cat = {key: float(np.random.choice(cats[key])) for key in cat_keys}
+
             # cats: dict[int, list[float]] as before
 
             # Step 1: Optimize acquisition function over the continuous space
             # Sample a random categorical combination and keep it fixed during
             # the continuous optimization step
-            random_fixed_cat = fixed_cats[np.random.randint(len(fixed_cats))]
 
             if len(_fixed_features) > 0:
-                random_fixed_cat.update(_fixed_features)
+                fixed_cat.update(_fixed_features)
 
             best_x_continuous, _ = optimize_acqf(
                 acq_function=acq_fn,
@@ -258,7 +241,7 @@ def optimize_acq(  # noqa: C901, PLR0915
                 q=n_candidates_required,
                 num_restarts=num_restarts,
                 raw_samples=n_intial_start_points,
-                fixed_features=random_fixed_cat,
+                fixed_features=fixed_cat,
                 **acq_options,
             )
 
