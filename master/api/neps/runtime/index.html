@@ -4490,48 +4490,6 @@ configurations.</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>state</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The current NePS state.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            NePSState
-
-
-  
-      dataclass
-   (neps.state.NePSState)" href="../state/neps_state/#neps.state.neps_state.NePSState">NePSState</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>settings</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The worker settings.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            WorkerSettings
-
-
-  
-      dataclass
-   (neps.state.WorkerSettings)" href="../state/settings/#neps.state.settings.WorkerSettings">WorkerSettings</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
                 <code>improvement_trace_path</code>
             </td>
             <td class="doc-param-details">
@@ -4558,22 +4516,6 @@ configurations.</p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
                       <code><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>optimizer</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The optimizer used for sampling configurations.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-internal" title="            AskFunction (neps.optimizers.optimizer.AskFunction)" href="../optimizers/optimizer/#neps.optimizers.optimizer.AskFunction">AskFunction</a></code>
                   </span>
               </p>
             </td>
@@ -4665,10 +4607,7 @@ configurations.</p>
 <span class="normal"><a href="#__codelineno-0-862">862</a></span>
 <span class="normal"><a href="#__codelineno-0-863">863</a></span>
 <span class="normal"><a href="#__codelineno-0-864">864</a></span>
-<span class="normal"><a href="#__codelineno-0-865">865</a></span>
-<span class="normal"><a href="#__codelineno-0-866">866</a></span>
-<span class="normal"><a href="#__codelineno-0-867">867</a></span>
-<span class="normal"><a href="#__codelineno-0-868">868</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-784" name="__codelineno-0-784"></a><span class="k">def</span><span class="w"> </span><span class="nf">load_incumbent_trace</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-865">865</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-784" name="__codelineno-0-784"></a><span class="k">def</span><span class="w"> </span><span class="nf">load_incumbent_trace</span><span class="p">(</span>
 <a id="__codelineno-0-785" name="__codelineno-0-785"></a>    <span class="bp">self</span><span class="p">,</span>
 <a id="__codelineno-0-786" name="__codelineno-0-786"></a>    <span class="n">trials</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Trial</span><span class="p">],</span>
 <a id="__codelineno-0-787" name="__codelineno-0-787"></a>    <span class="n">_trace_lock</span><span class="p">:</span> <span class="n">FileLock</span><span class="p">,</span>
@@ -4682,77 +4621,74 @@ configurations.</p>
 <a id="__codelineno-0-795" name="__codelineno-0-795"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-796" name="__codelineno-0-796"></a><span class="sd">        trials (dict): A dictionary of the trials.</span>
 <a id="__codelineno-0-797" name="__codelineno-0-797"></a><span class="sd">        _trace_lock (FileLock): A file lock to ensure thread-safe writing.</span>
-<a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">        state (NePSState): The current NePS state.</span>
-<a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="sd">        settings (WorkerSettings): The worker settings.</span>
-<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">        improvement_trace_path (Path): Path to the improvement trace file.</span>
-<a id="__codelineno-0-801" name="__codelineno-0-801"></a><span class="sd">        best_config_path (Path): Path to the best configuration file.</span>
-<a id="__codelineno-0-802" name="__codelineno-0-802"></a><span class="sd">        optimizer (AskFunction): The optimizer used for sampling configurations.</span>
-<a id="__codelineno-0-803" name="__codelineno-0-803"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-804" name="__codelineno-0-804"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">trials</span><span class="p">:</span>
-<a id="__codelineno-0-805" name="__codelineno-0-805"></a>        <span class="k">return</span>
-<a id="__codelineno-0-806" name="__codelineno-0-806"></a>
-<a id="__codelineno-0-807" name="__codelineno-0-807"></a>    <span class="c1"># Clear any existing entries to prevent duplicates and rebuild a</span>
-<a id="__codelineno-0-808" name="__codelineno-0-808"></a>    <span class="c1"># non-dominated frontier from previous trials in chronological order.</span>
-<a id="__codelineno-0-809" name="__codelineno-0-809"></a>    <span class="n">incumbent</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-810" name="__codelineno-0-810"></a>
-<a id="__codelineno-0-811" name="__codelineno-0-811"></a>    <span class="n">running_usage</span> <span class="o">=</span> <span class="n">ResourceUsage</span><span class="p">()</span>
-<a id="__codelineno-0-812" name="__codelineno-0-812"></a>
-<a id="__codelineno-0-813" name="__codelineno-0-813"></a>    <span class="n">sorted_trials</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
-<a id="__codelineno-0-814" name="__codelineno-0-814"></a>        <span class="n">trials</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
-<a id="__codelineno-0-815" name="__codelineno-0-815"></a>        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="p">(</span>
-<a id="__codelineno-0-816" name="__codelineno-0-816"></a>            <span class="n">t</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">time_sampled</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">time_sampled</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-817" name="__codelineno-0-817"></a>        <span class="p">),</span>
-<a id="__codelineno-0-818" name="__codelineno-0-818"></a>    <span class="p">)</span>
-<a id="__codelineno-0-819" name="__codelineno-0-819"></a>    <span class="n">evaluated_trials</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-820" name="__codelineno-0-820"></a>        <span class="n">trial</span>
-<a id="__codelineno-0-821" name="__codelineno-0-821"></a>        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">sorted_trials</span>
-<a id="__codelineno-0-822" name="__codelineno-0-822"></a>        <span class="k">if</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-0-823" name="__codelineno-0-823"></a>    <span class="p">]</span>
-<a id="__codelineno-0-824" name="__codelineno-0-824"></a>    <span class="n">is_mo</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
-<a id="__codelineno-0-825" name="__codelineno-0-825"></a>        <span class="nb">isinstance</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>  <span class="c1"># type: ignore[union-attr]</span>
-<a id="__codelineno-0-826" name="__codelineno-0-826"></a>        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">evaluated_trials</span>
-<a id="__codelineno-0-827" name="__codelineno-0-827"></a>    <span class="p">)</span>
+<a id="__codelineno-0-798" name="__codelineno-0-798"></a><span class="sd">        improvement_trace_path (Path): Path to the improvement trace file.</span>
+<a id="__codelineno-0-799" name="__codelineno-0-799"></a><span class="sd">        best_config_path (Path): Path to the best configuration file.</span>
+<a id="__codelineno-0-800" name="__codelineno-0-800"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-801" name="__codelineno-0-801"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="n">trials</span><span class="p">:</span>
+<a id="__codelineno-0-802" name="__codelineno-0-802"></a>        <span class="k">return</span>
+<a id="__codelineno-0-803" name="__codelineno-0-803"></a>
+<a id="__codelineno-0-804" name="__codelineno-0-804"></a>    <span class="c1"># Clear any existing entries to prevent duplicates and rebuild a</span>
+<a id="__codelineno-0-805" name="__codelineno-0-805"></a>    <span class="c1"># non-dominated frontier from previous trials in chronological order.</span>
+<a id="__codelineno-0-806" name="__codelineno-0-806"></a>    <span class="n">incumbent</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-807" name="__codelineno-0-807"></a>
+<a id="__codelineno-0-808" name="__codelineno-0-808"></a>    <span class="n">running_usage</span> <span class="o">=</span> <span class="n">ResourceUsage</span><span class="p">()</span>
+<a id="__codelineno-0-809" name="__codelineno-0-809"></a>
+<a id="__codelineno-0-810" name="__codelineno-0-810"></a>    <span class="n">sorted_trials</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+<a id="__codelineno-0-811" name="__codelineno-0-811"></a>        <span class="n">trials</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span>
+<a id="__codelineno-0-812" name="__codelineno-0-812"></a>        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="p">(</span>
+<a id="__codelineno-0-813" name="__codelineno-0-813"></a>            <span class="n">t</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">time_sampled</span> <span class="k">if</span> <span class="n">t</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">time_sampled</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;inf&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-814" name="__codelineno-0-814"></a>        <span class="p">),</span>
+<a id="__codelineno-0-815" name="__codelineno-0-815"></a>    <span class="p">)</span>
+<a id="__codelineno-0-816" name="__codelineno-0-816"></a>    <span class="n">evaluated_trials</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-817" name="__codelineno-0-817"></a>        <span class="n">trial</span>
+<a id="__codelineno-0-818" name="__codelineno-0-818"></a>        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">sorted_trials</span>
+<a id="__codelineno-0-819" name="__codelineno-0-819"></a>        <span class="k">if</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-0-820" name="__codelineno-0-820"></a>    <span class="p">]</span>
+<a id="__codelineno-0-821" name="__codelineno-0-821"></a>    <span class="n">is_mo</span> <span class="o">=</span> <span class="nb">any</span><span class="p">(</span>
+<a id="__codelineno-0-822" name="__codelineno-0-822"></a>        <span class="nb">isinstance</span><span class="p">(</span><span class="n">trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span>  <span class="c1"># type: ignore[union-attr]</span>
+<a id="__codelineno-0-823" name="__codelineno-0-823"></a>        <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">evaluated_trials</span>
+<a id="__codelineno-0-824" name="__codelineno-0-824"></a>    <span class="p">)</span>
+<a id="__codelineno-0-825" name="__codelineno-0-825"></a>
+<a id="__codelineno-0-826" name="__codelineno-0-826"></a>    <span class="n">frontier</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<a id="__codelineno-0-827" name="__codelineno-0-827"></a>    <span class="n">trajectory_confs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
 <a id="__codelineno-0-828" name="__codelineno-0-828"></a>
-<a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="n">frontier</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Trial</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
-<a id="__codelineno-0-830" name="__codelineno-0-830"></a>    <span class="n">trajectory_confs</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
-<a id="__codelineno-0-831" name="__codelineno-0-831"></a>
-<a id="__codelineno-0-832" name="__codelineno-0-832"></a>    <span class="k">for</span> <span class="n">evaluated_trial</span> <span class="ow">in</span> <span class="n">evaluated_trials</span><span class="p">:</span>
-<a id="__codelineno-0-833" name="__codelineno-0-833"></a>        <span class="n">single_trial_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_total_resource_usage</span><span class="p">(</span>
-<a id="__codelineno-0-834" name="__codelineno-0-834"></a>            <span class="p">{</span><span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="p">}</span>
-<a id="__codelineno-0-835" name="__codelineno-0-835"></a>        <span class="p">)</span>
-<a id="__codelineno-0-836" name="__codelineno-0-836"></a>        <span class="n">running_usage</span> <span class="o">+=</span> <span class="n">single_trial_usage</span>
+<a id="__codelineno-0-829" name="__codelineno-0-829"></a>    <span class="k">for</span> <span class="n">evaluated_trial</span> <span class="ow">in</span> <span class="n">evaluated_trials</span><span class="p">:</span>
+<a id="__codelineno-0-830" name="__codelineno-0-830"></a>        <span class="n">single_trial_usage</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_total_resource_usage</span><span class="p">(</span>
+<a id="__codelineno-0-831" name="__codelineno-0-831"></a>            <span class="p">{</span><span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="p">}</span>
+<a id="__codelineno-0-832" name="__codelineno-0-832"></a>        <span class="p">)</span>
+<a id="__codelineno-0-833" name="__codelineno-0-833"></a>        <span class="n">running_usage</span> <span class="o">+=</span> <span class="n">single_trial_usage</span>
+<a id="__codelineno-0-834" name="__codelineno-0-834"></a>
+<a id="__codelineno-0-835" name="__codelineno-0-835"></a>        <span class="k">assert</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># for mypy</span>
+<a id="__codelineno-0-836" name="__codelineno-0-836"></a>        <span class="n">new_trial_obj</span> <span class="o">=</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span>
 <a id="__codelineno-0-837" name="__codelineno-0-837"></a>
-<a id="__codelineno-0-838" name="__codelineno-0-838"></a>        <span class="k">assert</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>  <span class="c1"># for mypy</span>
-<a id="__codelineno-0-839" name="__codelineno-0-839"></a>        <span class="n">new_trial_obj</span> <span class="o">=</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">objective_to_minimize</span>
-<a id="__codelineno-0-840" name="__codelineno-0-840"></a>
-<a id="__codelineno-0-841" name="__codelineno-0-841"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_dominated</span><span class="p">(</span><span class="n">new_trial_obj</span><span class="p">,</span> <span class="n">frontier</span><span class="p">):</span>
-<a id="__codelineno-0-842" name="__codelineno-0-842"></a>            <span class="n">frontier</span> <span class="o">=</span> <span class="n">_prune_and_add_to_frontier</span><span class="p">(</span><span class="n">evaluated_trial</span><span class="p">,</span> <span class="n">frontier</span><span class="p">)</span>
-<a id="__codelineno-0-843" name="__codelineno-0-843"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_mo</span><span class="p">:</span>
-<a id="__codelineno-0-844" name="__codelineno-0-844"></a>                <span class="n">incumbent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">evaluated_trial</span><span class="p">)</span>
-<a id="__codelineno-0-845" name="__codelineno-0-845"></a>            <span class="n">current_snapshot</span> <span class="o">=</span> <span class="n">ResourceUsage</span><span class="p">(</span><span class="o">**</span><span class="n">asdict</span><span class="p">(</span><span class="n">running_usage</span><span class="p">))</span>
-<a id="__codelineno-0-846" name="__codelineno-0-846"></a>            <span class="n">config_dict</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-847" name="__codelineno-0-847"></a>                <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">new_trial_obj</span><span class="p">,</span>
-<a id="__codelineno-0-848" name="__codelineno-0-848"></a>                <span class="s2">&quot;trial_id&quot;</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
-<a id="__codelineno-0-849" name="__codelineno-0-849"></a>                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
-<a id="__codelineno-0-850" name="__codelineno-0-850"></a>            <span class="p">}</span>
-<a id="__codelineno-0-851" name="__codelineno-0-851"></a>            <span class="k">if</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-852" name="__codelineno-0-852"></a>                <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;cost&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">cost</span>
+<a id="__codelineno-0-838" name="__codelineno-0-838"></a>        <span class="k">if</span> <span class="ow">not</span> <span class="n">_is_dominated</span><span class="p">(</span><span class="n">new_trial_obj</span><span class="p">,</span> <span class="n">frontier</span><span class="p">):</span>
+<a id="__codelineno-0-839" name="__codelineno-0-839"></a>            <span class="n">frontier</span> <span class="o">=</span> <span class="n">_prune_and_add_to_frontier</span><span class="p">(</span><span class="n">evaluated_trial</span><span class="p">,</span> <span class="n">frontier</span><span class="p">)</span>
+<a id="__codelineno-0-840" name="__codelineno-0-840"></a>            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_mo</span><span class="p">:</span>
+<a id="__codelineno-0-841" name="__codelineno-0-841"></a>                <span class="n">incumbent</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">evaluated_trial</span><span class="p">)</span>
+<a id="__codelineno-0-842" name="__codelineno-0-842"></a>            <span class="n">current_snapshot</span> <span class="o">=</span> <span class="n">ResourceUsage</span><span class="p">(</span><span class="o">**</span><span class="n">asdict</span><span class="p">(</span><span class="n">running_usage</span><span class="p">))</span>
+<a id="__codelineno-0-843" name="__codelineno-0-843"></a>            <span class="n">config_dict</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-844" name="__codelineno-0-844"></a>                <span class="s2">&quot;score&quot;</span><span class="p">:</span> <span class="n">new_trial_obj</span><span class="p">,</span>
+<a id="__codelineno-0-845" name="__codelineno-0-845"></a>                <span class="s2">&quot;trial_id&quot;</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+<a id="__codelineno-0-846" name="__codelineno-0-846"></a>                <span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
+<a id="__codelineno-0-847" name="__codelineno-0-847"></a>            <span class="p">}</span>
+<a id="__codelineno-0-848" name="__codelineno-0-848"></a>            <span class="k">if</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">cost</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-849" name="__codelineno-0-849"></a>                <span class="n">config_dict</span><span class="p">[</span><span class="s2">&quot;cost&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">evaluated_trial</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">cost</span>
+<a id="__codelineno-0-850" name="__codelineno-0-850"></a>
+<a id="__codelineno-0-851" name="__codelineno-0-851"></a>            <span class="n">config_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">current_snapshot</span><span class="o">.</span><span class="n">to_trajectory_dict</span><span class="p">())</span>
+<a id="__codelineno-0-852" name="__codelineno-0-852"></a>            <span class="n">trajectory_confs</span><span class="p">[</span><span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_dict</span>
 <a id="__codelineno-0-853" name="__codelineno-0-853"></a>
-<a id="__codelineno-0-854" name="__codelineno-0-854"></a>            <span class="n">config_dict</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">current_snapshot</span><span class="o">.</span><span class="n">to_trajectory_dict</span><span class="p">())</span>
-<a id="__codelineno-0-855" name="__codelineno-0-855"></a>            <span class="n">trajectory_confs</span><span class="p">[</span><span class="n">evaluated_trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="o">=</span> <span class="n">config_dict</span>
-<a id="__codelineno-0-856" name="__codelineno-0-856"></a>
-<a id="__codelineno-0-857" name="__codelineno-0-857"></a>    <span class="n">optimal_configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">trajectory_confs</span><span class="p">[</span><span class="n">trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">frontier</span><span class="p">]</span>
-<a id="__codelineno-0-858" name="__codelineno-0-858"></a>    <span class="n">incumbent_configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
-<a id="__codelineno-0-859" name="__codelineno-0-859"></a>        <span class="n">trajectory_confs</span><span class="p">[</span><span class="n">trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">incumbent</span>
-<a id="__codelineno-0-860" name="__codelineno-0-860"></a>    <span class="p">]</span>
-<a id="__codelineno-0-861" name="__codelineno-0-861"></a>
-<a id="__codelineno-0-862" name="__codelineno-0-862"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_write_trajectory_files</span><span class="p">(</span>
-<a id="__codelineno-0-863" name="__codelineno-0-863"></a>        <span class="n">incumbent_configs</span><span class="o">=</span><span class="n">incumbent_configs</span><span class="p">,</span>
-<a id="__codelineno-0-864" name="__codelineno-0-864"></a>        <span class="n">optimal_configs</span><span class="o">=</span><span class="n">optimal_configs</span><span class="p">,</span>
-<a id="__codelineno-0-865" name="__codelineno-0-865"></a>        <span class="n">trace_lock</span><span class="o">=</span><span class="n">_trace_lock</span><span class="p">,</span>
-<a id="__codelineno-0-866" name="__codelineno-0-866"></a>        <span class="n">improvement_trace_path</span><span class="o">=</span><span class="n">improvement_trace_path</span><span class="p">,</span>
-<a id="__codelineno-0-867" name="__codelineno-0-867"></a>        <span class="n">best_config_path</span><span class="o">=</span><span class="n">best_config_path</span><span class="p">,</span>
-<a id="__codelineno-0-868" name="__codelineno-0-868"></a>    <span class="p">)</span>
+<a id="__codelineno-0-854" name="__codelineno-0-854"></a>    <span class="n">optimal_configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">trajectory_confs</span><span class="p">[</span><span class="n">trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">frontier</span><span class="p">]</span>
+<a id="__codelineno-0-855" name="__codelineno-0-855"></a>    <span class="n">incumbent_configs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+<a id="__codelineno-0-856" name="__codelineno-0-856"></a>        <span class="n">trajectory_confs</span><span class="p">[</span><span class="n">trial</span><span class="o">.</span><span class="n">id</span><span class="p">]</span> <span class="k">for</span> <span class="n">trial</span> <span class="ow">in</span> <span class="n">incumbent</span>
+<a id="__codelineno-0-857" name="__codelineno-0-857"></a>    <span class="p">]</span>
+<a id="__codelineno-0-858" name="__codelineno-0-858"></a>
+<a id="__codelineno-0-859" name="__codelineno-0-859"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_write_trajectory_files</span><span class="p">(</span>
+<a id="__codelineno-0-860" name="__codelineno-0-860"></a>        <span class="n">incumbent_configs</span><span class="o">=</span><span class="n">incumbent_configs</span><span class="p">,</span>
+<a id="__codelineno-0-861" name="__codelineno-0-861"></a>        <span class="n">optimal_configs</span><span class="o">=</span><span class="n">optimal_configs</span><span class="p">,</span>
+<a id="__codelineno-0-862" name="__codelineno-0-862"></a>        <span class="n">trace_lock</span><span class="o">=</span><span class="n">_trace_lock</span><span class="p">,</span>
+<a id="__codelineno-0-863" name="__codelineno-0-863"></a>        <span class="n">improvement_trace_path</span><span class="o">=</span><span class="n">improvement_trace_path</span><span class="p">,</span>
+<a id="__codelineno-0-864" name="__codelineno-0-864"></a>        <span class="n">best_config_path</span><span class="o">=</span><span class="n">best_config_path</span><span class="p">,</span>
+<a id="__codelineno-0-865" name="__codelineno-0-865"></a>    <span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
