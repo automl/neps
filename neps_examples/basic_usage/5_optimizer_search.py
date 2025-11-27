@@ -1,10 +1,12 @@
 """
-This example demonstrates how to use NePS to search for an optimizer
+This example demonstrates how to use NePS to search for an optimizer. We define
+a search space that samples different configurations of a simple custom optimizer
+built using PyTorch. The pipeline optimizes a simple quadratic function using the
+sampled optimizer. NePS is then run to find the best optimizer configuration.
 """
 
 import neps
 import torch
-
 
 def optimizer_constructor(*functions, gradient_clipping: float, learning_rate: float):
     # Build a simple optimizer that applies a sequence of functions to the gradients
@@ -33,8 +35,9 @@ def optimizer_constructor(*functions, gradient_clipping: float, learning_rate: f
     return CustomOptimizer
 
 
+# The search space defines the optimizer class constructed with sampled hyperparameters
+# and functions
 class OptimizerSpace(neps.PipelineSpace):
-
     _gradient_clipping = neps.Float(0.5, 1.0)
     _learning_rate = neps.Float(0.0001, 0.01, log=True)
 
@@ -42,8 +45,7 @@ class OptimizerSpace(neps.PipelineSpace):
         choices=(torch.sqrt, torch.log, torch.exp, torch.sign, torch.abs)
     )
 
-    # The optimizer class constructed with sampled hyperparameters
-    # and functions
+
     optimizer_class = neps.Operation(
         operator=optimizer_constructor,
         args=(
