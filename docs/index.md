@@ -91,7 +91,7 @@ neps.run(
 
 Discover how NePS works through these examples:
 
-- **[Hyperparameter Optimization](examples/basic_usage/hyperparameters.md)**: Learn the essentials of hyperparameter optimization with NePS.
+- **[Hyperparameter Optimization](examples/basic_usage/ex1_hyperparameters.md)**: Learn the essentials of hyperparameter optimization with NePS.
 
 - **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 

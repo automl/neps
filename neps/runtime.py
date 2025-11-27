@@ -795,11 +795,8 @@ class DefaultWorker:
         Args:
             trials (dict): A dictionary of the trials.
             _trace_lock (FileLock): A file lock to ensure thread-safe writing.
-            state (NePSState): The current NePS state.
-            settings (WorkerSettings): The worker settings.
             improvement_trace_path (Path): Path to the improvement trace file.
             best_config_path (Path): Path to the best configuration file.
-            optimizer (AskFunction): The optimizer used for sampling configurations.
         """
         if not trials:
             return

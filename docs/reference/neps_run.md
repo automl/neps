@@ -146,7 +146,7 @@ neps.run(
 For details on:
 
 - [`neps.load_pipeline_space()`][neps.api.load_pipeline_space] - see [Search Space Reference](neps_spaces.md#loading-the-search-space-from-disk)
-- [`neps.load_optimizer_info()`][neps.api.load_optimizer_info] - see [Optimizer Reference](optimizers.md#loading-optimizer-information)
+- [`neps.load_optimizer_info()`][neps.api.load_optimizer_info] - see [Optimizer Reference](optimizers.md#24-loading-optimizer-information)
 
 ## Overwriting a Run
 
