@@ -153,7 +153,7 @@ if __name__ == "__main__":
         num_layers = neps.Integer(1, 5)
         num_neurons = neps.Integer(64, 128)
         weight_decay = neps.Float(1e-5, 0.1, log=True)
-        epochs = neps.Fidelity(neps.Integer(1, 10))
+        epochs = neps.IntegerFidelity(1, 10)
 
     neps.run(
         pipeline_space=ModelSpace(),

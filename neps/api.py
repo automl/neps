@@ -96,9 +96,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         learning_rate = neps.Float(     # log spaced float
             lower=1e-5, upper=1, log=True
         )
-        epochs = neps.Fidelity(         # fidelity integer
-            neps.Integer(1, 100)
-        )
+        epochs =                        # fidelity integer
+            neps.IntegerFidelity(1, 100)
         batch_size = neps.Integer(      # integer with a prior
             lower=32,
             upper=512,
@@ -160,9 +159,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
                 learning_rate = neps.Float(     # log spaced float
                     lower=1e-5, upper=1, log=True
                 )
-                epochs = neps.Fidelity(         # fidelity integer
-                    neps.Integer(1, 100)
-                )
+                epochs =                        # fidelity integer
+                    neps.IntegerFidelity(1, 100)
                 batch_size = neps.Integer(      # integer with a prior
                     lower=32,
                     upper=512,

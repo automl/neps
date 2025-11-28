@@ -11,6 +11,7 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     PipelineSpace,
 )
 
@@ -23,11 +24,9 @@ class DemoHyperparametersWithFidelitySpace(PipelineSpace):
         prior=0.1,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
-    fidelity_integer1 = Fidelity(
-        domain=Integer(
-            lower=1,
-            upper=1000,
-        ),
+    fidelity_integer1 = IntegerFidelity(
+        lower=1,
+        upper=1000,
     )
 
 

@@ -25,15 +25,17 @@ from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
     Fidelity,
     Float,
+    FloatFidelity,
     Integer,
+    IntegerFidelity,
     Operation,
     PipelineSpace,
-    Resampled,
+    Resample,
 )
 from neps.state import BudgetInfo, Trial
 from neps.state.pipeline_eval import UserResultDict
 from neps.status.status import status
-from neps.utils import convert_operation_to_callable, convert_operation_to_string
+from neps.utils import convert_operation_to_callable
 from neps.utils.files import load_and_merge_yamls
 
 __all__ = [
@@ -43,21 +45,22 @@ __all__ = [
     "ConfidenceLevel",
     "Fidelity",
     "Float",
+    "FloatFidelity",
     "HPOCategorical",
     "HPOConstant",
     "HPOFloat",
     "HPOInteger",
     "Integer",
+    "IntegerFidelity",
     "Operation",
     "PipelineSpace",
-    "Resampled",
+    "Resample",
     "SampledConfig",
     "SearchSpace",
     "Trial",
     "UserResultDict",
     "algorithms",
     "convert_operation_to_callable",
-    "convert_operation_to_string",
     "create_config",
     "import_trials",
     "load_and_merge_yamls",

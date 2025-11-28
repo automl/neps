@@ -8,7 +8,7 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Operation,
     PipelineSpace,
-    Resampled,
+    Resample,
 )
 
 
@@ -54,7 +54,7 @@ class DemoRecursiveOperationSpace(PipelineSpace):
     # If we want the `factor` values to be different,
     # we just request a resample for them
     _inner_function = Categorical(
-        choices=(_sum, Resampled("model")),
+        choices=(_sum, Resample("model")),
     )
     model = Operation(
         operator=Model,

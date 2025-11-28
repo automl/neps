@@ -50,6 +50,7 @@ with external job schedulers.
 
 This script serves as a template for implementing custom trial execution workflows with NePS.
 """
+
 import argparse
 import time
 from pathlib import Path
@@ -60,6 +61,7 @@ import subprocess
 import json, sys
 
 from neps.optimizers.ask_and_tell import AskAndTell
+
 
 def submit_job(pipeline_directory: Path, script: str) -> int:
     script_path = pipeline_directory / "submit.sh"
@@ -72,6 +74,7 @@ def submit_job(pipeline_directory: Path, script: str) -> int:
     job_id = int(output.split()[-1])
     return job_id
 
+
 def get_job_script(pipeline_directory, trial_file):
     script = f"""#!/bin/bash
     #SBATCH --job-name=mnist_toy
@@ -82,6 +85,7 @@ def get_job_script(pipeline_directory, trial_file):
     """
     return script
 
+
 def train_worker(trial_file):
     trial_file = Path(trial_file)
     with open(trial_file) as f:
@@ -89,16 +93,18 @@ def train_worker(trial_file):
 
     config = trial["config"]
     # Dummy objective
-    loss = (config["a"] - 0.5)**2 + ((config["b"] + 2)**2) / 5
+    loss = (config["a"] - 0.5) ** 2 + ((config["b"] + 2) ** 2) / 5
 
     out_file = trial_file.parent / f"result_{trial['id']}.json"
     with open(out_file, "w") as f:
         json.dump({"loss": loss}, f)
 
+
 def main(parallel: int, results_dir: Path):
     class MySpace(neps.PipelineSpace):
-        a = neps.Fidelity(neps.Integer(1, 13))
+        a = neps.IntegerFidelity(1, 13)
         b = neps.Float(1, 5)
+
     space = MySpace()
     opt = neps.algorithms.neps_hyperband(space, eta=3)
     ask_tell = AskAndTell(opt)
@@ -128,20 +134,30 @@ def main(parallel: int, results_dir: Path):
                 new_trial = ask_tell.ask()
                 if new_trial:
                     new_file = results_dir / f"trial_{new_trial.id}.json"
-                    json.dump({"id": new_trial.id, "config": new_trial.config}, new_file.open("w"))
-                    new_job_id = submit_job(results_dir, get_job_script(results_dir, new_file))
+                    json.dump(
+                        {"id": new_trial.id, "config": new_trial.config},
+                        new_file.open("w"),
+                    )
+                    new_job_id = submit_job(
+                        results_dir, get_job_script(results_dir, new_file)
+                    )
                     active[new_job_id] = new_trial
         time.sleep(5)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--parallel", type=int, default=9,
-        help="Number of trials to evaluate in parallel initially"
+        "--parallel",
+        type=int,
+        default=9,
+        help="Number of trials to evaluate in parallel initially",
     )
     parser.add_argument(
-        "--results-dir", type=Path, default=Path("results/ask_and_tell"),
-        help="Path to save the results inside"
+        "--results-dir",
+        type=Path,
+        default=Path("results/ask_and_tell"),
+        help="Path to save the results inside",
     )
     args = parser.parse_args()
     main(args.parallel, args.results_dir)

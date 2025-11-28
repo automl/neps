@@ -85,7 +85,7 @@ def evaluate_pipeline(
 
 class HPOSpace(neps.PipelineSpace):
     learning_rate = neps.Float(lower=1e-4, upper=1e0, log=True)
-    epoch = neps.Fidelity(neps.Integer(lower=1, upper=10))
+    epoch = neps.IntegerFidelity(lower=1, upper=10)
 
 
 logging.basicConfig(level=logging.INFO)

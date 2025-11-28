@@ -24,7 +24,7 @@ from neps.space.neps_spaces.parameters import (
     Operation,
     PipelineSpace,
     Repeated,
-    Resampled,
+    Resample,
     Resolvable,
 )
 from neps.space.neps_spaces.sampling import (
@@ -211,7 +211,7 @@ class SamplingResolutionContext:
 
         # It is possible that the received object has already been resolved.
         # That is expected and is okay, so no check is made for it.
-        # For example, in the case of a Resampled we can receive the same object again.
+        # For example, in the case of a Resample we can receive the same object again.
 
         self._current_path_parts.append(name)
         try:
@@ -239,7 +239,7 @@ class SamplingResolutionContext:
 
         Raises:
             ValueError: If the original object was already resolved or if it is a
-                Resampled.
+                Resample.
         """
         if self.was_already_resolved(original):
             raise ValueError(
@@ -248,9 +248,9 @@ class SamplingResolutionContext:
                 + "make sure you are not forgetting to request resampling also for"
                 " related objects." + "\nOtherwise it could lead to infinite recursion."
             )
-        if isinstance(original, Resampled):
+        if isinstance(original, Resample):
             raise ValueError(
-                f"Attempting to add a Resampled object to resolved values: {original!r}."
+                f"Attempting to add a Resample object to resolved values: {original!r}."
             )
         self._resolved_objects[original] = resolved
 
@@ -506,7 +506,7 @@ class SamplingResolver:
                     # Otherwise, we already have the final answer for it.
                     resolved_attr_value = context.get_resolved(initial_attr_value)
                 elif isinstance(initial_attr_value, Categorical) or (
-                    isinstance(initial_attr_value, Resampled)
+                    isinstance(initial_attr_value, Resample)
                     and isinstance(initial_attr_value.source, Categorical)
                 ):
                     # We have a previously unseen provider.
@@ -527,7 +527,7 @@ class SamplingResolver:
                     resolved_attr_value = self._resolve(
                         choice_provider_adjusted, "choice_provider", context
                     )
-                    if not isinstance(initial_attr_value, Resampled):
+                    if not isinstance(initial_attr_value, Resample):
                         # It's important that we handle filling the context here,
                         # as we manually created a different object from the original.
                         # In case the original categorical is used again,
@@ -604,13 +604,13 @@ class SamplingResolver:
     @_resolver_dispatch.register
     def _(
         self,
-        resampled_obj: Resampled,
+        resampled_obj: Resample,
         context: SamplingResolutionContext,
     ) -> Any:
-        # The results of Resampled are never stored or looked up from cache
+        # The results of Resample are never stored or looked up from cache
         # since it would break the logic of their expected behavior.
-        # Particularly, when Resampled objects are nested (at any depth) inside of
-        # other Resampled objects, adding them to the resolution context would result
+        # Particularly, when Resample objects are nested (at any depth) inside of
+        # other Resample objects, adding them to the resolution context would result
         # in the resolution not doing the right thing.
 
         if resampled_obj.is_resampling_by_name:
@@ -929,27 +929,6 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
     return cast(Callable, operator(*operation_args, **operation_kwargs))
 
 
-def convert_operation_to_string(operation: Operation | str | int | float) -> str:
-    """Convert an Operation to a string representation.
-
-    Args:
-        operation: The Operation to convert, or a primitive value.
-
-    Returns:
-        A string representation of the operation or value.
-
-    Raises:
-        ValueError: If the operation is not a valid Operation object.
-    """
-    from neps.space.neps_spaces.string_formatter import format_value
-
-    # Handle non-Operation values (resolved primitives)
-    if not isinstance(operation, Operation):
-        return str(operation)
-
-    return format_value(operation)
-
-
 # -------------------------------------------------
 
 
@@ -1123,7 +1102,7 @@ def adjust_evaluation_pipeline_for_neps_space(
 def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | None:
     """Convert a NePS space to a classic SearchSpace if possible.
     This function checks if the NePS space can be converted to a classic SearchSpace
-    by ensuring that it does not contain any complex types like Operation or Resampled,
+    by ensuring that it does not contain any complex types like Operation or Resample,
     and that all choices of Categorical parameters are of basic types (int, str, float).
     If the checks pass, it converts the NePS space to a classic SearchSpace.
 
@@ -1133,9 +1112,9 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
     Returns:
         A classic SearchSpace if the conversion is possible, otherwise None.
     """
-    # First check: No parameters are of type Operation or Resampled
+    # First check: No parameters are of type Operation or Resample
     if not any(
-        isinstance(param, Operation | Resampled) for param in space.get_attrs().values()
+        isinstance(param, Operation | Resample) for param in space.get_attrs().values()
     ):
         # Second check: All choices of all categoricals are of basic
         # types i.e. int, str or float

@@ -9,7 +9,7 @@ ARCHITECTURE:
         ├── _format_categorical() - Internal handler for Categorical
         ├── _format_float() - Internal handler for Float
         ├── _format_integer() - Internal handler for Integer
-        ├── _format_resampled() - Internal handler for Resampled
+        ├── _format_resampled() - Internal handler for Resample
         ├── _format_repeated() - Internal handler for Repeated
         ├── _format_operation() - Internal handler for Operation
         ├── _format_sequence() - Internal handler for list/tuple
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
         Integer,
         Operation,
         Repeated,
-        Resampled,
+        Resample,
     )
 
 
@@ -40,7 +40,7 @@ class FormatterStyle:
     """Configuration for the formatting style."""
 
     indent_str: str = "   "  # Three spaces for indentation
-    max_line_length: int = 80  # Try to keep lines under this length
+    max_line_length: int = 90  # Try to keep lines under this length
     compact_threshold: int = 40  # Use compact format if repr is shorter
     show_empty_args: bool = True  # Show () for operations with no args/kwargs
 
@@ -50,7 +50,7 @@ class FormatterStyle:
 # ============================================================================
 
 
-def format_value(  # noqa: C901, PLR0911
+def format_value(  # noqa: C901, PLR0911, PLR0912
     value: Any,
     indent: int = 0,
     style: FormatterStyle | None = None,
@@ -70,11 +70,12 @@ def format_value(  # noqa: C901, PLR0911
     """
     from neps.space.neps_spaces.parameters import (
         Categorical,
+        Fidelity,
         Float,
         Integer,
         Operation,
         Repeated,
-        Resampled,
+        Resample,
     )
 
     if style is None:
@@ -93,7 +94,11 @@ def format_value(  # noqa: C901, PLR0911
     if isinstance(value, Integer):
         return _format_integer(value, indent, style)
 
-    if isinstance(value, Resampled):
+    if isinstance(value, Fidelity):
+        # Use the __str__ method of Fidelity subclasses directly
+        return str(value)
+
+    if isinstance(value, Resample):
         return _format_resampled(value, indent, style)
 
     if isinstance(value, Repeated):
@@ -214,11 +219,11 @@ def _format_integer(
 
 
 def _format_resampled(
-    resampled: Resampled,
+    resampled: Resample,
     indent: int,
     style: FormatterStyle,
 ) -> str:
-    """Internal formatter for Resampled parameters."""
+    """Internal formatter for Resample parameters."""
     source = resampled._source
 
     # Format the source using unified format_value
@@ -228,10 +233,10 @@ def _format_resampled(
     if "\n" in source_str:
         indent_str = style.indent_str * indent
         inner_indent_str = style.indent_str * (indent + 1)
-        return f"Resampled(\n{inner_indent_str}{source_str}\n{indent_str})"
+        return f"Resample(\n{inner_indent_str}{source_str}\n{indent_str})"
 
     # Simple single-line format for basic types
-    return f"Resampled({source_str})"
+    return f"Resample({source_str})"
 
 
 def _format_repeated(
@@ -391,20 +396,3 @@ def _format_pipeline_space(
             else:
                 lines.append(f"  {k} = {formatted_value}")
     return "\n".join(lines)
-
-
-# ============================================================================
-# BACKWARD COMPATIBILITY - Legacy function names
-# ============================================================================
-
-
-def operation_to_string(
-    operation: Operation | Any,
-    style: FormatterStyle | None = None,
-) -> str:
-    """Convert an Operation to a pretty-formatted string.
-
-    Legacy function for backward compatibility.
-    New code should use format_value() directly.
-    """
-    return format_value(operation, 0, style)

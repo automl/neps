@@ -87,7 +87,7 @@ def evaluate_pipeline(lr=0.1, epoch=20):
 
 class HPOSpace(neps.PipelineSpace):
     lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01)
-    epoch = neps.Fidelity(neps.Integer(lower=1, upper=3))
+    epoch = neps.IntegerFidelity(lower=1, upper=3)
 
 
 logging.basicConfig(level=logging.INFO)

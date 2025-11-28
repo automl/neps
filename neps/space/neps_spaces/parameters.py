@@ -25,18 +25,18 @@ from typing import (
 T = TypeVar("T")
 
 # Shared docstring constants for DRY
-_RESAMPLE_DOCSTRING = """Wrap this {type_name} in a Resampled container.
+_RESAMPLE_DOCSTRING = """Wrap this {type_name} in a Resample container.
 
 This allows resampling the {type_name} each time it's resolved, useful for
 creating dynamic structures where the same {description} is sampled multiple
 times independently.
 
 Returns:
-    A Resampled instance wrapping this {type_name}.
+    A Resample instance wrapping this {type_name}.
 
 Example:
     ```python
-    # Instead of: neps.Resampled(my_{type_lower})
+    # Instead of: neps.Resample(my_{type_lower})
     # You can write: my_{type_lower}.resample()
     ```
 """
@@ -235,6 +235,84 @@ class Fidelity(Resolvable, Generic[T]):
         raise ValueError("For a Fidelity object there is nothing to resolve.")
 
 
+class IntegerFidelity(Fidelity):
+    """A convenience class for creating integer-valued fidelity parameters.
+
+    This class provides a simpler interface for defining integer fidelities without
+    needing to explicitly wrap an Integer domain in a Fidelity.
+
+    Example:
+        ```python
+        # Instead of: epochs = neps.Fidelity(neps.Integer(1, 50))
+        # You can write:
+        epochs = neps.IntegerFidelity(lower=1, upper=50)
+        ```
+    """
+
+    def __init__(
+        self,
+        lower: int,
+        upper: int,
+        *,
+        log: bool = False,
+    ):
+        """Initialize an IntegerFidelity with lower and upper bounds.
+
+        Args:
+            lower: The minimum value for the integer fidelity.
+            upper: The maximum value for the integer fidelity.
+            log: Whether to sample the integer on a logarithmic scale.
+
+        """
+        super().__init__(domain=Integer(lower=lower, upper=upper, log=log))
+
+    def __str__(self) -> str:
+        """Get a string representation of the integer fidelity."""
+        domain = self.domain
+        if domain._log:
+            return f"IntegerFidelity({domain.lower}, {domain.upper}, log)"
+        return f"IntegerFidelity({domain.lower}, {domain.upper})"
+
+
+class FloatFidelity(Fidelity):
+    """A convenience class for creating float-valued fidelity parameters.
+
+    This class provides a simpler interface for defining float fidelities without
+    needing to explicitly wrap a Float domain in a Fidelity.
+
+    Example:
+        ```python
+        # Instead of: subset_ratio = neps.Fidelity(neps.Float(0.1, 1.0))
+        # You can write:
+        subset_ratio = neps.FloatFidelity(lower=0.1, upper=1.0)
+        ```
+    """
+
+    def __init__(
+        self,
+        lower: float,
+        upper: float,
+        *,
+        log: bool = False,
+    ):
+        """Initialize a FloatFidelity with lower and upper bounds.
+
+        Args:
+            lower: The minimum value for the float fidelity.
+            upper: The maximum value for the float fidelity.
+            log: Whether to sample the float on a logarithmic scale.
+
+        """
+        super().__init__(domain=Float(lower=lower, upper=upper, log=log))
+
+    def __str__(self) -> str:
+        """Get a string representation of the float fidelity."""
+        domain = self.domain
+        if domain._log:
+            return f"FloatFidelity({domain.lower}, {domain.upper}, log)"
+        return f"FloatFidelity({domain.lower}, {domain.upper})"
+
+
 class PipelineSpace(Resolvable):
     """A class representing a pipeline in NePS spaces."""
 
@@ -331,14 +409,14 @@ class PipelineSpace(Resolvable):
 
     def add(
         self,
-        new_param: Integer | Float | Categorical | Operation | Resampled | Repeated,
+        new_param: Integer | Float | Categorical | Operation | Resample | Repeated,
         name: str | None = None,
     ) -> PipelineSpace:
         """Add a new parameter to the pipeline.
 
         Args:
             new_param: The parameter to be added, which can be an Integer, Float,
-                Categorical, Operation, Resampled, Repeated, or PipelineSpace.
+                Categorical, Operation, Resample, Repeated, or PipelineSpace.
             name: The name of the parameter to be added. If None, a default name will be
                 generated.
 
@@ -356,10 +434,10 @@ class PipelineSpace(Resolvable):
             return new_space
 
         if not isinstance(
-            new_param, Integer | Float | Categorical | Operation | Resampled | Repeated
+            new_param, Integer | Float | Categorical | Operation | Resample | Repeated
         ):
             raise ValueError(
-                "Can only add Integer, Float, Categorical, Operation, Resampled,"
+                "Can only add Integer, Float, Categorical, Operation, Resample,"
                 f" Repeated or PipelineSpace, got {new_param!r}."
             )
         param_name = name if name else f"param_{len(self.get_attrs()) + 1}"
@@ -640,23 +718,23 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
         """
         return type(self)(**attrs)
 
-    def resample(self) -> Resampled:
-        """Wrap this domain in a Resampled container.
+    def resample(self) -> Resample:
+        """Wrap this domain in a Resample container.
 
         This allows resampling the domain each time it's resolved, useful for
         creating dynamic structures where the same parameter definition is
         sampled multiple times independently.
 
         Returns:
-            A Resampled instance wrapping this domain.
+            A Resample instance wrapping this domain.
 
         Example:
             ```python
-            # Instead of: neps.Resampled(neps.Integer(1, 10))
+            # Instead of: neps.Resample(neps.Integer(1, 10))
             # You can write: neps.Integer(1, 10).resample()
             ```
         """
-        return Resampled(self)
+        return Resample(self)
 
 
 def _calculate_new_domain_bounds(
@@ -1412,9 +1490,9 @@ class Operation(Resolvable):
 
         return format_value(self)
 
-    def resample(self) -> Resampled:  # noqa: D102
+    def resample(self) -> Resample:  # noqa: D102
         # Docstring set dynamically below
-        return Resampled(self)
+        return Resample(self)
 
     def compare_domain_to(self, other: object) -> bool:  # noqa: D102
         # Docstring set dynamically below
@@ -1502,10 +1580,10 @@ class Operation(Resolvable):
 
 # TODO: [lum] For tuples, lists and dicts,
 #  should we make the behavior similar to other resolvables,
-#  in that they will be cached and then we also need to use Resampled for them?
+#  in that they will be cached and then we also need to use Resample for them?
 
 
-class Resampled(Resolvable):
+class Resample(Resolvable):
     """A class representing a resampling operation in a NePS space.
 
     Attributes:
@@ -1514,7 +1592,7 @@ class Resampled(Resolvable):
     """
 
     def __init__(self, source: Resolvable | str):
-        """Initialize the Resampled object with a source.
+        """Initialize the Resample object with a source.
 
         Args:
             source: The source of the resampling, can be a resolvable object or a string.
@@ -1595,7 +1673,7 @@ class Resampled(Resolvable):
 
     def compare_domain_to(self, other: object) -> bool:  # noqa: D102
         # Docstring set dynamically below
-        if not isinstance(other, Resampled):
+        if not isinstance(other, Resample):
             return False
         return self.source == other.source
 
@@ -1644,9 +1722,9 @@ class Repeated(Resolvable):
         """
         return self._content
 
-    def resample(self) -> Resampled:  # noqa: D102
+    def resample(self) -> Resample:  # noqa: D102
         # Docstring set dynamically below
-        return Resampled(self)
+        return Resample(self)
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the resolvable as a mapping.
@@ -1699,9 +1777,9 @@ class Lazy(Resolvable):
         """
         return self._content
 
-    def resample(self) -> Resampled:  # noqa: D102
+    def resample(self) -> Resample:  # noqa: D102
         # Docstring set dynamically below
-        return Resampled(self)
+        return Resample(self)
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the lazy resolvable as a mapping.
@@ -1769,6 +1847,6 @@ Integer.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(type_name="
 Operation.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
     type_name="operation"
 )
-Resampled.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
+Resample.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
     type_name="resampled"
 )

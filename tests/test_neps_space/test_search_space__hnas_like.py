@@ -23,7 +23,7 @@ class HNASLikePipeline(PipelineSpace):
     # ------------------------------------------------------
     # Adding `PReLU` with a float hyperparameter `init`
     # Note that the sampled `_prelu_init_value` will be shared across all `_PRELU` uses,
-    #  since no `Resampled` was requested for it
+    #  since no `Resample` was requested for it
     _prelu_init_value = Float(lower=0.1, upper=0.9)
     _PRELU = Operation(
         operator="ACT prelu",
@@ -216,16 +216,12 @@ def test_hnas_like_string():
     resolved_pipeline, _ = neps_space.resolve(pipeline)
 
     arch = resolved_pipeline.ARCH
-    arch_config_string = neps_space.convert_operation_to_string(arch)
+    arch_config_string = string_formatter.format_value(arch)
     assert arch_config_string
-    pretty_config = string_formatter.format_value(arch)
-    assert pretty_config
 
     cl = resolved_pipeline.CL
-    cl_config_string = neps_space.convert_operation_to_string(cl)
+    cl_config_string = string_formatter.format_value(cl)
     assert cl_config_string
-    pretty_config = string_formatter.format_value(cl)
-    assert pretty_config
 
 
 def test_hnas_like_context():
@@ -298,7 +294,7 @@ def test_hnas_like_context():
     assert sampled_values == samplings_to_make
 
     cl = resolved_pipeline.CL
-    cl_config_string = neps_space.convert_operation_to_string(cl)
+    cl_config_string = string_formatter.format_value(cl)
     assert cl_config_string
     # The new formatter outputs operations in full rather than using sharing references
     # Check for essential elements instead of exact format
@@ -312,7 +308,7 @@ def test_hnas_like_context():
     assert "avg_pool" in cl_config_string
 
     arch = resolved_pipeline.ARCH
-    arch_config_string = neps_space.convert_operation_to_string(arch)
+    arch_config_string = string_formatter.format_value(arch)
     assert arch_config_string
     # Check that arch contains CL-related operations (nested structure)
     assert "Cell(" in arch_config_string

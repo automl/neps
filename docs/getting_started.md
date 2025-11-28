@@ -21,7 +21,7 @@ class ExampleSpace(neps.PipelineSpace):
     some_parameter = neps.Float(lower=0.0, upper=1.0)       # float
     another_parameter = neps.Integer(lower=0, upper=10)     # integer
     optimizer = neps.Categorical(choices=("sgd", "adam"))           # categorical
-    epoch = neps.Fidelity(neps.Integer(lower=1, upper=100))
+    epoch = neps.IntegerFidelity(lower=1, upper=100)
     learning_rate = neps.Float(lower=1e-5, upper=1, log=True)
     alpha = neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
 ```

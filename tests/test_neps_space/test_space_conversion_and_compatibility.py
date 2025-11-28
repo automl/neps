@@ -17,6 +17,7 @@ from neps.space.neps_spaces.parameters import (
     Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     Operation,
     PipelineSpace,
 )
@@ -37,7 +38,7 @@ class SimpleHPOWithFidelitySpace(PipelineSpace):
 
     x = Float(lower=0.0, upper=1.0, prior=0.5, prior_confidence=ConfidenceLevel.MEDIUM)
     y = Integer(lower=1, upper=10, prior=5, prior_confidence=ConfidenceLevel.HIGH)
-    epochs = Fidelity(Integer(lower=1, upper=100))
+    epochs = IntegerFidelity(lower=1, upper=100)
 
 
 class ComplexNepsSpace(PipelineSpace):
@@ -339,7 +340,7 @@ def test_neps_hyperband_rejects_classic_space():
     # Create a proper NePS space that should work
     class TestSpace(PipelineSpace):
         x = Float(0.0, 1.0)
-        epochs = Fidelity(Integer(1, 100))
+        epochs = IntegerFidelity(1, 100)
 
     space = TestSpace()
 

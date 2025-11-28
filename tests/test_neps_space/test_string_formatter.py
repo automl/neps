@@ -6,14 +6,14 @@ import neps
 from neps.space.neps_spaces.parameters import Operation
 from neps.space.neps_spaces.string_formatter import (
     FormatterStyle,
-    operation_to_string,
+    format_value,
 )
 
 
 def test_simple_operation_no_args():
     """Test formatting an operation with no arguments - default shows ()."""
     op = Operation(operator="ReLU")
-    result = operation_to_string(op)
+    result = format_value(op)
     assert result == "ReLU()"
 
 
@@ -21,14 +21,14 @@ def test_simple_operation_no_args_with_parens():
     """Test formatting with show_empty_args=False to hide ()."""
     op = Operation(operator="ReLU")
     style = FormatterStyle(show_empty_args=False)
-    result = operation_to_string(op, style)
+    result = format_value(op, 0, style)
     assert result == "ReLU"
 
 
 def test_operation_with_args_only():
     """Test formatting an operation with positional args only - always expanded."""
     op = Operation(operator="Add", args=(1, 2, 3))
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Add(
    1,
    2,
@@ -40,7 +40,7 @@ def test_operation_with_args_only():
 def test_operation_with_kwargs_only():
     """Test formatting an operation with keyword args only - always expanded."""
     op = Operation(operator="Conv2d", kwargs={"in_channels": 3, "out_channels": 64})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Conv2d(
    in_channels=3,
    out_channels=64,
@@ -55,7 +55,7 @@ def test_operation_with_args_and_kwargs():
         args=(128,),
         kwargs={"activation": "relu", "dropout": 0.5},
     )
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """LinearLayer(
    128,
    activation=relu,
@@ -68,7 +68,7 @@ def test_nested_operations():
     """Test formatting nested operations."""
     inner = Operation(operator="ReLU")
     outer = Operation(operator="Sequential", args=(inner,))
-    result = operation_to_string(outer)
+    result = format_value(outer)
     expected = """Sequential(
    ReLU(),
 )"""
@@ -86,7 +86,7 @@ def test_deeply_nested_operations():
 
     sequential = Operation(operator="Sequential", args=(conv, relu, pool))
 
-    result = operation_to_string(sequential)
+    result = format_value(sequential)
     expected = """Sequential(
    Conv2d(
       in_channels=3,
@@ -104,7 +104,7 @@ def test_deeply_nested_operations():
 def test_list_as_arg():
     """Test formatting with a list as an argument."""
     op = Operation(operator="Conv2d", kwargs={"kernel_size": [3, 3]})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Conv2d(
    kernel_size=[3, 3],
 )"""
@@ -115,7 +115,7 @@ def test_long_list_as_arg():
     """Test formatting with a longer list that spans multiple lines."""
     long_list = list(range(20))
     op = Operation(operator="SomeOp", kwargs={"values": long_list})
-    result = operation_to_string(op)
+    result = format_value(op)
 
     # Should have the list expanded
     assert "values=[" in result
@@ -126,7 +126,7 @@ def test_long_list_as_arg():
 def test_tuple_as_arg():
     """Test formatting with a tuple as an argument."""
     op = Operation(operator="Shape", args=((64, 64, 3),))
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Shape(
    (64, 64, 3),
 )"""
@@ -139,7 +139,7 @@ def test_dict_as_kwarg():
         operator="ConfigOp",
         kwargs={"config": {"learning_rate": 0.001, "batch_size": 32}},
     )
-    result = operation_to_string(op)
+    result = format_value(op)
     # Dict gets expanded due to length
     expected = """ConfigOp(
    config={
@@ -157,7 +157,7 @@ def test_operations_in_list():
 
     container = Operation(operator="ModuleList", args=([op1, op2],))
 
-    result = operation_to_string(container)
+    result = format_value(container)
     expected = """ModuleList(
    [
       Conv2d(
@@ -178,7 +178,7 @@ def test_operations_in_list_as_kwarg():
 
     container = Operation(operator="Container", kwargs={"layers": [op1, op2]})
 
-    result = operation_to_string(container)
+    result = format_value(container)
     expected = """Container(
    layers=[
       ReLU(),
@@ -195,7 +195,7 @@ def test_mixed_types_in_list():
 
     container = Operation(operator="MixedContainer", args=(mixed_list,))
 
-    result = operation_to_string(container)
+    result = format_value(container)
 
     # Check that all elements are present
     assert "1," in result
@@ -215,7 +215,7 @@ def test_string_values_with_quotes():
             "double_quotes": 'say "hello"',
         },
     )
-    result = operation_to_string(op)
+    result = format_value(op)
 
     # Check strings are properly represented
     assert "text='hello world'" in result or 'text="hello world"' in result
@@ -239,7 +239,7 @@ def test_complex_nested_structure():
         kwargs={"dropout": 0.5, "config": {"layers": [3, 64, 128]}},
     )
 
-    result = operation_to_string(seq)
+    result = format_value(seq)
 
     # Verify structure
     assert "Sequential(" in result
@@ -255,13 +255,13 @@ def test_complex_nested_structure():
 def test_non_operation_value():
     """Test formatting a non-Operation value."""
     # Should work with any value
-    result1 = operation_to_string(42)
+    result1 = format_value(42)
     assert result1 == "42"
 
-    result2 = operation_to_string("hello")
+    result2 = format_value("hello")
     assert result2 == "hello"  # Identifiers don't get quotes
 
-    result3 = operation_to_string([1, 2, 3])
+    result3 = format_value([1, 2, 3])
     assert result3 == "[1, 2, 3]"
 
 
@@ -270,7 +270,7 @@ def test_custom_indent():
     op = Operation(operator="Conv2d", kwargs={"channels": 64})
     style = FormatterStyle(indent_str="    ")  # 4 spaces
 
-    result = operation_to_string(op, style)
+    result = format_value(op, 0, style)
     expected = """Conv2d(
     channels=64,
 )"""
@@ -280,7 +280,7 @@ def test_custom_indent():
 def test_empty_list():
     """Test formatting with empty list."""
     op = Operation(operator="Op", kwargs={"items": []})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Op(
    items=[],
 )"""
@@ -290,7 +290,7 @@ def test_empty_list():
 def test_empty_tuple():
     """Test formatting with empty tuple."""
     op = Operation(operator="Op", args=((),))
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Op(
    (),
 )"""
@@ -300,7 +300,7 @@ def test_empty_tuple():
 def test_empty_dict():
     """Test formatting with empty dict."""
     op = Operation(operator="Op", kwargs={"config": {}})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Op(
    config={},
 )"""
@@ -310,7 +310,7 @@ def test_empty_dict():
 def test_boolean_values():
     """Test formatting with boolean values - always expanded."""
     op = Operation(operator="Op", kwargs={"enabled": True, "debug": False, "count": 0})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Op(
    enabled=True,
    debug=False,
@@ -322,7 +322,7 @@ def test_boolean_values():
 def test_none_value():
     """Test formatting with None value - always expanded."""
     op = Operation(operator="Op", kwargs={"default": None})
-    result = operation_to_string(op)
+    result = format_value(op)
     expected = """Op(
    default=None,
 )"""
@@ -356,7 +356,7 @@ def test_real_world_example():
         args=([conv1, relu1, pool1, conv2, relu2, pool2, flatten, fc],),
     )
 
-    result = operation_to_string(model)
+    result = format_value(model)
 
     # Verify key elements are present
     assert "Sequential(" in result
@@ -391,7 +391,7 @@ def test_categorical_with_operations():
     assert isinstance(resolved.choice, Operation)
 
     # Should format properly - check for essential content
-    result = operation_to_string(resolved.choice)
+    result = format_value(resolved.choice)
     # Either Conv2d with both params, or ReLU
     is_conv = (
         "Conv2d" in result and "in_channels=3" in result and "kernel_size=3" in result
@@ -413,7 +413,7 @@ def test_categorical_with_primitives():
     assert isinstance(resolved.choice, str)
 
     # Should format as a simple string (identifiers don't get quotes)
-    result = operation_to_string(resolved.choice)
+    result = format_value(resolved.choice)
     assert result in ["adam", "sgd", "rmsprop"]
 
 
@@ -433,11 +433,11 @@ def test_categorical_with_mixed_types():
     resolved, _ = neps.space.neps_spaces.neps_space.resolve(space)
 
     # Should format appropriately based on what was chosen
-    result = operation_to_string(resolved.choice)
+    result = format_value(resolved.choice)
 
     # Check it's one of the expected formats (identifiers don't get quotes)
     possible_results = [
-        "Linear(\n  in_features=10,\n)",  # Expanded format
+        "Linear(\n   in_features=10,\n)",  # Expanded format (3-space indent)
         "Linear(in_features=10)",  # Compact format (simple operation)
         "simple_string",  # Identifiers don't get quotes
         "42",
@@ -458,7 +458,7 @@ def test_resolved_float_parameter():
     assert isinstance(resolved.lr, float)
 
     # Should format as a simple number
-    result = operation_to_string(resolved.lr)
+    result = format_value(resolved.lr)
     assert result == repr(resolved.lr)
 
 
@@ -475,7 +475,7 @@ def test_resolved_integer_parameter():
     assert isinstance(resolved.batch_size, int)
 
     # Should format as a simple number
-    result = operation_to_string(resolved.batch_size)
+    result = format_value(resolved.batch_size)
     assert result == repr(resolved.batch_size)
 
 

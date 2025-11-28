@@ -7,7 +7,7 @@ import logging
 
 # This example space demonstrates all types of parameters available in NePS.
 class ExampleSpace(neps.PipelineSpace):
-    int1 = neps.Fidelity(neps.Integer(1, 10))
+    int1 = neps.IntegerFidelity(1, 10)
     float1 = neps.Float(0.0, 1.0)
     cat1 = neps.Categorical(["a", "b", "c"])
     cat2 = neps.Categorical(["x", "y", float1])

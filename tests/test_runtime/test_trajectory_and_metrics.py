@@ -14,9 +14,9 @@ import neps
 from neps.optimizers import algorithms
 from neps.runtime import DefaultWorker
 from neps.space.neps_spaces.parameters import (
-    Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     PipelineSpace,
 )
 from neps.state.neps_state import NePSState
@@ -46,7 +46,7 @@ class SpaceWithFidelity(PipelineSpace):
 
     x = Float(lower=0.0, upper=1.0)
     y = Integer(lower=1, upper=10)
-    epochs = Fidelity(Integer(lower=1, upper=50))
+    epochs = IntegerFidelity(lower=1, upper=50)
 
 
 def simple_evaluation(x: float, y: int) -> dict:

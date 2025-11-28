@@ -23,9 +23,9 @@ from neps.optimizers.ask_and_tell import AskAndTell
 from neps.space import SearchSpace
 from neps.space.neps_spaces.parameters import (
     Categorical,
-    Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     PipelineSpace,
 )
 from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
@@ -49,7 +49,7 @@ def case_search_space_with_fid() -> PipelineSpace:
         b = Categorical(("a", "b", "c"))
         c = "a"
         d = Integer(0, 10)
-        e = Fidelity(Integer(1, 10))
+        e = IntegerFidelity(1, 10)
 
     return SpaceFid()
 
@@ -72,7 +72,7 @@ def case_search_space_fid_with_prior() -> PipelineSpace:
         b = Categorical(("a", "b", "c"), prior=0, prior_confidence="medium")
         c = "a"
         d = Integer(0, 10, prior=5, prior_confidence="medium")
-        e = Fidelity(Integer(1, 10))
+        e = IntegerFidelity(1, 10)
 
     return SpaceFidPrior()
 

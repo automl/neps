@@ -21,7 +21,7 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
 
 class ExamplePipeline(neps.PipelineSpace):
     learning_rate = neps.Float(1e-3, 1e-1, log=True)
-    epochs = neps.Fidelity(neps.Integer(10, 100))
+    epochs = neps.IntegerFidelity(10, 100)
 
 neps.run(
     evaluate_pipeline=evaluate_pipeline, # (1)!

@@ -9,7 +9,9 @@
 - [`neps.Integer`][neps.space.neps_spaces.parameters.Integer]: Discrete integer values
 - [`neps.Float`][neps.space.neps_spaces.parameters.Float]: Continuous float values
 - [`neps.Categorical`][neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values
-- [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity]: Special type for float or integer, [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., epochs, dataset size)
+- [`neps.IntegerFidelity`][neps.space.neps_spaces.parameters.IntegerFidelity]: Integer [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., epochs, batch size)
+- [`neps.FloatFidelity`][neps.space.neps_spaces.parameters.FloatFidelity]: Float [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., dataset subset ratio)
+- [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity]: Generic fidelity type (use IntegerFidelity or FloatFidelity instead)
 
 Using these types, you can define the parameters that NePS will optimize during the search process.
 A **NePS space** is defined as a subclass of [`PipelineSpace`][neps.space.neps_spaces.parameters.PipelineSpace]. Here we define the hyperparameters that make up the space, like so:
@@ -38,10 +40,15 @@ class MySpace(neps.PipelineSpace):
 
 ### Using cheap approximation, providing a [**Fidelity**](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) Parameter
 
-Passing a [`neps.Integer`][neps.space.neps_spaces.parameters.Integer] or [`neps.Float`][neps.space.neps_spaces.parameters.Float] to a [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity] allows you to employ multi-fidelity optimization strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs):
+You can use [`neps.IntegerFidelity`][neps.space.neps_spaces.parameters.IntegerFidelity] or [`neps.FloatFidelity`][neps.space.neps_spaces.parameters.FloatFidelity] to employ multi-fidelity optimization strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs):
 
 ```python
-epochs = neps.Fidelity(neps.Integer(1, 16))
+# Convenient syntax (recommended)
+epochs = neps.IntegerFidelity(lower=1, upper=16)
+subset_ratio = neps.FloatFidelity(lower=0.1, upper=1.0)
+
+# Alternative syntax (also works)
+epochs = neps.IntegerFidelity(1, 16)
 ```
 
 For more details on how to use fidelity parameters, see the [Multi-Fidelity](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) section.
@@ -148,12 +155,12 @@ def evaluate_pipeline(
 
 Until now all parameters are sampled once and their value used for all occurrences. This section describes how to resample parameters in different contexts using:
 
-- [`.resample()`][neps.space.neps_spaces.parameters.Resampled]: Resample from an existing parameters range
+- [`.resample()`][neps.space.neps_spaces.parameters.Resample]: Resample from an existing parameters range
 
 With `.resample()` you can reuse a parameter, even themselves recursively, but with a new value each time:
 
 ```python
-class ResampledSpace(neps.PipelineSpace):
+class ResampleSpace(neps.PipelineSpace):
     float_param = neps.Float(lower=0, upper=1)
 
     # The resampled parameter will have the same range but will be sampled
@@ -190,15 +197,15 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 ??? info "Self- and future references"
 
-    When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name with `neps.Resampled("parameter_name")`, like so:
+    When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name with `neps.Resample("parameter_name")`, like so:
 
     ```python
     self_reference = Categorical(
         choices=(
             # It will either choose to resample itself twice
-            (neps.Resampled("self_reference"), neps.Resampled("self_reference")),
+            (neps.Resample("self_reference"), neps.Resample("self_reference")),
             # Or it will sample the future parameter
-            (neps.Resampled("future_param"),),
+            (neps.Resample("future_param"),),
         )
     )
     # This results in a (possibly infinite) tuple of independently sampled future_params
@@ -208,7 +215,7 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 !!! tip "Complex structural spaces"
 
-    Together, [Resampling][neps.space.neps_spaces.parameters.Resampled] and [operations][neps.space.neps_spaces.parameters.Operation] allow you to define complex search spaces across the whole ML-pipeline akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar), exceeding architecture search. For example, you can sample neural optimizers from a set of instructions, as done in [`NOSBench`](https://openreview.net/pdf?id=5Lm2ghxMlp) to train models.
+    Together, [Resampling][neps.space.neps_spaces.parameters.Resample] and [operations][neps.space.neps_spaces.parameters.Operation] allow you to define complex search spaces across the whole ML-pipeline akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar), exceeding architecture search. For example, you can sample neural optimizers from a set of instructions, as done in [`NOSBench`](https://openreview.net/pdf?id=5Lm2ghxMlp) to train models.
 
 ## Inspecting Configurations
 

@@ -6,7 +6,6 @@ from functools import partial
 import pytest
 
 import neps
-import neps.optimizers
 from neps.optimizers import algorithms
 from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
@@ -16,9 +15,9 @@ from neps.space.neps_spaces.neps_space import (
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
-    Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     Operation,
     PipelineSpace,
 )
@@ -99,11 +98,9 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
-    integer2 = Fidelity(
-        Integer(
-            lower=1,
-            upper=1000,
-        ),
+    integer2 = IntegerFidelity(
+        lower=1,
+        upper=1000,
     )
 
 
@@ -491,7 +488,7 @@ def test_algorithm_compatibility():
         ], f"Algorithm {algo.__name__} should be classic or both compatible"
 
 
-# Test with complex PipelineSpace containing Operations and Resampled
+# Test with complex PipelineSpace containing Operations and Resample
 def test_complex_neps_space_features():
     """Test complex NePS space features that cannot be converted to classic."""
 

@@ -7,12 +7,12 @@ import pytest
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
-    Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     Operation,
     PipelineSpace,
-    Resampled,
+    Resample,
 )
 
 
@@ -76,11 +76,11 @@ def test_add_method_different_types():
     assert "new_op" in space.get_attrs()
     assert isinstance(space.get_attrs()["new_op"], Operation)
 
-    # Add Resampled
+    # Add Resample
     resampled = space.get_attrs()["x"].resample()
     space = space.add(resampled, "new_resampled")
     assert "new_resampled" in space.get_attrs()
-    assert isinstance(space.get_attrs()["new_resampled"], Resampled)
+    assert isinstance(space.get_attrs()["new_resampled"], Resample)
 
 
 def test_add_method_with_default_name():
@@ -351,7 +351,7 @@ def test_fidelity_operations():
 
     class FidelitySpace(PipelineSpace):
         x = Float(lower=0.0, upper=1.0)
-        epochs = Fidelity(Integer(lower=1, upper=100))
+        epochs = IntegerFidelity(lower=1, upper=100)
 
     space = FidelitySpace()
 

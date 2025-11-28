@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 import neps.space.neps_spaces.sampling
-from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
     Categorical,
     ConfidenceLevel,
@@ -160,7 +160,7 @@ def test_nested_simple_string():
     resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = neps_space.convert_operation_to_string(act)
+    act_config_string = string_formatter.format_value(act)
     assert act_config_string
 
     # Check for one of the possible operations
@@ -206,7 +206,7 @@ def test_nested_complex_string():
     resolved_pipeline, _ = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = neps_space.convert_operation_to_string(act)
+    act_config_string = string_formatter.format_value(act)
     assert act_config_string
 
     # Format is now expanded, check for content
@@ -243,7 +243,7 @@ def test_fixed_pipeline_string():
     resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     act = resolved_pipeline.act
-    act_config_string = neps_space.convert_operation_to_string(act)
+    act_config_string = string_formatter.format_value(act)
     assert act_config_string
     # Check content rather than exact format (now always expanded)
     assert "prelu" in act_config_string
@@ -289,7 +289,7 @@ def test_simple_reuse_string():
     resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     conv_block = resolved_pipeline.conv_block
-    conv_block_config_string = neps_space.convert_operation_to_string(conv_block)
+    conv_block_config_string = string_formatter.format_value(conv_block)
     assert conv_block_config_string
 
     # Should contain sequential3 and three conv operations
@@ -361,7 +361,7 @@ def test_shared_complex_string():
     resolved_pipeline, _resolution_context = neps_space.resolve(pipeline)
 
     cell = resolved_pipeline.cell
-    cell_config_string = neps_space.convert_operation_to_string(cell)
+    cell_config_string = string_formatter.format_value(cell)
 
     # Verify essential elements are present
     assert cell_config_string
@@ -384,7 +384,7 @@ def test_shared_complex_context():
     #  This one should only do the reuse tests
 
     # todo: add a more complex test, where we have hidden Categorical choices.
-    #  E.g. add Resampled along the way
+    #  E.g. add Resample along the way
 
     samplings_to_make = {
         "Resolvable.op1::categorical__3": 2,
@@ -427,12 +427,8 @@ def test_shared_complex_context():
 
     # The new formatter outputs operations in full rather than using references.
     # Check that both resolutions produce the same format and contain expected operations.
-    config_str_first = neps_space.convert_operation_to_string(
-        resolved_pipeline_first.cell
-    )
-    config_str_second = neps_space.convert_operation_to_string(
-        resolved_pipeline_second.cell
-    )
+    config_str_first = string_formatter.format_value(resolved_pipeline_first.cell)
+    config_str_second = string_formatter.format_value(resolved_pipeline_second.cell)
 
     # Both resolutions with same samplings should produce identical output
     assert config_str_first == config_str_second

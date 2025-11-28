@@ -135,7 +135,7 @@ def get_evaluated_trials(optimizer) -> list[tuple[dict[str, Any], UserResultDict
 def run_import_trials(optimizer):
     class ExampleSpace(neps.PipelineSpace):
         float1 = neps.Float(lower=0, upper=1)
-        float2 = neps.Fidelity(neps.Float(lower=1, upper=10))
+        float2 = neps.FloatFidelity(lower=1, upper=10)
         categorical = neps.Categorical(choices=[0, 1])
         integer1 = neps.Integer(lower=0, upper=1)
         integer2 = neps.Integer(lower=1, upper=1000, log=True)

@@ -32,7 +32,7 @@ class HPOSpace(neps.PipelineSpace):
         prior=35,
         prior_confidence="low",
     )
-    fidelity = neps.Fidelity(neps.Integer(lower=1, upper=10))
+    fidelity = neps.IntegerFidelity(lower=1, upper=10)
 
 
 logging.basicConfig(level=logging.INFO)

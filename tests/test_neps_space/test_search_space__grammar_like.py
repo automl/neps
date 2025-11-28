@@ -8,7 +8,7 @@ from neps.space.neps_spaces.parameters import (
     Categorical,
     Operation,
     PipelineSpace,
-    Resampled,
+    Resample,
 )
 
 
@@ -28,7 +28,7 @@ class GrammarLike(PipelineSpace):
         operator="Sequential",
         args=(
             _O.resample(),
-            Resampled("S"),
+            Resample("S"),
             _reluconvbn,
         ),
     )
@@ -36,12 +36,12 @@ class GrammarLike(PipelineSpace):
         operator="Sequential",
         args=(
             _O.resample(),
-            Resampled("S"),
+            Resample("S"),
         ),
     )
     _C3 = Operation(
         operator="Sequential",
-        args=(Resampled("S"),),
+        args=(Resample("S"),),
     )
     _C = Categorical(
         choices=(
@@ -62,12 +62,12 @@ class GrammarLike(PipelineSpace):
     )
     _S2 = Operation(
         operator="Sequential",
-        args=(Resampled("S"),),
+        args=(Resample("S"),),
     )
     _S3 = Operation(
         operator="Sequential",
         args=(
-            Resampled("S"),
+            Resample("S"),
             _C.resample(),
         ),
     )
@@ -82,8 +82,8 @@ class GrammarLike(PipelineSpace):
     _S5 = Operation(
         operator="Sequential",
         args=(
-            Resampled("S"),
-            Resampled("S"),
+            Resample("S"),
+            Resample("S"),
             _O.resample(),
             _O.resample(),
             _O.resample(),
@@ -117,14 +117,14 @@ class GrammarLikeAlt(PipelineSpace):
             (_O.resample(),),
             (
                 _O.resample(),
-                Resampled("S"),
+                Resample("S"),
                 _reluconvbn,
             ),
             (
                 _O.resample(),
-                Resampled("S"),
+                Resample("S"),
             ),
-            (Resampled("S"),),
+            (Resample("S"),),
         ),
     )
     _C = Operation(
@@ -136,9 +136,9 @@ class GrammarLikeAlt(PipelineSpace):
         choices=(
             (_C.resample(),),
             (_reluconvbn,),
-            (Resampled("S"),),
+            (Resample("S"),),
             (
-                Resampled("S"),
+                Resample("S"),
                 _C.resample(),
             ),
             (
@@ -147,8 +147,8 @@ class GrammarLikeAlt(PipelineSpace):
                 _O.resample(),
             ),
             (
-                Resampled("S"),
-                Resampled("S"),
+                Resample("S"),
+                Resample("S"),
                 _O.resample(),
                 _O.resample(),
                 _O.resample(),
@@ -174,10 +174,8 @@ def test_resolve():
         pytest.xfail("XFAIL due to too much recursion.")
 
     s = resolved_pipeline.S
-    s_config_string = neps_space.convert_operation_to_string(s)
+    s_config_string = string_formatter.format_value(s)
     assert s_config_string
-    pretty_config = string_formatter.format_value(s)
-    assert pretty_config
 
 
 @pytest.mark.repeat(500)
@@ -190,10 +188,8 @@ def test_resolve_alt():
         pytest.xfail("XFAIL due to too much recursion.")
 
     s = resolved_pipeline.S
-    s_config_string = neps_space.convert_operation_to_string(s)
+    s_config_string = string_formatter.format_value(s)
     assert s_config_string
-    pretty_config = string_formatter.format_value(s)
-    assert pretty_config
 
 
 def test_resolve_context():
@@ -311,7 +307,7 @@ def test_resolve_context():
     assert sampled_values == samplings_to_make
 
     s = resolved_pipeline.S
-    s_config_string = neps_space.convert_operation_to_string(s)
+    s_config_string = string_formatter.format_value(s)
     assert s_config_string
     # Verify the config contains expected operation names (format may be compact or multiline)
     assert "Sequential" in s_config_string
@@ -499,7 +495,7 @@ def test_resolve_context_alt():
     assert sampled_values == samplings_to_make
 
     s = resolved_pipeline.S
-    s_config_string = neps_space.convert_operation_to_string(s)
+    s_config_string = string_formatter.format_value(s)
     assert s_config_string
     # Verify the config contains expected operation names (format may be compact or multiline)
     assert "Sequential" in s_config_string

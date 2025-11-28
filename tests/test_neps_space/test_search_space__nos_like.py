@@ -8,7 +8,7 @@ from neps.space.neps_spaces.parameters import (
     Integer,
     Operation,
     PipelineSpace,
-    Resampled,
+    Resample,
 )
 
 
@@ -100,7 +100,7 @@ class NosBench(PipelineSpace):
             (_F.resample(),),
             (
                 _F.resample(),
-                Resampled("_L"),
+                Resample("_L"),
             ),
         ),
     )
@@ -127,7 +127,5 @@ def test_resolve():
         raise
 
     p = resolved_pipeline.P
-    p_config_string = neps_space.convert_operation_to_string(p)
+    p_config_string = string_formatter.format_value(p)
     assert p_config_string
-    pretty_config = string_formatter.format_value(p)
-    assert pretty_config

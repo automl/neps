@@ -9,9 +9,9 @@ import neps
 from neps import algorithms
 from neps.space.neps_spaces.parameters import (
     ConfidenceLevel,
-    Fidelity,
     Float,
     Integer,
+    IntegerFidelity,
     PipelineSpace,
 )
 
@@ -53,11 +53,9 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
         prior=35,
         prior_confidence=ConfidenceLevel.LOW,
     )
-    fidelity = Fidelity(
-        domain=Integer(
-            lower=1,
-            upper=100,
-        ),
+    fidelity = IntegerFidelity(
+        lower=1,
+        upper=100,
     )
 
 
