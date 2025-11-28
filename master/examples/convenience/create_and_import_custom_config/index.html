@@ -3383,58 +3383,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../api/neps/space/neps_spaces/config_string/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Config string
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../../api/neps/space/neps_spaces/neps_space/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Neps space
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../api/neps/space/neps_spaces/operation_formatter/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Operation formatter
     
   </span>
   
@@ -3481,6 +3435,29 @@
   
   <span class="md-ellipsis">
     Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/neps/space/neps_spaces/string_formatter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    String formatter
     
   </span>
   
@@ -4045,19 +4022,17 @@
 <a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    <span class="n">config</span><span class="p">,</span> <span class="n">pipeline</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">create_config</span><span class="p">(</span><span class="n">ExampleSpace</span><span class="p">())</span>
 <a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Created configuration:&quot;</span><span class="p">)</span>
 <a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    <span class="n">pprint</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Sampled pipeline:&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>    <span class="n">pprint</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
-<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>
-<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>
-<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
-<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    <span class="c1"># The created configuration can then be used as an imported trial in NePS optimizers.</span>
-<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>    <span class="c1"># We demonstrate this with the fictional result of objective_to_minimize = 0.5</span>
-<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>    <span class="n">neps</span><span class="o">.</span><span class="n">import_trials</span><span class="p">(</span>
-<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="n">evaluated_trials</span><span class="o">=</span><span class="p">[(</span><span class="n">config</span><span class="p">,</span> <span class="n">neps</span><span class="o">.</span><span class="n">UserResultDict</span><span class="p">(</span><span class="n">objective_to_minimize</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))],</span>
-<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/created_config_example&quot;</span><span class="p">,</span>
-<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>        <span class="n">pipeline_space</span><span class="o">=</span><span class="n">ExampleSpace</span><span class="p">(),</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44" href="#__codelineno-0-44"></a>        <span class="n">overwrite_root_directory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45" href="#__codelineno-0-45"></a>    <span class="p">)</span>
+<a id="__codelineno-0-33" name="__codelineno-0-33" href="#__codelineno-0-33"></a>
+<a id="__codelineno-0-34" name="__codelineno-0-34" href="#__codelineno-0-34"></a>
+<a id="__codelineno-0-35" name="__codelineno-0-35" href="#__codelineno-0-35"></a>    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<a id="__codelineno-0-36" name="__codelineno-0-36" href="#__codelineno-0-36"></a>    <span class="c1"># The created configuration can then be used as an imported trial in NePS optimizers.</span>
+<a id="__codelineno-0-37" name="__codelineno-0-37" href="#__codelineno-0-37"></a>    <span class="c1"># We demonstrate this with the fictional result of objective_to_minimize = 0.5</span>
+<a id="__codelineno-0-38" name="__codelineno-0-38" href="#__codelineno-0-38"></a>    <span class="n">neps</span><span class="o">.</span><span class="n">import_trials</span><span class="p">(</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39" href="#__codelineno-0-39"></a>        <span class="n">evaluated_trials</span><span class="o">=</span><span class="p">[(</span><span class="n">config</span><span class="p">,</span> <span class="n">neps</span><span class="o">.</span><span class="n">UserResultDict</span><span class="p">(</span><span class="n">objective_to_minimize</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))],</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40" href="#__codelineno-0-40"></a>        <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;results/created_config_example&quot;</span><span class="p">,</span>
+<a id="__codelineno-0-41" name="__codelineno-0-41" href="#__codelineno-0-41"></a>        <span class="n">pipeline_space</span><span class="o">=</span><span class="n">ExampleSpace</span><span class="p">(),</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42" href="#__codelineno-0-42"></a>        <span class="n">overwrite_root_directory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43" href="#__codelineno-0-43"></a>    <span class="p">)</span>
 </code></pre></div>
 
 

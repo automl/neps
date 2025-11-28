@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../config_string/">
+        <link rel="prev" href="../../search_space/">
       
       
-        <link rel="next" href="../operation_formatter/">
+        <link rel="next" href="../parameters/">
       
       
       <link rel="icon" href="../../../../../assets/images/favicon.png">
@@ -3366,29 +3366,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../config_string/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Config string
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -3678,29 +3655,6 @@
   
   
     <li class="md-nav__item">
-      <a href="../operation_formatter/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Operation formatter
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../parameters/" class="md-nav__link">
         
   
@@ -3730,6 +3684,29 @@
   
   <span class="md-ellipsis">
     Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../string_formatter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    String formatter
     
   </span>
   
@@ -7849,13 +7826,13 @@ If the checks pass, it converts the NePS space to a classic SearchSpace.</p>
 <a id="__codelineno-0-941" name="__codelineno-0-941"></a><span class="sd">    Raises:</span>
 <a id="__codelineno-0-942" name="__codelineno-0-942"></a><span class="sd">        ValueError: If the operation is not a valid Operation object.</span>
 <a id="__codelineno-0-943" name="__codelineno-0-943"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-944" name="__codelineno-0-944"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces.operation_formatter</span><span class="w"> </span><span class="kn">import</span> <span class="n">operation_to_string</span>
+<a id="__codelineno-0-944" name="__codelineno-0-944"></a>    <span class="kn">from</span><span class="w"> </span><span class="nn">neps.space.neps_spaces.string_formatter</span><span class="w"> </span><span class="kn">import</span> <span class="n">format_value</span>
 <a id="__codelineno-0-945" name="__codelineno-0-945"></a>
 <a id="__codelineno-0-946" name="__codelineno-0-946"></a>    <span class="c1"># Handle non-Operation values (resolved primitives)</span>
 <a id="__codelineno-0-947" name="__codelineno-0-947"></a>    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">operation</span><span class="p">,</span> <span class="n">Operation</span><span class="p">):</span>
 <a id="__codelineno-0-948" name="__codelineno-0-948"></a>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">operation</span><span class="p">)</span>
 <a id="__codelineno-0-949" name="__codelineno-0-949"></a>
-<a id="__codelineno-0-950" name="__codelineno-0-950"></a>    <span class="k">return</span> <span class="n">operation_to_string</span><span class="p">(</span><span class="n">operation</span><span class="p">)</span>
+<a id="__codelineno-0-950" name="__codelineno-0-950"></a>    <span class="k">return</span> <span class="n">format_value</span><span class="p">(</span><span class="n">operation</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -8120,7 +8097,7 @@ is not a DomainSampler or if the environment_values is not a Mapping.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../config_string/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Config string">
+          <a href="../../search_space/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Search space">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -8130,20 +8107,20 @@ is not a DomainSampler or if the environment_values is not a Mapping.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Config string
+                Search space
               </div>
             </div>
           </a>
         
         
           
-          <a href="../operation_formatter/" class="md-footer__link md-footer__link--next" aria-label="Next: Operation formatter">
+          <a href="../parameters/" class="md-footer__link md-footer__link--next" aria-label="Next: Parameters">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Operation formatter
+                Parameters
               </div>
             </div>
             <div class="md-footer__button md-icon">

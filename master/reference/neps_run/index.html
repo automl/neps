@@ -3507,58 +3507,12 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/neps/space/neps_spaces/config_string/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Config string
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
       <a href="../../api/neps/space/neps_spaces/neps_space/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     Neps space
-    
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../api/neps/space/neps_spaces/operation_formatter/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    Operation formatter
     
   </span>
   
@@ -3605,6 +3559,29 @@
   
   <span class="md-ellipsis">
     Sampling
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/space/neps_spaces/string_formatter/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    String formatter
     
   </span>
   
@@ -4227,7 +4204,7 @@ with an increased <code>evaluations_to_spend=</code> or <code>cost_to_spend=</co
 <p>If the run previously stopped due to reaching a budget and you specify the same budget, the worker will immediatly stop as it will remember the amount of budget it used previously.</p>
 <div class="admonition note">
 <p class="admonition-title">Auto-loading</p>
-<p>When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify <code>pipeline_space=</code> or <code>searcher=</code> again - NePS will use the saved settings from the original run.</p>
+<p>When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify <code>pipeline_space=</code> or <code>optimizer=</code> again - NePS will use the saved settings from the original run.</p>
 </div>
 <h2 id="reconstructing-and-reproducing-runs">Reconstructing and Reproducing Runs<a class="headerlink" href="#reconstructing-and-reproducing-runs" title="Permanent link">#</a></h2>
 <p>Sometimes you want to inspect what settings were used in a previous run, or reproduce a run with the same or modified settings. NePS provides utility functions to load both the search space and optimizer information:</p>
@@ -4254,7 +4231,7 @@ with an increased <code>evaluations_to_spend=</code> or <code>cost_to_spend=</co
 <a id="__codelineno-4-21" name="__codelineno-4-21" href="#__codelineno-4-21"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">my_function</span><span class="p">,</span>
 <a id="__codelineno-4-22" name="__codelineno-4-22" href="#__codelineno-4-22"></a>    <span class="n">pipeline_space</span><span class="o">=</span><span class="n">pipeline_space</span><span class="p">,</span>
 <a id="__codelineno-4-23" name="__codelineno-4-23" href="#__codelineno-4-23"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="s2">&quot;path/to/new_run&quot;</span><span class="p">,</span>
-<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="n">searcher</span><span class="o">=</span><span class="n">optimizer_info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>
+<a id="__codelineno-4-24" name="__codelineno-4-24" href="#__codelineno-4-24"></a>    <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer_info</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>
 <a id="__codelineno-4-25" name="__codelineno-4-25" href="#__codelineno-4-25"></a>    <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
 <a id="__codelineno-4-26" name="__codelineno-4-26" href="#__codelineno-4-26"></a><span class="p">)</span>
 </code></pre></div>
