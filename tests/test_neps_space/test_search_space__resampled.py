@@ -10,7 +10,6 @@ from neps.space.neps_spaces.parameters import (
     Integer,
     Operation,
     PipelineSpace,
-    Resampled,
 )
 
 
@@ -34,14 +33,14 @@ class ActPipelineSimpleFloat(PipelineSpace):
 
     prelu_own_clone1 = Operation(
         operator="prelu",
-        kwargs={"init": Resampled(prelu_init_value)},
+        kwargs={"init": prelu_init_value.resample()},
     )
     prelu_own_clone2 = Operation(
         operator="prelu",
-        kwargs={"init": Resampled(prelu_init_value)},
+        kwargs={"init": prelu_init_value.resample()},
     )
 
-    _prelu_init_resampled = Resampled(prelu_init_value)
+    _prelu_init_resampled = prelu_init_value.resample()
     prelu_common_clone1 = Operation(
         operator="prelu",
         kwargs={"init": _prelu_init_resampled},
@@ -66,14 +65,14 @@ class ActPipelineComplexInteger(PipelineSpace):
 
     prelu_own_clone1 = Operation(
         operator="prelu",
-        kwargs={"init": Resampled(prelu_init_value)},
+        kwargs={"init": prelu_init_value.resample()},
     )
     prelu_own_clone2 = Operation(
         operator="prelu",
-        kwargs={"init": Resampled(prelu_init_value)},
+        kwargs={"init": prelu_init_value.resample()},
     )
 
-    _prelu_init_resampled = Resampled(prelu_init_value)
+    _prelu_init_resampled = prelu_init_value.resample()
     prelu_common_clone1 = Operation(
         operator="prelu",
         kwargs={"init": _prelu_init_resampled},
@@ -97,7 +96,7 @@ class ActPipelineComplexInteger(PipelineSpace):
             "prelu_shared": prelu_shared1,
             "prelu_own_clone": prelu_own_clone1,
             "prelu_common_clone": prelu_common_clone1,
-            "resampled_hp_value": Resampled(prelu_init_value),
+            "resampled_hp_value": prelu_init_value.resample(),
         },
     )
 
@@ -118,21 +117,21 @@ class CellPipelineCategorical(PipelineSpace):
     )
     op2 = Categorical(
         choices=(
-            Resampled(conv_block),
+            conv_block.resample(),
             Operation("op2"),
         ),
     )
 
-    _resampled_op1 = Resampled(op1)
+    _resampled_op1 = op1.resample()
     cell = Operation(
         operator="cell",
         args=(
             op1,
             op2,
             _resampled_op1,
-            Resampled(op2),
+            op2.resample(),
             _resampled_op1,
-            Resampled(op2),
+            op2.resample(),
         ),
     )
 

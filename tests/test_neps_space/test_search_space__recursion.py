@@ -58,7 +58,7 @@ class DemoRecursiveOperationSpace(PipelineSpace):
     )
     model = Operation(
         operator=Model,
-        args=(Resampled(_inner_function),),
+        args=(_inner_function.resample(),),
         kwargs={"factor": _factor},
     )
 

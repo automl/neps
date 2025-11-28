@@ -45,7 +45,7 @@ class NN_Space(neps.PipelineSpace):
         kwargs={
             "in_channels": 3,
             "out_channels": 3,
-            "kernel_size": neps.Resampled(_kernel_size),
+            "kernel_size": _kernel_size.resample(),
             "padding": "same",
         },
     )
@@ -63,8 +63,8 @@ class NN_Space(neps.PipelineSpace):
     _cell = neps.Operation(
         operator=nn.Sequential,
         args=(
-            neps.Resampled(_conv),
-            neps.Resampled(_nonlinearity),
+            _conv.resample(),
+            _nonlinearity.resample(),
         ),
     )
 
@@ -73,9 +73,9 @@ class NN_Space(neps.PipelineSpace):
     model = neps.Operation(
         operator=nn.Sequential,
         args=(
-            neps.Resampled(_cell),
-            neps.Resampled(_cell),
-            neps.Resampled(_cell),
+            _cell.resample(),
+            _cell.resample(),
+            _cell.resample(),
         ),
     )
 

@@ -48,58 +48,58 @@ class NosBench(PipelineSpace):
 
     _POINTER = Categorical(
         choices=(
-            Resampled(_PARAMS),
-            Resampled(_CONST),
-            Resampled(_VAR),
+            _PARAMS.resample(),
+            _CONST.resample(),
+            _VAR.resample(),
         ),
     )
 
     _UNARY = Operation(
         operator="Unary",
         args=(
-            Resampled(_UNARY_FUN),
-            Resampled(_POINTER),
+            _UNARY_FUN.resample(),
+            _POINTER.resample(),
         ),
     )
 
     _BINARY = Operation(
         operator="Binary",
         args=(
-            Resampled(_BINARY_FUN),
-            Resampled(_POINTER),
-            Resampled(_POINTER),
+            _BINARY_FUN.resample(),
+            _POINTER.resample(),
+            _POINTER.resample(),
         ),
     )
 
     _TERNARY = Operation(
         operator="Ternary",
         args=(
-            Resampled(_TERNARY_FUN),
-            Resampled(_POINTER),
-            Resampled(_POINTER),
-            Resampled(_POINTER),
+            _TERNARY_FUN.resample(),
+            _POINTER.resample(),
+            _POINTER.resample(),
+            _POINTER.resample(),
         ),
     )
 
     _F_ARGS = Categorical(
         choices=(
-            Resampled(_UNARY),
-            Resampled(_BINARY),
-            Resampled(_TERNARY),
+            _UNARY.resample(),
+            _BINARY.resample(),
+            _TERNARY.resample(),
         ),
     )
 
     _F = Operation(
         operator="Function",
-        args=(Resampled(_F_ARGS),),
-        kwargs={"var": Resampled(_VAR)},
+        args=(_F_ARGS.resample(),),
+        kwargs={"var": _VAR.resample()},
     )
 
     _L_ARGS = Categorical(
         choices=(
-            (Resampled(_F),),
+            (_F.resample(),),
             (
-                Resampled(_F),
+                _F.resample(),
                 Resampled("_L"),
             ),
         ),
@@ -107,12 +107,12 @@ class NosBench(PipelineSpace):
 
     _L = Operation(
         operator="Line_operator",
-        args=Resampled(_L_ARGS),
+        args=_L_ARGS.resample(),
     )
 
     P = Operation(
         operator="Program",
-        args=(Resampled(_L),),
+        args=(_L.resample(),),
     )
 
 

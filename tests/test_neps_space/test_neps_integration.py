@@ -21,7 +21,6 @@ from neps.space.neps_spaces.parameters import (
     Integer,
     Operation,
     PipelineSpace,
-    Resampled,
 )
 
 
@@ -124,16 +123,16 @@ class DemoHyperparameterComplexSpace(PipelineSpace):
 
     float1 = Categorical(
         choices=(
-            Resampled(_small_float),
-            Resampled(_big_float),
+            _small_float.resample(),
+            _big_float.resample(),
         ),
         prior=0,
         prior_confidence=ConfidenceLevel.MEDIUM,
     )
     float2 = Categorical(
         choices=(
-            Resampled(_small_float),
-            Resampled(_big_float),
+            _small_float.resample(),
+            _big_float.resample(),
             float1,
         ),
         prior=0,
@@ -304,7 +303,7 @@ class DemoOperationSpace(PipelineSpace):
     #   `MultipliedSum(factor=0.2)`
     _multiplied_sum = Operation(
         operator=MultipliedSum,
-        kwargs={"factor": Resampled(_factor)},
+        kwargs={"factor": _factor.resample()},
     )
 
     # Model
@@ -317,7 +316,7 @@ class DemoOperationSpace(PipelineSpace):
     model = Operation(
         operator=Model,
         args=(_inner_function,),
-        kwargs={"factor": Resampled(_factor)},
+        kwargs={"factor": _factor.resample()},
     )
 
     # An additional hyperparameter
@@ -508,7 +507,7 @@ def test_complex_neps_space_features():
         # Operation with resampled parameters
         operation = Operation(
             operator=lambda x, y: x * y,
-            args=(factor, Resampled(factor)),
+            args=(factor, factor.resample()),
         )
 
         # Categorical with operations as choices

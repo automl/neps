@@ -129,6 +129,22 @@ def format_value(  # noqa: C901, PLR0911
 # ============================================================================
 
 
+def _format_prior_confidence(prior_confidence: Any) -> str:
+    """Internal helper to format prior_confidence values consistently.
+
+    Args:
+        prior_confidence: The prior confidence value (typically a ConfidenceLevel enum)
+
+    Returns:
+        String representation of the prior confidence
+    """
+    return (
+        prior_confidence.value
+        if hasattr(prior_confidence, "value")
+        else str(prior_confidence)
+    )
+
+
 def _format_categorical(
     categorical: Categorical,
     indent: int,
@@ -153,11 +169,7 @@ def _format_categorical(
     )
 
     if categorical.has_prior:
-        prior_confidence_str = (
-            categorical._prior_confidence.value
-            if hasattr(categorical._prior_confidence, "value")
-            else str(categorical._prior_confidence)
-        )
+        prior_confidence_str = _format_prior_confidence(categorical._prior_confidence)
         result += (
             f",\n{inner_indent_str}prior={categorical._prior},"
             f"\n{inner_indent_str}prior_confidence={prior_confidence_str}"
@@ -177,11 +189,7 @@ def _format_float(
     if float_param._log:
         string += ", log"
     if float_param.has_prior:
-        prior_confidence_str = (
-            float_param._prior_confidence.value
-            if hasattr(float_param._prior_confidence, "value")
-            else str(float_param._prior_confidence)
-        )
+        prior_confidence_str = _format_prior_confidence(float_param._prior_confidence)
         string += f", prior={float_param._prior}, prior_confidence={prior_confidence_str}"
     string += ")"
     return string
@@ -197,11 +205,7 @@ def _format_integer(
     if integer_param._log:
         string += ", log"
     if integer_param.has_prior:
-        prior_confidence_str = (
-            integer_param._prior_confidence.value
-            if hasattr(integer_param._prior_confidence, "value")
-            else str(integer_param._prior_confidence)
-        )
+        prior_confidence_str = _format_prior_confidence(integer_param._prior_confidence)
         string += (
             f", prior={integer_param._prior}, prior_confidence={prior_confidence_str}"
         )

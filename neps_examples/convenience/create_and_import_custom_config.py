@@ -17,8 +17,8 @@ class ExampleSpace(neps.PipelineSpace):
             "option2",
             neps.Operation(
                 operator="option3",
-                args=(float1, neps.Resampled(cat1)),
-                kwargs={"param1": neps.Resampled(float1)},
+                args=(float1, cat1.resample()),
+                kwargs={"param1": float1.resample()},
             ),
         ]
     )
@@ -30,7 +30,6 @@ if __name__ == "__main__":
     config, pipeline = neps.create_config(ExampleSpace())
     print("Created configuration:")
     pprint(config)
-
 
     logging.basicConfig(level=logging.INFO)
     # The created configuration can then be used as an imported trial in NePS optimizers.

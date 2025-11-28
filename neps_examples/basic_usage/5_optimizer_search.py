@@ -65,13 +65,13 @@ class OptimizerSpace(neps.PipelineSpace):
     optimizer_class = neps.Operation(
         operator=optimizer_constructor,
         args=(
-            neps.Resampled(_functions),
-            neps.Resampled(_functions),
-            neps.Resampled(_functions),
+            _functions.resample(),
+            _functions.resample(),
+            _functions.resample(),
         ),
         kwargs={
-            "learning_rate": neps.Resampled(_learning_rate),
-            "gradient_clipping": neps.Resampled(_gradient_clipping),
+            "learning_rate": _learning_rate.resample(),
+            "gradient_clipping": _gradient_clipping.resample(),
         },
     )
 

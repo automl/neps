@@ -9,7 +9,6 @@ from neps.space.neps_spaces.parameters import (
     Float,
     Operation,
     PipelineSpace,
-    Resampled,
 )
 
 
@@ -61,31 +60,31 @@ class HNASLikePipeline(PipelineSpace):
         args=(
             _ACT,
             _CONV,
-            Resampled(_NORM),
+            _NORM.resample(),
         ),
     )
     _CONVBLOCK_FULL = Operation(
         operator="OPS Sequential1",
-        args=(Resampled(_CONVBLOCK),),
+        args=(_CONVBLOCK.resample(),),
     )
     _OP = Categorical(
         choices=(
             Operation(operator="OPS zero"),
             Operation(operator="OPS id"),
             Operation(operator="OPS avg_pool"),
-            Resampled(_CONVBLOCK_FULL),
+            _CONVBLOCK_FULL.resample(),
         ),
     )
 
     CL = Operation(
         operator="CELL Cell",
         args=(
-            Resampled(_OP),
-            Resampled(_OP),
-            Resampled(_OP),
-            Resampled(_OP),
-            Resampled(_OP),
-            Resampled(_OP),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
         ),
     )
 
@@ -111,25 +110,25 @@ class HNASLikePipeline(PipelineSpace):
             Operation(
                 operator="D0 Sequential3",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
+                    _C.resample(),
+                    _C.resample(),
                     CL,
                 ),
             ),
             Operation(
                 operator="D0 Sequential4",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
-                    Resampled(_C),
+                    _C.resample(),
+                    _C.resample(),
+                    _C.resample(),
                     CL,
                 ),
             ),
             Operation(
                 operator="D0 Residual3",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
+                    _C.resample(),
+                    _C.resample(),
                     CL,
                     CL,
                 ),
@@ -141,27 +140,27 @@ class HNASLikePipeline(PipelineSpace):
             Operation(
                 operator="D1 Sequential3",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
-                    Resampled(_DOWN),
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
                 ),
             ),
             Operation(
                 operator="D1 Sequential4",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
-                    Resampled(_C),
-                    Resampled(_DOWN),
+                    _C.resample(),
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
                 ),
             ),
             Operation(
                 operator="D1 Residual3",
                 args=(
-                    Resampled(_C),
-                    Resampled(_C),
-                    Resampled(_DOWN),
-                    Resampled(_DOWN),
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
+                    _DOWN.resample(),
                 ),
             ),
         ),
@@ -172,26 +171,26 @@ class HNASLikePipeline(PipelineSpace):
             Operation(
                 operator="D2 Sequential3",
                 args=(
-                    Resampled(_D1),
-                    Resampled(_D1),
-                    Resampled(_D0),
+                    _D1.resample(),
+                    _D1.resample(),
+                    _D0.resample(),
                 ),
             ),
             Operation(
                 operator="D2 Sequential3",
                 args=(
-                    Resampled(_D0),
-                    Resampled(_D1),
-                    Resampled(_D1),
+                    _D0.resample(),
+                    _D1.resample(),
+                    _D1.resample(),
                 ),
             ),
             Operation(
                 operator="D2 Sequential4",
                 args=(
-                    Resampled(_D1),
-                    Resampled(_D1),
-                    Resampled(_D0),
-                    Resampled(_D0),
+                    _D1.resample(),
+                    _D1.resample(),
+                    _D0.resample(),
+                    _D0.resample(),
                 ),
             ),
         ),

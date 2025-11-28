@@ -619,7 +619,7 @@ class SamplingResolver:
             # That will then be the object to resample.
             referenced_obj_name = cast(str, resampled_obj.source)
             referenced_obj = getattr(context.resolution_root, referenced_obj_name)
-            resampled_obj = Resampled(referenced_obj)
+            resampled_obj = referenced_obj.resample()
 
         initial_attrs = resampled_obj.get_attrs()
         resolvable_to_resample_obj = resampled_obj.from_attrs(initial_attrs)

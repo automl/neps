@@ -77,7 +77,7 @@ def test_add_method_different_types():
     assert isinstance(space.get_attrs()["new_op"], Operation)
 
     # Add Resampled
-    resampled = Resampled(space.get_attrs()["x"])
+    resampled = space.get_attrs()["x"].resample()
     space = space.add(resampled, "new_resampled")
     assert "new_resampled" in space.get_attrs()
     assert isinstance(space.get_attrs()["new_resampled"], Resampled)

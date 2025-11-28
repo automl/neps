@@ -24,6 +24,37 @@ from typing import (
 
 T = TypeVar("T")
 
+# Shared docstring constants for DRY
+_RESAMPLE_DOCSTRING = """Wrap this {type_name} in a Resampled container.
+
+This allows resampling the {type_name} each time it's resolved, useful for
+creating dynamic structures where the same {description} is sampled multiple
+times independently.
+
+Returns:
+    A Resampled instance wrapping this {type_name}.
+
+Example:
+    ```python
+    # Instead of: neps.Resampled(my_{type_lower})
+    # You can write: my_{type_lower}.resample()
+    ```
+"""
+
+_COMPARE_DOMAIN_DOCSTRING = """Check if this {type_name} parameter is equivalent to \
+another.
+
+This method provides comparison logic without interfering with Python's
+object identity system (unlike __eq__). Use this for functional comparisons
+like checking if parameters have the same configuration.
+
+Args:
+    other: The object to compare with.
+
+Returns:
+    True if the objects are equivalent, False otherwise.
+"""
+
 
 class _Unset:
     def __repr__(self) -> str:
@@ -150,19 +181,8 @@ class Fidelity(Resolvable, Generic[T]):
         """Get a string representation of the fidelity."""
         return f"Fidelity({self.domain.__str__()})"
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this fidelity parameter is equivalent to another.
-
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Fidelity):
             return False
         return self.domain == other.domain
@@ -376,7 +396,7 @@ class PipelineSpace(Resolvable):
         module = sys.modules[NewSpace.__module__]
         setattr(module, new_class_name, NewSpace)
 
-        return cast(PipelineSpace, NewSpace())
+        return cast("PipelineSpace", NewSpace())
 
     def remove(self, name: str) -> PipelineSpace:
         """Remove a parameter from the pipeline by its name. This is NOT an in-place
@@ -417,7 +437,7 @@ class PipelineSpace(Resolvable):
         module = sys.modules[NewSpace.__module__]
         setattr(module, new_class_name, NewSpace)
 
-        return cast(PipelineSpace, NewSpace())
+        return cast("PipelineSpace", NewSpace())
 
     def add_prior(
         self,
@@ -483,7 +503,7 @@ class PipelineSpace(Resolvable):
         module = sys.modules[NewSpace.__module__]
         setattr(module, new_class_name, NewSpace)
 
-        return cast(PipelineSpace, NewSpace())
+        return cast("PipelineSpace", NewSpace())
 
 
 class ConfidenceLevel(enum.Enum):
@@ -620,6 +640,24 @@ class Domain(Resolvable, abc.ABC, Generic[T]):
         """
         return type(self)(**attrs)
 
+    def resample(self) -> Resampled:
+        """Wrap this domain in a Resampled container.
+
+        This allows resampling the domain each time it's resolved, useful for
+        creating dynamic structures where the same parameter definition is
+        sampled multiple times independently.
+
+        Returns:
+            A Resampled instance wrapping this domain.
+
+        Example:
+            ```python
+            # Instead of: neps.Resampled(neps.Integer(1, 10))
+            # You can write: neps.Integer(1, 10).resample()
+            ```
+        """
+        return Resampled(self)
+
 
 def _calculate_new_domain_bounds(
     number_type: type[int] | type[float],
@@ -747,19 +785,8 @@ class Categorical(Domain[int], Generic[T]):
 
         return format_value(self)
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this categorical parameter is equivalent to another.
-
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Categorical):
             return False
         return (
@@ -787,7 +814,7 @@ class Categorical(Domain[int], Generic[T]):
             minus one.
 
         """
-        return max(len(cast(tuple, self._choices)) - 1, 0)
+        return max(len(cast("tuple", self._choices)) - 1, 0)
 
     @property
     def choices(self) -> tuple[T | Domain[T] | Resolvable, ...] | Domain[T]:
@@ -825,7 +852,7 @@ class Categorical(Domain[int], Generic[T]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence defined.")
-        return int(cast(int, self._prior))
+        return int(cast("int", self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
@@ -840,7 +867,7 @@ class Categorical(Domain[int], Generic[T]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence defined.")
-        return cast(ConfidenceLevel, self._prior_confidence)
+        return cast("ConfidenceLevel", self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
@@ -850,7 +877,7 @@ class Categorical(Domain[int], Generic[T]):
             A string representation of the number of choices in the domain.
 
         """
-        return f"{len(cast(tuple, self._choices))}"
+        return f"{len(cast('tuple', self._choices))}"
 
     def sample(self) -> int:
         """Sample a random index from the categorical choices.
@@ -862,7 +889,7 @@ class Categorical(Domain[int], Generic[T]):
           ValueError: If the choices are empty.
 
         """
-        return int(random.randint(0, len(cast(tuple[T], self._choices)) - 1))
+        return int(random.randint(0, len(cast("tuple[T]", self._choices)) - 1))
 
     def centered_around(
         self,
@@ -886,7 +913,7 @@ class Categorical(Domain[int], Generic[T]):
 
         """
         new_min, new_max = cast(
-            tuple[int, int],
+            "tuple[int, int]",
             _calculate_new_domain_bounds(
                 number_type=int,
                 lower=self.lower,
@@ -895,10 +922,10 @@ class Categorical(Domain[int], Generic[T]):
                 confidence=confidence,
             ),
         )
-        new_choices = cast(tuple, self._choices)[new_min : new_max + 1]
+        new_choices = cast("tuple", self._choices)[new_min : new_max + 1]
         return Categorical(
             choices=new_choices,
-            prior=new_choices.index(cast(tuple, self._choices)[center]),
+            prior=new_choices.index(cast("tuple", self._choices)[center]),
             prior_confidence=confidence,
         )
 
@@ -971,19 +998,8 @@ class Float(Domain[float]):
 
         return format_value(self)
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this float parameter is equivalent to another.
-
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Float):
             return False
         return (
@@ -1053,7 +1069,7 @@ class Float(Domain[float]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence defined.")
-        return float(cast(float, self._prior))
+        return float(cast("float", self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
@@ -1068,7 +1084,7 @@ class Float(Domain[float]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence  defined.")
-        return cast(ConfidenceLevel, self._prior_confidence)
+        return cast("ConfidenceLevel", self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
@@ -1201,19 +1217,8 @@ class Integer(Domain[int]):
 
         return format_value(self)
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this integer parameter is equivalent to another.
-
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Integer):
             return False
         return (
@@ -1283,7 +1288,7 @@ class Integer(Domain[int]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence defined.")
-        return int(cast(int, self._prior))
+        return int(cast("int", self._prior))
 
     @property
     def prior_confidence(self) -> ConfidenceLevel:
@@ -1298,7 +1303,7 @@ class Integer(Domain[int]):
         """
         if not self.has_prior:
             raise ValueError("Domain has no prior and prior_confidence defined.")
-        return cast(ConfidenceLevel, self._prior_confidence)
+        return cast("ConfidenceLevel", self._prior_confidence)
 
     @property
     def range_compatibility_identifier(self) -> str:
@@ -1345,7 +1350,7 @@ class Integer(Domain[int]):
 
         """
         new_min, new_max = cast(
-            tuple[int, int],
+            "tuple[int, int]",
             _calculate_new_domain_bounds(
                 number_type=int,
                 lower=self.lower,
@@ -1407,19 +1412,12 @@ class Operation(Resolvable):
 
         return format_value(self)
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this operation parameter is equivalent to another.
+    def resample(self) -> Resampled:  # noqa: D102
+        # Docstring set dynamically below
+        return Resampled(self)
 
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Operation):
             return False
         return (
@@ -1595,19 +1593,8 @@ class Resampled(Resolvable):
             )
         return self._source.from_attrs(attrs)
 
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this resampled parameter is equivalent to another.
-
-        This method provides comparison logic without interfering with Python's
-        object identity system (unlike __eq__). Use this for functional comparisons
-        like checking if parameters have the same configuration.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if the objects are equivalent, False otherwise.
-        """
+    def compare_domain_to(self, other: object) -> bool:  # noqa: D102
+        # Docstring set dynamically below
         if not isinstance(other, Resampled):
             return False
         return self.source == other.source
@@ -1656,6 +1643,10 @@ class Repeated(Resolvable):
             The content which will be repeated.
         """
         return self._content
+
+    def resample(self) -> Resampled:  # noqa: D102
+        # Docstring set dynamically below
+        return Resampled(self)
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the resolvable as a mapping.
@@ -1708,6 +1699,10 @@ class Lazy(Resolvable):
         """
         return self._content
 
+    def resample(self) -> Resampled:  # noqa: D102
+        # Docstring set dynamically below
+        return Resampled(self)
+
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the lazy resolvable as a mapping.
 
@@ -1743,3 +1738,37 @@ class Lazy(Resolvable):
 #  resolvable objects that in general will interact with them
 #  through these two methods.
 #  When they raise, then the traversal will not be possible.
+
+
+# Set docstrings dynamically to maintain DRY principle
+# This avoids repeating identical documentation across multiple classes
+Operation.resample.__doc__ = _RESAMPLE_DOCSTRING.format(
+    type_name="operation",
+    description="operation",
+    type_lower="operation",
+)
+Repeated.resample.__doc__ = _RESAMPLE_DOCSTRING.format(
+    type_name="repeated structure",
+    description="repeated structure",
+    type_lower="repeated",
+)
+Lazy.resample.__doc__ = _RESAMPLE_DOCSTRING.format(
+    type_name="lazy value",
+    description="lazy value",
+    type_lower="lazy",
+)
+
+Fidelity.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
+    type_name="fidelity"
+)
+Categorical.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
+    type_name="categorical"
+)
+Float.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(type_name="float")
+Integer.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(type_name="integer")
+Operation.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
+    type_name="operation"
+)
+Resampled.compare_domain_to.__doc__ = _COMPARE_DOMAIN_DOCSTRING.format(
+    type_name="resampled"
+)

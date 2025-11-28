@@ -22,12 +22,12 @@ class GrammarLike(PipelineSpace):
 
     _C0 = Operation(
         operator="Sequential",
-        args=(Resampled(_O),),
+        args=(_O.resample(),),
     )
     _C1 = Operation(
         operator="Sequential",
         args=(
-            Resampled(_O),
+            _O.resample(),
             Resampled("S"),
             _reluconvbn,
         ),
@@ -35,7 +35,7 @@ class GrammarLike(PipelineSpace):
     _C2 = Operation(
         operator="Sequential",
         args=(
-            Resampled(_O),
+            _O.resample(),
             Resampled("S"),
         ),
     )
@@ -45,16 +45,16 @@ class GrammarLike(PipelineSpace):
     )
     _C = Categorical(
         choices=(
-            Resampled(_C0),
-            Resampled(_C1),
-            Resampled(_C2),
-            Resampled(_C3),
+            _C0.resample(),
+            _C1.resample(),
+            _C2.resample(),
+            _C3.resample(),
         ),
     )
 
     _S0 = Operation(
         operator="Sequential",
-        args=(Resampled(_C),),
+        args=(_C.resample(),),
     )
     _S1 = Operation(
         operator="Sequential",
@@ -68,15 +68,15 @@ class GrammarLike(PipelineSpace):
         operator="Sequential",
         args=(
             Resampled("S"),
-            Resampled(_C),
+            _C.resample(),
         ),
     )
     _S4 = Operation(
         operator="Sequential",
         args=(
-            Resampled(_O),
-            Resampled(_O),
-            Resampled(_O),
+            _O.resample(),
+            _O.resample(),
+            _O.resample(),
         ),
     )
     _S5 = Operation(
@@ -84,22 +84,22 @@ class GrammarLike(PipelineSpace):
         args=(
             Resampled("S"),
             Resampled("S"),
-            Resampled(_O),
-            Resampled(_O),
-            Resampled(_O),
-            Resampled(_O),
-            Resampled(_O),
-            Resampled(_O),
+            _O.resample(),
+            _O.resample(),
+            _O.resample(),
+            _O.resample(),
+            _O.resample(),
+            _O.resample(),
         ),
     )
     S = Categorical(
         choices=(
-            Resampled(_S0),
-            Resampled(_S1),
-            Resampled(_S2),
-            Resampled(_S3),
-            Resampled(_S4),
-            Resampled(_S5),
+            _S0.resample(),
+            _S1.resample(),
+            _S2.resample(),
+            _S3.resample(),
+            _S4.resample(),
+            _S5.resample(),
         ),
     )
 
@@ -114,14 +114,14 @@ class GrammarLikeAlt(PipelineSpace):
 
     _C_ARGS = Categorical(
         choices=(
-            (Resampled(_O),),
+            (_O.resample(),),
             (
-                Resampled(_O),
+                _O.resample(),
                 Resampled("S"),
                 _reluconvbn,
             ),
             (
-                Resampled(_O),
+                _O.resample(),
                 Resampled("S"),
             ),
             (Resampled("S"),),
@@ -129,38 +129,38 @@ class GrammarLikeAlt(PipelineSpace):
     )
     _C = Operation(
         operator="Sequential",
-        args=Resampled(_C_ARGS),
+        args=_C_ARGS.resample(),
     )
 
     _S_ARGS = Categorical(
         choices=(
-            (Resampled(_C),),
+            (_C.resample(),),
             (_reluconvbn,),
             (Resampled("S"),),
             (
                 Resampled("S"),
-                Resampled(_C),
+                _C.resample(),
             ),
             (
-                Resampled(_O),
-                Resampled(_O),
-                Resampled(_O),
+                _O.resample(),
+                _O.resample(),
+                _O.resample(),
             ),
             (
                 Resampled("S"),
                 Resampled("S"),
-                Resampled(_O),
-                Resampled(_O),
-                Resampled(_O),
-                Resampled(_O),
-                Resampled(_O),
-                Resampled(_O),
+                _O.resample(),
+                _O.resample(),
+                _O.resample(),
+                _O.resample(),
+                _O.resample(),
+                _O.resample(),
             ),
         ),
     )
     S = Operation(
         operator="Sequential",
-        args=Resampled(_S_ARGS),
+        args=_S_ARGS.resample(),
     )
 
 

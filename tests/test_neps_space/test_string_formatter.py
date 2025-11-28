@@ -30,9 +30,9 @@ def test_operation_with_args_only():
     op = Operation(operator="Add", args=(1, 2, 3))
     result = operation_to_string(op)
     expected = """Add(
-  1,
-  2,
-  3,
+   1,
+   2,
+   3,
 )"""
     assert result == expected
 
@@ -42,8 +42,8 @@ def test_operation_with_kwargs_only():
     op = Operation(operator="Conv2d", kwargs={"in_channels": 3, "out_channels": 64})
     result = operation_to_string(op)
     expected = """Conv2d(
-  in_channels=3,
-  out_channels=64,
+   in_channels=3,
+   out_channels=64,
 )"""
     assert result == expected
 
@@ -57,9 +57,9 @@ def test_operation_with_args_and_kwargs():
     )
     result = operation_to_string(op)
     expected = """LinearLayer(
-  128,
-  activation=relu,
-  dropout=0.5,
+   128,
+   activation=relu,
+   dropout=0.5,
 )"""
     assert result == expected
 
@@ -70,7 +70,7 @@ def test_nested_operations():
     outer = Operation(operator="Sequential", args=(inner,))
     result = operation_to_string(outer)
     expected = """Sequential(
-  ReLU(),
+   ReLU(),
 )"""
     assert result == expected
 
@@ -88,15 +88,15 @@ def test_deeply_nested_operations():
 
     result = operation_to_string(sequential)
     expected = """Sequential(
-  Conv2d(
-    in_channels=3,
-    out_channels=64,
-    kernel_size=3,
-  ),
-  ReLU(),
-  MaxPool2d(
-    kernel_size=2,
-  ),
+   Conv2d(
+      in_channels=3,
+      out_channels=64,
+      kernel_size=3,
+   ),
+   ReLU(),
+   MaxPool2d(
+      kernel_size=2,
+   ),
 )"""
     assert result == expected
 
@@ -106,7 +106,7 @@ def test_list_as_arg():
     op = Operation(operator="Conv2d", kwargs={"kernel_size": [3, 3]})
     result = operation_to_string(op)
     expected = """Conv2d(
-  kernel_size=[3, 3],
+   kernel_size=[3, 3],
 )"""
     assert result == expected
 
@@ -128,7 +128,7 @@ def test_tuple_as_arg():
     op = Operation(operator="Shape", args=((64, 64, 3),))
     result = operation_to_string(op)
     expected = """Shape(
-  (64, 64, 3),
+   (64, 64, 3),
 )"""
     assert result == expected
 
@@ -142,10 +142,10 @@ def test_dict_as_kwarg():
     result = operation_to_string(op)
     # Dict gets expanded due to length
     expected = """ConfigOp(
-  config={
-    'learning_rate': 0.001,
-    'batch_size': 32,
-  },
+   config={
+      'learning_rate': 0.001,
+      'batch_size': 32,
+   },
 )"""
     assert result == expected
 
@@ -159,14 +159,14 @@ def test_operations_in_list():
 
     result = operation_to_string(container)
     expected = """ModuleList(
-  [
-    Conv2d(
-      channels=32,
-    ),
-    Conv2d(
-      channels=64,
-    ),
-  ],
+   [
+      Conv2d(
+         channels=32,
+      ),
+      Conv2d(
+         channels=64,
+      ),
+   ],
 )"""
     assert result == expected
 
@@ -180,10 +180,10 @@ def test_operations_in_list_as_kwarg():
 
     result = operation_to_string(container)
     expected = """Container(
-  layers=[
-    ReLU(),
-    Sigmoid(),
-  ],
+   layers=[
+      ReLU(),
+      Sigmoid(),
+   ],
 )"""
     assert result == expected
 
@@ -282,7 +282,7 @@ def test_empty_list():
     op = Operation(operator="Op", kwargs={"items": []})
     result = operation_to_string(op)
     expected = """Op(
-  items=[],
+   items=[],
 )"""
     assert result == expected
 
@@ -292,7 +292,7 @@ def test_empty_tuple():
     op = Operation(operator="Op", args=((),))
     result = operation_to_string(op)
     expected = """Op(
-  (),
+   (),
 )"""
     assert result == expected
 
@@ -302,7 +302,7 @@ def test_empty_dict():
     op = Operation(operator="Op", kwargs={"config": {}})
     result = operation_to_string(op)
     expected = """Op(
-  config={},
+   config={},
 )"""
     assert result == expected
 
@@ -312,9 +312,9 @@ def test_boolean_values():
     op = Operation(operator="Op", kwargs={"enabled": True, "debug": False, "count": 0})
     result = operation_to_string(op)
     expected = """Op(
-  enabled=True,
-  debug=False,
-  count=0,
+   enabled=True,
+   debug=False,
+   count=0,
 )"""
     assert result == expected
 
@@ -324,7 +324,7 @@ def test_none_value():
     op = Operation(operator="Op", kwargs={"default": None})
     result = operation_to_string(op)
     expected = """Op(
-  default=None,
+   default=None,
 )"""
     assert result == expected
 

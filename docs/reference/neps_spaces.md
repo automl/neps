@@ -84,8 +84,8 @@ import torch.nn
 class NNSpace(PipelineSpace):
 
     # Defining operations for different activation functions
-    _relu = Operation(operator=torch.nn.ReLU)
-    _sigmoid = Operation(operator=torch.nn.Sigmoid)
+    _relu = neps.Operation(operator=torch.nn.ReLU)
+    _sigmoid = neps.Operation(operator=torch.nn.Sigmoid)
 
     # We can then search over these operations and use them in the evaluation function
     activation_function = neps.Categorical(choices=(_relu, _sigmoid))
@@ -148,9 +148,9 @@ def evaluate_pipeline(
 
 Until now all parameters are sampled once and their value used for all occurrences. This section describes how to resample parameters in different contexts using:
 
-- [`neps.Resampled`][neps.space.neps_spaces.parameters.Resampled]: Resample from an existing parameters range
+- [`.resample()`][neps.space.neps_spaces.parameters.Resampled]: Resample from an existing parameters range
 
-With `neps.Resampled` you can reuse a parameter, even themselves recursively, but with a new value each time:
+With `.resample()` you can reuse a parameter, even themselves recursively, but with a new value each time:
 
 ```python
 class ResampledSpace(neps.PipelineSpace):
@@ -158,7 +158,7 @@ class ResampledSpace(neps.PipelineSpace):
 
     # The resampled parameter will have the same range but will be sampled
     # independently, so it can take a different value than its source
-    resampled_float = neps.Resampled(source=float_param)
+    resampled_float = float_param.resample()
 ```
 
 This is especially useful for defining complex architectures, where e.g. a cell block is defined and then resampled multiple times to create a neural network architecture:
@@ -172,14 +172,14 @@ class CNN_Space(neps.PipelineSpace):
     # Each instance will be identically but independently sampled
     _cell_block = neps.Operation(
         operator=torch.nn.Conv2d,
-        kwargs={"kernel_size": neps.Resampled(source=_kernel_size)}
+        kwargs={"kernel_size": _kernel_size.resample()}
     )
 
     # Resample the cell block multiple times to create a convolutional neural network
     cnn = torch.nn.Sequential(
-        neps.Resampled(_cell_block),
-        neps.Resampled(_cell_block),
-        neps.Resampled(_cell_block),
+        _cell_block.resample(),
+        _cell_block.resample(),
+        _cell_block.resample(),
     )
 
 def evaluate_pipeline(cnn: torch.nn.Module):
@@ -190,15 +190,15 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 ??? info "Self- and future references"
 
-    When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name:
+    When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name with `neps.Resampled("parameter_name")`, like so:
 
     ```python
     self_reference = Categorical(
         choices=(
             # It will either choose to resample itself twice
-            (Resampled("self_reference"), Resampled("self_reference")),
+            (neps.Resampled("self_reference"), neps.Resampled("self_reference")),
             # Or it will sample the future parameter
-            (Resampled("future_param"),),
+            (neps.Resampled("future_param"),),
         )
     )
     # This results in a (possibly infinite) tuple of independently sampled future_params

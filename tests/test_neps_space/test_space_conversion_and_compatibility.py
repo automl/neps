@@ -19,7 +19,6 @@ from neps.space.neps_spaces.parameters import (
     Integer,
     Operation,
     PipelineSpace,
-    Resampled,
 )
 
 
@@ -52,7 +51,7 @@ class ComplexNepsSpace(PipelineSpace):
     # Operation with resampled parameters
     operation = Operation(
         operator=lambda x, y: x * y,
-        args=(factor, Resampled(factor)),
+        args=(factor, factor.resample()),
     )
 
     # Categorical with operations as choices
