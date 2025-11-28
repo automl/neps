@@ -37,6 +37,7 @@ from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
+from neps.optimizers.utils.scalarization import LinearScalarization
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.space.parsing import convert_mapping
@@ -1030,6 +1031,7 @@ def primo(
     sampler: Literal["uniform", "mopriorsampler", "mopriorband"] = "uniform",
     mopriors_sampler_type: Literal["mopriors", "mix_random", "etaprior"] = "mopriors",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,  # noqa: ARG001
+    scalarization: Literal["linear", "hypervolume"] = "linear",
     eta: int = 3,
     epsilon: float = 0.25,
     prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
@@ -1086,6 +1088,14 @@ def primo(
             confidence_values=prior_confidences,
         )
 
+    match scalarization:
+        case "linear":
+            scalar = LinearScalarization(scalarization_weights=bo_scalar_weights)
+        case "hypervolume":
+            pass
+        case _:
+            raise ValueError(f"Unknown scalarization: {scalarization}")
+
     return PriMO(
         space=convert_mapping({**space.elements}),
         encoder=ConfigEncoder.from_parameters(parameters),
@@ -1094,7 +1104,7 @@ def primo(
         initial_design_size=n_initial_design_size,
         fid_max=fidelity.upper,
         fid_name=fidelity_name,
-        scalarization_weights=bo_scalar_weights,
+        scalarization=scalar,
         device=device,
         priors=_priors,
         epsilon=epsilon,

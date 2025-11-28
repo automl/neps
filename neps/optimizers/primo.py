@@ -22,6 +22,7 @@ from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
     from neps.optimizers.bracket_optimizer import BracketOptimizer
+    from neps.optimizers.utils.scalarization import Scalarization
     from neps.sampling.priors import Prior
     from neps.space import SearchSpace
     from neps.space.encoding import ConfigEncoder
@@ -50,12 +51,12 @@ class PriMO:
     fid_name: str
     """The name of the fidelity in the BracketOptimizer's search space."""
 
+    scalarization: Scalarization
+    """The type of scalarization to use for the objectives for BO."""
+
     initial_design_type: Literal["multifidelity", "random"] = "multifidelity"
     """The type of initial design to use. If 'multifidelity', uses MOASHA.
     If 'random', uses random sampling."""
-
-    scalarization_weights: dict[str, float] | None = None
-    """The scalarization weights to use for the objectives for BO."""
 
     device: torch.device | None = None
     """The device to use for the GP optimization."""
@@ -157,10 +158,6 @@ class PriMO:
                             "of floats."
                         )
 
-        if self.scalarization_weights is None:
-            self.scalarization_weights = np.random.uniform(size=num_objectives)
-            self.scalarization_weights /= np.sum(self.scalarization_weights)
-
         # Scalarize trials.report.objective_to_minimize and remove fidelity
         # from the trial configs
         nxt_id = 1
@@ -186,8 +183,8 @@ class PriMO:
                 _trial.report.objective_to_minimize = np.array(
                     _trial.report.objective_to_minimize
                 )
-            _trial.report.objective_to_minimize = np.dot(
-                _trial.report.objective_to_minimize, self.scalarization_weights
+            _trial.report.objective_to_minimize = self.scalarization.scalarize(
+                objective_values=_trial.report.objective_to_minimize
             )
 
             # Remove the fidelity from the trial config
