@@ -149,7 +149,7 @@ class RandomSampler(DomainSampler):
 class IOSampler(DomainSampler):
     """A sampler that samples by asking the user at each decision."""
 
-    def __call__(
+    def __call__(  # noqa: C901
         self,
         *,
         domain_obj: Domain[T],
@@ -172,8 +172,15 @@ class IOSampler(DomainSampler):
                 f" {domain_obj.upper}]: ",  # type: ignore[attr-defined]
             )
         elif isinstance(domain_obj, Categorical):
+
+            def format_choice(choice: Any) -> str:
+                """Format a choice nicely, especially for callables."""
+                if callable(choice) and (name := getattr(choice, "__name__", None)):
+                    return name
+                return str(choice)
+
             choices_list = "\n\t".join(
-                f"{n}: {choice!s}"
+                f"{n}: {format_choice(choice)}"
                 for n, choice in enumerate(domain_obj.choices)  # type: ignore[attr-defined, arg-type]
             )
             max_index = int(domain_obj.range_compatibility_identifier) - 1  # type: ignore[attr-defined]

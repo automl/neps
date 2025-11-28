@@ -1,13 +1,13 @@
-"""Comprehensive tests for operation_formatter module."""
+"""Comprehensive tests for string_formatter module."""
 
 from __future__ import annotations
 
 import neps
-from neps.space.neps_spaces.operation_formatter import (
+from neps.space.neps_spaces.parameters import Operation
+from neps.space.neps_spaces.string_formatter import (
     FormatterStyle,
     operation_to_string,
 )
-from neps.space.neps_spaces.parameters import Operation
 
 
 def test_simple_operation_no_args():

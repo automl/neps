@@ -59,16 +59,14 @@ For more details on how to use priors, see the [Priors](../reference/search_algo
 
 !!! info "Adding and removing parameters from **NePS Spaces**"
 
-    To add or remove parameters from a `PipelineSpace` after its definition, you can use the `+` operator or the `add()` and `remove()` methods. Mind you, these methods do NOT modify the existing space in-place, but return a new instance with the modifications:
+    To add or remove parameters from a `PipelineSpace` after its definition, you can use the `add()` and `remove()` methods. Mind you, these methods do NOT modify the existing space in-place, but return a new instance with the modifications:
 
     ```python
     space = MySpace()
-    # Adding a new parameter, this will appear as param_n where n is the next available index
-    space = space + neps.Float(lower=0.01, upper=0.1)
-    # Or using the add() method, this allows you to specify a name
-    space = space.add(neps.Integer(lower=5, upper=15), name="new_int_param")
+    # Adding a new parameter using add()
+    larger_space = space.add(neps.Integer(lower=5, upper=15), name="new_int_param")
     # Removing a parameter by its name
-    space = space.remove("cat_param")
+    smaller_space = space.remove("cat_param")
     ```
 
 ## 3. Constructing Architecture Spaces

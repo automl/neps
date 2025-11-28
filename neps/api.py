@@ -24,6 +24,7 @@ from neps.space.neps_spaces.neps_space import (
     resolve,
 )
 from neps.space.neps_spaces.parameters import Operation, PipelineSpace
+from neps.space.neps_spaces.string_formatter import format_value
 from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
 from neps.status.status import post_run_csv
@@ -439,6 +440,9 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
             "'priorband', or 'complex_random_search'."
         )
 
+    # Log the search space after conversion
+    logger.info(str(space))
+
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
     multi_fidelity_optimizers = {
@@ -555,7 +559,9 @@ def import_trials(  # noqa: C901
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ) = "auto",
@@ -701,23 +707,75 @@ def import_trials(  # noqa: C901
     state.lock_and_import_trials(imported_trials, worker_id="external")
 
 
-def create_config(
-    pipeline_space: PipelineSpace,
+def create_config(  # noqa: C901
+    pipeline_space: PipelineSpace | None = None,
+    root_directory: Path | str | None = None,
 ) -> tuple[Mapping[str, Any], dict[str, Any]]:
     """Create a configuration by prompting the user for input.
 
     Args:
         pipeline_space: The pipeline space to create a configuration for.
+            If None, will attempt to load from
+            `root_directory/pipeline_space.pkl` if `root_directory` is
+            provided.
+        root_directory: The root directory to load the pipeline space from
+            if `pipeline_space` is None.
 
     Returns:
-        A tuple containing the created configuration dictionary and the sampled pipeline.
+        A tuple containing the created configuration dictionary and the
+        sampled pipeline.
     """
     from neps.space.neps_spaces.neps_space import NepsCompatConverter
     from neps.space.neps_spaces.sampling import IOSampler
 
+    # Try to load pipeline_space from disk if path is provided
+    if root_directory:
+        try:
+            loaded_space = load_pipeline_space(root_directory)
+        except (FileNotFoundError, ValueError) as e:
+            # If loading fails, we'll error below
+            raise ValueError(
+                f"Could not load pipeline space from disk at {root_directory}: {e}"
+            ) from e
+        # Validate loaded space is a PipelineSpace
+        if not isinstance(loaded_space, PipelineSpace):
+            raise ValueError(
+                "create_config only supports PipelineSpace. The loaded space "
+                f"from {root_directory} is not a PipelineSpace."
+            )
+
+        if pipeline_space is None:
+            pipeline_space = loaded_space
+        else:
+            # Validate provided pipeline_space is a PipelineSpace
+            if not isinstance(pipeline_space, PipelineSpace):
+                raise ValueError(
+                    "create_config only supports PipelineSpace. The provided "
+                    "pipeline_space is not a PipelineSpace."
+                )
+
+            # Validate provided pipeline_space matches loaded one
+            import pickle
+
+            if pickle.dumps(loaded_space) != pickle.dumps(pipeline_space):
+                raise ValueError(
+                    "The pipeline_space provided does not match the one saved on"
+                    " disk.\nPipeline space location:"
+                    f" {Path(root_directory) / 'pipeline_space.pkl'}\nPlease either:\n"
+                    "  1. Don't provide pipeline_space (it will be loaded automatically),"
+                    " or\n  2. Provide the same pipeline_space that was used in"
+                    " neps.run()"
+                )
+    elif pipeline_space is None:
+        raise ValueError(
+            "pipeline_space or root_directory is required when creating a configuration."
+        )
+
     resolved_pipeline, resolution_context = resolve(
         pipeline_space, domain_sampler=IOSampler()
     )
+
+    # Print the resolved pipeline
 
     pipeline_dict = dict(**resolved_pipeline.get_attrs())
 
@@ -725,7 +783,7 @@ def create_config(
         if isinstance(value, Operation):
             # If the operator is a not a string, we convert it to a callable.
             if isinstance(value.operator, str):
-                pipeline_dict[name] = str(value)
+                pipeline_dict[name] = format_value(value)
             else:
                 pipeline_dict[name] = convert_operation_to_callable(value)
 
@@ -765,8 +823,15 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
                 root_dir = Path(
                     str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
                 )
-            else:
+            # If no /configs/ in path, assume it's either:
+            # 1. The root directory itself
+            # 2. A direct config file path (ends with .yaml/.yml)
+            elif str_path_temp.endswith((".yaml", ".yml")):
+                # It's a direct config file path, go up two levels
                 root_dir = Path(str_path_temp).parent.parent
+            else:
+                # It's the root directory itself
+                root_dir = Path(str_path_temp)
 
             state = NePSState.create_or_load(path=root_dir, load_only=True)
             pipeline_space = state.lock_and_get_search_space()
@@ -791,8 +856,15 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
                 root_dir = Path(
                     str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
                 )
-            else:
+            # If no /configs/ in path, assume it's either:
+            # 1. The root directory itself
+            # 2. A direct config file path (ends with .yaml/.yml)
+            elif str_path_temp.endswith((".yaml", ".yml")):
+                # It's a direct config file path, go up two levels
                 root_dir = Path(str_path_temp).parent.parent
+            else:
+                # It's the root directory itself
+                root_dir = Path(str_path_temp)
 
             state = NePSState.create_or_load(path=root_dir, load_only=True)
             disk_space = state.lock_and_get_search_space()
@@ -879,13 +951,15 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
         environment_values=converted_dict.environment_values,
     )
 
+    # Print the resolved pipeline
+
     pipeline_dict = dict(**pipeline.get_attrs())
 
     for name, value in pipeline_dict.items():
         if isinstance(value, Operation):
             # If the operator is a not a string, we convert it to a callable.
             if isinstance(value.operator, str):
-                pipeline_dict[name] = str(value)
+                pipeline_dict[name] = format_value(value)
             else:
                 pipeline_dict[name] = convert_operation_to_callable(value)
 
@@ -976,7 +1050,7 @@ def load_optimizer_info(
             evaluate_pipeline=my_function,
             pipeline_space=MySpace(),
             root_directory="results",
-            searcher="bayesian_optimization",
+            optimizer="bayesian_optimization",
         )
 
         # Later, check what optimizer was used

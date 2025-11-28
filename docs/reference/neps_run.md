@@ -108,7 +108,7 @@ If the run previously stopped due to reaching a budget and you specify the same 
 
 !!! note "Auto-loading"
 
-    When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify `pipeline_space=` or `searcher=` again - NePS will use the saved settings from the original run.
+    When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify `pipeline_space=` or `optimizer=` again - NePS will use the saved settings from the original run.
 
 ## Reconstructing and Reproducing Runs
 
@@ -138,7 +138,7 @@ neps.run(
     evaluate_pipeline=my_function,
     pipeline_space=pipeline_space,
     root_directory="path/to/new_run",
-    searcher=optimizer_info['name'],
+    optimizer=optimizer_info['name'],
     evaluations_to_spend=50,
 )
 ```

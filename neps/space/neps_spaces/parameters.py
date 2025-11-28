@@ -304,12 +304,10 @@ class PipelineSpace(Resolvable):
             A string representation of the pipeline, including its class name and
             attributes.
         """
-        attrs = "\n\t".join(
-            f"{k} = {v!s}"
-            for k, v in self.get_attrs().items()
-            if not k.startswith("_") and not callable(v)
-        )
-        return f"{self.__class__.__name__} with parameters:\n\t{attrs}"
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        # Delegate to the unified formatter
+        return format_value(self)
 
     def add(
         self,
@@ -745,25 +743,9 @@ class Categorical(Domain[int], Generic[T]):
 
     def __str__(self) -> str:
         """Get a string representation of the categorical domain."""
-        str_choices = [
-            (
-                choice.__name__  # type: ignore[union-attr]
-                if (
-                    callable(choice)
-                    and not isinstance(choice, Resolvable)
-                    and hasattr(choice, "__name__")
-                )
-                else str(choice)
-            )
-            for choice in self.choices  # type: ignore[union-attr]
-        ]
-        string = f"Categorical(choices = ({', '.join(str_choices)}))"
-        if self.has_prior:
-            string += (
-                f", prior = {self._prior}, prior_confidence = {self._prior_confidence}"
-            )
-        string += ")"
-        return string
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        return format_value(self)
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this categorical parameter is equivalent to another.
@@ -985,13 +967,9 @@ class Float(Domain[float]):
 
     def __str__(self) -> str:
         """Get a string representation of the floating-point domain."""
-        string = f"Float({self._lower}, {self._upper}"
-        if self._log:
-            string += ", log"
-        if self.has_prior:
-            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
-        string += ")"
-        return string
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        return format_value(self)
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this float parameter is equivalent to another.
@@ -1219,13 +1197,9 @@ class Integer(Domain[int]):
 
     def __str__(self) -> str:
         """Get a string representation of the integer domain."""
-        string = f"Integer({self._lower}, {self._upper}"
-        if self._log:
-            string += ", log"
-        if self.has_prior:
-            string += f", prior={self._prior}, prior_confidence={self._prior_confidence}"
-        string += ")"
-        return string
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        return format_value(self)
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this integer parameter is equivalent to another.
@@ -1429,32 +1403,9 @@ class Operation(Resolvable):
 
     def __str__(self) -> str:
         """Get a string representation of the operation."""
-        if self._args != ():
-            args_str = "args="
-            if isinstance(self._args, Resolvable):
-                args_str += str(self._args)
-            else:
-                args_str += "(" + ", ".join(str(arg) for arg in self._args) + ")"
-        else:
-            args_str = ""
+        from neps.space.neps_spaces.string_formatter import format_value
 
-        if self._kwargs != {}:
-            kwargs_str = "kwargs="
-            if isinstance(self._kwargs, Resolvable):
-                kwargs_str += str(self._kwargs)
-            else:
-                kwargs_str += (
-                    "{" + ", ".join(f"{k}={v!s}" for k, v in self._kwargs.items()) + "}"
-                )
-        else:
-            kwargs_str = ""
-
-        args_str += ", " if args_str and kwargs_str else ""
-
-        operator_name = (
-            self._operator if isinstance(self._operator, str) else self._operator.__name__
-        )
-        return f"{operator_name}({args_str}{kwargs_str})"
+        return format_value(self)
 
     def compare_domain_to(self, other: object) -> bool:
         """Check if this operation parameter is equivalent to another.
@@ -1575,7 +1526,9 @@ class Resampled(Resolvable):
         self._source = source
 
     def __str__(self) -> str:
-        return f"Resampled({self._source!s})"
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        return format_value(self)
 
     @property
     def source(self) -> Resolvable | str:

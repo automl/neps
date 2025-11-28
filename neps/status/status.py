@@ -19,8 +19,8 @@ import pandas as pd
 
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
-from neps.space.neps_spaces.operation_formatter import ConfigString
 from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
+from neps.space.neps_spaces.string_formatter import format_value
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
 
@@ -235,7 +235,7 @@ class Summary:
 
                 for variable in variables:
                     operation = getattr(resolved_pipeline, variable)
-                    pipeline_configs.append(ConfigString(operation).pretty_format())
+                    pipeline_configs.append(format_value(operation))
 
                 for n_pipeline, pipeline_config in enumerate(pipeline_configs):
                     formatted_config = str(pipeline_config)

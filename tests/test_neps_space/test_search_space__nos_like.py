@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space.neps_spaces import neps_space, operation_formatter
+from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Integer,
@@ -129,5 +129,5 @@ def test_resolve():
     p = resolved_pipeline.P
     p_config_string = neps_space.convert_operation_to_string(p)
     assert p_config_string
-    pretty_config = operation_formatter.ConfigString(p_config_string).pretty_format()
+    pretty_config = string_formatter.format_value(p)
     assert pretty_config

@@ -1,12 +1,25 @@
 """
-This example demonstrates how to use NePS to search for an optimizer. We define
-a search space that samples different configurations of a simple custom optimizer
-built using PyTorch. The pipeline optimizes a simple quadratic function using the
-sampled optimizer. NePS is then run to find the best optimizer configuration.
+This example demonstrates optimizer search using NePS to design custom PyTorch optimizers
+and find the best configuration. The search space defines a custom optimizer with three
+gradient transformation functions sampled from {sqrt, log, exp, sign, abs}, a learning
+rate sampled logarithmically from [0.0001, 0.01], and gradient clipping from [0.5, 1.0].
+NePS evaluates each optimizer by optimizing a quadratic function to discover the most
+effective combination of gradient transformations and hyperparameters for convergence.
+
+Search Space Structure:
+    optimizer_class: optimizer_constructor(
+        <sampled from {sqrt, log, exp, sign, abs}>,
+        <sampled from {sqrt, log, exp, sign, abs}>,
+        <sampled from {sqrt, log, exp, sign, abs}>,
+        learning_rate=<sampled from [0.0001, 0.01] log-scale>,
+        gradient_clipping=<sampled from [0.5, 1.0]>
+    )
 """
 
 import neps
 import torch
+import logging
+
 
 def optimizer_constructor(*functions, gradient_clipping: float, learning_rate: float):
     # Build a simple optimizer that applies a sequence of functions to the gradients
@@ -38,6 +51,9 @@ def optimizer_constructor(*functions, gradient_clipping: float, learning_rate: f
 # The search space defines the optimizer class constructed with sampled hyperparameters
 # and functions
 class OptimizerSpace(neps.PipelineSpace):
+
+    # Parameters with prefixed _ are internal and will not be given to the evaluation
+    # function
     _gradient_clipping = neps.Float(0.5, 1.0)
     _learning_rate = neps.Float(0.0001, 0.01, log=True)
 
@@ -45,7 +61,7 @@ class OptimizerSpace(neps.PipelineSpace):
         choices=(torch.sqrt, torch.log, torch.exp, torch.sign, torch.abs)
     )
 
-
+    # The optimizer class constructed with the sampled functions and hyperparameters
     optimizer_class = neps.Operation(
         operator=optimizer_constructor,
         args=(
@@ -78,12 +94,13 @@ def evaluate_pipeline(optimizer_class) -> float:
 # Run NePS with the defined pipeline and space and show the best configuration
 if __name__ == "__main__":
     pipeline_space = OptimizerSpace()
+
+    logging.basicConfig(level=logging.INFO)
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         root_directory="results/optimizer_search_example",
         evaluations_to_spend=5,
-        overwrite_root_directory=True,
     )
     neps.status(
         root_directory="results/optimizer_search_example",

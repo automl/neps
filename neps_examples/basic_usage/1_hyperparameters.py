@@ -9,12 +9,15 @@ import logging
 import numpy as np
 import neps
 
+
 def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
     objective_to_minimize = -float(
         np.sum([float1, float2, int(categorical), integer1, integer2])
     )
-    return {"objective_to_minimize": objective_to_minimize, "cost": categorical,}
-
+    return {
+        "objective_to_minimize": objective_to_minimize,
+        "cost": categorical,
+    }
 
 
 class HPOSpace(neps.PipelineSpace):
@@ -31,5 +34,4 @@ neps.run(
     pipeline_space=HPOSpace(),
     root_directory="results/hyperparameters_example",
     evaluations_to_spend=5,
-    overwrite_root_directory=True,
 )

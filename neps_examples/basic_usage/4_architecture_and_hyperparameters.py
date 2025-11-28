@@ -1,16 +1,43 @@
 """
-This example demonstrates how to combine neural network architecture
-search with hyperparameter optimization using NePS.
+This example demonstrates joint optimization of neural architecture and hyperparameters
+using NePS Spaces. The search space includes: (1) a 3-cell sequential architecture with
+Conv2d layers (kernel size sampled from [2, 7]) and activations chosen from {ReLU,
+Sigmoid, Tanh}, and (2) a batch_size hyperparameter sampled from integers in [16, 128].
+NePS simultaneously optimizes both architectural choices and training hyperparameters.
+
+Search Space Structure:
+    batch_size: <sampled from [16, 128]>
+    model: Sequential(
+        Cell_1: Sequential(
+            Conv2d(kernel_size=<sampled from [2, 7]>, ...),
+            <sampled from {ReLU, Sigmoid, Tanh}>
+        ),
+        Cell_2: Sequential(
+            Conv2d(kernel_size=<sampled from [2, 7]>, ...),
+            <sampled from {ReLU, Sigmoid, Tanh}>
+        ),
+        Cell_3: Sequential(
+            Conv2d(kernel_size=<sampled from [2, 7]>, ...),
+            <sampled from {ReLU, Sigmoid, Tanh}>
+        )
+    )
 """
 
 import neps
 import torch
 import numpy as np
 from torch import nn
+import logging
+
 
 # Using the space from the architecture search example
 class NN_Space(neps.PipelineSpace):
 
+    # Integer Hyperparameter for the batch size
+    batch_size = neps.Integer(16, 128)
+
+    # Parameters with prefixed _ are internal and will not be given to the evaluation
+    # function
     _kernel_size = neps.Integer(2, 7)
 
     # Building blocks of the neural network architecture
@@ -44,6 +71,7 @@ class NN_Space(neps.PipelineSpace):
     )
 
     # The full model consisting of three cells stacked sequentially
+    # This will be given to the evaluation function as 'model'
     model = neps.Operation(
         operator=nn.Sequential,
         args=(
@@ -53,9 +81,6 @@ class NN_Space(neps.PipelineSpace):
         ),
     )
 
-
-# Extend the architecture search space with a hyperparameter
-extended_space = NN_Space().add(neps.Integer(16, 128), name="batch_size")
 
 def evaluate_pipeline(model: torch.nn.Module, batch_size: int) -> float:
     # For demonstration, we return a dummy objective value
@@ -68,12 +93,12 @@ def evaluate_pipeline(model: torch.nn.Module, batch_size: int) -> float:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=extended_space,
+        pipeline_space=NN_Space(),
         root_directory="results/architecture_with_hp_example",
         evaluations_to_spend=5,
-        overwrite_root_directory=True,
     )
     neps.status(
         root_directory="results/architecture_with_hp_example",

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 import neps.space.neps_spaces.sampling
-from neps.space.neps_spaces import neps_space, operation_formatter
+from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Operation,
@@ -176,7 +176,7 @@ def test_resolve():
     s = resolved_pipeline.S
     s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
-    pretty_config = operation_formatter.ConfigString(s_config_string).pretty_format()
+    pretty_config = string_formatter.format_value(s)
     assert pretty_config
 
 
@@ -192,7 +192,7 @@ def test_resolve_alt():
     s = resolved_pipeline.S
     s_config_string = neps_space.convert_operation_to_string(s)
     assert s_config_string
-    pretty_config = operation_formatter.ConfigString(s_config_string).pretty_format()
+    pretty_config = string_formatter.format_value(s)
     assert pretty_config
 
 

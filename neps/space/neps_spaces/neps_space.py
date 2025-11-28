@@ -941,13 +941,13 @@ def convert_operation_to_string(operation: Operation | str | int | float) -> str
     Raises:
         ValueError: If the operation is not a valid Operation object.
     """
-    from neps.space.neps_spaces.operation_formatter import operation_to_string
+    from neps.space.neps_spaces.string_formatter import format_value
 
     # Handle non-Operation values (resolved primitives)
     if not isinstance(operation, Operation):
         return str(operation)
 
-    return operation_to_string(operation)
+    return format_value(operation)
 
 
 # -------------------------------------------------

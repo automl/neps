@@ -30,8 +30,6 @@ if __name__ == "__main__":
     config, pipeline = neps.create_config(ExampleSpace())
     print("Created configuration:")
     pprint(config)
-    print("Sampled pipeline:")
-    pprint(pipeline)
 
 
     logging.basicConfig(level=logging.INFO)

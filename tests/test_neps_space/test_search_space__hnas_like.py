@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 import neps.space.neps_spaces.sampling
-from neps.space.neps_spaces import neps_space, operation_formatter
+from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
@@ -219,13 +219,13 @@ def test_hnas_like_string():
     arch = resolved_pipeline.ARCH
     arch_config_string = neps_space.convert_operation_to_string(arch)
     assert arch_config_string
-    pretty_config = operation_formatter.ConfigString(arch_config_string).pretty_format()
+    pretty_config = string_formatter.format_value(arch)
     assert pretty_config
 
     cl = resolved_pipeline.CL
     cl_config_string = neps_space.convert_operation_to_string(cl)
     assert cl_config_string
-    pretty_config = operation_formatter.ConfigString(cl_config_string).pretty_format()
+    pretty_config = string_formatter.format_value(cl)
     assert pretty_config
 
 
