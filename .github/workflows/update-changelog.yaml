@@ -1,0 +1,20 @@
+name: update-changelog
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+          release-type: simple
+
+          # Disable version bumping, tagging, and GitHub releases
+          skip-github-release: true
+          skip-tag: true
