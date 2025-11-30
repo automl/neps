@@ -836,6 +836,22 @@ class NePSState:
                 with atomic_write(pipeline_space_path, "wb") as f:
                     pickle.dump(pipeline_space, f, protocol=pickle.HIGHEST_PROTOCOL)
 
+                # Reload the pipeline space from disk so that the instance
+                # returned by `create_or_load` matches the on-disk representation
+                # (this ensures equality checks that compare pickled bytes
+                # behave consistently between subsequent loads).
+                try:
+                    with pipeline_space_path.open("rb") as f:
+                        pipeline_space = pickle.load(f)  # noqa: S301
+                except (EOFError, pickle.UnpicklingError, OSError) as e:
+                    # If reloading fails for expected reasons (corrupt write,
+                    # incomplete file due to race, or IO error) log a warning
+                    # and fall back to the original in-memory `pipeline_space`
+                    # so we don't break creation. We explicitly catch a
+                    # restricted set of exceptions to avoid swallowing
+                    # unexpected errors.
+                    logger.warning("Reloading pipeline_space after write failed: %s", e)
+
             error_dump = ErrDump([])
 
         return NePSState(

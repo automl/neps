@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import abc
 import enum
+import importlib
+import logging
 import math
 import random
 import warnings
@@ -93,6 +95,42 @@ def _reconstruct_pipeline_space(attrs: Mapping[str, Any]) -> PipelineSpace:
     for name, value in attrs.items():
         setattr(space, name, value)
     return space
+
+
+def _reconstruct_pipeline_space_with_class(
+    module_name: str, qualname: str, attrs: Mapping[str, Any]
+) -> PipelineSpace:
+    """Reconstruct a PipelineSpace instance preserving the original class.
+
+    This tries to import the class by module and qualname and create an instance
+    without calling its __init__ (to avoid side effects). If anything goes wrong
+    we fall back to the legacy reconstruction which returns a plain
+    `PipelineSpace` instance with the saved attributes.
+    """
+    logger = logging.getLogger(__name__)
+    try:
+        module_obj = importlib.import_module(module_name)
+        cls_obj: Any = module_obj
+        for part in qualname.split("."):
+            cls_obj = getattr(cls_obj, part)
+
+        if not isinstance(cls_obj, type):
+            raise TypeError(f"Resolved qualname is not a class: {qualname}")
+
+        # Create instance without running __init__ so we don't require constructor args
+        instance: PipelineSpace = object.__new__(cls_obj)
+        for name, value in attrs.items():
+            setattr(instance, name, value)
+        return instance
+    except (ImportError, AttributeError, TypeError, OSError) as e:
+        # Best-effort: restore to a plain PipelineSpace with attributes
+        logger.debug(
+            "Could not reconstruct PipelineSpace with class %s.%s: %s",
+            module_name,
+            qualname,
+            e,
+        )
+        return _reconstruct_pipeline_space(attrs)
 
 
 def _parameters_are_equivalent(param1: Any, param2: Any) -> bool:
@@ -326,9 +364,12 @@ class PipelineSpace(Resolvable):
         Returns:
             A tuple (callable, args) for reconstructing the object.
         """
-        # Store the attributes instead of the class definition
+        # Store the attributes and the original class identity so we can
+        # reconstruct an instance of the original class on unpickle.
         attrs = dict(self.get_attrs())
-        return (_reconstruct_pipeline_space, (attrs,))
+        module_name = self.__class__.__module__
+        qualname = self.__class__.__qualname__
+        return (_reconstruct_pipeline_space_with_class, (module_name, qualname, attrs))
 
     @property
     def fidelity_attrs(self) -> Mapping[str, Fidelity]:
