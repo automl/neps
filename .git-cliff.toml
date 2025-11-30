@@ -1,0 +1,51 @@
+[changelog]
+header = """
+# Changelog
+
+All notable changes will be documented in this file.
+"""
+
+body = """
+{% if unreleased and unreleased|length > 0 %}
+## Unreleased
+{% for group, commits in unreleased | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | trim }} ({{ commit.id | truncate(length=7) }})
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+{% if releases and releases|length > 0 %}
+{% for release in releases %}
+## {{ release.tag }}{% if release.date %} - {{ release.date }}{% endif %}
+{% for group, commits in release.commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | trim }} ({{ commit.id | truncate(length=7) }})
+{% endfor %}
+{% endfor %}
+{% endfor %}
+{% endif %}
+"""
+
+footer = ""
+
+[git]
+conventional_commits = true
+commit_parsers = [
+  { pattern = "^feat", group = "Features" },
+  { pattern = "^fix", group = "Bug Fixes" },
+  { pattern = "^docs", group = "Documentation" },
+  { pattern = "^refactor", group = "Refactoring" },
+  { pattern = "^perf", group = "Performance" },
+  { pattern = "^test", group = "Tests" },
+  { pattern = "^chore", group = "Maintenance" },
+  { pattern = ".*", group = "Other" },
+]
+
+tag_pattern = "v[0-9]+\\.[0-9]+\\.[0-9]+"
+skip_tags = false
+
+[output]
+trim = true

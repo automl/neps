@@ -6,15 +6,30 @@ on:
       - master
 
 jobs:
-  release-please:
+  changelog:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: googleapis/release-please-action@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
-          release-type: simple
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
 
-          # Disable version bumping, tagging, and GitHub releases
-          skip-github-release: true
-          skip-tag: true
+      - name: Update Unreleased section
+        run: |
+          git cliff --unreleased --append > CHANGELOG.tmp
+          git cliff --unreleased >> CHANGELOG.tmp
+          mv CHANGELOG.tmp CHANGELOG.md
+
+      - name: Commit changes
+        run: |
+          git add CHANGELOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update changelog"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          fi
