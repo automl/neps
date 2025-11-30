@@ -407,6 +407,48 @@ class PipelineSpace(Resolvable):
         # Delegate to the unified formatter
         return format_value(self)
 
+    def sample(
+        self, fidelity_values: dict[str, Any] | None = None
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Sample a random configuration from the pipeline.
+
+        Returns:
+            A tuple containing two dictionaries:
+            - The first dictionary is the neps-compatible config.
+            - The second dictionary contains the sampled values.
+        """
+        from neps.space.neps_spaces.neps_space import (
+            NepsCompatConverter,
+            convert_operation_to_callable,
+            resolve,
+        )
+        from neps.space.neps_spaces.sampling import RandomSampler
+        from neps.space.neps_spaces.string_formatter import format_value
+
+        if fidelity_values is None:
+            fidelity_values = {}
+        for name, value in self.fidelity_attrs.items():
+            if name in fidelity_values:
+                continue
+            fidelity_values[name] = value.domain.sample()
+
+        sampler = RandomSampler({})
+        resolved_pipeline, resolution_context = resolve(
+            pipeline=self,
+            domain_sampler=sampler,
+            environment_values=fidelity_values,
+        )
+        pipeline_dict = dict(**resolved_pipeline.get_attrs())
+
+        for name, value in pipeline_dict.items():
+            if isinstance(value, Operation):  # type: ignore[unreachable]
+                if isinstance(value.operator, str):  # type: ignore[unreachable]
+                    pipeline_dict[name] = format_value(value)
+                else:
+                    pipeline_dict[name] = convert_operation_to_callable(value)
+
+        return dict(NepsCompatConverter.to_neps_config(resolution_context)), pipeline_dict
+
     def add(
         self,
         new_param: Integer | Float | Categorical | Operation | Resample | Repeated,
