@@ -123,6 +123,37 @@ def test_load_on_existing_neps_state(
     assert neps_state == neps_state2
 
 
+def test_pipeline_space_written_and_reloaded(tmp_path: Path) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer_info = OptimizerInfo(name="test", info={"a": "b"})
+    optimizer_state = OptimizationState(
+        budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+        seed_snapshot=SeedSnapshot.new_capture(),
+        shared_state={},
+    )
+
+    new_path = tmp_path / "neps_state"
+    neps_state = NePSState.create_or_load(
+        path=new_path,
+        optimizer_info=optimizer_info,
+        optimizer_state=optimizer_state,
+        pipeline_space=TestSpace(),
+    )
+
+    # Load-only should return the same state
+    neps_state2 = NePSState.create_or_load(path=new_path, load_only=True)
+    assert neps_state == neps_state2
+
+    # And their pipeline spaces must serialize to the same bytes
+    import pickle
+
+    assert pickle.dumps(neps_state._pipeline_space) == pickle.dumps(
+        neps_state2._pipeline_space
+    )
+
+
 def test_new_or_load_on_existing_neps_state_with_different_optimizer_info(
     tmp_path: Path,
     optimizer_info: OptimizerInfo,
