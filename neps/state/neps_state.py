@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, overload
 
+import numpy as np
+
 from neps.env import (
     GLOBAL_ERR_FILELOCK_POLL,
     GLOBAL_ERR_FILELOCK_TIMEOUT,
@@ -141,6 +143,18 @@ class TrialRepo:
                 f.write(pickle_bytes)
 
         return trials
+
+    def get_valid_evaluated_trials(self) -> dict[str, Trial]:
+        """Get all trials that have a valid evaluation report."""
+        trials = self.latest()
+        return {
+            trial_id: trial
+            for trial_id, trial in trials.items()
+            if trial.report is not None
+            and trial.report.err is None
+            and trial.report.objective_to_minimize is not None
+            and not np.isnan(trial.report.objective_to_minimize)
+        }
 
     def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:
         """Get the latest trials from the cache."""

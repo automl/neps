@@ -761,9 +761,9 @@ class DefaultWorker:
 
             if report.objective_to_minimize is not None and report.err is None:
                 with self.state._trial_lock.lock():
-                    trials = self.state._trial_repo.latest()
+                    evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
                     self.load_incumbent_trace(
-                        trials,
+                        evaluated_trials,
                         _trace_lock,
                         improvement_trace_path,
                         best_config_path,
@@ -793,7 +793,7 @@ class DefaultWorker:
         configurations.
 
         Args:
-            trials (dict): A dictionary of the trials.
+            trials (dict): A dictionary of the evaluated trials which have a valid report.
             _trace_lock (FileLock): A file lock to ensure thread-safe writing.
             improvement_trace_path (Path): Path to the improvement trace file.
             best_config_path (Path): Path to the best configuration file.
@@ -813,20 +813,15 @@ class DefaultWorker:
                 t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
             ),
         )
-        evaluated_trials: list[Trial] = [
-            trial
-            for trial in sorted_trials
-            if trial.report is not None and trial.report.objective_to_minimize is not None
-        ]
         is_mo = any(
             isinstance(trial.report.objective_to_minimize, list)  # type: ignore[union-attr]
-            for trial in evaluated_trials
+            for trial in sorted_trials
         )
 
         frontier: list[Trial] = []
         trajectory_confs: dict[str, dict[str, float | int]] = {}
 
-        for evaluated_trial in evaluated_trials:
+        for evaluated_trial in sorted_trials:
             single_trial_usage = self._calculate_total_resource_usage(
                 {evaluated_trial.id: evaluated_trial}
             )

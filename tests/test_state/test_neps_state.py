@@ -29,6 +29,7 @@ from neps.space.neps_spaces.parameters import (
     PipelineSpace,
 )
 from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
+from neps.state.trial import Report
 
 
 @case
@@ -305,3 +306,64 @@ def test_optimizers_work_roughly(
             ask_and_tell.tell(trial, [1.0, 2.0])
         else:
             ask_and_tell.tell(trial, 1.0)
+
+
+@fixture
+def neps_state(tmp_path: Path) -> NePSState:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    return NePSState.create_or_load(
+        path=tmp_path / "neps_state",
+        optimizer_info=OptimizerInfo(name="random_search", info={}),
+        optimizer_state=OptimizationState(
+            budget=None,
+            seed_snapshot=SeedSnapshot.new_capture(),
+            shared_state=None,
+        ),
+        pipeline_space=TestSpace(),
+    )
+
+
+def test_get_valid_evaluated_trials(
+    neps_state: NePSState,
+) -> None:
+    optimizer, _ = load_optimizer(("random_search", {}), neps_state._pipeline_space)
+    trial1 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
+    trial2 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
+    trial3 = neps_state.lock_and_sample_trial(optimizer=optimizer, worker_id="1")
+
+    report1 = Report(
+        objective_to_minimize=0.5,
+        err=None,
+        cost=0,
+        learning_curve=[0],
+        extra={},
+        tb=None,
+        reported_as="success",
+        evaluation_duration=1,
+    )
+    neps_state.lock_and_report_trial_evaluation(
+        trial=trial1,
+        report=report1,
+        worker_id="1",
+    )
+
+    report2 = Report(
+        objective_to_minimize=float("nan"),
+        err=None,
+        cost=0,
+        learning_curve=[0],
+        extra={},
+        tb=None,
+        reported_as="success",
+        evaluation_duration=1,
+    )
+    neps_state.lock_and_report_trial_evaluation(
+        trial=trial2, report=report2, worker_id="1"
+    )
+
+    valid_trials = neps_state._trial_repo.get_valid_evaluated_trials()
+    assert len(valid_trials) == 1
+    assert trial1.id in valid_trials
+    assert trial3.id not in valid_trials
