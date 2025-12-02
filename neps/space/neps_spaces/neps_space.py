@@ -1261,14 +1261,16 @@ def convert_classic_to_neps_search_space(
     return NEPSSpace()
 
 
-ONLY_NEPS_ALGORITHMS_NAMES = [
-    "neps_random_search",
-    "neps_priorband",
-    "complex_random_search",
-    "neps_hyperband",
-    "complex_hyperband",
-    "neps_regularized_evolution",
-    "regularized_evolution",
+ONLY_CLASSIC_ALGORITHMS_NAMES = [
+    "asha",
+    "bayesian_optimization",
+    "ifbo",
+    "mo_hyperband",
+    "primo",
+    "async_hb",
+    "successive_halving",
+    "moasha",
+    "pibo",
 ]
 CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
     "random_search",
@@ -1279,15 +1281,18 @@ CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
 
 
 # Lazy initialization to avoid circular imports
-def _get_only_neps_algorithms_functions() -> list[Callable]:
-    """Get the list of NEPS-only algorithm functions lazily."""
+def _get_only_classic_algorithms_functions() -> list[Callable]:
+    """Get the list of classic-only algorithm functions lazily."""
     return [
-        algorithms.neps_random_search,
-        algorithms.neps_priorband,
-        algorithms.complex_random_search,
-        algorithms.neps_hyperband,
-        algorithms.neps_grid_search,
-        algorithms.neps_regularized_evolution,
+        algorithms.asha,
+        algorithms.bayesian_optimization,
+        algorithms.ifbo,
+        algorithms.mo_hyperband,
+        algorithms.primo,
+        algorithms.async_hb,
+        algorithms.successive_halving,
+        algorithms.moasha,
+        algorithms.pibo,
     ]
 
 
@@ -1340,22 +1345,25 @@ def check_neps_space_compatibility(
         while isinstance(inner_optimizer, partial):
             inner_optimizer = inner_optimizer.func
 
-    only_neps_algorithm = (
-        optimizer_to_check in _get_only_neps_algorithms_functions()
-        or (inner_optimizer and inner_optimizer in _get_only_neps_algorithms_functions())
+    only_classic_algorithm = (
+        optimizer_to_check in _get_only_classic_algorithms_functions()
         or (
-            optimizer_to_check[0] in ONLY_NEPS_ALGORITHMS_NAMES
+            inner_optimizer
+            and inner_optimizer in _get_only_classic_algorithms_functions()
+        )
+        or (
+            optimizer_to_check[0] in ONLY_CLASSIC_ALGORITHMS_NAMES
             if isinstance(optimizer_to_check, tuple)
             else False
         )
         or (
-            optimizer_to_check in ONLY_NEPS_ALGORITHMS_NAMES
+            optimizer_to_check in ONLY_CLASSIC_ALGORITHMS_NAMES
             if isinstance(optimizer_to_check, str)
             else False
         )
     )
-    if only_neps_algorithm:
-        return "neps"
+    if only_classic_algorithm:
+        return "classic"
     neps_and_classic_algorithm = (
         optimizer_to_check in _get_classic_and_neps_algorithms_functions()
         or (
@@ -1376,4 +1384,4 @@ def check_neps_space_compatibility(
     )
     if neps_and_classic_algorithm:
         return "both"
-    return "classic"
+    return "neps"
