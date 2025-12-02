@@ -431,7 +431,9 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
     )
 
 
-def determine_optimizer_automatically(space: SearchSpace | PipelineSpace) -> str:  # noqa: PLR0911
+def determine_optimizer_automatically(  # noqa: PLR0911
+    space: SearchSpace | PipelineSpace,
+) -> str:
     if isinstance(space, PipelineSpace):
         has_prior = space.has_priors()
         if space.fidelity_attrs and has_prior:
@@ -1822,6 +1824,7 @@ PredefinedOptimizers: Mapping[str, Any] = {
         complex_random_search,
         neps_priorband,
         neps_hyperband,
+        neps_regularized_evolution,
     )
 }
 
@@ -1843,4 +1846,5 @@ OptimizerChoice: TypeAlias = Literal[
     "complex_random_search",
     "neps_priorband",
     "neps_hyperband",
+    "neps_regularized_evolution",
 ]
