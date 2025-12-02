@@ -433,9 +433,9 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     # algorithm, we raise an error, as the optimizer is not compatible.
     if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
         raise ValueError(
-            "The provided optimizer is not compatible with this complex search space. "
-            "Please use one that is, such as 'random_search', 'hyperband', "
-            "'priorband', or 'complex_random_search'."
+            f"The provided optimizer {optimizer} is not compatible with this complex"
+            " search space. Please use one that is, such as 'random_search',"
+            " 'hyperband', 'priorband', or 'complex_random_search'."
         )
 
     # Log the search space after conversion
@@ -649,9 +649,9 @@ def import_trials(  # noqa: C901
     # algorithm, we raise an error, as the optimizer is not compatible.
     if isinstance(space, PipelineSpace) and neps_classic_space_compatibility == "classic":
         raise ValueError(
-            "The provided optimizer is not compatible with this complex pipeline space. "
-            "Please use one that is, such as 'random_search', 'hyperband', "
-            "'priorband', or 'complex_random_search'."
+            f"The provided optimizer {optimizer} is not compatible with this complex"
+            " pipeline space. Please use one that is, such as 'random_search',"
+            " 'hyperband', 'priorband', or 'complex_random_search'."
         )
 
     optimizer_ask, optimizer_info = load_optimizer(optimizer, space)
