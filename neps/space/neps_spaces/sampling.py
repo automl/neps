@@ -149,7 +149,7 @@ class RandomSampler(DomainSampler):
 class IOSampler(DomainSampler):
     """A sampler that samples by asking the user at each decision."""
 
-    def __call__(  # noqa: C901
+    def __call__(  # noqa: C901, PLR0912
         self,
         *,
         domain_obj: Domain[T],
@@ -172,21 +172,28 @@ class IOSampler(DomainSampler):
                 f" {domain_obj.upper}]: ",  # type: ignore[attr-defined]
             )
         elif isinstance(domain_obj, Categorical):
+            from neps.space.neps_spaces.string_formatter import format_value
 
-            def format_choice(choice: Any) -> str:
-                """Format a choice nicely, especially for callables."""
-                if callable(choice) and (name := getattr(choice, "__name__", None)):
-                    return name
-                return str(choice)
+            # Format choices and check for multi-line content
+            formatted_choices = [format_value(c, indent=0) for c in domain_obj.choices]  # type: ignore[attr-defined, arg-type]
+            has_multiline = any("\n" in formatted for formatted in formatted_choices)
 
-            choices_list = "\n\t".join(
-                f"{n}: {format_choice(choice)}"
-                for n, choice in enumerate(domain_obj.choices)  # type: ignore[attr-defined, arg-type]
-            )
+            # Build choices display
+            choices_lines = [""] if has_multiline else []
+            for n, formatted in enumerate(formatted_choices):
+                if "\n" in formatted:
+                    choices_lines.append(f"Option {n}:")
+                    choices_lines.append(formatted)
+                else:
+                    choices_lines.append(f"Option {n}: {formatted}")
+                if has_multiline and n < len(formatted_choices) - 1:
+                    choices_lines.append("")  # Blank line separator between options
+
+            choices_list = "\n".join(choices_lines)
             max_index = int(domain_obj.range_compatibility_identifier) - 1  # type: ignore[attr-defined]
             print(
                 f"Please provide an index for '{current_path}'\n"
-                f"Choices:\n\t{choices_list}\n"
+                f"Choices:{choices_list}\n"
                 f"Valid range: [0, {max_index}]: "
             )
 

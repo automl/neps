@@ -129,6 +129,68 @@ def format_value(  # noqa: C901, PLR0911, PLR0912
 
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+
+def _collapse_closing_brackets(text: str) -> str:
+    """Collapse consecutive closing brackets onto same line respecting indentation.
+
+    Transforms:
+           )
+           )
+        )
+    Into:
+        ) ) )
+
+    All brackets are placed on the same line using the minimum indentation.
+
+    Args:
+        text: The formatted text
+
+    Returns:
+        Text with collapsed closing brackets
+    """
+    lines = text.split("\n")
+    result = []
+    i = 0
+
+    while i < len(lines):
+        current_line = lines[i]
+        stripped = current_line.strip()
+
+        # Check if this line contains only closing brackets
+        if stripped and all(c in ")]" for c in stripped):
+            # Collect consecutive bracket lines
+            bracket_lines = [current_line]
+            j = i + 1
+            while (
+                j < len(lines)
+                and lines[j].strip()
+                and all(c in ")]" for c in lines[j].strip())
+            ):
+                bracket_lines.append(lines[j])
+                j += 1
+
+            # Collapse if multiple bracket lines
+            if len(bracket_lines) > 1:
+                # Find minimum indentation
+                min_indent = min(len(line) - len(line.lstrip()) for line in bracket_lines)
+                # Collapse onto single line
+                combined = " ".join(line.strip() for line in bracket_lines)
+                result.append(" " * min_indent + combined)
+            else:
+                result.append(current_line)
+
+            i = j
+        else:
+            result.append(current_line)
+            i += 1
+
+    return "\n".join(result)
+
+
+# ============================================================================
 # INTERNAL FORMATTERS - Type-specific formatting logic
 # All these call format_value() for nested values to maintain consistency
 # ============================================================================
@@ -158,6 +220,7 @@ def _format_categorical(
     """Internal formatter for Categorical parameters."""
     indent_str = style.indent_str * indent
     inner_indent_str = style.indent_str * (indent + 1)
+    choice_indent_str = style.indent_str * (indent + 2)
 
     # Format each choice using format_value for consistency
     formatted_choices = []
@@ -165,13 +228,29 @@ def _format_categorical(
         choice_str = format_value(choice, indent + 2, style)
         formatted_choices.append(choice_str)
 
-    # Build the string with consistent indentation
-    choice_indent_str = style.indent_str * (indent + 2)
-    choices_str = f",\n{choice_indent_str}".join(formatted_choices)
-    result = (
-        f"Categorical(\n{inner_indent_str}choices="
-        f"(\n{choice_indent_str}{choices_str}\n{inner_indent_str})"
-    )
+    # Check if all choices are simple (strings or numbers without newlines)
+    all_simple = all("\n" not in choice_str for choice_str in formatted_choices)
+
+    if all_simple and formatted_choices:
+        # Try to fit choices on one line
+        choices_str = ", ".join(formatted_choices)
+        if len(choices_str) <= style.max_line_length:
+            # Put choices on own line, indented
+            result = f"Categorical(\n{inner_indent_str}choices=({choices_str})"
+        else:
+            # Put on multiple lines but keep choices together
+            choices_str = f",\n{choice_indent_str}".join(formatted_choices)
+            result = (
+                f"Categorical(\n{inner_indent_str}choices=(\n"
+                f"{choice_indent_str}{choices_str})"
+            )
+    else:
+        # Complex choices - use multi-line format
+        choices_str = f",\n{choice_indent_str}".join(formatted_choices)
+        result = (
+            f"Categorical(\n{inner_indent_str}choices=(\n"
+            f"{choice_indent_str}{choices_str}\n{inner_indent_str})"
+        )
 
     if categorical.has_prior:
         prior_confidence_str = _format_prior_confidence(categorical._prior_confidence)
@@ -181,7 +260,7 @@ def _format_categorical(
         )
 
     result += f"\n{indent_str})"
-    return result
+    return _collapse_closing_brackets(result)
 
 
 def _format_float(
@@ -233,7 +312,8 @@ def _format_resampled(
     if "\n" in source_str:
         indent_str = style.indent_str * indent
         inner_indent_str = style.indent_str * (indent + 1)
-        return f"Resample(\n{inner_indent_str}{source_str}\n{indent_str})"
+        result = f"Resample(\n{inner_indent_str}{source_str}\n{indent_str})"
+        return _collapse_closing_brackets(result)
 
     # Simple single-line format for basic types
     return f"Resample({source_str})"
@@ -260,53 +340,56 @@ def _format_sequence(
     if not seq:
         return "[]" if isinstance(seq, list) else "()"
 
-    # Try compact format first
+    # Format all items
+    formatted_items = [format_value(item, indent + 1, style) for item in seq]
+
+    # Check for "Nx" shorthand case (all items identical)
+    if len(set(formatted_items)) == 1 and len(seq) > 1:
+        return f"{len(seq)}x {formatted_items[0]}"
+
+    # Try compact format for simple sequences
     compact = repr(seq)
     if len(compact) <= style.compact_threshold and "\n" not in compact:
         return compact
 
-    # Use expanded format for complex sequences
+    # Expand multi-line or complex sequences
     is_list = isinstance(seq, list)
     bracket_open, bracket_close = ("[", "]") if is_list else ("(", ")")
-
     indent_str = style.indent_str * indent
     inner_indent_str = style.indent_str * (indent + 1)
 
-    # Check if any element is an Operation (needs expansion)
-    has_operations = any(isinstance(item, Operation) for item in seq)
+    # Check if expansion is needed (Operations or multi-line items)
+    needs_expansion = any(
+        isinstance(item, Operation) or "\n" in item_str
+        for item, item_str in zip(seq, formatted_items, strict=False)
+    )
 
-    if has_operations:
-        # Full expansion with each item on its own line
+    if needs_expansion:
+        # Full expansion: each item on its own line
         lines = [bracket_open]
-        for item in seq:
-            formatted = format_value(item, indent + 1, style)
-            lines.append(f"{inner_indent_str}{formatted},")
+        lines.extend(f"{inner_indent_str}{item}," for item in formatted_items)
         lines.append(f"{indent_str}{bracket_close}")
-        return "\n".join(lines)
+    else:
+        # Compact expansion: fit multiple items per line
+        lines = [bracket_open]
+        current_line: list[str] = []
+        current_length = 0
 
-    # Simple items - try to fit multiple per line
-    lines = [bracket_open]
-    current_line: list[str] = []
-    current_length = 0
+        for item_str in formatted_items:
+            item_len = len(item_str) + 2  # +2 for ", "
+            if current_line and current_length + item_len > style.max_line_length:
+                lines.append(f"{inner_indent_str}{', '.join(current_line)},")
+                current_line, current_length = [item_str], len(item_str)
+            else:
+                current_line.append(item_str)
+                current_length += item_len
 
-    for item in seq:
-        item_repr = repr(item)
-        item_len = len(item_repr) + 2  # +2 for ", "
-
-        if current_line and current_length + item_len > style.max_line_length:
-            # Start new line
+        if current_line:
             lines.append(f"{inner_indent_str}{', '.join(current_line)},")
-            current_line = [item_repr]
-            current_length = len(item_repr)
-        else:
-            current_line.append(item_repr)
-            current_length += item_len
+        lines.append(f"{indent_str}{bracket_close}")
 
-    if current_line:
-        lines.append(f"{inner_indent_str}{', '.join(current_line)},")
-
-    lines.append(f"{indent_str}{bracket_close}")
-    return "\n".join(lines)
+    result = "\n".join(lines)
+    return _collapse_closing_brackets(result)
 
 
 def _format_dict(
