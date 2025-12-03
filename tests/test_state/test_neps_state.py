@@ -107,6 +107,7 @@ NO_DEFAULT_FIDELITY_SUPPORT = [
     "pibo",
     "neps_random_search",
     "complex_random_search",
+    "neps_regularized_evolution",
 ]
 NO_DEFAULT_PRIOR_SUPPORT = [
     "grid_search",
@@ -121,6 +122,7 @@ NO_DEFAULT_PRIOR_SUPPORT = [
     "mo_hyperband",
     "neps_random_search",
     "complex_random_search",
+    "neps_regularized_evolution",
 ]
 REQUIRES_PRIOR = [
     "pibo",
@@ -141,6 +143,7 @@ REQUIRES_NEPS_SPACE = [
     "neps_random_search",
     "complex_random_search",
     "neps_hyperband",
+    "neps_regularized_evolution",
 ]
 
 
