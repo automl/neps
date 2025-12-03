@@ -193,7 +193,7 @@ class IOSampler(DomainSampler):
             max_index = int(domain_obj.range_compatibility_identifier) - 1  # type: ignore[attr-defined]
             print(
                 f"Please provide an index for '{current_path}'\n"
-                f"Choices:{choices_list}\n"
+                f"Choices:\n{choices_list}\n"
                 f"Valid range: [0, {max_index}]: "
             )
 

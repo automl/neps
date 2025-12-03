@@ -431,30 +431,46 @@ def _format_operation(
         else operation.operator.__name__
     )
 
-    # Check if we have any args or kwargs
-    has_args = bool(operation.args)
-    has_kwargs = bool(operation.kwargs)
+    # Helper to safely get args/kwargs, handling unresolved Resolvables
+    def safe_get_args() -> tuple[Any, ...]:
+        """Get args, handling unresolved Resolvables by wrapping if needed."""
+        try:
+            return operation.args
+        except ValueError:
+            # Args contain unresolved Resolvables, use raw _args
+            args = operation._args
+            # Wrap single Resolvable in tuple for iteration
+            return (args,) if not isinstance(args, tuple | list) else args
+
+    def safe_get_kwargs() -> dict[str, Any]:
+        """Get kwargs, handling unresolved Resolvables."""
+        try:
+            return dict(operation.kwargs)
+        except ValueError:
+            # Kwargs contain unresolved Resolvables, skip or use raw _kwargs
+            kwargs = operation._kwargs
+            return kwargs if isinstance(kwargs, dict) else {}
+
+    # Check if we have any content
+    has_args = bool(safe_get_args())
+    has_kwargs = bool(safe_get_kwargs())
 
     if not (has_args or has_kwargs):
         return f"{operator_name}()" if style.show_empty_args else operator_name
 
-    # Always use multi-line format for consistency
+    # Format with multi-line layout
     indent_str = style.indent_str * indent
     inner_indent_str = style.indent_str * (indent + 1)
 
     lines = [f"{operator_name}("]
 
-    # Format args using format_value
-    if has_args:
-        for arg in operation.args:
-            formatted = format_value(arg, indent + 1, style)
-            lines.append(f"{inner_indent_str}{formatted},")
+    for arg in safe_get_args():
+        formatted = format_value(arg, indent + 1, style)
+        lines.append(f"{inner_indent_str}{formatted},")
 
-    # Format kwargs using format_value
-    if has_kwargs:
-        for key, value in operation.kwargs.items():
-            formatted_value = format_value(value, indent + 1, style)
-            lines.append(f"{inner_indent_str}{key}={formatted_value},")
+    for key, value in safe_get_kwargs().items():
+        formatted_value = format_value(value, indent + 1, style)
+        lines.append(f"{inner_indent_str}{key}={formatted_value},")
 
     lines.append(f"{indent_str})")
 
