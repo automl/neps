@@ -229,7 +229,7 @@ def test_complex_nested_structure():
 
     conv = Operation(
         operator="Conv2d",
-        kwargs={"in_channels": 3, "out_channels": 64, "kernel_size": [3, 3]},
+        kwargs={"in_channels": 3, "out_channels": 64, "kernel_size": [3, 4]},
     )
     relu = Operation(operator="ReLU")
 
@@ -245,7 +245,7 @@ def test_complex_nested_structure():
     assert "Sequential(" in result
     assert "Conv2d(" in result
     assert "in_channels=3" in result
-    assert "kernel_size=[3, 3]" in result
+    assert "kernel_size=[3, 4]" in result
     assert "ReLU()," in result
     assert "dropout=0.5" in result
     assert "config=" in result
@@ -334,14 +334,14 @@ def test_real_world_example():
     # Build a realistic example similar to architecture_search.py
     conv1 = Operation(
         operator="Conv2d",
-        kwargs={"in_channels": 3, "out_channels": 64, "kernel_size": [3, 3]},
+        kwargs={"in_channels": 3, "out_channels": 64, "kernel_size": [3, 4]},
     )
     relu1 = Operation(operator="ReLU")
     pool1 = Operation(operator="MaxPool2d", kwargs={"kernel_size": 2, "stride": 2})
 
     conv2 = Operation(
         operator="Conv2d",
-        kwargs={"in_channels": 64, "out_channels": 128, "kernel_size": [3, 3]},
+        kwargs={"in_channels": 64, "out_channels": 128, "kernel_size": [3, 4]},
     )
     relu2 = Operation(operator="ReLU")
     pool2 = Operation(operator="MaxPool2d", kwargs={"kernel_size": 2, "stride": 2})
@@ -363,7 +363,7 @@ def test_real_world_example():
     assert "Conv2d(" in result
     assert "in_channels=3" in result
     assert "out_channels=64" in result
-    assert "kernel_size=[3, 3]" in result
+    assert "kernel_size=[3, 4]" in result
     assert "ReLU()," in result
     assert "MaxPool2d(" in result
     assert "Flatten()," in result
