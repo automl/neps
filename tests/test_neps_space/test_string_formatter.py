@@ -103,10 +103,10 @@ def test_deeply_nested_operations():
 
 def test_list_as_arg():
     """Test formatting with a list as an argument."""
-    op = Operation(operator="Conv2d", kwargs={"kernel_size": [3, 3]})
+    op = Operation(operator="Conv2d", kwargs={"kernel_size": [3, 4]})
     result = format_value(op)
     expected = """Conv2d(
-   kernel_size=[3, 3],
+   kernel_size=[3, 4],
 )"""
     assert result == expected
 
