@@ -94,34 +94,6 @@ class NePSRegularizedEvolution:
         """
         self._pipeline = pipeline
 
-        self._environment_values = {}
-        fidelity_attrs = self._pipeline.fidelity_attrs
-        for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            # If the user specifically asked for the highest fidelity, use that.
-            if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.upper
-            # If the user asked to ignore fidelities, sample a value randomly from the
-            # domain.
-            elif ignore_fidelity is True:
-                # Sample randomly from the fidelity bounds.
-                if isinstance(fidelity_obj.domain, Integer):
-                    assert isinstance(fidelity_obj.lower, int)
-                    assert isinstance(fidelity_obj.upper, int)
-                    self._environment_values[fidelity_name] = random.randint(
-                        fidelity_obj.lower, fidelity_obj.upper
-                    )
-                elif isinstance(fidelity_obj.domain, Float):
-                    self._environment_values[fidelity_name] = random.uniform(
-                        fidelity_obj.lower, fidelity_obj.upper
-                    )
-            # By default we don't support fidelities unless explicitly requested.
-            else:
-                raise ValueError(
-                    "RegularizedEvolution does not support fidelities by default. "
-                    "Consider using a different optimizer or setting "
-                    "`ignore_fidelity=True` or `highest fidelity`."
-                )
-
         self._random_or_prior_sampler: RandomSampler | PriorOrFallbackSampler = (
             RandomSampler(
                 predefined_samplings={},
@@ -139,6 +111,7 @@ class NePSRegularizedEvolution:
         self._mutation_type = mutation_type
         self._n_mutations = n_mutations
         self._n_forgets = n_forgets
+        self._ignore_fidelity = ignore_fidelity
 
     def _mutate_best(
         self, top_trial_config: Mapping[str, Any]
@@ -170,7 +143,7 @@ class NePSRegularizedEvolution:
                     predefined_samplings=top_trial_config,
                     n_mutations=n_mut,
                 ),
-                environment_values=self._environment_values,
+                environment_values=self.sampled_fidelity_values(),
             )
         if self._n_forgets:
             n_forg = (
@@ -188,7 +161,7 @@ class NePSRegularizedEvolution:
                     predefined_samplings=top_trial_config,
                     n_forgets=n_forg,
                 ),
-                environment_values=self._environment_values,
+                environment_values=self.sampled_fidelity_values(),
             )
         raise ValueError("At least one of n_mutations or n_forgets must not be None.")
 
@@ -236,18 +209,56 @@ class NePSRegularizedEvolution:
                             predefined_samplings=top_trial_config,
                             n_mutations=max(1, int(len(top_trial_config) / 2)),
                         ),
-                        environment_values=self._environment_values,
+                        environment_values=self.sampled_fidelity_values(),
                     )
                 continue
             else:
                 return resolve(
                     pipeline=self._pipeline,
                     domain_sampler=crossover_sampler,
-                    environment_values=self._environment_values,
+                    environment_values=self.sampled_fidelity_values(),
                 )
 
         # Fallback in case all crossovers fail (shouldn't happen, but be safe)
         return self._mutate_best(sorted_trials[0].config)
+
+    def sampled_fidelity_values(
+        self,
+    ) -> Mapping[str, float | int]:
+        """Get the sampled fidelity values used in the optimizer.
+
+        Returns:
+            A mapping of fidelity names to their sampled values.
+        """
+
+        environment_values = {}
+        fidelity_attrs = self._pipeline.fidelity_attrs
+        for fidelity_name, fidelity_obj in fidelity_attrs.items():
+            # If the user specifically asked for the highest fidelity, use that.
+            if self._ignore_fidelity == "highest fidelity":
+                environment_values[fidelity_name] = fidelity_obj.upper
+            # If the user asked to ignore fidelities, sample a value randomly from the
+            # domain.
+            elif self._ignore_fidelity is True:
+                # Sample randomly from the fidelity bounds.
+                if isinstance(fidelity_obj.domain, Integer):
+                    assert isinstance(fidelity_obj.lower, int)
+                    assert isinstance(fidelity_obj.upper, int)
+                    environment_values[fidelity_name] = random.randint(
+                        fidelity_obj.lower, fidelity_obj.upper
+                    )
+                elif isinstance(fidelity_obj.domain, Float):
+                    environment_values[fidelity_name] = random.uniform(
+                        fidelity_obj.lower, fidelity_obj.upper
+                    )
+            # By default we don't support fidelities unless explicitly requested.
+            else:
+                raise ValueError(
+                    "RegularizedEvolution does not support fidelities by default. "
+                    "Consider using a different optimizer or setting "
+                    "`ignore_fidelity=True` or `highest fidelity`."
+                )
+        return environment_values
 
     def __call__(
         self,
@@ -283,7 +294,7 @@ class NePSRegularizedEvolution:
                 resolve(
                     pipeline=self._pipeline,
                     domain_sampler=self._random_or_prior_sampler,
-                    environment_values=self._environment_values,
+                    environment_values=self.sampled_fidelity_values(),
                 )
                 for _ in range(n_requested)
             ]
@@ -309,7 +320,7 @@ class NePSRegularizedEvolution:
                 resolve(
                     pipeline=self._pipeline,
                     domain_sampler=self._random_or_prior_sampler,
-                    environment_values=self._environment_values,
+                    environment_values=self.sampled_fidelity_values(),
                 )
                 for _ in range(n_requested)
             ]
