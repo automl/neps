@@ -57,35 +57,42 @@ class NePSRandomSearch:
             ValueError: If the pipeline is not a Pipeline object.
         """
         self._pipeline = pipeline
-
-        self._environment_values = {}
-        fidelity_attrs = self._pipeline.fidelity_attrs
-        for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.upper
-            elif not ignore_fidelity:
-                raise ValueError(
-                    "RandomSearch does not support fidelities by default. Consider using"
-                    " a different optimizer or setting `ignore_fidelity=True` or `highest"
-                    " fidelity`."
-                )
-            # Sample randomly from the fidelity bounds.
-            elif isinstance(fidelity_obj.domain, Integer):
-                assert isinstance(fidelity_obj.lower, int)
-                assert isinstance(fidelity_obj.upper, int)
-                self._environment_values[fidelity_name] = random.randint(
-                    fidelity_obj.lower, fidelity_obj.upper
-                )
-            elif isinstance(fidelity_obj.domain, Float):
-                self._environment_values[fidelity_name] = random.uniform(
-                    fidelity_obj.lower, fidelity_obj.upper
-                )
-
         self._random_sampler = RandomSampler(predefined_samplings={})
         self.use_prior = use_priors
         self._prior_sampler = PriorOrFallbackSampler(
             fallback_sampler=self._random_sampler
         )
+        self.ignore_fidelity = ignore_fidelity
+
+    def sampled_fidelity_values(self) -> dict[str, Any]:
+        """Sample fidelity values based on the pipeline's fidelity attributes.
+
+        Returns:
+            A dictionary mapping fidelity names to their sampled values.
+        """
+        environment_values = {}
+        fidelity_attrs = self._pipeline.fidelity_attrs
+        for fidelity_name, fidelity_obj in fidelity_attrs.items():
+            if self.ignore_fidelity == "highest fidelity":
+                environment_values[fidelity_name] = fidelity_obj.upper
+            elif not self.ignore_fidelity:
+                raise ValueError(
+                    "RandomSearch does not support fidelities by default. Consider"
+                    " using a different optimizer or setting `ignore_fidelity=True` or"
+                    " `highest fidelity`."
+                )
+            # Sample randomly from the fidelity bounds.
+            elif isinstance(fidelity_obj.domain, Integer):
+                assert isinstance(fidelity_obj.lower, int)
+                assert isinstance(fidelity_obj.upper, int)
+                environment_values[fidelity_name] = random.randint(
+                    fidelity_obj.lower, fidelity_obj.upper
+                )
+            elif isinstance(fidelity_obj.domain, Float):
+                environment_values[fidelity_name] = random.uniform(
+                    fidelity_obj.lower, fidelity_obj.upper
+                )
+        return environment_values
 
     def __call__(
         self,
@@ -120,7 +127,7 @@ class NePSRandomSearch:
                 resolve(
                     pipeline=self._pipeline,
                     domain_sampler=self._prior_sampler,
-                    environment_values=self._environment_values,
+                    environment_values=self.sampled_fidelity_values(),
                 )
                 for _ in range(n_requested)
             ]
@@ -129,7 +136,7 @@ class NePSRandomSearch:
                 resolve(
                     pipeline=self._pipeline,
                     domain_sampler=self._random_sampler,
-                    environment_values=self._environment_values,
+                    environment_values=self.sampled_fidelity_values(),
                 )
                 for _ in range(n_requested)
             ]
@@ -194,28 +201,7 @@ class NePSComplexRandomSearch:
         """
         self._pipeline = pipeline
 
-        self._environment_values = {}
-        fidelity_attrs = self._pipeline.fidelity_attrs
-        for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            if ignore_fidelity == "highest fidelity":
-                self._environment_values[fidelity_name] = fidelity_obj.upper
-            elif not ignore_fidelity:
-                raise ValueError(
-                    "ComplexRandomSearch does not support fidelities by default. Consider"
-                    " using a different optimizer or setting `ignore_fidelity=True` or"
-                    " `highest fidelity`."
-                )
-            # Sample randomly from the fidelity bounds.
-            elif isinstance(fidelity_obj.domain, Integer):
-                assert isinstance(fidelity_obj.lower, int)
-                assert isinstance(fidelity_obj.upper, int)
-                self._environment_values[fidelity_name] = random.randint(
-                    fidelity_obj.lower, fidelity_obj.upper
-                )
-            elif isinstance(fidelity_obj.domain, Float):
-                self._environment_values[fidelity_name] = random.uniform(
-                    fidelity_obj.lower, fidelity_obj.upper
-                )
+        self.ignore_fidelity = ignore_fidelity
 
         self._random_sampler = RandomSampler(
             predefined_samplings={},
@@ -228,6 +214,36 @@ class NePSComplexRandomSearch:
             fallback_sampler=self._random_sampler
         )
         self._n_top_trials = 5
+
+    def sampled_fidelity_values(self) -> dict[str, float | int]:
+        """Sample fidelity values based on the pipeline's fidelity attributes.
+
+        Returns:
+            A dictionary mapping fidelity names to their sampled values.
+        """
+        environment_values = {}
+        fidelity_attrs = self._pipeline.fidelity_attrs
+        for fidelity_name, fidelity_obj in fidelity_attrs.items():
+            if self.ignore_fidelity == "highest fidelity":
+                environment_values[fidelity_name] = fidelity_obj.upper
+            elif not self.ignore_fidelity:
+                raise ValueError(
+                    "ComplexRandomSearch does not support fidelities by default."
+                    "Consider using a different optimizer or setting"
+                    " `ignore_fidelity=True` or `highest fidelity`."
+                )
+            # Sample randomly from the fidelity bounds.
+            elif isinstance(fidelity_obj.domain, Integer):
+                assert isinstance(fidelity_obj.lower, int)
+                assert isinstance(fidelity_obj.upper, int)
+                environment_values[fidelity_name] = random.randint(
+                    fidelity_obj.lower, fidelity_obj.upper
+                )
+            elif isinstance(fidelity_obj.domain, Float):
+                environment_values[fidelity_name] = random.uniform(
+                    fidelity_obj.lower, fidelity_obj.upper
+                )
+        return environment_values
 
     def __call__(
         self,
@@ -262,7 +278,7 @@ class NePSComplexRandomSearch:
             resolve(
                 pipeline=self._pipeline,
                 domain_sampler=self._random_sampler,
-                environment_values=self._environment_values,
+                environment_values=self.sampled_fidelity_values(),
             )
             for _ in range(n_requested * 5)
         ]
@@ -270,7 +286,7 @@ class NePSComplexRandomSearch:
             resolve(
                 pipeline=self._pipeline,
                 domain_sampler=self._sometimes_priors_sampler,
-                environment_values=self._environment_values,
+                environment_values=self.sampled_fidelity_values(),
             )
             for _ in range(n_requested * 5)
         ]
@@ -313,7 +329,7 @@ class NePSComplexRandomSearch:
                             predefined_samplings=top_trial_config,
                             n_mutations=1,
                         ),
-                        environment_values=self._environment_values,
+                        environment_values=self.sampled_fidelity_values(),
                     )
                     for _ in range(n_requested * 5)
                 ]
@@ -326,7 +342,7 @@ class NePSComplexRandomSearch:
                                 1, random.randint(1, int(len(top_trial_config) / 2))
                             ),
                         ),
-                        environment_values=self._environment_values,
+                        environment_values=self.sampled_fidelity_values(),
                     )
                     for _ in range(n_requested * 5)
                 ]
@@ -339,7 +355,7 @@ class NePSComplexRandomSearch:
                             predefined_samplings=top_trial_config,
                             n_forgets=1,
                         ),
-                        environment_values=self._environment_values,
+                        environment_values=self.sampled_fidelity_values(),
                     )
                     for _ in range(n_requested * 5)
                 ]
@@ -352,7 +368,7 @@ class NePSComplexRandomSearch:
                                 1, random.randint(1, int(len(top_trial_config) / 2))
                             ),
                         ),
-                        environment_values=self._environment_values,
+                        environment_values=self.sampled_fidelity_values(),
                     )
                     for _ in range(n_requested * 5)
                 ]
@@ -376,7 +392,7 @@ class NePSComplexRandomSearch:
                             resolve(
                                 pipeline=self._pipeline,
                                 domain_sampler=crossover_sampler,
-                                environment_values=self._environment_values,
+                                environment_values=self.sampled_fidelity_values(),
                             ),
                         )
 
@@ -394,7 +410,7 @@ class NePSComplexRandomSearch:
                             resolve(
                                 pipeline=self._pipeline,
                                 domain_sampler=crossover_sampler,
-                                environment_values=self._environment_values,
+                                environment_values=self.sampled_fidelity_values(),
                             ),
                         )
 
@@ -414,7 +430,7 @@ class NePSComplexRandomSearch:
             prior_pipeline = resolve(
                 pipeline=self._pipeline,
                 domain_sampler=self._try_always_priors_sampler,
-                environment_values=self._environment_values,
+                environment_values=self.sampled_fidelity_values(),
             )
             chosen_pipelines[0] = prior_pipeline
 
