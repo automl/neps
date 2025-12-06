@@ -1816,6 +1816,7 @@ def neps_regularized_evolution(
 def neps_local_and_incumbent(
     pipeline_space: PipelineSpace,
     *,
+    local_prior: dict[str, Any],
     eta: int = 3,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
 ) -> _NePSBracketOptimizer:
@@ -1844,6 +1845,7 @@ def neps_local_and_incumbent(
         sample_prior_first=False,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
         inc_ratio=None,
+        local_prior=local_prior,
     )
 
 
