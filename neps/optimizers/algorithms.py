@@ -463,7 +463,7 @@ def random_search(
     pipeline_space: SearchSpace | PipelineSpace,
     *,
     use_priors: bool = False,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -474,7 +474,7 @@ def random_search(
         pipeline_space: The search space to sample from.
         use_priors: Whether to use priors when sampling.
         ignore_fidelity: Whether to ignore fidelity when sampling.
-            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will randomly sample from the fidelity like any other
             parameter.
     """
@@ -489,16 +489,16 @@ def random_search(
     assert ignore_fidelity in (
         True,
         False,
-        "highest fidelity",
-    ), "ignore_fidelity should be either True, False or 'highest fidelity'"
+        "highest_fidelity",
+    ), "ignore_fidelity should be either True, False or 'highest_fidelity'"
     if not ignore_fidelity and pipeline_space.fidelity is not None:
         raise ValueError(
             "Fidelities are not supported for RandomSearch. Consider setting the"
             " fidelity to a constant value, or setting ignore_fidelity to True to sample"
-            " from it like any other parameter or 'highest fidelity' to always sample at"
+            " from it like any other parameter or 'highest_fidelity' to always sample at"
             f" max fidelity. Got fidelity: {pipeline_space.fidelities} "
         )
-    if ignore_fidelity in (True, "highest fidelity") and pipeline_space.fidelity is None:
+    if ignore_fidelity in (True, "highest_fidelity") and pipeline_space.fidelity is None:
         logger.warning(
             "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
             " search space. Consider setting ignore_fidelity to False."
@@ -508,7 +508,7 @@ def random_search(
             parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
         case False:
             parameters = {**pipeline_space.searchables}
-        case "highest fidelity":
+        case "highest_fidelity":
             parameters = {**pipeline_space.searchables}
 
     if use_priors and not any(
@@ -543,7 +543,7 @@ def random_search(
 def grid_search(
     pipeline_space: SearchSpace | PipelineSpace,
     *,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
     size_per_numerical_dimension: int = 5,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
@@ -552,7 +552,7 @@ def grid_search(
     Args:
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore fidelity when sampling.
-            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will make a grid over the fidelity like any other
             parameter.
         size_per_numerical_dimension: The number of points to use per numerical
@@ -584,7 +584,7 @@ def grid_search(
         raise ValueError(
             "Fidelities are not supported for GridSearch natively. Consider setting the"
             " fidelity to a constant value, or setting ignore_fidelity to True to sample"
-            " from it like any other parameter or 'highest fidelity' to always sample at"
+            " from it like any other parameter or 'highest_fidelity' to always sample at"
             f" max fidelity. Got fidelity: {pipeline_space.fidelities} "
         )
 
@@ -600,7 +600,7 @@ def grid_search(
 def neps_grid_search(
     pipeline_space: PipelineSpace,
     *,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
     size_per_numerical_dimension: int = 5,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
@@ -609,7 +609,7 @@ def neps_grid_search(
     Args:
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore fidelity when sampling.
-            Setting this to "highest fidelity" will always sample at max fidelity.
+            Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will make a grid over the fidelity like any other
             parameter.
         size_per_numerical_dimension: The number of points to use per numerical
@@ -633,7 +633,7 @@ def neps_grid_search(
         raise ValueError(
             "Fidelities are not supported for GridSearch natively. Consider setting the"
             " fidelity to a constant value, or setting ignore_fidelity to True to sample"
-            " from it like any other parameter or 'highest fidelity' to always sample at"
+            " from it like any other parameter or 'highest_fidelity' to always sample at"
             f" max fidelity. Got fidelity: {pipeline_space.fidelity_attrs} "
         )
 
@@ -841,7 +841,7 @@ def successive_halving(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity level.
+            and if so, should it be at the highest_fidelity level.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -914,7 +914,7 @@ def hyperband(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity level.
+            and if so, should it be at the highest_fidelity level.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -961,7 +961,7 @@ def neps_hyperband(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity level.
+            and if so, should it be at the highest_fidelity level.
     """
     return _neps_bracket_optimizer(
         pipeline_space=pipeline_space,
@@ -1056,7 +1056,7 @@ def asha(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity.
+            and if so, should it be at the highest_fidelity.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -1551,7 +1551,7 @@ def custom(
 def complex_random_search(
     pipeline_space: PipelineSpace,
     *,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSComplexRandomSearch:
     """A complex random search algorithm that samples configurations uniformly at random,
     but allows for more complex sampling strategies.
@@ -1560,7 +1560,7 @@ def complex_random_search(
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest_fidelity.
     Raises:
         ValueError: If the pipeline has fidelity attributes and `ignore_fidelity` is
             set to `False`. Complex random search does not support fidelities by default.
@@ -1569,7 +1569,7 @@ def complex_random_search(
     if pipeline_space.fidelity_attrs and ignore_fidelity is False:
         raise ValueError(
             "Complex Random Search does not support fidelities by default."
-            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "Consider using `ignore_fidelity=True` or `highest_fidelity`"
             "to always sample at max fidelity."
         )
     if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
@@ -1588,7 +1588,7 @@ def neps_random_search(
     pipeline_space: PipelineSpace,
     *,
     use_priors: bool = False,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -1599,7 +1599,7 @@ def neps_random_search(
             defined in the search space.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest_fidelity.
     Raises:
         ValueError: If the pipeline space has fidelity attributes and `ignore_fidelity` is
             set to `False`. Random search does not support fidelities by default.
@@ -1608,7 +1608,7 @@ def neps_random_search(
     if pipeline_space.fidelity_attrs and ignore_fidelity is False:
         raise ValueError(
             "Random Search does not support fidelities by default."
-            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "Consider using `ignore_fidelity=True` or `highest_fidelity`"
             "to always sample at max fidelity."
         )
     if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
@@ -1756,7 +1756,7 @@ def neps_priorband(
         eta: The eta parameter for the algorithm.
         sample_prior_first: Whether to sample the prior first.
             If set to `"highest_fidelity"`, the prior will be sampled at the
-            highest fidelity, otherwise at the lowest fidelity.
+            highest_fidelity, otherwise at the lowest fidelity.
         base: The type of bracket optimizer to use. One of:
             - "successive_halving"
             - "hyperband"
@@ -1790,7 +1790,7 @@ def neps_regularized_evolution(
     mutation_type: float | Literal["mutate_best", "crossover_top_2"] = 0.5,
     n_mutations: int | Literal["random", "half"] | None = "random",
     n_forgets: int | Literal["random", "half"] | None = None,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSRegularizedEvolution:
     return NePSRegularizedEvolution(
         pipeline=pipeline_space,
