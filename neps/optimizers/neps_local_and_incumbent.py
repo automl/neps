@@ -86,15 +86,18 @@ class NePSLocalPriorIncumbentSampler:
         return new_config
 
     def _mutate_inc(self, inc_config: dict[str, Any]) -> dict[str, Any]:
-        data = neps_space.NepsCompatConverter.from_neps_config(config=inc_config)
+        _environment_values = {}
+        _fidelity_attrs = self.space.fidelity_attrs
+        for fidelity_name, fidelity_obj in _fidelity_attrs.items():
+            _environment_values[fidelity_name] = fidelity_obj.upper
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
             domain_sampler=neps.space.neps_spaces.sampling.MutatateUsingCentersSampler(
-                predefined_samplings=data.predefined_samplings,
+                predefined_samplings=inc_config,
                 n_mutations=max(1, random.randint(1, int(len(inc_config) / 2))),
             ),
-            environment_values=data.environment_values,
+            environment_values=_environment_values,
         )
 
         config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
