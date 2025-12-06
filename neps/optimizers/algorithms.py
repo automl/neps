@@ -1637,6 +1637,7 @@ def _neps_bracket_optimizer(  # noqa: C901
     early_stopping_rate: int | None,
     inc_ratio: float | None = 0.9,
     local_prior: dict[str, Any] | None = None,
+    inc_takeover_mode: Literal[0, 1, 2, 3] | None = None,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
@@ -1726,9 +1727,11 @@ def _neps_bracket_optimizer(  # noqa: C901
             )
         case "local_and_incumbent":
             assert local_prior is not None
+            assert inc_takeover_mode is not None
             _sampler = NePSLocalPriorIncumbentSampler(
                 space=pipeline_space,
                 local_prior=local_prior,
+                inc_takeover_mode=inc_takeover_mode,
             )
         case "uniform":
             _sampler = RandomSampler({})
@@ -1817,6 +1820,7 @@ def neps_local_and_incumbent(
     pipeline_space: PipelineSpace,
     *,
     local_prior: dict[str, Any],
+    inc_takeover_mode: Literal[0, 1, 2, 3] = 0,
     eta: int = 3,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
 ) -> _NePSBracketOptimizer:
@@ -1846,6 +1850,7 @@ def neps_local_and_incumbent(
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
         inc_ratio=None,
         local_prior=local_prior,
+        inc_takeover_mode=inc_takeover_mode,
     )
 
 
