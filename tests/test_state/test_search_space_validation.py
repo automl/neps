@@ -162,7 +162,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
 
     # Try to load with wrong pipeline_space - should raise error
     with pytest.raises(NePSError, match="pipeline_space provided does not match"):
-        neps.load_config(config_path, pipeline_space=Space2())
+        neps.load_config(config_path=config_path, pipeline_space=Space2())
 
 
 def test_load_config_without_space_auto_loads(tmp_path: Path):
@@ -187,7 +187,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
     config_path = configs[0] / "config.yaml"
 
     # Load config without providing space - should auto-load from disk
-    config = neps.load_config(config_path)
+    config = neps.load_config(config_path=config_path)
 
     assert "x" in config, "Should have x parameter"
 
