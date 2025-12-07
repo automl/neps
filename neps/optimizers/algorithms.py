@@ -35,6 +35,7 @@ from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
 from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.neps_bracket_optimizer import _NePSBracketOptimizer
+from neps.optimizers.neps_local_and_incumbent import NePSLocalPriorIncumbentSampler
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
 from neps.optimizers.neps_random_search import (
     NePSComplexRandomSearch,
@@ -1626,15 +1627,17 @@ def neps_random_search(
     )
 
 
-def _neps_bracket_optimizer(
+def _neps_bracket_optimizer(  # noqa: C901
     pipeline_space: PipelineSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["priorband", "uniform", "prior"],
+    sampler: Literal["priorband", "uniform", "prior", "local_and_incumbent"],
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
-    inc_ratio: float = 0.9,
+    inc_ratio: float | None = 0.9,
+    local_prior: dict[str, Any] | None = None,
+    inc_takeover_mode: Literal[0, 1, 2, 3] | None = None,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
@@ -1709,9 +1712,10 @@ def _neps_bracket_optimizer(
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 
-    _sampler: NePSPriorBandSampler | DomainSampler
+    _sampler: NePSPriorBandSampler | DomainSampler | NePSLocalPriorIncumbentSampler
     match sampler:
         case "priorband":
+            assert inc_ratio is not None
             _sampler = NePSPriorBandSampler(
                 space=pipeline_space,
                 eta=eta,
@@ -1720,6 +1724,14 @@ def _neps_bracket_optimizer(
                 ),
                 fid_bounds=(fidelity_obj.lower, fidelity_obj.upper),
                 inc_ratio=inc_ratio,
+            )
+        case "local_and_incumbent":
+            assert local_prior is not None
+            assert inc_takeover_mode is not None
+            _sampler = NePSLocalPriorIncumbentSampler(
+                space=pipeline_space,
+                local_prior=local_prior,
+                inc_takeover_mode=inc_takeover_mode,
             )
         case "uniform":
             _sampler = RandomSampler({})
@@ -1804,6 +1816,44 @@ def neps_regularized_evolution(
     )
 
 
+def neps_local_and_incumbent(
+    pipeline_space: PipelineSpace,
+    *,
+    local_prior: dict[str, Any],
+    inc_takeover_mode: Literal[0, 1, 2, 3] = 0,
+    eta: int = 3,
+    base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
+) -> _NePSBracketOptimizer:
+    """Create a LocalAndIncumbent optimizer for the given pipeline space.
+
+    Args:
+        pipeline_space: The pipeline space to optimize over.
+        base: The type of bracket optimizer to use. One of:
+            - "successive_halving"
+            - "hyperband"
+            - "asha"
+            - "async_hb"
+    Returns:
+        An instance of _BracketOptimizer configured for LocalAndIncumbent sampling.
+    """
+    if pipeline_space.has_priors():
+        logger.warning(
+            "Warning: Priors are defined in the search space, but LocalAndIncumbent does"
+            " not use them."
+        )
+    return _neps_bracket_optimizer(
+        pipeline_space=pipeline_space,
+        bracket_type=base,
+        eta=eta,
+        sampler="local_and_incumbent",
+        sample_prior_first=False,
+        early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
+        inc_ratio=None,
+        local_prior=local_prior,
+        inc_takeover_mode=inc_takeover_mode,
+    )
+
+
 PredefinedOptimizers: Mapping[str, Any] = {
     f.__name__: f
     for f in (
@@ -1825,6 +1875,7 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_priorband,
         neps_hyperband,
         neps_regularized_evolution,
+        neps_local_and_incumbent,
     )
 }
 
@@ -1847,4 +1898,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_priorband",
     "neps_hyperband",
     "neps_regularized_evolution",
+    "neps_local_and_incumbent",
 ]

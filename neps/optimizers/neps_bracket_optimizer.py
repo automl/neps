@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+from neps.optimizers.neps_local_and_incumbent import NePSLocalPriorIncumbentSampler
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.brackets import PromoteAction, SampleAction
@@ -65,7 +66,7 @@ class _NePSBracketOptimizer:
     create_brackets: Callable[[pd.DataFrame], Sequence[Bracket] | Bracket]
 
     """The sampler used to generate new trials."""
-    sampler: NePSPriorBandSampler | DomainSampler
+    sampler: NePSPriorBandSampler | DomainSampler | NePSLocalPriorIncumbentSampler
 
     """The name of the fidelity in the space."""
     fid_name: str
@@ -145,6 +146,8 @@ class _NePSBracketOptimizer:
             case SampleAction(rung=rung):
                 if isinstance(self.sampler, NePSPriorBandSampler):
                     config = self.sampler.sample_config(table, rung=rung)
+                elif isinstance(self.sampler, NePSLocalPriorIncumbentSampler):
+                    config = self.sampler.sample_config(table)
                 elif isinstance(self.sampler, DomainSampler):
                     environment_values = {}
                     fidelity_attrs = self.space.fidelity_attrs
