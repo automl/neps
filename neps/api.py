@@ -789,16 +789,18 @@ def create_config(  # noqa: C901
 
 
 def load_config(  # noqa: C901, PLR0912, PLR0915
-    config_path: Path | str,
     pipeline_space: PipelineSpace | SearchSpace | None = None,
+    config: dict[str, Any] | None = None,
+    config_path: Path | str | None = None,
     config_id: str | None = None,
 ) -> dict[str, Any]:
     """Load a configuration from a neps config file.
 
     Args:
-        config_path: Path to the neps config file.
         pipeline_space: The pipeline space used to generate the configuration.
             If None, will attempt to load from the NePSState directory.
+        config: Optional configuration dictionary to return directly.
+        config_path: Path to the neps config file.
         config_id: Optional config id to load, when only giving results folder.
 
     Returns:
@@ -810,112 +812,126 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
     from neps.space.neps_spaces.neps_space import NepsCompatConverter
     from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
 
-    # Try to load pipeline_space from NePSState if not provided
-    state = None  # Track state for later use in config loading
+    if config is None:
+        if config_path is None:
+            raise ValueError("Either config or config_path must be provided.")
+        # Try to load pipeline_space from NePSState if not provided
+        state = None  # Track state for later use in config loading
 
-    if pipeline_space is None:
-        try:
-            # Extract the root directory from config_path
-            str_path_temp = str(config_path)
-            if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
-                root_dir = Path(
-                    str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
-                )
-            # If no /configs/ in path, assume it's either:
-            # 1. The root directory itself
-            # 2. A direct config file path (ends with .yaml/.yml)
-            elif str_path_temp.endswith((".yaml", ".yml")):
-                # It's a direct config file path, go up two levels
-                root_dir = Path(str_path_temp).parent.parent
-            else:
-                # It's the root directory itself
-                root_dir = Path(str_path_temp)
-
-            state = NePSState.create_or_load(path=root_dir, load_only=True)
-            pipeline_space = state.lock_and_get_search_space()
-
-            if pipeline_space is None:
-                raise ValueError(
-                    "Could not load pipeline_space from disk. "
-                    "Please provide pipeline_space argument or ensure "
-                    "the NePSState was created with search_space saved."
-                )
-        except Exception as e:
-            raise ValueError(
-                f"pipeline_space not provided and could not be loaded from disk: {e}"
-            ) from e
-    else:
-        # User provided a pipeline_space - validate it matches the one on disk
-        from neps.exceptions import NePSError
-
-        try:
-            str_path_temp = str(config_path)
-            if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
-                root_dir = Path(
-                    str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
-                )
-            # If no /configs/ in path, assume it's either:
-            # 1. The root directory itself
-            # 2. A direct config file path (ends with .yaml/.yml)
-            elif str_path_temp.endswith((".yaml", ".yml")):
-                # It's a direct config file path, go up two levels
-                root_dir = Path(str_path_temp).parent.parent
-            else:
-                # It's the root directory itself
-                root_dir = Path(str_path_temp)
-
-            state = NePSState.create_or_load(path=root_dir, load_only=True)
-            disk_space = state.lock_and_get_search_space()
-
-            if disk_space is not None:
-                # Validate that provided space matches disk space
-                import pickle
-
-                if pickle.dumps(disk_space) != pickle.dumps(pipeline_space):
-                    raise NePSError(
-                        "The pipeline_space provided does not match the one saved on"
-                        " disk.\\nPipeline space location:"
-                        f" {root_dir / 'pipeline_space.pkl'}\\nPlease either:\\n  1."
-                        " Don't provide pipeline_space (it will be loaded"
-                        " automatically), or\\n  2. Provide the same pipeline_space that"
-                        " was used in neps.run()"
+        if pipeline_space is None:
+            try:
+                # Extract the root directory from config_path
+                str_path_temp = str(config_path)
+                if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                    root_dir = Path(
+                        str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
                     )
-        except NePSError:
-            raise
-        except Exception:  # noqa: S110, BLE001
-            # If we can't load/validate, just continue with provided space
-            pass
+                # If no /configs/ in path, assume it's either:
+                # 1. The root directory itself
+                # 2. A direct config file path (ends with .yaml/.yml)
+                elif str_path_temp.endswith((".yaml", ".yml")):
+                    # It's a direct config file path, go up two levels
+                    root_dir = Path(str_path_temp).parent.parent
+                else:
+                    # It's the root directory itself
+                    root_dir = Path(str_path_temp)
 
-    # Determine config_id from path
-    str_path = str(config_path)
-    trial_id = None
+                state = NePSState.create_or_load(path=root_dir, load_only=True)
+                pipeline_space = state.lock_and_get_search_space()
 
-    if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
-        if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
-            # Extract trial_id from path like "configs/config_1"
-            # or "configs/config_1_rung_0"
-            trial_id = str_path.removesuffix("/").split("/")[-1]
-        else:
-            if config_id is None:
+                if pipeline_space is None:
+                    raise ValueError(
+                        "Could not load pipeline_space from disk. "
+                        "Please provide pipeline_space argument or ensure "
+                        "the NePSState was created with search_space saved."
+                    )
+            except Exception as e:
                 raise ValueError(
-                    "When providing a results folder, you must also provide a config_id."
-                )
-            trial_id = config_id
-    else:
-        # Extract trial_id from yaml path like "configs/config_1/config.yaml"
-        path_parts = str_path.replace("\\", "/").split("/")
-        for i, part in enumerate(path_parts):
-            if part == "configs" and i + 1 < len(path_parts):
-                trial_id = path_parts[i + 1]
-                break
+                    f"pipeline_space not provided and could not be loaded from disk: {e}"
+                ) from e
+        else:
+            # User provided a pipeline_space - validate it matches the one on disk
+            from neps.exceptions import NePSError
 
-    # Use the locked method from NePSState to safely read the trial
-    if trial_id is not None and state is not None:
-        try:
-            trial = state.lock_and_get_trial_by_id(trial_id)
-            config_dict = dict(trial.config)  # Convert Mapping to dict
-        except Exception:  # noqa: BLE001
-            # Fallback to direct file read if trial can't be loaded
+            try:
+                str_path_temp = str(config_path)
+                if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                    root_dir = Path(
+                        str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                    )
+                # If no /configs/ in path, assume it's either:
+                # 1. The root directory itself
+                # 2. A direct config file path (ends with .yaml/.yml)
+                elif str_path_temp.endswith((".yaml", ".yml")):
+                    # It's a direct config file path, go up two levels
+                    root_dir = Path(str_path_temp).parent.parent
+                else:
+                    # It's the root directory itself
+                    root_dir = Path(str_path_temp)
+
+                state = NePSState.create_or_load(path=root_dir, load_only=True)
+                disk_space = state.lock_and_get_search_space()
+
+                if disk_space is not None:
+                    # Validate that provided space matches disk space
+                    import pickle
+
+                    if pickle.dumps(disk_space) != pickle.dumps(pipeline_space):
+                        raise NePSError(
+                            "The pipeline_space provided does not match the one saved on"
+                            " disk.\\nPipeline space location:"
+                            f" {root_dir / 'pipeline_space.pkl'}\\nPlease either:\\n  1."
+                            " Don't provide pipeline_space (it will be loaded"
+                            " automatically), or\\n  2. Provide the same pipeline_space"
+                            " that was used in neps.run()"
+                        )
+            except NePSError:
+                raise
+            except Exception:  # noqa: S110, BLE001
+                # If we can't load/validate, just continue with provided space
+                pass
+
+        # Determine config_id from path
+        str_path = str(config_path)
+        trial_id = None
+
+        if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
+            if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
+                # Extract trial_id from path like "configs/config_1"
+                # or "configs/config_1_rung_0"
+                trial_id = str_path.removesuffix("/").split("/")[-1]
+            else:
+                if config_id is None:
+                    raise ValueError(
+                        "When providing a results folder, you must also provide a"
+                        " config_id."
+                    )
+                trial_id = config_id
+        else:
+            # Extract trial_id from yaml path like "configs/config_1/config.yaml"
+            path_parts = str_path.replace("\\", "/").split("/")
+            for i, part in enumerate(path_parts):
+                if part == "configs" and i + 1 < len(path_parts):
+                    trial_id = path_parts[i + 1]
+                    break
+
+        # Use the locked method from NePSState to safely read the trial
+        if trial_id is not None and state is not None:
+            try:
+                trial = state.lock_and_get_trial_by_id(trial_id)
+                config_dict = dict(trial.config)  # Convert Mapping to dict
+            except Exception:  # noqa: BLE001
+                # Fallback to direct file read if trial can't be loaded
+                str_path_fallback = str(config_path)
+                if not str_path_fallback.endswith(
+                    ".yaml"
+                ) and not str_path_fallback.endswith(".yml"):
+                    str_path_fallback += "/config.yaml"
+                config_path = Path(str_path_fallback)
+                with config_path.open("r") as f:
+                    config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+        else:
+            # Fallback to direct file read
             str_path_fallback = str(config_path)
             if not str_path_fallback.endswith(".yaml") and not str_path_fallback.endswith(
                 ".yml"
@@ -924,16 +940,18 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
             config_path = Path(str_path_fallback)
             with config_path.open("r") as f:
                 config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+
     else:
-        # Fallback to direct file read
-        str_path_fallback = str(config_path)
-        if not str_path_fallback.endswith(".yaml") and not str_path_fallback.endswith(
-            ".yml"
-        ):
-            str_path_fallback += "/config.yaml"
-        config_path = Path(str_path_fallback)
-        with config_path.open("r") as f:
-            config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+        config_dict = config
+
+    if (
+        any(NepsCompatConverter._SAMPLING_PREFIX in key for key in config_dict)
+        and pipeline_space is None
+    ):
+        raise ValueError(
+            "The provided NePS-space config requires the correct pipeline_space to be "
+            "resolved. Please provide a pipeline_space argument to load_config."
+        )
 
     # Handle different pipeline space types
     if not isinstance(pipeline_space, PipelineSpace):
