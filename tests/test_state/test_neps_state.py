@@ -233,6 +233,9 @@ def test_sample_trial(
 ) -> None:
     optimizer, key, search_space = optimizer_and_key_and_search_space
 
+    if key in REQUIRES_ADDTIONAL_SETUP:
+        pytest.xfail(f"{key} requires additional setup not implemented in this test")
+
     assert neps_state.lock_and_read_trials() == {}
     assert neps_state.lock_and_get_next_pending_trial() is None
     assert neps_state.lock_and_get_next_pending_trial(n=10) == []
