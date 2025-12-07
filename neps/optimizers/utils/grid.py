@@ -22,7 +22,7 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
     space: SearchSpace | PipelineSpace,
     *,
     size_per_numerical_hp: int = 10,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
 
@@ -52,7 +52,7 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                 case HPOInteger() | HPOFloat():
                     if hp.is_fidelity:
                         match ignore_fidelity:
-                            case "highest fidelity":
+                            case "highest_fidelity":
                                 param_ranges[name] = [hp.upper]
                                 continue
                             case True:
@@ -88,7 +88,7 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                         "Grid search only supports categorical choices as tuples."
                     )
             elif isinstance(hp, Fidelity):
-                if ignore_fidelity == "highest fidelity":  # type: ignore[unreachable]
+                if ignore_fidelity == "highest_fidelity":  # type: ignore[unreachable]
                     fid_ranges[name] = [hp.upper]
                     continue
                 if ignore_fidelity is True:

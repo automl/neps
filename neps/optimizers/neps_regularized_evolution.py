@@ -52,7 +52,7 @@ class NePSRegularizedEvolution:
         n_forgets: The number of parameters to forget. A fixed integer, "random" for
             a random number between 1 and half the parameters, or "half" to forget
             half the parameters.
-        ignore_fidelity: Whether to ignore fidelity when sampling. If set to "highest
+        ignore_fidelity: Whether to ignore_fidelity when sampling. If set to "highest
             fidelity", the highest fidelity values will be used. If True, fidelity
             values will be sampled randomly.
     """
@@ -85,7 +85,7 @@ class NePSRegularizedEvolution:
             n_forgets: The number of parameters to forget. A fixed integer, "random" for
                 a random number between 1 and half the parameters, or "half" to forget
                 half the parameters.
-            ignore_fidelity: Whether to ignore fidelity when sampling. If set to "highest
+            ignore_fidelity: Whether to ignore_fidelity when sampling. If set to "highest
                 fidelity", the highest fidelity values will be used. If True, fidelity
                 values will be sampled randomly.
 

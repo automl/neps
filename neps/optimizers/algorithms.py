@@ -101,7 +101,7 @@ def _bo(  # noqa: C901, PLR0912
                 If using `cost`, cost must be provided in the reports of the trials.
 
         sample_prior_first: Whether to sample the default configuration first.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
             In this case, the max fidelity is always used.
         device: Device to use for the optimization.
         reference_point: The reference point to use for multi-objective optimization.
@@ -474,7 +474,7 @@ def random_search(
     Args:
         pipeline_space: The search space to sample from.
         use_priors: Whether to use priors when sampling.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
             Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will randomly sample from the fidelity like any other
             parameter.
@@ -552,7 +552,7 @@ def grid_search(
 
     Args:
         pipeline_space: The search space to sample from.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
             Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will make a grid over the fidelity like any other
             parameter.
@@ -609,7 +609,7 @@ def neps_grid_search(
 
     Args:
         pipeline_space: The search space to sample from.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
             Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will make a grid over the fidelity like any other
             parameter.
