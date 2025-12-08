@@ -66,7 +66,7 @@ class NePSRegularizedEvolution:
         mutation_type: float | Literal["mutate_best", "crossover_top_2"] = 0.5,
         n_mutations: int | Literal["random", "half"] | None = "random",
         n_forgets: int | Literal["random", "half"] | None = None,
-        ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
     ):
         """Initialize the RegularizedEvolution optimizer with a pipeline.
 
@@ -98,7 +98,7 @@ class NePSRegularizedEvolution:
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
             # If the user specifically asked for the highest fidelity, use that.
-            if ignore_fidelity == "highest fidelity":
+            if ignore_fidelity == "highest_fidelity":
                 self._environment_values[fidelity_name] = fidelity_obj.upper
             # If the user asked to ignore fidelities, sample a value randomly from the
             # domain.

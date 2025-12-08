@@ -46,7 +46,7 @@ class NePSRandomSearch:
         self,
         pipeline: PipelineSpace,
         use_priors: bool = False,  # noqa: FBT001, FBT002
-        ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
     ):
         """Initialize the RandomSearch optimizer with a pipeline.
 
@@ -61,7 +61,7 @@ class NePSRandomSearch:
         self._environment_values = {}
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            if ignore_fidelity == "highest fidelity":
+            if ignore_fidelity == "highest_fidelity":
                 self._environment_values[fidelity_name] = fidelity_obj.upper
             elif not ignore_fidelity:
                 raise ValueError(
@@ -182,7 +182,7 @@ class NePSComplexRandomSearch:
     def __init__(
         self,
         pipeline: PipelineSpace,
-        ignore_fidelity: bool | Literal["highest fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
     ):
         """Initialize the ComplexRandomSearch optimizer with a pipeline.
 
@@ -197,13 +197,13 @@ class NePSComplexRandomSearch:
         self._environment_values = {}
         fidelity_attrs = self._pipeline.fidelity_attrs
         for fidelity_name, fidelity_obj in fidelity_attrs.items():
-            if ignore_fidelity == "highest fidelity":
+            if ignore_fidelity == "highest_fidelity":
                 self._environment_values[fidelity_name] = fidelity_obj.upper
             elif not ignore_fidelity:
                 raise ValueError(
                     "ComplexRandomSearch does not support fidelities by default. Consider"
                     " using a different optimizer or setting `ignore_fidelity=True` or"
-                    " `highest fidelity`."
+                    " `highest_fidelity`."
                 )
             # Sample randomly from the fidelity bounds.
             elif isinstance(fidelity_obj.domain, Integer):

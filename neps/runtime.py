@@ -382,11 +382,20 @@ class DefaultWorker:
 
         return usage
 
-    def _check_global_stopping_criterion(
+    def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
+        log_status: bool = False,  # noqa: FBT001, FBT002
     ) -> tuple[str | Literal[False], ResourceUsage]:
-        """Evaluates if any global stopping criterion has been met."""
+        """Evaluates if any global stopping criterion has been met.
+
+        Args:
+            trials: The trials to evaluate the stopping criterion on.
+            log_status: Whether to log the current status of the budget.
+
+        Returns:
+            A tuple of (stopping message or False, global resource usage).
+        """
         worker_resource_usage = self._calculate_total_resource_usage(
             trials,
             subset_worker_id=self.worker_id,
@@ -399,6 +408,60 @@ class DefaultWorker:
             include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
         )
 
+        if log_status:
+            # Log current budget status
+            budget_info_parts = []
+            if self.settings.evaluations_to_spend is not None:
+                eval_percentage = int(
+                    (
+                        worker_resource_usage.evaluations
+                        / self.settings.evaluations_to_spend
+                    )
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Evaluations:"
+                    f" {worker_resource_usage.evaluations}/"
+                    f"{self.settings.evaluations_to_spend}"
+                    f" ({eval_percentage}%)"
+                )
+            if self.settings.fidelities_to_spend is not None:
+                fidelity_percentage = int(
+                    (worker_resource_usage.fidelities / self.settings.fidelities_to_spend)
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Fidelities:"
+                    f" {worker_resource_usage.fidelities}/"
+                    f"{self.settings.fidelities_to_spend}"
+                    f" ({fidelity_percentage}%)"
+                )
+            if self.settings.cost_to_spend is not None:
+                cost_percentage = int(
+                    (worker_resource_usage.cost / self.settings.cost_to_spend) * 100
+                )
+                budget_info_parts.append(
+                    "Cost:"
+                    f" {worker_resource_usage.cost}/"
+                    f"{self.settings.cost_to_spend} ({cost_percentage}%)"
+                )
+            if self.settings.max_evaluation_time_total_seconds is not None:
+                time_percentage = int(
+                    (
+                        worker_resource_usage.time
+                        / self.settings.max_evaluation_time_total_seconds
+                    )
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Time:"
+                    f" {worker_resource_usage.time}/"
+                    f"{self.settings.max_evaluation_time_total_seconds}s"
+                    f" ({time_percentage}%)"
+                )
+
+            if budget_info_parts:
+                logger.info("Budget status - %s", " | ".join(budget_info_parts))
         return_string: str | Literal[False] = False
 
         if (
@@ -504,7 +567,8 @@ class DefaultWorker:
 
                 if self._requires_global_stopping_criterion:
                     should_stop, stop_criteria = self._check_global_stopping_criterion(
-                        trials
+                        trials,
+                        log_status=True,
                     )
                     if should_stop is not False:
                         logger.info(should_stop)
