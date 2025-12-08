@@ -1627,7 +1627,7 @@ def neps_random_search(
     )
 
 
-def _neps_bracket_optimizer(  # noqa: C901
+def _neps_bracket_optimizer(  # noqa: C901, PLR0915
     pipeline_space: PipelineSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
@@ -1671,6 +1671,16 @@ def _neps_bracket_optimizer(  # noqa: C901
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
             )
+            logging.info(
+                "Successive Halving Rung to"
+                f" Fidelity:\n{
+                    '\n'.join(f'{k}: {v}' for k, v in rung_to_fidelity.items())
+                }"
+            )
+            logging.info(
+                "Successive Halving Rung"
+                f" Sizes:\n{'\n'.join(f'{k}: {v}' for k, v in rung_sizes.items())}"
+            )
 
         case "hyperband":
             assert early_stopping_rate is None
@@ -1681,6 +1691,28 @@ def _neps_bracket_optimizer(  # noqa: C901
             create_brackets = partial(
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
+            )
+            logging.info(
+                "Successive Halving Rung to"
+                f" Fidelity:\n{
+                    '\n'.join(
+                        f'Rung {k}: Fidelity >= {v}' for k, v in rung_to_fidelity.items()
+                    )
+                }"
+            )
+            logging.info(
+                "Hyperband Bracket"
+                f" Layouts:\n{
+                    '\n\n'.join(
+                        [
+                            f'Bracket {i}\n'
+                            + '\n'.join(
+                                [f'At Rung {k}: {v} configs' for k, v in bracket.items()]
+                            )
+                            for i, bracket in enumerate(bracket_layouts)
+                        ]
+                    )
+                }"
             )
 
         case "asha":
@@ -1695,6 +1727,16 @@ def _neps_bracket_optimizer(  # noqa: C901
                 rungs=list(rung_to_fidelity),
                 eta=eta,
             )
+            logging.info(
+                "ASHA Rung to"
+                f" Fidelity:\n{
+                    '\n'.join(f'{k}: {v}' for k, v in rung_to_fidelity.items())
+                }"
+            )
+            logging.info(
+                "ASHA Rung"
+                f" Sizes:\n{'\n'.join(f'{k}: {v}' for k, v in _rung_sizes.items())}"
+            )
 
         case "async_hb":
             assert early_stopping_rate is None
@@ -1708,6 +1750,26 @@ def _neps_bracket_optimizer(  # noqa: C901
                 brackets.AsyncHyperband.create,
                 bracket_rungs=bracket_rungs,
                 eta=eta,
+            )
+            logging.info(
+                "Async HB Rung to"
+                f" Fidelity:\n{
+                    '\n'.join(
+                        f'Rung {k}: Fidelity >= {v}' for k, v in rung_to_fidelity.items()
+                    )
+                }"
+            )
+            logging.info(
+                "Async Hyperband Bracket"
+                f" Rungs:\n{
+                    '\n\n'.join(
+                        [
+                            f'Bracket {i}\n'
+                            + '\n'.join([f'At Rung {k}' for k in bracket])
+                            for i, bracket in enumerate(bracket_rungs)
+                        ]
+                    )
+                }"
             )
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
