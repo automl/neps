@@ -241,12 +241,6 @@ class _NePSBracketOptimizer:
 
         for config, result in external_evaluations:
             fid_value = config[self.fid_name]
-            if fid_value not in rung_to_fid.values():
-                logger.warning(
-                    f"Fidelity value {fid_value} not in known rung fidelities "
-                    f"{list(rung_to_fid.values())}. Skipping config: {config}"
-                )
-                continue
             # create a unique key for the config without the fidelity
             config_key = get_trial_config_unique_key(
                 config=config, fid_name=self.fid_name
@@ -272,7 +266,7 @@ class _NePSBracketOptimizer:
             config_id = config_to_id[config_key]
 
             # Find the rung corresponding to the fidelity value in config
-            rung = next((r for r, f in rung_to_fid.items() if f == fid_value), None)
+            rung = max((r for r, f in rung_to_fid.items() if f <= fid_value))
             trial_id = f"{config_id}_rung_{rung}"
             imported_configs.append(
                 ImportedConfig(

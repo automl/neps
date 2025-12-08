@@ -538,53 +538,43 @@ class Hyperband:
             HyperbandBrackets which have each subselected the table with the
             corresponding rung sizes.
         """
-        all_ids = table.index.get_level_values("id").unique()
+        # Group configs by their starting rung (minimum rung where they first appear)
+        # This ensures warmstarts at different fidelities are properly distributed
+        configs_by_starting_rung: dict[int, list[int]] = {}
+        for config_id in table.index.get_level_values("id").unique():
+            config_rungs = table.loc[config_id].index.get_level_values("rung")
+            starting_rung = config_rungs.min()
+            if starting_rung not in configs_by_starting_rung:
+                configs_by_starting_rung[starting_rung] = []
+            configs_by_starting_rung[starting_rung].append(config_id)
 
-        # Split the ids into N hyperband brackets of size K.
-        # K is sum of number of configurations in the lowest rung of each SH bracket
-        #
-        # For example:
-        # > bracket_layouts = [
-        # >   {0: 81, 1: 27, 2: 9, 3: 3, 4: 1},
-        # >   {1: 27, 2: 9, 3: 3, 4: 1},
-        # >   {2: 9, 3: 3, 4: 1},
-        # >   ...
-        # > ]
-        #
-        # Corresponds to:
-        # bracket1 - [rung_0: 81, rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
-        # bracket2 - [rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
-        # bracket3 - [rung_2: 9, rung_3: 3, rung_4: 1]
-        # ...
-        # > K = 81 + 27 + 9 + ...
-        #
-        bottom_rung_sizes = [sh[min(sh.keys())] for sh in bracket_layouts]
-        K = sum(bottom_rung_sizes)
-        N = max(len(all_ids) // K + 1, 1)
-
-        hb_id_slices: list[Index] = [all_ids[i * K : (i + 1) * K] for i in range(N)]
-
-        # Used if there is nothing for one of the rungs
         empty_slice = table.loc[[]]
-
-        # Now for each of our HB brackets, we need to split them into the SH brackets
         hb_brackets: list[list[Sync]] = []
 
-        offsets = np.cumsum([0, *bottom_rung_sizes])
-        for hb_ids in hb_id_slices:
-            # Split the ids into each of the respective brackets, e.g. [81, 27, 9, ...]
-            ids_for_each_bracket = [hb_ids[s:e] for s, e in pairwise(offsets)]
-
-            # Select the data for each of the configs allocated to these sh_brackets
-            data_for_each_bracket = [table.loc[_ids] for _ids in ids_for_each_bracket]
-
-            # Create the bracket
+        # Assign configs to brackets based on which rung they start at
+        # Keep creating Hyperband cycles until all configs are allocated
+        while any(configs_by_starting_rung.values()):
             sh_brackets: list[Sync] = []
-            for data_for_bracket, layout in zip(
-                data_for_each_bracket,
-                bracket_layouts,
-                strict=True,
-            ):
+
+            for layout in bracket_layouts:
+                bottom_rung = min(layout.keys())
+                capacity_at_bottom = layout[bottom_rung]
+
+                # Take configs that start at this bracket's bottom rung
+                available_ids = configs_by_starting_rung.get(bottom_rung, [])
+                bracket_ids = available_ids[:capacity_at_bottom]
+
+                # Remove assigned configs from pool
+                if bottom_rung in configs_by_starting_rung:
+                    configs_by_starting_rung[bottom_rung] = available_ids[
+                        capacity_at_bottom:
+                    ]
+                    if not configs_by_starting_rung[bottom_rung]:
+                        del configs_by_starting_rung[bottom_rung]
+
+                # Get data for assigned configs across all their rungs
+                data_for_bracket = table.loc[bracket_ids] if bracket_ids else empty_slice
+
                 rung_data = dict(iter(data_for_bracket.groupby(level="rung", sort=False)))
                 bracket = Sync(
                     rungs=[
@@ -601,6 +591,24 @@ class Hyperband:
                 sh_brackets.append(bracket)
 
             hb_brackets.append(sh_brackets)
+
+        # Always add one empty Hyperband cycle for new samples
+        sh_brackets = []
+        for layout in bracket_layouts:
+            bracket = Sync(
+                rungs=[
+                    Rung(
+                        value=rung,
+                        capacity=capacity,
+                        table=empty_slice,
+                    )
+                    for rung, capacity in layout.items()
+                ],
+                is_multi_objective=is_multi_objective,
+                mo_selector=mo_selector,
+            )
+            sh_brackets.append(bracket)
+        hb_brackets.append(sh_brackets)
 
         return [cls(sh_brackets=sh_brackets) for sh_brackets in hb_brackets]
 
