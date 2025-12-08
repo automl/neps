@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _normalize_imported_config(  # noqa: C901, PLR0912
+def _normalize_imported_config(
     space: SearchSpace | PipelineSpace, config: Mapping[str, float]
 ) -> dict:
     """Completes a configuration by adding default values for missing fidelities.
@@ -39,38 +39,15 @@ def _normalize_imported_config(  # noqa: C901, PLR0912
         # Import here to avoid circular import
         from neps.space.neps_spaces.neps_space import (
             NepsCompatConverter,
-            construct_sampling_path,
         )
-        from neps.space.neps_spaces.parameters import Domain
-
-        all_param_keys = set()
-
-        # Add SAMPLING__ prefixed keys for each parameter
-        for param_name, param_obj in space.get_attrs().items():
-            # Construct the sampling path for this parameter
-            if isinstance(param_obj, Domain):
-                sampling_path = construct_sampling_path(
-                    path_parts=["Resolvable", param_name],
-                    domain_obj=param_obj,
-                )
-                all_param_keys.add(
-                    f"{NepsCompatConverter._SAMPLING_PREFIX}{sampling_path}"
-                )
-
-        # Add ENVIRONMENT__ prefixed keys for fidelities
-        for fidelity_name in space.fidelity_attrs:
-            all_param_keys.add(
-                f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
-            )
 
         # copy to avoid modifying the original config
         normalized_conf = dict(config)
 
         for key, fid_param in space.fidelity_attrs.items():
-            if key not in normalized_conf:
-                normalized_conf[NepsCompatConverter._ENVIRONMENT_PREFIX + key] = (
-                    fid_param.upper
-                )
+            fid_key = NepsCompatConverter._ENVIRONMENT_PREFIX + key
+            if fid_key not in normalized_conf:
+                normalized_conf[fid_key] = fid_param.upper
         # For PipelineSpace, filter out keys that match the expected patterns
         # Import here to avoid circular import (needed for prefix constants)
         from neps.space.neps_spaces.neps_space import NepsCompatConverter

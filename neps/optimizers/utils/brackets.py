@@ -10,7 +10,6 @@ from more_itertools import all_unique, pairwise
 
 if TYPE_CHECKING:
     import pandas as pd
-    from pandas import Index
 
 
 logger = logging.getLogger(__name__)
@@ -337,41 +336,39 @@ class Sync:
             Brackets which have each subselected the table with the corresponding rung
             sizes.
         """
-        # Split the trials by their unique_id, taking batches of K at a time, which will
-        # gives us N = len(unique_is) / K brackets in total.
-        #
-        # Here, unique_id referes to the `1` in config_1_0 i.e. id = 1, rung = 0
-        #
-        #      1  2  3  4  5  6  7  8  9   10 11 12 13 14 15 16 17 18   ...
-        #     |           bracket1       |       bracket 2            | ... |
+        # Group configs by their starting rung (minimum rung where they first appear).
+        # This ensures each bracket's bottom rung fills with configs that actually
+        # evaluate there, which is critical for proper successive halving.
+        bottom_rung = min(rung_sizes)
+        bottom_capacity = rung_sizes[bottom_rung]
 
-        # K is the number of configurations in the lowest rung, which is how many unique
-        # ids are needed to fill a single bracket.
-        K = rung_sizes[min(rung_sizes)]
+        # Group all configs by their starting rung
+        configs_by_starting_rung: dict[int, list[int]] = {}
+        for config_id in table.index.get_level_values("id").unique():
+            config_rungs = table.loc[config_id].index.get_level_values("rung")
+            starting_rung = config_rungs.min()
+            if starting_rung not in configs_by_starting_rung:
+                configs_by_starting_rung[starting_rung] = []
+            configs_by_starting_rung[starting_rung].append(config_id)
 
-        # N is the number of brackets we need to create to accomodate all the unique ids.
-        # First we need all of the unique ids.
-        uniq_ids = table.index.get_level_values("id").unique()
+        # Create brackets by taking configs that start at the bottom rung
+        brackets_data = []
+        while configs_by_starting_rung.get(bottom_rung, []):
+            # Take up to bottom_capacity configs that start at bottom rung
+            available_ids = configs_by_starting_rung[bottom_rung]
+            bracket_ids = available_ids[:bottom_capacity]
+            configs_by_starting_rung[bottom_rung] = available_ids[bottom_capacity:]
 
-        # The formula (len(uniq_ids) + K) // K is used instead of
-        # len(uniq_ids) // K. reason: make to ensure that even if the number of
-        # unique IDs is less than K, at least one bracket is created
-        N = (len(uniq_ids) + K) // K
+            if not configs_by_starting_rung[bottom_rung]:
+                del configs_by_starting_rung[bottom_rung]
 
-        # Now we take the unique ids and split them into batches of size K
-        bracket_id_slices: list[Index] = [uniq_ids[i * K : (i + 1) * K] for i in range(N)]
+            # Create data for this bracket
+            bracket_table = table.loc[bracket_ids]
+            bracket_data = dict(iter(bracket_table.groupby(level="rung", sort=False)))
+            brackets_data.append(bracket_data)
 
-        # And now select the data for each of the unique_ids in the bracket
-        bracket_datas = [
-            table.loc[bracket_unique_ids] for bracket_unique_ids in bracket_id_slices
-        ]
-
-        # This will give us a list of dictionaries, where each element `n` of the
-        # list is on of the `N` brackets, and the dictionary at element `n` maps
-        # from a rung, to the slice of the data for that rung.
-        all_N_bracket_datas = [
-            dict(iter(d.groupby(level="rung", sort=False))) for d in bracket_datas
-        ]
+        # Always add one empty bracket for new samples
+        brackets_data.append({})
 
         # Used if there is nothing for one of the rungs
         empty_slice = table.loc[[]]
@@ -385,7 +382,7 @@ class Sync:
                 is_multi_objective=is_multi_objective,
                 mo_selector=mo_selector,
             )
-            for bracket_data in all_N_bracket_datas
+            for bracket_data in brackets_data
         ]
 
 
@@ -538,53 +535,43 @@ class Hyperband:
             HyperbandBrackets which have each subselected the table with the
             corresponding rung sizes.
         """
-        all_ids = table.index.get_level_values("id").unique()
+        # Group configs by their starting rung (minimum rung where they first appear)
+        # This ensures warmstarts at different fidelities are properly distributed
+        configs_by_starting_rung: dict[int, list[int]] = {}
+        for config_id in table.index.get_level_values("id").unique():
+            config_rungs = table.loc[config_id].index.get_level_values("rung")
+            starting_rung = config_rungs.min()
+            if starting_rung not in configs_by_starting_rung:
+                configs_by_starting_rung[starting_rung] = []
+            configs_by_starting_rung[starting_rung].append(config_id)
 
-        # Split the ids into N hyperband brackets of size K.
-        # K is sum of number of configurations in the lowest rung of each SH bracket
-        #
-        # For example:
-        # > bracket_layouts = [
-        # >   {0: 81, 1: 27, 2: 9, 3: 3, 4: 1},
-        # >   {1: 27, 2: 9, 3: 3, 4: 1},
-        # >   {2: 9, 3: 3, 4: 1},
-        # >   ...
-        # > ]
-        #
-        # Corresponds to:
-        # bracket1 - [rung_0: 81, rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
-        # bracket2 - [rung_1: 27, rung_2: 9, rung_3: 3, rung_4: 1]
-        # bracket3 - [rung_2: 9, rung_3: 3, rung_4: 1]
-        # ...
-        # > K = 81 + 27 + 9 + ...
-        #
-        bottom_rung_sizes = [sh[min(sh.keys())] for sh in bracket_layouts]
-        K = sum(bottom_rung_sizes)
-        N = max(len(all_ids) // K + 1, 1)
-
-        hb_id_slices: list[Index] = [all_ids[i * K : (i + 1) * K] for i in range(N)]
-
-        # Used if there is nothing for one of the rungs
         empty_slice = table.loc[[]]
-
-        # Now for each of our HB brackets, we need to split them into the SH brackets
         hb_brackets: list[list[Sync]] = []
 
-        offsets = np.cumsum([0, *bottom_rung_sizes])
-        for hb_ids in hb_id_slices:
-            # Split the ids into each of the respective brackets, e.g. [81, 27, 9, ...]
-            ids_for_each_bracket = [hb_ids[s:e] for s, e in pairwise(offsets)]
-
-            # Select the data for each of the configs allocated to these sh_brackets
-            data_for_each_bracket = [table.loc[_ids] for _ids in ids_for_each_bracket]
-
-            # Create the bracket
+        # Assign configs to brackets based on which rung they start at
+        # Keep creating Hyperband cycles until all configs are allocated
+        while any(configs_by_starting_rung.values()):
             sh_brackets: list[Sync] = []
-            for data_for_bracket, layout in zip(
-                data_for_each_bracket,
-                bracket_layouts,
-                strict=True,
-            ):
+
+            for layout in bracket_layouts:
+                bottom_rung = min(layout.keys())
+                capacity_at_bottom = layout[bottom_rung]
+
+                # Take configs that start at this bracket's bottom rung
+                available_ids = configs_by_starting_rung.get(bottom_rung, [])
+                bracket_ids = available_ids[:capacity_at_bottom]
+
+                # Remove assigned configs from pool
+                if bottom_rung in configs_by_starting_rung:
+                    configs_by_starting_rung[bottom_rung] = available_ids[
+                        capacity_at_bottom:
+                    ]
+                    if not configs_by_starting_rung[bottom_rung]:
+                        del configs_by_starting_rung[bottom_rung]
+
+                # Get data for assigned configs across all their rungs
+                data_for_bracket = table.loc[bracket_ids] if bracket_ids else empty_slice
+
                 rung_data = dict(iter(data_for_bracket.groupby(level="rung", sort=False)))
                 bracket = Sync(
                     rungs=[
@@ -601,6 +588,24 @@ class Hyperband:
                 sh_brackets.append(bracket)
 
             hb_brackets.append(sh_brackets)
+
+        # Always add one empty Hyperband cycle for new samples
+        sh_brackets = []
+        for layout in bracket_layouts:
+            bracket = Sync(
+                rungs=[
+                    Rung(
+                        value=rung,
+                        capacity=capacity,
+                        table=empty_slice,
+                    )
+                    for rung, capacity in layout.items()
+                ],
+                is_multi_objective=is_multi_objective,
+                mo_selector=mo_selector,
+            )
+            sh_brackets.append(bracket)
+        hb_brackets.append(sh_brackets)
 
         return [cls(sh_brackets=sh_brackets) for sh_brackets in hb_brackets]
 

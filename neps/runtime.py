@@ -462,7 +462,6 @@ class DefaultWorker:
 
             if budget_info_parts:
                 logger.info("Budget status - %s", " | ".join(budget_info_parts))
-
         return_string: str | Literal[False] = False
 
         if (

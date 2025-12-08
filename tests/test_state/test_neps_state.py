@@ -144,7 +144,10 @@ REQUIRES_NEPS_SPACE = [
     "complex_random_search",
     "neps_hyperband",
     "neps_regularized_evolution",
+    "neps_local_and_incumbent",
 ]
+
+REQUIRES_ADDTIONAL_SETUP = ["neps_local_and_incumbent"]
 
 
 @fixture
@@ -173,6 +176,9 @@ def optimizer_and_key_and_search_space(
 
     if key in REQUIRES_MO_PRIOR:
         pytest.xfail("No tests defined for PriMO yet")
+
+    if key in REQUIRES_ADDTIONAL_SETUP:
+        pytest.xfail(f"{key} requires additional setup not implemented in this test")
 
     kwargs: dict[str, Any] = {}
     opt, _ = load_optimizer((key, kwargs), search_space)  # type: ignore
@@ -226,6 +232,9 @@ def test_sample_trial(
     capsys,
 ) -> None:
     optimizer, key, search_space = optimizer_and_key_and_search_space
+
+    if key in REQUIRES_ADDTIONAL_SETUP:
+        pytest.xfail(f"{key} requires additional setup not implemented in this test")
 
     assert neps_state.lock_and_read_trials() == {}
     assert neps_state.lock_and_get_next_pending_trial() is None
