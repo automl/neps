@@ -443,28 +443,6 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
 
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
-    multi_fidelity_optimizers = {
-        "successive_halving",
-        "asha",
-        "hyperband",
-        "async_hb",
-        "ifbo",
-        "priorband",
-        "moasha",
-        "mo_hyperband",
-        "primo",
-        "neps_priorband",
-        "neps_bracket_optimizer",
-        "neps_hyperband",
-    }
-
-    is_multi_fidelity = _optimizer_info["name"] in multi_fidelity_optimizers
-
-    if not is_multi_fidelity and fidelities_to_spend is not None:
-        raise ValueError(
-            "`fidelities_to_spend` is not allowed for non-multi-fidelity optimizers."
-        )
-
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
         module, funcname = evaluate_pipeline.rsplit(":", 1)
