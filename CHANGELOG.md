@@ -1,4 +1,9 @@
-## Unreleased
+# Changelog
+
+All notable changes will be documented in this file.
+
+
+## [unreleased]
 
 ### 🚀 Features
 
@@ -8,7 +13,7 @@
 ### 🐛 Bug Fixes
 
 - Update contributors (#240)
-- Docs & remove .trace.lock (#243)
+- Remove .trace.lock (#243)
 - Remove write_summary_to_disk (#249)
 - Update ifbo dependency version in pyproject.toml (#254)
 
