@@ -1846,7 +1846,7 @@ def neps_regularized_evolution(
 def neps_local_and_incumbent(
     pipeline_space: PipelineSpace,
     *,
-    local_prior: dict[str, Any],
+    local_prior: dict[str, Any] | None = None,
     inc_takeover_mode: Literal[0, 1, 2, 3] = 0,
     random_ratio: float = 0.0,
     eta: int = 3,
