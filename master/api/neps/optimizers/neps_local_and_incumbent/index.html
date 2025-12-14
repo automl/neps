@@ -4312,22 +4312,6 @@ performance.</p>
               </p>
             </td>
           </tr>
-          <tr class="doc-section-item">
-            <td>
-                <code>rung</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The current rung of the optimization.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
       </tbody>
     </table>
 
@@ -4424,75 +4408,73 @@ performance.</p>
 <span class="normal"><a href="#__codelineno-0-101">101</a></span>
 <span class="normal"><a href="#__codelineno-0-102">102</a></span>
 <span class="normal"><a href="#__codelineno-0-103">103</a></span>
-<span class="normal"><a href="#__codelineno-0-104">104</a></span>
-<span class="normal"><a href="#__codelineno-0-105">105</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>  <span class="c1"># noqa: C901</span>
+<span class="normal"><a href="#__codelineno-0-104">104</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>  <span class="c1"># noqa: C901</span>
 <a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a configuration based on the PriorBand algorithm.</span>
 <a id="__codelineno-0-40" name="__codelineno-0-40"></a>
 <a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    Args:</span>
 <a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        table (pd.DataFrame): The table containing the configurations and their</span>
 <a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">            performance.</span>
-<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">        rung (int): The current rung of the optimization.</span>
-<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
-<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">        dict[str, Any]: A sampled configuration.</span>
-<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
-<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">completed</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="k">if</span> <span class="n">completed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No local prior found. Sampling randomly from the space.&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="k">return</span> <span class="p">(</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="p">)</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># If no local prior is given, save the first config as the local prior</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="n">first_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">first_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="o">=</span> <span class="n">first_config</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="c1"># Get the incumbent configuration</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">inc_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">completed</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">first_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inc_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="c1"># Decide whether to sample randomly or from the incumbent</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_ratio</span><span class="p">:</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="p">:</span>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="c1"># Always mutate the first config.</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="c1"># Use the global incumbent.</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>        <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>            <span class="c1"># Crossover between global incumbent and first config.</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>                <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>                <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="p">)</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>        <span class="k">case</span> <span class="mi">3</span><span class="p">:</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>            <span class="c1"># Choose randomly between 0, 1, and 2.</span>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>            <span class="k">match</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>                <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>                <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>                <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a>                        <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a>                        <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>                    <span class="p">)</span>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>                <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a>                        <span class="s2">&quot;This should never happen. Only for type checking.&quot;</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>                    <span class="p">)</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid inc_takeover_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">return</span> <span class="n">new_config</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">        dict[str, Any]: A sampled configuration.</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>    <span class="n">completed</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="k">if</span> <span class="n">completed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No local prior found. Sampling randomly from the space.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>        <span class="p">)</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>    <span class="c1"># If no local prior is given, save the first config as the local prior</span>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>        <span class="n">first_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">first_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="o">=</span> <span class="n">first_config</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="c1"># Get the incumbent configuration</span>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">inc_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">completed</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">first_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inc_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="c1"># Decide whether to sample randomly or from the incumbent</span>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_ratio</span><span class="p">:</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="p">:</span>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>        <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>            <span class="c1"># Always mutate the first config.</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>        <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>            <span class="c1"># Use the global incumbent.</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>        <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>            <span class="c1"># Crossover between global incumbent and first config.</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>                <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>                <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>            <span class="p">)</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>        <span class="k">case</span> <span class="mi">3</span><span class="p">:</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>            <span class="c1"># Choose randomly between 0, 1, and 2.</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>            <span class="k">match</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>                <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>                <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a>                <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a>                        <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a>                        <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>                    <span class="p">)</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>                <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>                        <span class="s2">&quot;This should never happen. Only for type checking.&quot;</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>                    <span class="p">)</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid inc_takeover_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>    <span class="k">return</span> <span class="n">new_config</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
