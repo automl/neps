@@ -15,6 +15,7 @@ import neps
 from neps.optimizers import algorithms, optimizer
 from neps.space.neps_spaces.parameters import (
     _UNSET,
+    ByName,
     Categorical,
     Domain,
     Fidelity,
@@ -614,10 +615,11 @@ class SamplingResolver:
         # in the resolution not doing the right thing.
 
         if resampled_obj.is_resampling_by_name:
-            # We are dealing with a resampling by name,
+            # We are dealing with a resampling by name (ByName reference),
             # We will first need to look up the source object referenced by name.
             # That will then be the object to resample.
-            referenced_obj_name = cast(str, resampled_obj.source)
+            by_name_ref = cast(ByName, resampled_obj.source)
+            referenced_obj_name = by_name_ref.name
             referenced_obj = getattr(context.resolution_root, referenced_obj_name)
             resampled_obj = referenced_obj.resample()
 
@@ -738,6 +740,26 @@ class SamplingResolver:
         # In this case, to stop the resolution of `resolvable_obj.content`.
         # No need to add it in the resolved cache.
         return resolvable_obj.content
+
+    @_resolver_dispatch.register
+    def _(
+        self,
+        by_name_obj: ByName,
+        context: SamplingResolutionContext,
+    ) -> Any:
+        # When resolving a ByName reference directly (not wrapped in Resample),
+        # look up the referenced parameter and resolve it.
+        # This is cached so multiple references to the same parameter will
+        # return the same resolved value.
+        if context.was_already_resolved(by_name_obj):
+            return context.get_resolved(by_name_obj)
+
+        referenced_obj_name = by_name_obj.name
+        referenced_obj = getattr(context.resolution_root, referenced_obj_name)
+        result = self._resolve(referenced_obj, referenced_obj_name, context)
+
+        context.add_resolved(by_name_obj, result)
+        return result
 
     @_resolver_dispatch.register
     def _(

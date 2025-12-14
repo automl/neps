@@ -197,15 +197,15 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 ??? info "Self- and future references"
 
-    When referencing itself or a not yet defined parameter (to enable recursions) use a string of that parameters name with `neps.Resample("parameter_name")`, like so:
+    When referencing itself or a not yet defined parameter (to enable recursions) use [`neps.ByName`][neps.space.neps_spaces.parameters.ByName] to reference the parameter by its string name:
 
     ```python
     self_reference = Categorical(
         choices=(
             # It will either choose to resample itself twice
-            (neps.Resample("self_reference"), neps.Resample("self_reference")),
+            (neps.ByName("self_reference").resample(), neps.ByName("self_reference").resample()),
             # Or it will sample the future parameter
-            (neps.Resample("future_param"),),
+            (neps.ByName("future_param").resample(),),
         )
     )
     # This results in a (possibly infinite) tuple of independently sampled future_params

@@ -5,10 +5,10 @@ import pytest
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
+    ByName,
     Categorical,
     Operation,
     PipelineSpace,
-    Resample,
 )
 
 
@@ -28,7 +28,7 @@ class GrammarLike(PipelineSpace):
         operator="Sequential",
         args=(
             _O.resample(),
-            Resample("S"),
+            ByName("S").resample(),
             _reluconvbn,
         ),
     )
@@ -36,12 +36,12 @@ class GrammarLike(PipelineSpace):
         operator="Sequential",
         args=(
             _O.resample(),
-            Resample("S"),
+            ByName("S").resample(),
         ),
     )
     _C3 = Operation(
         operator="Sequential",
-        args=(Resample("S"),),
+        args=(ByName("S").resample(),),
     )
     _C = Categorical(
         choices=(
@@ -62,12 +62,12 @@ class GrammarLike(PipelineSpace):
     )
     _S2 = Operation(
         operator="Sequential",
-        args=(Resample("S"),),
+        args=(ByName("S").resample(),),
     )
     _S3 = Operation(
         operator="Sequential",
         args=(
-            Resample("S"),
+            ByName("S").resample(),
             _C.resample(),
         ),
     )
@@ -82,8 +82,8 @@ class GrammarLike(PipelineSpace):
     _S5 = Operation(
         operator="Sequential",
         args=(
-            Resample("S"),
-            Resample("S"),
+            ByName("S").resample(),
+            ByName("S").resample(),
             _O.resample(),
             _O.resample(),
             _O.resample(),
@@ -117,14 +117,14 @@ class GrammarLikeAlt(PipelineSpace):
             (_O.resample(),),
             (
                 _O.resample(),
-                Resample("S"),
+                ByName("S").resample(),
                 _reluconvbn,
             ),
             (
                 _O.resample(),
-                Resample("S"),
+                ByName("S").resample(),
             ),
-            (Resample("S"),),
+            (ByName("S").resample(),),
         ),
     )
     _C = Operation(
@@ -136,9 +136,9 @@ class GrammarLikeAlt(PipelineSpace):
         choices=(
             (_C.resample(),),
             (_reluconvbn,),
-            (Resample("S"),),
+            (ByName("S").resample(),),
             (
-                Resample("S"),
+                ByName("S").resample(),
                 _C.resample(),
             ),
             (
@@ -147,8 +147,8 @@ class GrammarLikeAlt(PipelineSpace):
                 _O.resample(),
             ),
             (
-                Resample("S"),
-                Resample("S"),
+                ByName("S").resample(),
+                ByName("S").resample(),
                 _O.resample(),
                 _O.resample(),
                 _O.resample(),
@@ -502,3 +502,11 @@ def test_resolve_context_alt():
     assert "ReLUConvBN" in s_config_string
     assert "Conv2D-1" in s_config_string
     assert "Identity" in s_config_string
+
+
+def test_string_resample_raises_error():
+    """Test that using Resample with a string raises a TypeError."""
+    from neps.space.neps_spaces.parameters import Resample
+
+    with pytest.raises(TypeError, match="Resample does not accept plain strings"):
+        Resample("test_param")

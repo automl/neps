@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from neps.space.neps_spaces.parameters import (
+        ByName,
         Categorical,
         Float,
         Integer,
@@ -69,6 +70,7 @@ def format_value(  # noqa: C901, PLR0911, PLR0912
         Formatted string representation
     """
     from neps.space.neps_spaces.parameters import (
+        ByName,
         Categorical,
         Fidelity,
         Float,
@@ -97,6 +99,9 @@ def format_value(  # noqa: C901, PLR0911, PLR0912
     if isinstance(value, Fidelity):
         # Use the __str__ method of Fidelity subclasses directly
         return str(value)
+
+    if isinstance(value, ByName):
+        return _format_by_name(value, indent, style)
 
     if isinstance(value, Resample):
         return _format_resampled(value, indent, style)
@@ -295,6 +300,15 @@ def _format_integer(
         )
     string += ")"
     return string
+
+
+def _format_by_name(
+    by_name: ByName,
+    indent: int,  # noqa: ARG001
+    style: FormatterStyle,  # noqa: ARG001
+) -> str:
+    """Internal formatter for ByName references."""
+    return f'ByName("{by_name.name}")'
 
 
 def _format_resampled(

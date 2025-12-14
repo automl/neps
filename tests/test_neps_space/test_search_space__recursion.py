@@ -4,11 +4,11 @@ from collections.abc import Callable, Sequence
 
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.parameters import (
+    ByName,
     Categorical,
     Float,
     Operation,
     PipelineSpace,
-    Resample,
 )
 
 
@@ -54,7 +54,7 @@ class DemoRecursiveOperationSpace(PipelineSpace):
     # If we want the `factor` values to be different,
     # we just request a resample for them
     _inner_function = Categorical(
-        choices=(_sum, Resample("model")),
+        choices=(_sum, ByName("model").resample()),
     )
     model = Operation(
         operator=Model,
