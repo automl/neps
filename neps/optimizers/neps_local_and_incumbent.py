@@ -23,6 +23,9 @@ class NePSLocalPriorIncumbentSampler:
     local_prior: dict[str, Any]
     """The first config to sample."""
 
+    random_ratio: float = 0.0
+    """The ratio of random sampling vs incumbent sampling."""
+
     inc_takeover_mode: Literal[0, 1, 2, 3] = 0
     """The incumbent takeover mode.
     0: Always mutate the first config.
@@ -31,7 +34,7 @@ class NePSLocalPriorIncumbentSampler:
     3: Choose randomly between 0, 1, and 2.
     """
 
-    def sample_config(self, table: pd.DataFrame) -> dict[str, Any]:
+    def sample_config(self, table: pd.DataFrame) -> dict[str, Any]:  # noqa: C901
         """Sample a configuration based on the PriorBand algorithm.
 
         Args:
@@ -51,6 +54,22 @@ class NePSLocalPriorIncumbentSampler:
         inc_config = completed.loc[completed["perf"].idxmin()]["config"]
         first_config = self.local_prior
         assert isinstance(inc_config, dict)
+
+        # Decide whether to sample randomly or from the incumbent
+        if random.random() < self.random_ratio:
+            # Sample randomly from the space
+            _environment_values = {}
+            _fidelity_attrs = self.space.fidelity_attrs
+            for fidelity_name, fidelity_obj in _fidelity_attrs.items():
+                _environment_values[fidelity_name] = fidelity_obj.upper
+
+            _resolved_pipeline, resolution_context = neps_space.resolve(
+                pipeline=self.space,
+                domain_sampler=sampling.RandomSampler({}),
+                environment_values=_environment_values,
+            )
+            config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
+            return dict(**config)
 
         match self.inc_takeover_mode:
             case 0:
