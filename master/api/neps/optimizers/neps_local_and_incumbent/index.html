@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../primo/">
+        <link rel="prev" href="../neps_bracket_optimizer/">
       
       
-        <link rel="next" href="../random_search/">
+        <link rel="next" href="../neps_priorband/">
       
       
       <link rel="icon" href="../../../../assets/images/favicon.png">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Priorband - NePS</title>
+        <title>Neps local and incumbent - NePS</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#neps.optimizers.priorband.PriorBandSampler" class="md-skip">
+        <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Priorband
+              Neps local and incumbent
             
           </span>
         </div>
@@ -2274,10 +2274,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../neps_local_and_incumbent/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Neps local and incumbent
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -2288,6 +2308,84 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;NePSLocalPriorIncumbentSampler
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=" NePSLocalPriorIncumbentSampler">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.inc_takeover_mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;inc_takeover_mode
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.local_prior" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;local_prior
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.random_ratio" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;random_ratio
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.space" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;space
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.sample_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;sample_config
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2412,30 +2510,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Priorband
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../priorband/" class="md-nav__link">
         
   
   
@@ -2446,111 +2524,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-class"></code>&nbsp;PriorBandSampler
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label=" PriorBandSampler">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.early_stopping_rate" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;early_stopping_rate
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.encoder" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;encoder
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.eta" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;eta
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.fid_bounds" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;fid_bounds
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.mutation_rate" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;mutation_rate
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.mutation_std" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;mutation_std
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-attribute"></code>&nbsp;parameters
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#neps.optimizers.priorband.PriorBandSampler.sample_config" class="md-nav__link">
-    <span class="md-ellipsis">
-      <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;sample_config
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4120,7 +4093,7 @@
 
 
 
-  <h1>Priorband</h1>
+  <h1>Neps local and incumbent</h1>
 
 <div class="doc doc-object doc-module">
 
@@ -4128,8 +4101,6 @@
 
 
     <div class="doc doc-contents first">
-
-        <p>Implements functionallity for the priorband sampling strategy.</p>
 
 
 
@@ -4154,43 +4125,27 @@
 
 
 
-<h2 id="neps.optimizers.priorband.PriorBandSampler" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">PriorBandSampler</span>
+<h2 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-class"></code>            <span class="doc doc-object-name doc-class-name">NePSLocalPriorIncumbentSampler</span>
 
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
   </span>
 
-<a href="#neps.optimizers.priorband.PriorBandSampler" class="headerlink" title="Permanent link">#</a></h2>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">PriorBandSampler</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">parameters</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            Parameter
-
-
-  
-      module-attribute
-   (neps.space.parameters.Parameter)" href="../../space/parameters/#neps.space.parameters.Parameter">Parameter</a></span><span class="p">],</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">encoder</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfigEncoder
-
-
-  
-      dataclass
-   (neps.space.ConfigEncoder)" href="../../space/encoding/#neps.space.encoding.ConfigEncoder">ConfigEncoder</a></span><span class="p">,</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">mutation_rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">mutation_std</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>    <span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">early_stopping_rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">fid_bounds</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">],</span>
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="p">)</span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler" class="headerlink" title="Permanent link">#</a></h2>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">NePSLocalPriorIncumbentSampler</span><span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span><span class="p">,</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">random_ratio</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">,</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="n">local_prior</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="n">inc_takeover_mode</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
 
-        <p>A Sampler implementing the PriorBand algorithm for sampling.</p>
-<ul>
-<li><a href="https://openreview.net/forum?id=uoiwugtpCH&amp;noteId=xECpK2WH6k">openreview.net/forum?id=uoiwugtpCH&amp;noteId=xECpK2WH6k</a></li>
-</ul>
+        <p>Implement a sampler that samples from the incumbent.</p>
 
 
 
@@ -4214,21 +4169,26 @@
 
 
 
-<h3 id="neps.optimizers.priorband.PriorBandSampler.early_stopping_rate" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">early_stopping_rate</span>
+<h3 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.inc_takeover_mode" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">inc_takeover_mode</span>
 
 
   <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#neps.optimizers.priorband.PriorBandSampler.early_stopping_rate" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">early_stopping_rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.inc_takeover_mode" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">inc_takeover_mode</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a></span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>The early stopping rate to use for the SH bracket.</p>
+        <p>The incumbent takeover mode.
+0: Always mutate the first config.
+1: Use the global incumbent.
+2: Crossover between global incumbent and first config.
+3: Choose randomly between 0, 1, and 2.</p>
 
     </div>
 
@@ -4238,26 +4198,22 @@
 
 
 
-<h3 id="neps.optimizers.priorband.PriorBandSampler.encoder" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">encoder</span>
+<h3 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.local_prior" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">local_prior</span>
 
 
   <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#neps.optimizers.priorband.PriorBandSampler.encoder" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">encoder</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            ConfigEncoder
-
-
-  
-      dataclass
-   (neps.space.ConfigEncoder)" href="../../space/encoding/#neps.space.encoding.ConfigEncoder">ConfigEncoder</a></span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.local_prior" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">local_prior</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>The encoder to use for encoding and decoding configurations into tensors.</p>
+        <p>The local prior configuration.</p>
 
     </div>
 
@@ -4267,21 +4223,22 @@
 
 
 
-<h3 id="neps.optimizers.priorband.PriorBandSampler.eta" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">eta</span>
+<h3 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.random_ratio" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">random_ratio</span>
 
 
   <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#neps.optimizers.priorband.PriorBandSampler.eta" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">eta</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.random_ratio" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">random_ratio</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span> <span class="o">=</span> <span class="mf">0.0</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>The eta value to use for the SH bracket.</p>
+        <p>The ratio of random sampling vs incumbent sampling.</p>
 
     </div>
 
@@ -4291,98 +4248,21 @@
 
 
 
-<h3 id="neps.optimizers.priorband.PriorBandSampler.fid_bounds" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">fid_bounds</span>
+<h3 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.space" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">space</span>
 
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
   </span>
 
-<a href="#neps.optimizers.priorband.PriorBandSampler.fid_bounds" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">fid_bounds</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span><span class="p">]</span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span><span class="p">]</span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.space" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">space</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="            PipelineSpace (neps.space.neps_spaces.parameters.PipelineSpace)" href="../../space/neps_spaces/parameters/#neps.space.neps_spaces.parameters.PipelineSpace">PipelineSpace</a></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>The fidelity bounds.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="neps.optimizers.priorband.PriorBandSampler.mutation_rate" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">mutation_rate</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#neps.optimizers.priorband.PriorBandSampler.mutation_rate" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">mutation_rate</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>The mutation rate to use when sampling from the incumbent distribution.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="neps.optimizers.priorband.PriorBandSampler.mutation_std" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">mutation_std</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#neps.optimizers.priorband.PriorBandSampler.mutation_std" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">mutation_std</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>The mutation deviation to use when sampling from the incumbent distribution.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="neps.optimizers.priorband.PriorBandSampler.parameters" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-attribute"></code>            <span class="doc doc-object-name doc-attribute-name">parameters</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
-  </span>
-
-<a href="#neps.optimizers.priorband.PriorBandSampler.parameters" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">parameters</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            Parameter
-
-
-  
-      module-attribute
-   (neps.space.parameters.Parameter)" href="../../space/parameters/#neps.space.parameters.Parameter">Parameter</a></span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>The parameters to consider.</p>
+        <p>The pipeline space to optimize over.</p>
 
     </div>
 
@@ -4394,19 +4274,17 @@
 <div class="doc doc-object doc-function">
 
 
-<h3 id="neps.optimizers.priorband.PriorBandSampler.sample_config" class="doc doc-heading">
+<h3 id="neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.sample_config" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">sample_config</span>
 
 
-<a href="#neps.optimizers.priorband.PriorBandSampler.sample_config" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">sample_config</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">table</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="pandas.DataFrame" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame">DataFrame</a></span><span class="p">,</span> <span class="n">rung</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span>
+<a href="#neps.optimizers.neps_local_and_incumbent.NePSLocalPriorIncumbentSampler.sample_config" class="headerlink" title="Permanent link">#</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">sample_config</span><span class="p">(</span><span class="n">table</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="pandas.DataFrame" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html#pandas.DataFrame">DataFrame</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#dict">dict</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
 
-        <p>Samples a configuration using the PriorBand algorithm.</p>
+        <p>Sample a configuration based on the PriorBand algorithm.</p>
 
 
 <table>
@@ -4423,7 +4301,8 @@
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>The table of all the trials that have been run.</p>
+                <p>The table containing the configurations and their
+performance.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -4439,7 +4318,7 @@
             </td>
             <td class="doc-param-details">
               <div class="doc-md-description">
-                <p>The rung to sample for.</p>
+                <p>The current rung of the optimization.</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
@@ -4469,7 +4348,7 @@
             </td>
             <td class="doc-returns-details">
               <div class="doc-md-description">
-                <p>The sampled configuration.</p>
+                <p>dict[str, Any]: A sampled configuration.</p>
               </div>
             </td>
           </tr>
@@ -4478,8 +4357,20 @@
 
 
             <details class="quote">
-              <summary>Source code in <code>neps\optimizers\priorband.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-50"> 50</a></span>
+              <summary>Source code in <code>neps\optimizers\neps_local_and_incumbent.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-38"> 38</a></span>
+<span class="normal"><a href="#__codelineno-0-39"> 39</a></span>
+<span class="normal"><a href="#__codelineno-0-40"> 40</a></span>
+<span class="normal"><a href="#__codelineno-0-41"> 41</a></span>
+<span class="normal"><a href="#__codelineno-0-42"> 42</a></span>
+<span class="normal"><a href="#__codelineno-0-43"> 43</a></span>
+<span class="normal"><a href="#__codelineno-0-44"> 44</a></span>
+<span class="normal"><a href="#__codelineno-0-45"> 45</a></span>
+<span class="normal"><a href="#__codelineno-0-46"> 46</a></span>
+<span class="normal"><a href="#__codelineno-0-47"> 47</a></span>
+<span class="normal"><a href="#__codelineno-0-48"> 48</a></span>
+<span class="normal"><a href="#__codelineno-0-49"> 49</a></span>
+<span class="normal"><a href="#__codelineno-0-50"> 50</a></span>
 <span class="normal"><a href="#__codelineno-0-51"> 51</a></span>
 <span class="normal"><a href="#__codelineno-0-52"> 52</a></span>
 <span class="normal"><a href="#__codelineno-0-53"> 53</a></span>
@@ -4534,212 +4425,74 @@
 <span class="normal"><a href="#__codelineno-0-102">102</a></span>
 <span class="normal"><a href="#__codelineno-0-103">103</a></span>
 <span class="normal"><a href="#__codelineno-0-104">104</a></span>
-<span class="normal"><a href="#__codelineno-0-105">105</a></span>
-<span class="normal"><a href="#__codelineno-0-106">106</a></span>
-<span class="normal"><a href="#__codelineno-0-107">107</a></span>
-<span class="normal"><a href="#__codelineno-0-108">108</a></span>
-<span class="normal"><a href="#__codelineno-0-109">109</a></span>
-<span class="normal"><a href="#__codelineno-0-110">110</a></span>
-<span class="normal"><a href="#__codelineno-0-111">111</a></span>
-<span class="normal"><a href="#__codelineno-0-112">112</a></span>
-<span class="normal"><a href="#__codelineno-0-113">113</a></span>
-<span class="normal"><a href="#__codelineno-0-114">114</a></span>
-<span class="normal"><a href="#__codelineno-0-115">115</a></span>
-<span class="normal"><a href="#__codelineno-0-116">116</a></span>
-<span class="normal"><a href="#__codelineno-0-117">117</a></span>
-<span class="normal"><a href="#__codelineno-0-118">118</a></span>
-<span class="normal"><a href="#__codelineno-0-119">119</a></span>
-<span class="normal"><a href="#__codelineno-0-120">120</a></span>
-<span class="normal"><a href="#__codelineno-0-121">121</a></span>
-<span class="normal"><a href="#__codelineno-0-122">122</a></span>
-<span class="normal"><a href="#__codelineno-0-123">123</a></span>
-<span class="normal"><a href="#__codelineno-0-124">124</a></span>
-<span class="normal"><a href="#__codelineno-0-125">125</a></span>
-<span class="normal"><a href="#__codelineno-0-126">126</a></span>
-<span class="normal"><a href="#__codelineno-0-127">127</a></span>
-<span class="normal"><a href="#__codelineno-0-128">128</a></span>
-<span class="normal"><a href="#__codelineno-0-129">129</a></span>
-<span class="normal"><a href="#__codelineno-0-130">130</a></span>
-<span class="normal"><a href="#__codelineno-0-131">131</a></span>
-<span class="normal"><a href="#__codelineno-0-132">132</a></span>
-<span class="normal"><a href="#__codelineno-0-133">133</a></span>
-<span class="normal"><a href="#__codelineno-0-134">134</a></span>
-<span class="normal"><a href="#__codelineno-0-135">135</a></span>
-<span class="normal"><a href="#__codelineno-0-136">136</a></span>
-<span class="normal"><a href="#__codelineno-0-137">137</a></span>
-<span class="normal"><a href="#__codelineno-0-138">138</a></span>
-<span class="normal"><a href="#__codelineno-0-139">139</a></span>
-<span class="normal"><a href="#__codelineno-0-140">140</a></span>
-<span class="normal"><a href="#__codelineno-0-141">141</a></span>
-<span class="normal"><a href="#__codelineno-0-142">142</a></span>
-<span class="normal"><a href="#__codelineno-0-143">143</a></span>
-<span class="normal"><a href="#__codelineno-0-144">144</a></span>
-<span class="normal"><a href="#__codelineno-0-145">145</a></span>
-<span class="normal"><a href="#__codelineno-0-146">146</a></span>
-<span class="normal"><a href="#__codelineno-0-147">147</a></span>
-<span class="normal"><a href="#__codelineno-0-148">148</a></span>
-<span class="normal"><a href="#__codelineno-0-149">149</a></span>
-<span class="normal"><a href="#__codelineno-0-150">150</a></span>
-<span class="normal"><a href="#__codelineno-0-151">151</a></span>
-<span class="normal"><a href="#__codelineno-0-152">152</a></span>
-<span class="normal"><a href="#__codelineno-0-153">153</a></span>
-<span class="normal"><a href="#__codelineno-0-154">154</a></span>
-<span class="normal"><a href="#__codelineno-0-155">155</a></span>
-<span class="normal"><a href="#__codelineno-0-156">156</a></span>
-<span class="normal"><a href="#__codelineno-0-157">157</a></span>
-<span class="normal"><a href="#__codelineno-0-158">158</a></span>
-<span class="normal"><a href="#__codelineno-0-159">159</a></span>
-<span class="normal"><a href="#__codelineno-0-160">160</a></span>
-<span class="normal"><a href="#__codelineno-0-161">161</a></span>
-<span class="normal"><a href="#__codelineno-0-162">162</a></span>
-<span class="normal"><a href="#__codelineno-0-163">163</a></span>
-<span class="normal"><a href="#__codelineno-0-164">164</a></span>
-<span class="normal"><a href="#__codelineno-0-165">165</a></span>
-<span class="normal"><a href="#__codelineno-0-166">166</a></span>
-<span class="normal"><a href="#__codelineno-0-167">167</a></span>
-<span class="normal"><a href="#__codelineno-0-168">168</a></span>
-<span class="normal"><a href="#__codelineno-0-169">169</a></span>
-<span class="normal"><a href="#__codelineno-0-170">170</a></span>
-<span class="normal"><a href="#__codelineno-0-171">171</a></span>
-<span class="normal"><a href="#__codelineno-0-172">172</a></span>
-<span class="normal"><a href="#__codelineno-0-173">173</a></span>
-<span class="normal"><a href="#__codelineno-0-174">174</a></span>
-<span class="normal"><a href="#__codelineno-0-175">175</a></span>
-<span class="normal"><a href="#__codelineno-0-176">176</a></span>
-<span class="normal"><a href="#__codelineno-0-177">177</a></span>
-<span class="normal"><a href="#__codelineno-0-178">178</a></span>
-<span class="normal"><a href="#__codelineno-0-179">179</a></span>
-<span class="normal"><a href="#__codelineno-0-180">180</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-50" name="__codelineno-0-50"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">rung</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>  <span class="c1"># noqa: PLR0915</span>
-<a id="__codelineno-0-51" name="__codelineno-0-51"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Samples a configuration using the PriorBand algorithm.</span>
-<a id="__codelineno-0-52" name="__codelineno-0-52"></a>
-<a id="__codelineno-0-53" name="__codelineno-0-53"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-54" name="__codelineno-0-54"></a><span class="sd">        table: The table of all the trials that have been run.</span>
-<a id="__codelineno-0-55" name="__codelineno-0-55"></a><span class="sd">        rung: The rung to sample for.</span>
-<a id="__codelineno-0-56" name="__codelineno-0-56"></a>
-<a id="__codelineno-0-57" name="__codelineno-0-57"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-58" name="__codelineno-0-58"></a><span class="sd">        The sampled configuration.</span>
-<a id="__codelineno-0-59" name="__codelineno-0-59"></a><span class="sd">    &quot;&quot;&quot;</span>
-<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="n">rung_to_fid</span><span class="p">,</span> <span class="n">rung_sizes</span> <span class="o">=</span> <span class="n">brackets</span><span class="o">.</span><span class="n">calculate_sh_rungs</span><span class="p">(</span>
-<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="n">bounds</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fid_bounds</span><span class="p">,</span>
-<a id="__codelineno-0-62" name="__codelineno-0-62"></a>        <span class="n">eta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">eta</span><span class="p">,</span>
-<a id="__codelineno-0-63" name="__codelineno-0-63"></a>        <span class="n">early_stopping_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">early_stopping_rate</span><span class="p">,</span>
-<a id="__codelineno-0-64" name="__codelineno-0-64"></a>    <span class="p">)</span>
-<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="n">max_rung</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">rung_sizes</span><span class="p">)</span>
-<a id="__codelineno-0-66" name="__codelineno-0-66"></a>
-<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">prior_dist</span> <span class="o">=</span> <span class="n">Prior</span><span class="o">.</span><span class="n">from_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">)</span>
-<a id="__codelineno-0-68" name="__codelineno-0-68"></a>
-<a id="__codelineno-0-69" name="__codelineno-0-69"></a>    <span class="c1"># Below we will follow the &quot;geomtric&quot; spacing</span>
-<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="n">w_random</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">eta</span><span class="o">**</span><span class="n">rung</span><span class="p">)</span>
-<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="n">w_prior</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">w_random</span>
-<a id="__codelineno-0-72" name="__codelineno-0-72"></a>
-<a id="__codelineno-0-73" name="__codelineno-0-73"></a>    <span class="n">completed</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-74" name="__codelineno-0-74"></a>
-<a id="__codelineno-0-75" name="__codelineno-0-75"></a>    <span class="c1"># To see if we activate incumbent sampling, we check:</span>
-<a id="__codelineno-0-76" name="__codelineno-0-76"></a>    <span class="c1"># 1) We have at least one fully complete run</span>
-<a id="__codelineno-0-77" name="__codelineno-0-77"></a>    <span class="c1"># 2) We have spent at least one full SH bracket worth of fidelity</span>
-<a id="__codelineno-0-78" name="__codelineno-0-78"></a>    <span class="c1"># 3) There is at least one rung with eta evaluations to get the top 1/eta configs</span>
-<a id="__codelineno-0-79" name="__codelineno-0-79"></a>    <span class="n">completed_rungs</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s2">&quot;rung&quot;</span><span class="p">)</span>
-<a id="__codelineno-0-80" name="__codelineno-0-80"></a>    <span class="n">one_complete_run_at_max_rung</span> <span class="o">=</span> <span class="p">(</span><span class="n">completed_rungs</span> <span class="o">==</span> <span class="n">max_rung</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
-<a id="__codelineno-0-81" name="__codelineno-0-81"></a>
-<a id="__codelineno-0-82" name="__codelineno-0-82"></a>    <span class="c1"># For SH bracket cost, we include the fact we can continue runs,</span>
-<a id="__codelineno-0-83" name="__codelineno-0-83"></a>    <span class="c1"># i.e. resources for rung 2 discounts the cost of evaluating to rung 1,</span>
-<a id="__codelineno-0-84" name="__codelineno-0-84"></a>    <span class="c1"># only counting the difference in fidelity cost between rung 2 and rung 1.</span>
-<a id="__codelineno-0-85" name="__codelineno-0-85"></a>    <span class="n">cost_per_rung</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-86" name="__codelineno-0-86"></a>        <span class="n">i</span><span class="p">:</span> <span class="n">rung_to_fid</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">rung_to_fid</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">rung_to_fid</span>
-<a id="__codelineno-0-87" name="__codelineno-0-87"></a>    <span class="p">}</span>
-<a id="__codelineno-0-88" name="__codelineno-0-88"></a>
-<a id="__codelineno-0-89" name="__codelineno-0-89"></a>    <span class="n">cost_of_one_sh_bracket</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">rung_sizes</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="o">*</span> <span class="n">cost_per_rung</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rung_sizes</span><span class="p">)</span>
-<a id="__codelineno-0-90" name="__codelineno-0-90"></a>    <span class="n">current_cost_used</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">r</span> <span class="o">*</span> <span class="n">cost_per_rung</span><span class="p">[</span><span class="n">r</span><span class="p">]</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">completed_rungs</span><span class="p">)</span>
-<a id="__codelineno-0-91" name="__codelineno-0-91"></a>    <span class="n">spent_one_sh_bracket_worth_of_fidelity</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-92" name="__codelineno-0-92"></a>        <span class="n">current_cost_used</span> <span class="o">&gt;=</span> <span class="n">cost_of_one_sh_bracket</span>
-<a id="__codelineno-0-93" name="__codelineno-0-93"></a>    <span class="p">)</span>
-<a id="__codelineno-0-94" name="__codelineno-0-94"></a>
-<a id="__codelineno-0-95" name="__codelineno-0-95"></a>    <span class="c1"># Check that there is at least rung with `eta` evaluations</span>
-<a id="__codelineno-0-96" name="__codelineno-0-96"></a>    <span class="n">rung_counts</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;rung&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
-<a id="__codelineno-0-97" name="__codelineno-0-97"></a>    <span class="n">any_rung_with_eta_evals</span> <span class="o">=</span> <span class="p">(</span><span class="n">rung_counts</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">eta</span><span class="p">)</span><span class="o">.</span><span class="n">any</span><span class="p">()</span>
-<a id="__codelineno-0-98" name="__codelineno-0-98"></a>
-<a id="__codelineno-0-99" name="__codelineno-0-99"></a>    <span class="c1"># If the conditions are not met, we sample from the prior or randomly depending on</span>
-<a id="__codelineno-0-100" name="__codelineno-0-100"></a>    <span class="c1"># the geometrically distributed prior and uniform weights</span>
-<a id="__codelineno-0-101" name="__codelineno-0-101"></a>    <span class="k">if</span> <span class="p">(</span>
-<a id="__codelineno-0-102" name="__codelineno-0-102"></a>        <span class="n">one_complete_run_at_max_rung</span> <span class="ow">is</span> <span class="kc">False</span>
-<a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="ow">or</span> <span class="n">spent_one_sh_bracket_worth_of_fidelity</span> <span class="ow">is</span> <span class="kc">False</span>
-<a id="__codelineno-0-104" name="__codelineno-0-104"></a>        <span class="ow">or</span> <span class="n">any_rung_with_eta_evals</span> <span class="ow">is</span> <span class="kc">False</span>
-<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="p">):</span>
-<a id="__codelineno-0-106" name="__codelineno-0-106"></a>        <span class="n">policy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">([</span><span class="s2">&quot;prior&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">],</span> <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="n">w_prior</span><span class="p">,</span> <span class="n">w_random</span><span class="p">])</span>
-<a id="__codelineno-0-107" name="__codelineno-0-107"></a>        <span class="k">match</span> <span class="n">policy</span><span class="p">:</span>
-<a id="__codelineno-0-108" name="__codelineno-0-108"></a>            <span class="k">case</span> <span class="s2">&quot;prior&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-109" name="__codelineno-0-109"></a>                <span class="n">config</span> <span class="o">=</span> <span class="n">prior_dist</span><span class="o">.</span><span class="n">sample_config</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>
-<a id="__codelineno-0-110" name="__codelineno-0-110"></a>            <span class="k">case</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-111" name="__codelineno-0-111"></a>                <span class="n">_sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>
-<a id="__codelineno-0-112" name="__codelineno-0-112"></a>                <span class="n">config</span> <span class="o">=</span> <span class="n">_sampler</span><span class="o">.</span><span class="n">sample_config</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>
-<a id="__codelineno-0-113" name="__codelineno-0-113"></a>
-<a id="__codelineno-0-114" name="__codelineno-0-114"></a>        <span class="k">return</span> <span class="n">config</span>
-<a id="__codelineno-0-115" name="__codelineno-0-115"></a>
-<a id="__codelineno-0-116" name="__codelineno-0-116"></a>    <span class="c1"># Otherwise, we now further split the `prior` weight into `(prior, inc)`</span>
-<a id="__codelineno-0-117" name="__codelineno-0-117"></a>
-<a id="__codelineno-0-118" name="__codelineno-0-118"></a>    <span class="c1"># 1. Select the top `1//eta` percent of configs at the highest rung supporting it</span>
-<a id="__codelineno-0-119" name="__codelineno-0-119"></a>    <span class="n">rungs_with_at_least_eta</span> <span class="o">=</span> <span class="n">rung_counts</span><span class="p">[</span><span class="n">rung_counts</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">eta</span><span class="p">]</span><span class="o">.</span><span class="n">index</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-120" name="__codelineno-0-120"></a>    <span class="n">rung_table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">completed</span><span class="p">[</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-121" name="__codelineno-0-121"></a>        <span class="n">completed</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s2">&quot;rung&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="n">rungs_with_at_least_eta</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
-<a id="__codelineno-0-122" name="__codelineno-0-122"></a>    <span class="p">]</span>
-<a id="__codelineno-0-123" name="__codelineno-0-123"></a>
-<a id="__codelineno-0-124" name="__codelineno-0-124"></a>    <span class="n">K</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rung_table</span><span class="p">)</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">eta</span>
-<a id="__codelineno-0-125" name="__codelineno-0-125"></a>    <span class="n">top_k_configs</span> <span class="o">=</span> <span class="n">rung_table</span><span class="o">.</span><span class="n">nsmallest</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">])[</span><span class="s2">&quot;config&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
-<a id="__codelineno-0-126" name="__codelineno-0-126"></a>
-<a id="__codelineno-0-127" name="__codelineno-0-127"></a>    <span class="c1"># 2. Get the global incumbent, and build a prior distribution around it</span>
-<a id="__codelineno-0-128" name="__codelineno-0-128"></a>    <span class="n">inc</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">completed</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
-<a id="__codelineno-0-129" name="__codelineno-0-129"></a>    <span class="n">inc_dist</span> <span class="o">=</span> <span class="n">Prior</span><span class="o">.</span><span class="n">from_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span> <span class="n">center_values</span><span class="o">=</span><span class="n">inc</span><span class="p">)</span>
-<a id="__codelineno-0-130" name="__codelineno-0-130"></a>
-<a id="__codelineno-0-131" name="__codelineno-0-131"></a>    <span class="c1"># 3. Calculate a ratio score of how likely each of the top K configs are under</span>
-<a id="__codelineno-0-132" name="__codelineno-0-132"></a>    <span class="c1"># the prior and inc distribution, weighing them by their position in the top K</span>
-<a id="__codelineno-0-133" name="__codelineno-0-133"></a>    <span class="n">weights</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-134" name="__codelineno-0-134"></a>
-<a id="__codelineno-0-135" name="__codelineno-0-135"></a>    <span class="n">top_k_pdf_inc</span> <span class="o">=</span> <span class="n">inc_dist</span><span class="o">.</span><span class="n">pdf_configs</span><span class="p">(</span><span class="n">top_k_configs</span><span class="p">,</span> <span class="n">frm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-136" name="__codelineno-0-136"></a>    <span class="n">top_k_pdf_prior</span> <span class="o">=</span> <span class="n">prior_dist</span><span class="o">.</span><span class="n">pdf_configs</span><span class="p">(</span><span class="n">top_k_configs</span><span class="p">,</span> <span class="n">frm</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
-<a id="__codelineno-0-137" name="__codelineno-0-137"></a>
-<a id="__codelineno-0-138" name="__codelineno-0-138"></a>    <span class="n">unnormalized_inc_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">top_k_pdf_inc</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-<a id="__codelineno-0-139" name="__codelineno-0-139"></a>    <span class="n">unnormalized_prior_score</span> <span class="o">=</span> <span class="p">(</span><span class="n">weights</span> <span class="o">*</span> <span class="n">top_k_pdf_prior</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span>
-<a id="__codelineno-0-140" name="__codelineno-0-140"></a>    <span class="n">total_score</span> <span class="o">=</span> <span class="n">unnormalized_inc_score</span> <span class="o">+</span> <span class="n">unnormalized_prior_score</span>
-<a id="__codelineno-0-141" name="__codelineno-0-141"></a>
-<a id="__codelineno-0-142" name="__codelineno-0-142"></a>    <span class="n">inc_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">unnormalized_inc_score</span> <span class="o">/</span> <span class="n">total_score</span><span class="p">)</span>
-<a id="__codelineno-0-143" name="__codelineno-0-143"></a>    <span class="n">prior_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">unnormalized_prior_score</span> <span class="o">/</span> <span class="n">total_score</span><span class="p">)</span>
-<a id="__codelineno-0-144" name="__codelineno-0-144"></a>
-<a id="__codelineno-0-145" name="__codelineno-0-145"></a>    <span class="c1"># 4. And finally, we distribute the original w_prior according to this ratio</span>
-<a id="__codelineno-0-146" name="__codelineno-0-146"></a>    <span class="n">w_inc</span> <span class="o">=</span> <span class="n">w_prior</span> <span class="o">*</span> <span class="n">inc_ratio</span>
-<a id="__codelineno-0-147" name="__codelineno-0-147"></a>    <span class="n">w_prior</span> <span class="o">=</span> <span class="n">w_prior</span> <span class="o">*</span> <span class="n">prior_ratio</span>
-<a id="__codelineno-0-148" name="__codelineno-0-148"></a>
-<a id="__codelineno-0-149" name="__codelineno-0-149"></a>    <span class="c1"># Normalize to ensure the weights sum to exactly 1.0</span>
-<a id="__codelineno-0-150" name="__codelineno-0-150"></a>    <span class="c1"># This handles floating-point precision issues</span>
-<a id="__codelineno-0-151" name="__codelineno-0-151"></a>    <span class="n">total_weight</span> <span class="o">=</span> <span class="n">w_prior</span> <span class="o">+</span> <span class="n">w_inc</span> <span class="o">+</span> <span class="n">w_random</span>
-<a id="__codelineno-0-152" name="__codelineno-0-152"></a>    <span class="n">w_prior</span> <span class="o">=</span> <span class="n">w_prior</span> <span class="o">/</span> <span class="n">total_weight</span>
-<a id="__codelineno-0-153" name="__codelineno-0-153"></a>    <span class="n">w_inc</span> <span class="o">=</span> <span class="n">w_inc</span> <span class="o">/</span> <span class="n">total_weight</span>
-<a id="__codelineno-0-154" name="__codelineno-0-154"></a>    <span class="n">w_random</span> <span class="o">=</span> <span class="n">w_random</span> <span class="o">/</span> <span class="n">total_weight</span>
-<a id="__codelineno-0-155" name="__codelineno-0-155"></a>
-<a id="__codelineno-0-156" name="__codelineno-0-156"></a>    <span class="c1"># Verify weights are valid probabilities (relaxed tolerance for floating-point)</span>
-<a id="__codelineno-0-157" name="__codelineno-0-157"></a>    <span class="k">assert</span> <span class="n">np</span><span class="o">.</span><span class="n">isclose</span><span class="p">(</span><span class="n">w_prior</span> <span class="o">+</span> <span class="n">w_inc</span> <span class="o">+</span> <span class="n">w_random</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">,</span> <span class="n">atol</span><span class="o">=</span><span class="mf">1e-9</span><span class="p">)</span>
-<a id="__codelineno-0-158" name="__codelineno-0-158"></a>
-<a id="__codelineno-0-159" name="__codelineno-0-159"></a>    <span class="c1"># Now we use these weights to choose which sampling distribution to sample from</span>
-<a id="__codelineno-0-160" name="__codelineno-0-160"></a>    <span class="n">policy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
-<a id="__codelineno-0-161" name="__codelineno-0-161"></a>        <span class="p">[</span><span class="s2">&quot;prior&quot;</span><span class="p">,</span> <span class="s2">&quot;inc&quot;</span><span class="p">,</span> <span class="s2">&quot;random&quot;</span><span class="p">],</span>
-<a id="__codelineno-0-162" name="__codelineno-0-162"></a>        <span class="n">p</span><span class="o">=</span><span class="p">[</span><span class="n">w_prior</span><span class="p">,</span> <span class="n">w_inc</span><span class="p">,</span> <span class="n">w_random</span><span class="p">],</span>
-<a id="__codelineno-0-163" name="__codelineno-0-163"></a>    <span class="p">)</span>
-<a id="__codelineno-0-164" name="__codelineno-0-164"></a>    <span class="k">match</span> <span class="n">policy</span><span class="p">:</span>
-<a id="__codelineno-0-165" name="__codelineno-0-165"></a>        <span class="k">case</span> <span class="s2">&quot;prior&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-166" name="__codelineno-0-166"></a>            <span class="k">return</span> <span class="n">prior_dist</span><span class="o">.</span><span class="n">sample_config</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>
-<a id="__codelineno-0-167" name="__codelineno-0-167"></a>        <span class="k">case</span> <span class="s2">&quot;random&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-168" name="__codelineno-0-168"></a>            <span class="n">_sampler</span> <span class="o">=</span> <span class="n">Sampler</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">ndim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="o">.</span><span class="n">ndim</span><span class="p">)</span>
-<a id="__codelineno-0-169" name="__codelineno-0-169"></a>            <span class="k">return</span> <span class="n">_sampler</span><span class="o">.</span><span class="n">sample_config</span><span class="p">(</span><span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">encoder</span><span class="p">)</span>
-<a id="__codelineno-0-170" name="__codelineno-0-170"></a>        <span class="k">case</span> <span class="s2">&quot;inc&quot;</span><span class="p">:</span>
-<a id="__codelineno-0-171" name="__codelineno-0-171"></a>            <span class="k">assert</span> <span class="n">inc</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
-<a id="__codelineno-0-172" name="__codelineno-0-172"></a>            <span class="k">return</span> <span class="n">mutate_config</span><span class="p">(</span>
-<a id="__codelineno-0-173" name="__codelineno-0-173"></a>                <span class="n">inc</span><span class="p">,</span>
-<a id="__codelineno-0-174" name="__codelineno-0-174"></a>                <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">,</span>
-<a id="__codelineno-0-175" name="__codelineno-0-175"></a>                <span class="n">mutation_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mutation_rate</span><span class="p">,</span>
-<a id="__codelineno-0-176" name="__codelineno-0-176"></a>                <span class="n">std</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mutation_std</span><span class="p">,</span>
-<a id="__codelineno-0-177" name="__codelineno-0-177"></a>                <span class="n">seed</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-178" name="__codelineno-0-178"></a>            <span class="p">)</span>
-<a id="__codelineno-0-179" name="__codelineno-0-179"></a>
-<a id="__codelineno-0-180" name="__codelineno-0-180"></a>    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown policy: </span><span class="si">{</span><span class="n">policy</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="normal"><a href="#__codelineno-0-105">105</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-38" name="__codelineno-0-38"></a><span class="k">def</span><span class="w"> </span><span class="nf">sample_config</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">table</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>  <span class="c1"># noqa: C901</span>
+<a id="__codelineno-0-39" name="__codelineno-0-39"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Sample a configuration based on the PriorBand algorithm.</span>
+<a id="__codelineno-0-40" name="__codelineno-0-40"></a>
+<a id="__codelineno-0-41" name="__codelineno-0-41"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-42" name="__codelineno-0-42"></a><span class="sd">        table (pd.DataFrame): The table containing the configurations and their</span>
+<a id="__codelineno-0-43" name="__codelineno-0-43"></a><span class="sd">            performance.</span>
+<a id="__codelineno-0-44" name="__codelineno-0-44"></a><span class="sd">        rung (int): The current rung of the optimization.</span>
+<a id="__codelineno-0-45" name="__codelineno-0-45"></a>
+<a id="__codelineno-0-46" name="__codelineno-0-46"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-47" name="__codelineno-0-47"></a><span class="sd">        dict[str, Any]: A sampled configuration.</span>
+<a id="__codelineno-0-48" name="__codelineno-0-48"></a><span class="sd">    &quot;&quot;&quot;</span>
+<a id="__codelineno-0-49" name="__codelineno-0-49"></a>
+<a id="__codelineno-0-50" name="__codelineno-0-50"></a>    <span class="n">completed</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="n">table</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span>  <span class="c1"># type: ignore</span>
+<a id="__codelineno-0-51" name="__codelineno-0-51"></a>    <span class="k">if</span> <span class="n">completed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+<a id="__codelineno-0-52" name="__codelineno-0-52"></a>        <span class="n">logging</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No local prior found. Sampling randomly from the space.&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-53" name="__codelineno-0-53"></a>        <span class="k">return</span> <span class="p">(</span>
+<a id="__codelineno-0-54" name="__codelineno-0-54"></a>            <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
+<a id="__codelineno-0-55" name="__codelineno-0-55"></a>            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+<a id="__codelineno-0-56" name="__codelineno-0-56"></a>            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
+<a id="__codelineno-0-57" name="__codelineno-0-57"></a>        <span class="p">)</span>
+<a id="__codelineno-0-58" name="__codelineno-0-58"></a>
+<a id="__codelineno-0-59" name="__codelineno-0-59"></a>    <span class="c1"># If no local prior is given, save the first config as the local prior</span>
+<a id="__codelineno-0-60" name="__codelineno-0-60"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-61" name="__codelineno-0-61"></a>        <span class="n">first_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-62" name="__codelineno-0-62"></a>        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">first_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-63" name="__codelineno-0-63"></a>        <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span> <span class="o">=</span> <span class="n">first_config</span>
+<a id="__codelineno-0-64" name="__codelineno-0-64"></a>
+<a id="__codelineno-0-65" name="__codelineno-0-65"></a>    <span class="c1"># Get the incumbent configuration</span>
+<a id="__codelineno-0-66" name="__codelineno-0-66"></a>    <span class="n">inc_config</span> <span class="o">=</span> <span class="n">completed</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">completed</span><span class="p">[</span><span class="s2">&quot;perf&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()][</span><span class="s2">&quot;config&quot;</span><span class="p">]</span>
+<a id="__codelineno-0-67" name="__codelineno-0-67"></a>    <span class="n">first_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_prior</span>
+<a id="__codelineno-0-68" name="__codelineno-0-68"></a>    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inc_config</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span>
+<a id="__codelineno-0-69" name="__codelineno-0-69"></a>
+<a id="__codelineno-0-70" name="__codelineno-0-70"></a>    <span class="c1"># Decide whether to sample randomly or from the incumbent</span>
+<a id="__codelineno-0-71" name="__codelineno-0-71"></a>    <span class="k">if</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">random_ratio</span><span class="p">:</span>
+<a id="__codelineno-0-72" name="__codelineno-0-72"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_random</span><span class="p">()</span>
+<a id="__codelineno-0-73" name="__codelineno-0-73"></a>
+<a id="__codelineno-0-74" name="__codelineno-0-74"></a>    <span class="k">match</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="p">:</span>
+<a id="__codelineno-0-75" name="__codelineno-0-75"></a>        <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-76" name="__codelineno-0-76"></a>            <span class="c1"># Always mutate the first config.</span>
+<a id="__codelineno-0-77" name="__codelineno-0-77"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
+<a id="__codelineno-0-78" name="__codelineno-0-78"></a>        <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-79" name="__codelineno-0-79"></a>            <span class="c1"># Use the global incumbent.</span>
+<a id="__codelineno-0-80" name="__codelineno-0-80"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
+<a id="__codelineno-0-81" name="__codelineno-0-81"></a>        <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-0-82" name="__codelineno-0-82"></a>            <span class="c1"># Crossover between global incumbent and first config.</span>
+<a id="__codelineno-0-83" name="__codelineno-0-83"></a>            <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
+<a id="__codelineno-0-84" name="__codelineno-0-84"></a>                <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
+<a id="__codelineno-0-85" name="__codelineno-0-85"></a>                <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
+<a id="__codelineno-0-86" name="__codelineno-0-86"></a>            <span class="p">)</span>
+<a id="__codelineno-0-87" name="__codelineno-0-87"></a>        <span class="k">case</span> <span class="mi">3</span><span class="p">:</span>
+<a id="__codelineno-0-88" name="__codelineno-0-88"></a>            <span class="c1"># Choose randomly between 0, 1, and 2.</span>
+<a id="__codelineno-0-89" name="__codelineno-0-89"></a>            <span class="k">match</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+<a id="__codelineno-0-90" name="__codelineno-0-90"></a>                <span class="k">case</span> <span class="mi">0</span><span class="p">:</span>
+<a id="__codelineno-0-91" name="__codelineno-0-91"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">)</span>
+<a id="__codelineno-0-92" name="__codelineno-0-92"></a>                <span class="k">case</span> <span class="mi">1</span><span class="p">:</span>
+<a id="__codelineno-0-93" name="__codelineno-0-93"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mutate_inc</span><span class="p">(</span><span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">)</span>
+<a id="__codelineno-0-94" name="__codelineno-0-94"></a>                <span class="k">case</span> <span class="mi">2</span><span class="p">:</span>
+<a id="__codelineno-0-95" name="__codelineno-0-95"></a>                    <span class="n">new_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_crossover_incs</span><span class="p">(</span>
+<a id="__codelineno-0-96" name="__codelineno-0-96"></a>                        <span class="n">inc_config</span><span class="o">=</span><span class="n">inc_config</span><span class="p">,</span>
+<a id="__codelineno-0-97" name="__codelineno-0-97"></a>                        <span class="n">first_config</span><span class="o">=</span><span class="n">first_config</span><span class="p">,</span>
+<a id="__codelineno-0-98" name="__codelineno-0-98"></a>                    <span class="p">)</span>
+<a id="__codelineno-0-99" name="__codelineno-0-99"></a>                <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-100" name="__codelineno-0-100"></a>                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-101" name="__codelineno-0-101"></a>                        <span class="s2">&quot;This should never happen. Only for type checking.&quot;</span>
+<a id="__codelineno-0-102" name="__codelineno-0-102"></a>                    <span class="p">)</span>
+<a id="__codelineno-0-103" name="__codelineno-0-103"></a>        <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+<a id="__codelineno-0-104" name="__codelineno-0-104"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid inc_takeover_mode: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">inc_takeover_mode</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-105" name="__codelineno-0-105"></a>    <span class="k">return</span> <span class="n">new_config</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -4791,7 +4544,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../primo/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Primo">
+          <a href="../neps_bracket_optimizer/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Neps bracket optimizer">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -4801,20 +4554,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Primo
+                Neps bracket optimizer
               </div>
             </div>
           </a>
         
         
           
-          <a href="../random_search/" class="md-footer__link md-footer__link--next" aria-label="Next: Random search">
+          <a href="../neps_priorband/" class="md-footer__link md-footer__link--next" aria-label="Next: Neps priorband">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Random search
+                Neps priorband
               </div>
             </div>
             <div class="md-footer__button md-icon">
