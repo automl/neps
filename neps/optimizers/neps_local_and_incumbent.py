@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
@@ -20,11 +21,11 @@ class NePSLocalPriorIncumbentSampler:
     space: PipelineSpace
     """The pipeline space to optimize over."""
 
-    local_prior: dict[str, Any]
-    """The first config to sample."""
-
     random_ratio: float = 0.0
     """The ratio of random sampling vs incumbent sampling."""
+
+    local_prior: dict[str, Any] | None = None
+    """The local prior configuration."""
 
     inc_takeover_mode: Literal[0, 1, 2, 3] = 0
     """The incumbent takeover mode.
@@ -48,7 +49,18 @@ class NePSLocalPriorIncumbentSampler:
 
         completed: pd.DataFrame = table[table["perf"].notna()]  # type: ignore
         if completed.empty:
-            return self.local_prior
+            logging.warning("No local prior found. Sampling randomly from the space.")
+            return (
+                self.local_prior
+                if self.local_prior is not None
+                else self._sample_random()
+            )
+
+        # If no local prior is given, save the first config as the local prior
+        if self.local_prior is None:
+            first_config = completed.iloc[0]["config"]
+            assert isinstance(first_config, dict)
+            self.local_prior = first_config
 
         # Get the incumbent configuration
         inc_config = completed.loc[completed["perf"].idxmin()]["config"]
@@ -57,19 +69,7 @@ class NePSLocalPriorIncumbentSampler:
 
         # Decide whether to sample randomly or from the incumbent
         if random.random() < self.random_ratio:
-            # Sample randomly from the space
-            _environment_values = {}
-            _fidelity_attrs = self.space.fidelity_attrs
-            for fidelity_name, fidelity_obj in _fidelity_attrs.items():
-                _environment_values[fidelity_name] = fidelity_obj.upper
-
-            _resolved_pipeline, resolution_context = neps_space.resolve(
-                pipeline=self.space,
-                domain_sampler=sampling.RandomSampler({}),
-                environment_values=_environment_values,
-            )
-            config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
-            return dict(**config)
+            return self._sample_random()
 
         match self.inc_takeover_mode:
             case 0:
@@ -103,6 +103,21 @@ class NePSLocalPriorIncumbentSampler:
             case _:
                 raise ValueError(f"Invalid inc_takeover_mode: {self.inc_takeover_mode}")
         return new_config
+
+    def _sample_random(self) -> dict[str, Any]:
+        # Sample randomly from the space
+        _environment_values = {}
+        _fidelity_attrs = self.space.fidelity_attrs
+        for fidelity_name, fidelity_obj in _fidelity_attrs.items():
+            _environment_values[fidelity_name] = fidelity_obj.upper
+
+        _resolved_pipeline, resolution_context = neps_space.resolve(
+            pipeline=self.space,
+            domain_sampler=sampling.RandomSampler({}),
+            environment_values=_environment_values,
+        )
+        config = neps_space.NepsCompatConverter.to_neps_config(resolution_context)
+        return dict(**config)
 
     def _mutate_inc(self, inc_config: dict[str, Any]) -> dict[str, Any]:
         _environment_values = {}

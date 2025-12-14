@@ -971,6 +971,7 @@ def neps_hyperband(
         sampler="prior" if sampler == "prior" else "uniform",
         sample_prior_first=sample_prior_first,
         early_stopping_rate=None,
+        sampler_kwargs={},
     )
 
 
@@ -1635,10 +1636,7 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
     sampler: Literal["priorband", "uniform", "prior", "local_and_incumbent"],
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
-    inc_ratio: float | None = 0.9,
-    local_prior: dict[str, Any] | None = None,
-    inc_takeover_mode: Literal[0, 1, 2, 3] | None = None,
-    random_ratio: float | None = None,
+    sampler_kwargs: dict[str, Any] | None = None,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
@@ -1744,10 +1742,10 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 
+    _sampler_kwargs = sampler_kwargs or {}
     _sampler: NePSPriorBandSampler | DomainSampler | NePSLocalPriorIncumbentSampler
     match sampler:
         case "priorband":
-            assert inc_ratio is not None
             _sampler = NePSPriorBandSampler(
                 space=pipeline_space,
                 eta=eta,
@@ -1755,16 +1753,12 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity_obj.lower, fidelity_obj.upper),
-                inc_ratio=inc_ratio,
+                **_sampler_kwargs,
             )
         case "local_and_incumbent":
-            assert local_prior is not None
-            assert inc_takeover_mode is not None
             _sampler = NePSLocalPriorIncumbentSampler(
                 space=pipeline_space,
-                local_prior=local_prior,
-                inc_takeover_mode=inc_takeover_mode,
-                random_ratio=0 if random_ratio is None else random_ratio,
+                **_sampler_kwargs,
             )
         case "uniform":
             _sampler = RandomSampler({})
@@ -1822,7 +1816,7 @@ def neps_priorband(
         sampler="priorband",
         sample_prior_first=sample_prior_first,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
-        inc_ratio=inc_ratio,
+        sampler_kwargs={"inc_ratio": inc_ratio},
     )
 
 
@@ -1885,10 +1879,11 @@ def neps_local_and_incumbent(
         sampler="local_and_incumbent",
         sample_prior_first=False,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
-        inc_ratio=None,
-        local_prior=local_prior,
-        random_ratio=random_ratio,
-        inc_takeover_mode=inc_takeover_mode,
+        sampler_kwargs={
+            "local_prior": local_prior,
+            "inc_takeover_mode": inc_takeover_mode,
+            "random_ratio": random_ratio,
+        },
     )
 
 
