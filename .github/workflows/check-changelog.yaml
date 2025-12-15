@@ -1,0 +1,32 @@
+name: check-changelog
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install git-cliff
+        uses: taiki-e/install-action@v2
+        with:
+          tool: git-cliff
+
+      - name: Check Changelog for New Updates
+        run: |
+          if git diff --quiet origin/master..HEAD -- CHANGELOG.md; then
+            echo "No changes in CHANGELOG.md detected. Please update the changelog, suggested changes: ▶️▶️▶️"
+            CHANGES=$(git-cliff origin/master..HEAD)
+            echo "$CHANGES"
+            exit 1
+          else
+            echo "CHANGELOG.md has been updated. ✅"
+          fi
