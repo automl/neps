@@ -26,6 +26,8 @@ from neps.optimizers.utils.util import (
     get_trial_config_unique_key,
 )
 from neps.sampling.samplers import Sampler
+from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.utils.common import disable_warnings
 
 if TYPE_CHECKING:
@@ -219,7 +221,7 @@ class BracketOptimizer:
     `"successive_halving"`, `"asha"`, `"hyperband"`, etc.
     """
 
-    space: SearchSpace
+    space: SearchSpace | PipelineSpace
     """The pipeline space to optimize over."""
 
     encoder: ConfigEncoder
@@ -258,12 +260,22 @@ class BracketOptimizer:
     fid_name: str
     """The name of the fidelity in the space."""
 
-    def __call__(  # noqa: C901, PLR0912
+    def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
+        if isinstance(self.space, PipelineSpace):
+            converted_space = convert_neps_to_classic_search_space(self.space)
+            if converted_space is not None:
+                self.space = converted_space
+            else:
+                raise ValueError(
+                    "This optimizer only supports HPO search spaces, please use a NePS"
+                    " space-compatible optimizer."
+                )
+
         assert n is None, "paramter n should be not None"
         space = self.space
         parameters = space.searchables
@@ -409,7 +421,7 @@ class BracketOptimizer:
                     f"{list(rung_to_fid.values())}. Skipping config: {config}"
                 )
                 continue
-            # create a  unique key for the config without the fidelity
+            # create a unique key for the config without the fidelity
             config_key = get_trial_config_unique_key(
                 config=config, fid_name=self.fid_name
             )

@@ -42,18 +42,19 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based |
-| :- | :------------: | :----: | :---------: |
-| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|
-| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|
-| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|
-| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|
-| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|
-| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|
-| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|
-| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|
-| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|
-| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#3-constructing-architecture-spaces) |
+| :- | :------------: | :----: | :---------: | :-----------------: |
+| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
+| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
+| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|
+| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
+| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
+| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|❌|
+| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
+| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|❌|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
+| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
+| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|
 
 If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
 for the neps optimizer. This provides a hassle-free way to get started quickly, as NePS will automatically choose the best optimizer based on the characteristics of your search
@@ -108,6 +109,31 @@ neps.run(
     optimizer=("bayesian_optimization", {"initial_design_size": 5})
 )
 ```
+
+### 2.4 Loading Optimizer Information
+
+NePS automatically saves the optimizer metadata (name and configuration) when you run an optimization. You can retrieve this information later using `neps.load_optimizer_info()`:
+
+```python
+import neps
+
+# Load the optimizer info from a previous run
+optimizer_info = neps.load_optimizer_info("path/to/neps_folder")
+
+# Access the optimizer name and configuration
+print(f"Optimizer: {optimizer_info['name']}")
+print(f"Configuration: {optimizer_info['info']}")
+```
+
+This is useful for:
+
+- **Inspecting** what optimizer and settings were used in a previous run
+- **Reproducing** experiments with the same optimizer configuration
+- **Comparing** different optimizer settings across runs
+
+!!! tip "Reconstructing a Complete Run"
+
+    Combine `load_optimizer_info()` with `load_pipeline_space()` to fully reconstruct a previous optimization. See [Reconstructing and Reproducing Runs](neps_run.md#reconstructing-and-reproducing-runs) for a complete example.
 
 ## 3 Custom Optimizers
 

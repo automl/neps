@@ -6,18 +6,19 @@ We distinguish between algorithms that use different types of information and st
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based |
-| :- | :------------: | :----: | :---------: |
-| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|
-| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|
-| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|
-| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|
-| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|
-| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|
-| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|
-| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|
-| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|
-| [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|
+| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-constructing-architecture-spaces) |
+| :- | :------------: | :----: | :---------: | :-----------------: |
+| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
+| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
+| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|
+| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
+| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
+| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|❌|
+| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
+| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|❌|
+| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
+| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
+| [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|
 
 ## What is Multi-Fidelity Optimization?
 
@@ -36,7 +37,7 @@ We present a collection of MF-algorithms [here](./multifidelity.md) and algorith
 
 ## What are Priors?
 
-Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/pipeline_space.md#using-your-knowledge-providing-a-prior).
+Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/neps_spaces.md#1-constructing-hyperparameter-spaces).
 
 !!! tip "Advantages of using Priors"
 

@@ -72,6 +72,7 @@ import os
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from neps.optimizers.optimizer import AskFunction, SampledConfig
@@ -79,7 +80,6 @@ from neps.state import EvaluatePipelineReturn, Trial, UserResult
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
-    from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 
 def _default_worker_name() -> str:
@@ -180,6 +180,7 @@ class AskAndTell:
         previous_trial_id: str | None = None,
         worker_id: str | None = None,
         traceback_str: str | None = None,
+        location: Path | None = None,
     ) -> Trial:
         """Report a custom configuration and result to the optimizer.
 
@@ -207,6 +208,8 @@ class AskAndTell:
                 metadata if you need.
             traceback_str: The traceback of any error, only to fill in
                 metadata if you need.
+            location: The location of the configuration, if any. This will be saved
+                in the created trial's metadata.
 
         Returns:
             The trial object that was created. You can find the report
@@ -232,7 +235,7 @@ class AskAndTell:
         # Just go through the motions of the trial life-cycle
         trial = Trial.new(
             trial_id=config_id,
-            location="",
+            location=str(location.resolve()) if location else "",
             config=config,
             previous_trial=previous_trial_id,
             previous_trial_location="",
@@ -269,8 +272,8 @@ class AskAndTell:
         """Report the result of an evaluation back to the optimizer.
 
         Args:
-            config_id: The id of the configuration you got from
-                [`ask()`][neps.optimizers.ask_and_tell.AskAndTell.ask].
+            trial: The trial to report the result for. This can be either
+                the trial id (a string) or the trial object itself.
             result: The result of the evaluation. This can be an exception,
                 a float, or a mapping of values, similar to that which
                 you would return from `evaluate_pipeline` when your normally

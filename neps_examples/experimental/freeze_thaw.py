@@ -53,14 +53,10 @@ def training_pipeline(
         KeyError: If the specified optimizer is not supported.
     """
     # Transformations applied on each image
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize(
-                (0.1307,), (0.3081,)
-            ),  # Mean and Std Deviation for MNIST
-        ]
-    )
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,)),  # Mean and Std Deviation for MNIST
+    ])
 
     # Loading MNIST dataset
     dataset = datasets.MNIST(
@@ -83,8 +79,7 @@ def training_pipeline(
     if previous_pipeline_directory is not None:
         if (Path(previous_pipeline_directory) / "checkpoint.pt").exists():
             states = torch.load(
-                Path(previous_pipeline_directory) / "checkpoint.pt",
-                weights_only=False
+                Path(previous_pipeline_directory) / "checkpoint.pt", weights_only=False
             )
             model = states["model"]
             optimizer = states["optimizer"]
@@ -153,21 +148,20 @@ def training_pipeline(
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
-    pipeline_space = {
-        "learning_rate": neps.Float(1e-5, 1e-1, log=True),
-        "num_layers": neps.Integer(1, 5),
-        "num_neurons": neps.Integer(64, 128),
-        "weight_decay": neps.Float(1e-5, 0.1, log=True),
-        "epochs": neps.Integer(1, 10, is_fidelity=True),
-    }
+    class ModelSpace(neps.PipelineSpace):
+        learning_rate = neps.Float(1e-5, 1e-1, log=True)
+        num_layers = neps.Integer(1, 5)
+        num_neurons = neps.Integer(64, 128)
+        weight_decay = neps.Float(1e-5, 0.1, log=True)
+        epochs = neps.IntegerFidelity(1, 10)
 
     neps.run(
-        pipeline_space=pipeline_space,
+        pipeline_space=ModelSpace(),
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
         fidelities_to_spend=50,
         root_directory="./results/ifbo-mnist/",
-        overwrite_working_directory=False,  # set to False for a multi-worker run
+        overwrite_root_directory=False,  # set to False for a multi-worker run
     )
 
     # NOTE: this is `experimental` and may not work as expected

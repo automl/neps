@@ -1,18 +1,94 @@
-"""Functions to get the status of a run and save the status to CSV files."""
+"""Functions to get the status of a run and save the status to CSV files.
+
+This module provides utilities for monitoring NePS optimization runs.
+"""
 
 # ruff: noqa: T201
 from __future__ import annotations
 
+import contextlib
 import itertools
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
+from pprint import pformat
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 
+from neps.space.neps_spaces import neps_space
+from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
+from neps.space.neps_spaces.sampling import OnlyPredefinedValuesSampler
+from neps.space.neps_spaces.string_formatter import format_value
 from neps.state.neps_state import FileLocker, NePSState
 from neps.state.trial import State, Trial
+
+if TYPE_CHECKING:
+    from neps.space.search_space import SearchSpace
+
+
+def _format_config_entry(entry: dict, indent: str = "") -> str:
+    """Format a single best-config entry into a text block.
+
+    indent is a string prefixed to the first line for nicer indentation in
+    the `best_config_text` block.
+    """
+    parts: list[str] = []
+    parts.append(f"{indent}Config ID: {entry['trial_id']}")
+    parts.append(f"Objective to minimize: {entry['score']}")
+    if "cost" in entry:
+        parts.append(f"Cost: {entry['cost']}")
+
+    if "cumulative_evaluations" in entry:
+        parts.append(f"Cumulative evaluations: {entry['cumulative_evaluations']}")
+    if "cumulative_fidelities" in entry:
+        parts.append(f"Cumulative fidelities: {entry['cumulative_fidelities']}")
+    if "cumulative_cost" in entry:
+        parts.append(f"Cumulative cost: {entry['cumulative_cost']}")
+    if "cumulative_time" in entry:
+        parts.append(f"Cumulative time: {entry['cumulative_time']}")
+
+    parts.append(f"Config: {entry['config']}")
+
+    return "\n".join(parts) + "\n" + ("-" * 80) + "\n"
+
+
+def _build_incumbent_content(best_configs: list[dict]) -> str:
+    """Build trace text and best config text from a list of best configurations.
+
+    Args:
+        best_configs: List of best configuration dictionaries containing
+                     'trial_id', 'score', 'config', and optional metrics.
+
+    Returns:
+        Tuple of (trace_text, best_config_text) strings.
+    """
+    trace_content = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
+    for best in best_configs:
+        trace_content += _format_config_entry(best)
+
+    return trace_content
+
+
+def _build_optimal_set_content(best_configs: list[dict]) -> str:
+    """Build trace text and best config text from a list of best configurations.
+
+    Args:
+        best_configs: List of best configuration dictionaries containing
+                        'trial_id', 'score', 'config', and optional metrics.
+
+    Returns:
+        content: str.
+    """
+    trace_text = (
+        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
+    )
+    for best in best_configs:
+        trace_text += _format_config_entry(best)
+    return trace_text
 
 
 @dataclass
@@ -69,12 +145,12 @@ class Summary:
         metadata_df = pd.DataFrame.from_records(
             [asdict(t.metadata) for t in trials]
         ).convert_dtypes()
-
-        return (
-            pd.concat([config_df, extra_df, report_df, metadata_df], axis="columns")
-            .set_index("id")
-            .dropna(how="all", axis="columns")
+        combined_df = pd.concat(
+            [config_df, extra_df, report_df, metadata_df], axis="columns"
         )
+        if combined_df.empty:
+            return combined_df
+        return combined_df.set_index("id").dropna(how="all", axis="columns")
 
     def completed(self) -> list[Trial]:
         """Return all trials which are in a completed state."""
@@ -100,8 +176,19 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(self) -> str:
-        """Return a formatted string of the summary."""
+    def formatted(  # noqa: PLR0912
+        self, pipeline_space: PipelineSpace | SearchSpace | None = None
+    ) -> str:
+        """Return a formatted string of the summary.
+
+        Args:
+            pipeline_space: Optional PipelineSpace for the run. If provided, it is used
+                to format the best config in a more readable way. This is typically
+                auto-loaded from disk by the status() function.
+
+        Returns:
+            A formatted string of the summary.
+        """
         state_summary = "\n".join(
             f"    {state.name.lower()}: {len(trials)}"
             for state, trials in self.by_state.items()
@@ -115,13 +202,67 @@ class Summary:
                 best_summary = "No best found yet."
         else:
             best_trial, best_objective_to_minimize = self.best
+
+            # Format config based on whether pipeline_space_variables is provided
+
             best_summary = (
                 f"# Best Found (config {best_trial.metadata.id}):"
                 "\n"
-                f"\n    objective_to_minimize: {best_objective_to_minimize}"
-                f"\n    config: {best_trial.config}"
-                f"\n    path: {best_trial.metadata.location}"
+                f"\n    objective_to_minimize: {best_objective_to_minimize}\n    config: "
             )
+            if not pipeline_space:
+                # Pretty-print dict configs with proper indentation
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
+            elif isinstance(pipeline_space, PipelineSpace):
+                # Only PipelineSpace supports pretty formatting - SearchSpace doesn't
+                best_config_resolve = NepsCompatConverter().from_neps_config(
+                    best_trial.config
+                )
+                pipeline_configs = []
+                variables = list(pipeline_space.get_attrs().keys()) + list(
+                    pipeline_space.fidelity_attrs.keys()
+                )
+                resolved_pipeline = neps_space.resolve(
+                    pipeline_space,
+                    OnlyPredefinedValuesSampler(best_config_resolve.predefined_samplings),
+                    environment_values=best_config_resolve.environment_values,
+                )[0]
+
+                for variable in variables:
+                    operation = getattr(resolved_pipeline, variable)
+                    pipeline_configs.append(format_value(operation))
+
+                for n_pipeline, pipeline_config in enumerate(pipeline_configs):
+                    formatted_config = str(pipeline_config)
+                    variable_name = variables[n_pipeline]
+
+                    # Multi-line configs: put on new line with proper indentation
+                    # Single-line configs: inline after variable name
+                    if "\n" in formatted_config:
+                        indented_config = "\n          ".join(
+                            formatted_config.split("\n")
+                        )
+                        best_summary += (
+                            f"\n        {variable_name}:\n          {indented_config}"
+                        )
+                    else:
+                        best_summary += f"\n        {variable_name}: {formatted_config}"
+            else:
+                # SearchSpace or other space type - pretty-print the dict
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
+
+            best_summary += f"\n    path: {best_trial.metadata.location}"
+
             assert best_trial.report is not None
             if best_trial.report.cost is not None:
                 best_summary += f"\n    cost: {best_trial.report.cost}"
@@ -134,11 +275,6 @@ class Summary:
     def from_directory(cls, root_directory: str | Path) -> Summary:
         """Create a summary from a neps run directory."""
         root_directory = Path(root_directory)
-
-        is_multiobjective: bool = False
-        best: tuple[Trial, float] | None = None
-        by_state: dict[State, list[Trial]] = {s: [] for s in State}
-
         # NOTE: We don't lock the shared state since we are just reading and don't need to
         # make decisions based on the state
         try:
@@ -150,7 +286,20 @@ class Summary:
 
         trials = shared_state.lock_and_read_trials()
 
-        for _trial_id, trial in trials.items():
+        return cls.from_trials(trials)
+
+    @classmethod
+    def from_trials(cls, trials: dict[str, Trial]) -> Summary:
+        """Summarize a mapping of trials into (by_state, is_multiobjective, best).
+
+        This extracts the core loop from `Summary.from_directory` so callers that
+        already have a `trials` mapping can reuse the logic without re-reading state.
+        """
+        is_multiobjective: bool = False
+        best: tuple[Trial, float] | None = None
+        by_state: dict[State, list[Trial]] = {s: [] for s in State}
+
+        for trial in trials.values():
             state = trial.metadata.state
             by_state[state].append(trial)
 
@@ -180,16 +329,26 @@ def status(
 
     Args:
         root_directory: The root directory given to neps.run.
-        print_summary: If true, print a summary of the current run state
+        print_summary: If true, print a summary of the current run state.
 
     Returns:
         Dataframe of full results and short summary series.
     """
     root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk for pretty printing
+    pipeline_space = None
+    if print_summary:
+        from neps.api import load_pipeline_space
+
+        with contextlib.suppress(FileNotFoundError, ValueError):
+            pipeline_space = load_pipeline_space(root_directory)
+            # Note: pipeline_space can still be None if it wasn't saved, which is fine
+
     summary = Summary.from_directory(root_directory)
 
     if print_summary:
-        print(summary.formatted())
+        print(summary.formatted(pipeline_space=pipeline_space))
 
     df = summary.df()
 
@@ -226,82 +385,6 @@ def status(
     short = pd.concat([short, row])  # type: ignore
     assert isinstance(short, pd.Series)
     return df, short
-
-
-def trajectory_of_improvements(
-    root_directory: str | Path,
-) -> list[dict]:
-    """Track and write the trajectory of improving configurations over time.
-
-    Args:
-        root_directory: The root directory given to neps.run.
-
-    Returns:
-        List of dicts with improving scores and their configurations.
-    """
-    root_directory = Path(root_directory)
-    summary = Summary.from_directory(root_directory)
-
-    if summary.is_multiobjective:
-        return []
-
-    df = summary.df()
-
-    if len(df) == 0:
-        return []
-
-    if "time_sampled" not in df.columns:
-        raise ValueError("Missing `time_sampled` column in summary DataFrame.")
-
-    df = df.sort_values("time_sampled")
-
-    all_best_configs = []
-    best_score = float("inf")
-    trace_text = ""
-
-    for trial_id, row in df.iterrows():
-        if "objective_to_minimize" not in row or pd.isna(row["objective_to_minimize"]):
-            continue
-
-        score = row["objective_to_minimize"]
-        if score < best_score:
-            best_score = score
-            config = {
-                k.replace("config.", ""): v
-                for k, v in row.items()
-                if k.startswith("config.")
-            }
-
-            best = {
-                "score": score,
-                "trial_id": trial_id,
-                "config": config,
-            }
-            all_best_configs.append(best)
-
-            trace_text += (
-                f"Objective to minimize: {best['score']}\n"
-                f"Config ID: {best['trial_id']}\n"
-                f"Config: {best['config']}\n" + "-" * 80 + "\n"
-            )
-
-    summary_dir = root_directory / "summary"
-    summary_dir.mkdir(parents=True, exist_ok=True)
-    output_path = summary_dir / "best_config_trajectory.txt"
-    with output_path.open("w") as f:
-        f.write(trace_text)
-
-    if all_best_configs:
-        final_best = all_best_configs[-1]
-        best_path = summary_dir / "best_config.txt"
-        with best_path.open("w") as f:
-            f.write(
-                f"Objective to minimize: {final_best['score']}\n"
-                f"Config ID: {final_best['trial_id']}\n"
-                f"Config: {final_best['config']}\n"
-            )
-
-    return all_best_configs
 
 
 def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:

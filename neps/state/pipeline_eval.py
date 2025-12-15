@@ -136,7 +136,7 @@ class UserResult:
                 case _:
                     raise ValueError(
                         "The 'learning_curve' should be either a sequence of floats,"
-                        f" a sequence of sequences of floats or None."
+                        " a sequence of sequences of floats or None."
                         f" Got {self.learning_curve}"
                     )
 
@@ -303,7 +303,7 @@ class UserResult:
                         cost = float(popped_cost)
                     case _:
                         raise ValueError(
-                            f"The 'cost' should be either a float or None."
+                            "The 'cost' should be either a float or None."
                             f" Got {popped_cost}"
                         )
 
@@ -338,7 +338,7 @@ class UserResult:
                     case _:
                         raise ValueError(
                             "The 'learning_curve' should be either a sequence of floats,"
-                            f" a sequence of sequences of floats or None."
+                            " a sequence of sequences of floats or None."
                             f" Got {popped_curve}"
                         )
 
@@ -406,7 +406,11 @@ def _eval_trial(
         time_end = time.time()
         match user_result:
             case dict():
-                filtered_data = {k: v for k, v in user_result.items() if k != "info_dict"}
+                filtered_data = {
+                    k: v
+                    for k, v in user_result.items()
+                    if k not in ["info_dict", "learning_curve"]
+                }
                 logger.info(f"Successful evaluation of '{trial.id}': {filtered_data}.")
             case _:  # TODO: Revisit this and check all possible cases
                 logger.info(f"Successful evaluation of '{trial.id}': {user_result}.")

@@ -17,15 +17,15 @@ import neps
 
 def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     # Your code here
-
     return loss
+
+class ExamplePipeline(neps.PipelineSpace):
+    learning_rate = neps.Float(1e-3, 1e-1, log=True)
+    epochs = neps.IntegerFidelity(10, 100)
 
 neps.run(
     evaluate_pipeline=evaluate_pipeline, # (1)!
-    pipeline_space={, # (2)!
-        "learning_rate": neps.Float(1e-3, 1e-1, log=True),
-        "epochs": neps.Integer(10, 100)
-    },
+    pipeline_space=ExamplePipeline(), # (2)!
     root_directory="path/to/result_dir" # (3)!
 )
 ```
@@ -33,16 +33,16 @@ neps.run(
 1.  The objective function, targeted by NePS for minimization, by evaluation various configurations.
     It requires these configurations as input and should return either a dictionary or a sole loss value as the output.
 2.  This defines the search space for the configurations from which the optimizer samples.
-    It accepts either a dictionary with the configuration names as keys, a path to a YAML configuration file, or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
-    For comprehensive information and examples, please refer to the detailed guide available [here](../reference/pipeline_space.md)
+    It accepts a class instance inheriting from `neps.PipelineSpace` or a [`configSpace.ConfigurationSpace`](https://automl.github.io/ConfigSpace/) object.
+    For comprehensive information and examples, please refer to the detailed guide available [here](../reference/neps_spaces.md)
 3.  The directory path where the information about the optimization and its progress gets stored.
     This is also used to synchronize multiple calls to `neps.run()` for parallelization.
 
 
 See the following for more:
 
-* What kind of [pipeline space](../reference/pipeline_space.md) can you define?
-* What goes in and what goes out of [`evaluate_pipeline()`](../reference/evaluate_pipeline.md)?
+* What kind of [pipeline space](../reference/neps_spaces.md) can you define?
+* What goes in and what goes out of [`evaluate_pipeline()`](../reference/neps_run.md)?
 
 ## Budget, how long to run?
 To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
@@ -69,7 +69,7 @@ neps.run(
 2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
     This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
-    For more details, please refer [here](../reference/evaluate_pipeline.md)
+    For more details, please refer [here](../reference/neps_spaces.md)
 
 ## Getting some feedback, logging
 NePS will not print anything to the console. To view the progress of workers,
@@ -99,12 +99,54 @@ def run(learning_rate: float, epochs: int) -> float:
     return {"objective_to_minimize": loss, "cost": duration}
 
 neps.run(
-    # Increase the total number of trials from 10 as set previously to 50
+    # Increase the total number of trials from 10 as set previously to e.g. 50
     evaluations_to_spend=50,
 )
 ```
 
 If the run previously stopped due to reaching a budget and you specify the same budget, the worker will immediatly stop as it will remember the amount of budget it used previously.
+
+!!! note "Auto-loading"
+
+    When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify `pipeline_space=` or `optimizer=` again - NePS will use the saved settings from the original run.
+
+## Reconstructing and Reproducing Runs
+
+Sometimes you want to inspect what settings were used in a previous run, or reproduce a run with the same or modified settings. NePS provides utility functions to load both the search space and optimizer information:
+
+```python
+import neps
+
+# Load everything from a previous run
+root_dir = "path/to/previous_run"
+
+pipeline_space = neps.load_pipeline_space(root_dir)
+optimizer_info = neps.load_optimizer_info(root_dir)
+
+print(f"Original optimizer: {optimizer_info['name']}")
+print(f"Original search space: {pipeline_space}")
+
+# Option 1: Continue the original run (auto-loads everything)
+neps.run(
+    evaluate_pipeline=my_function,
+    root_directory=root_dir,
+    evaluations_to_spend=100,  # Increase budget
+)
+
+# Option 2: Start a new run with the same settings
+neps.run(
+    evaluate_pipeline=my_function,
+    pipeline_space=pipeline_space,
+    root_directory="path/to/new_run",
+    optimizer=optimizer_info['name'],
+    evaluations_to_spend=50,
+)
+```
+
+For details on:
+
+- [`neps.load_pipeline_space()`][neps.api.load_pipeline_space] - see [Search Space Reference](neps_spaces.md#loading-the-search-space-from-disk)
+- [`neps.load_optimizer_info()`][neps.api.load_optimizer_info] - see [Optimizer Reference](optimizers.md#24-loading-optimizer-information)
 
 ## Overwriting a Run
 
@@ -140,7 +182,7 @@ provided to [`neps.run()`][neps.api.run].
     │   └── config_2
     │       ├── config.yaml
     │       └── metadata.json
-    ├── summary                 
+    ├── summary
     │  ├── full.csv
     │  └── short.csv
     │  ├── best_config_trajectory.txt

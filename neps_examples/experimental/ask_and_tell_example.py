@@ -1,24 +1,24 @@
 """
 # AskAndTell Example: Custom Trial Execution with NePS
 
-This script demonstrates how to use the `AskAndTell` interface from NePS to implement a custom trial execution workflow. 
-The `AskAndTell` interface provides full control over the evaluation loop, allowing you to manage how trials are executed 
+This script demonstrates how to use the `AskAndTell` interface from NePS to implement a custom trial execution workflow.
+The `AskAndTell` interface provides full control over the evaluation loop, allowing you to manage how trials are executed
 and results are reported back to the optimizer. This is particularly useful when you need to handle trial execution manually.
 
 ## Aim of This File
 
-The goal of this script is to run a **successive halving** optimization process with 3 rungs. The first rung will evaluate 
-9 trials in parallel. The trials are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used 
-to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate NePS 
+The goal of this script is to run a **successive halving** optimization process with 3 rungs. The first rung will evaluate
+9 trials in parallel. The trials are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used
+to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate NePS
 with external job schedulers.
 
 ## How to Use This Script
 
 1. **Define the Search Space**:
-   The search space is defined using `neps.SearchSpace`.
+   The search space is defined using `neps.PipelineSpace`.
 
 2. **Initialize the Optimizer**:
-   We use the `successive_halving` algorithm from NePS to optimize the search space. The optimizer is wrapped with 
+   We use the `hyperband` algorithm from NePS to optimize the search space. The optimizer is wrapped with
    the `AskAndTell` interface to enable manual control of the evaluation loop.
 
 3. **Submit Jobs**:
@@ -26,7 +26,7 @@ with external job schedulers.
    - The `get_job_script` function generates a SLURM job script that executes the `train_worker` function for a given trial.
 
 4. **Train Worker**:
-   - The `train_worker` function reads the trial configuration, evaluates a dummy objective function, and writes the 
+   - The `train_worker` function reads the trial configuration, evaluates a dummy objective function, and writes the
      results to a JSON file.
 
 5. **Main Loop**:
@@ -50,6 +50,7 @@ with external job schedulers.
 
 This script serves as a template for implementing custom trial execution workflows with NePS.
 """
+
 import argparse
 import time
 from pathlib import Path
@@ -60,6 +61,7 @@ import subprocess
 import json, sys
 
 from neps.optimizers.ask_and_tell import AskAndTell
+
 
 def submit_job(pipeline_directory: Path, script: str) -> int:
     script_path = pipeline_directory / "submit.sh"
@@ -72,6 +74,7 @@ def submit_job(pipeline_directory: Path, script: str) -> int:
     job_id = int(output.split()[-1])
     return job_id
 
+
 def get_job_script(pipeline_directory, trial_file):
     script = f"""#!/bin/bash
     #SBATCH --job-name=mnist_toy
@@ -82,6 +85,7 @@ def get_job_script(pipeline_directory, trial_file):
     """
     return script
 
+
 def train_worker(trial_file):
     trial_file = Path(trial_file)
     with open(trial_file) as f:
@@ -89,17 +93,20 @@ def train_worker(trial_file):
 
     config = trial["config"]
     # Dummy objective
-    loss = (config["a"] - 0.5)**2 + ((config["b"] + 2)**2) / 5
+    loss = (config["a"] - 0.5) ** 2 + ((config["b"] + 2) ** 2) / 5
 
     out_file = trial_file.parent / f"result_{trial['id']}.json"
     with open(out_file, "w") as f:
         json.dump({"loss": loss}, f)
 
+
 def main(parallel: int, results_dir: Path):
-    space = neps.SearchSpace(
-        {"a": neps.Integer(1, 13, is_fidelity=True), "b": neps.Float(1, 5)}
-    )
-    opt = neps.algorithms.successive_halving(space, eta=3)
+    class MySpace(neps.PipelineSpace):
+        a = neps.IntegerFidelity(1, 13)
+        b = neps.Float(1, 5)
+
+    space = MySpace()
+    opt = neps.algorithms.neps_hyperband(space, eta=3)
     ask_tell = AskAndTell(opt)
 
     results_dir.mkdir(exist_ok=True, parents=True)
@@ -127,20 +134,30 @@ def main(parallel: int, results_dir: Path):
                 new_trial = ask_tell.ask()
                 if new_trial:
                     new_file = results_dir / f"trial_{new_trial.id}.json"
-                    json.dump({"id": new_trial.id, "config": new_trial.config}, new_file.open("w"))
-                    new_job_id = submit_job(results_dir, get_job_script(results_dir, new_file))
+                    json.dump(
+                        {"id": new_trial.id, "config": new_trial.config},
+                        new_file.open("w"),
+                    )
+                    new_job_id = submit_job(
+                        results_dir, get_job_script(results_dir, new_file)
+                    )
                     active[new_job_id] = new_trial
         time.sleep(5)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--parallel", type=int, default=9, 
-        help="Number of trials to evaluate in parallel initially"
+        "--parallel",
+        type=int,
+        default=9,
+        help="Number of trials to evaluate in parallel initially",
     )
     parser.add_argument(
-        "--results-dir", type=Path, default=Path("results"), 
-        help="Path to save the results inside"
+        "--results-dir",
+        type=Path,
+        default=Path("results/ask_and_tell"),
+        help="Path to save the results inside",
     )
     args = parser.parse_args()
     main(args.parallel, args.results_dir)

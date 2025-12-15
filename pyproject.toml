@@ -79,6 +79,7 @@ dev = [
     "mypy>=1,<2",
     "pytest>=7,<8",
     "pytest-cases>=3,<4",
+    "pytest-repeat>=0,<1",
     "types-PyYAML>=6,<7",
     "mkdocs-material",
     "mkdocs-autorefs",
@@ -241,6 +242,10 @@ ignore = [
     "PT011", # Catch value error to broad
     "ARG001", # unused param
 ]
+"tests/test_neps_space/*.py" = [
+    "E501", # Line length for architecture strings
+]
+
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
     "INP001",
@@ -255,6 +260,10 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
+"neps/space/neps_spaces/sampling.py" = [
+  "T201",   # print() is intentional for IOSampler user interaction
+  "RET508", # else after break is needed for error messages
+]
 # TODO
 "neps/optimizers/**.py" = [
   "D", # Documentation of everything

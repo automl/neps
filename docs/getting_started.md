@@ -13,18 +13,17 @@ pip install neural-pipeline-search
 
 ## The 3 Main Components
 
-1. **Establish a [`pipeline_space`](reference/pipeline_space.md)**:
+1. **Establish a [`pipeline_space=`](reference/neps_spaces.md)**:
 
 ```python
-pipeline_space={
-    "some_parameter": (0.0, 1.0),   # float
-    "another_parameter": (0, 10),   # integer
-    "optimizer": ["sgd", "adam"],   # categorical
-    "epoch": neps.Integer(lower=1, upper=100, is_fidelity=True),
-    "learning_rate": neps.Float(lower=1e-5, upper=1, log=True),
-    "alpha": neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
-}
-
+class ExampleSpace(neps.PipelineSpace):
+    # Define the parameters of your search space
+    some_parameter = neps.Float(lower=0.0, upper=1.0)       # float
+    another_parameter = neps.Integer(lower=0, upper=10)     # integer
+    optimizer = neps.Categorical(choices=("sgd", "adam"))           # categorical
+    epoch = neps.IntegerFidelity(lower=1, upper=100)
+    learning_rate = neps.Float(lower=1e-5, upper=1, log=True)
+    alpha = neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
 ```
 
 2. **Define an `evaluate_pipeline()` function**:
@@ -42,7 +41,7 @@ def evaluate_pipeline(some_parameter: float,
 3. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
 ```python
-neps.run(evaluate_pipeline, pipeline_space)
+neps.run(evaluate_pipeline, ExampleSpace())
 ```
 
 ---
@@ -52,14 +51,14 @@ neps.run(evaluate_pipeline, pipeline_space)
 The [reference](reference/neps_run.md) section provides detailed information on the individual components of NePS.
 
 1. How to use the [**`neps.run()`** function](reference/neps_run.md) to start the optimization process.
-2. The different [search space](reference/pipeline_space.md) options available.
+2. The different [search space](reference/neps_spaces.md) options available.
 3. How to choose and configure the [optimizer](reference/optimizers.md) used.
 4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
 5. How to [analyze](reference/analyse.md) the optimization runs.
 
 Or discover the features of NePS through these practical examples:
 
-* **[Hyperparameter Optimization (HPO)](examples/basic_usage/hyperparameters.md)**:
+* **[Hyperparameter Optimization (HPO)](examples/basic_usage/1_hyperparameters.md)**:
 Learn the essentials of hyperparameter optimization with NePS.
 
 * **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**:

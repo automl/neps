@@ -12,7 +12,7 @@ from neps.space.domain import Domain
 
 
 @dataclass
-class Float:
+class HPOFloat:
     """A float value for a parameter.
 
     This kind of parameter is used to represent hyperparameters with continuous float
@@ -56,19 +56,19 @@ class Float:
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
             raise ValueError(
-                f"Float parameter: bounds error (lower >= upper). Actual values: "
+                "Float parameter: bounds error (lower >= upper). Actual values: "
                 f"lower={self.lower}, upper={self.upper}"
             )
 
         if self.log and (self.lower <= 0 or self.upper <= 0):
             raise ValueError(
-                f"Float parameter: bounds error (log scale cant have bounds <= 0). "
+                "Float parameter: bounds error (log scale cant have bounds <= 0). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
 
         if self.prior is not None and not self.lower <= self.prior <= self.upper:
             raise ValueError(
-                f"Float parameter: prior bounds error. Expected lower <= prior <= upper, "
+                "Float parameter: prior bounds error. Expected lower <= prior <= upper, "
                 f"but got lower={self.lower}, prior={self.prior}, upper={self.upper}"
             )
 
@@ -77,14 +77,14 @@ class Float:
 
         if self.is_fidelity and (self.lower < 0 or self.upper < 0):
             raise ValueError(
-                f"Float parameter: fidelity bounds error. Expected fidelity"
+                "Float parameter: fidelity bounds error. Expected fidelity"
                 f" bounds to be >= 0, but got lower={self.lower}, "
                 f" upper={self.upper}."
             )
 
         if self.is_fidelity and self.prior is not None:
             raise ValueError(
-                f"Float parameter: Fidelity parameters "
+                "Float parameter: Fidelity parameters "
                 f"cannot have a prior value. Got prior={self.prior}."
             )
 
@@ -97,13 +97,9 @@ class Float:
         self.domain = Domain.floating(self.lower, self.upper, log=self.log)
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
-    def validate(self, value: Any) -> bool:
-        """Validate if a value is within the bounds of the float parameter."""
-        return isinstance(value, float | int) and self.lower <= value <= self.upper
-
 
 @dataclass
-class Integer:
+class HPOInteger:
     """An integer value for a parameter.
 
     This kind of parameter is used to represent hyperparameters with
@@ -147,7 +143,7 @@ class Integer:
     def __post_init__(self) -> None:
         if self.lower >= self.upper:
             raise ValueError(
-                f"Integer parameter: bounds error (lower >= upper). Actual values: "
+                "Integer parameter: bounds error (lower >= upper). Actual values: "
                 f"lower={self.lower}, upper={self.upper}"
             )
 
@@ -159,7 +155,7 @@ class Integer:
         upper_int = int(self.upper)
         if lower_int != self.lower or upper_int != self.upper:
             raise ValueError(
-                f"Integer parameter: bounds error (lower and upper must be integers). "
+                "Integer parameter: bounds error (lower and upper must be integers). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
 
@@ -168,39 +164,35 @@ class Integer:
 
         if self.is_fidelity and (self.lower < 0 or self.upper < 0):
             raise ValueError(
-                f"Integer parameter: fidelity bounds error. Expected fidelity"
+                "Integer parameter: fidelity bounds error. Expected fidelity"
                 f" bounds to be >= 0, but got lower={self.lower}, "
                 f" upper={self.upper}."
             )
 
         if self.log and (self.lower <= 0 or self.upper <= 0):
             raise ValueError(
-                f"Integer parameter: bounds error (log scale cant have bounds <= 0). "
+                "Integer parameter: bounds error (log scale cant have bounds <= 0). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
 
         if self.prior is not None and not self.lower <= self.prior <= self.upper:
             raise ValueError(
-                f"Integer parameter: Expected lower <= prior <= upper,"
+                "Integer parameter: Expected lower <= prior <= upper,"
                 f"but got lower={self.lower}, prior={self.prior}, upper={self.upper}"
             )
 
         if self.is_fidelity and self.prior is not None:
             raise ValueError(
-                f"Integer parameter: Fidelity parameters "
+                "Integer parameter: Fidelity parameters "
                 f"cannot have a prior value. Got prior={self.prior}."
             )
 
         self.domain = Domain.integer(self.lower, self.upper, log=self.log)
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
-    def validate(self, value: Any) -> bool:
-        """Validate if a value is within the bounds of the parameter."""
-        return isinstance(value, float | int) and self.lower <= value <= self.upper
-
 
 @dataclass
-class Categorical:
+class HPOCategorical:
     """A list of **unordered** choices for a parameter.
 
     This kind of parameter is used to represent hyperparameters that can take on a
@@ -260,13 +252,9 @@ class Categorical:
         self.center = self.choices[0]
         self.domain = Domain.indices(len(self.choices), is_categorical=True)
 
-    def validate(self, value: Any) -> bool:
-        """Validate if a value is one of the choices of the categorical parameter."""
-        return value in self.choices
-
 
 @dataclass
-class Constant:
+class HPOConstant:
     """A constant value for a parameter.
 
     This kind of parameter is used to represent hyperparameters with values that
@@ -295,17 +283,13 @@ class Constant:
         """
         return self.value
 
-    def validate(self, value: Any) -> bool:
-        """Validate if a value is the same as the constant parameter's value."""
-        return value == self.value
 
-
-Parameter: TypeAlias = Float | Integer | Categorical
+Parameter: TypeAlias = HPOFloat | HPOInteger | HPOCategorical
 """A type alias for all the parameter types.
 
-* [`Float`][neps.space.Float]
-* [`Integer`][neps.space.Integer]
-* [`Categorical`][neps.space.Categorical]
+* [`Float`][neps.space.HPOFloat]
+* [`Integer`][neps.space.HPOInteger]
+* [`Categorical`][neps.space.HPOCategorical]
 
-A [`Constant`][neps.space.Constant] is not included as it does not change value.
+A [`Constant`][neps.space.HPOConstant] is not included as it does not change value.
 """

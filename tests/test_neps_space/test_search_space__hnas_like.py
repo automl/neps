@@ -1,0 +1,316 @@
+from __future__ import annotations
+
+import pytest
+
+import neps.space.neps_spaces.sampling
+from neps.space.neps_spaces import neps_space, string_formatter
+from neps.space.neps_spaces.parameters import (
+    Categorical,
+    Float,
+    Operation,
+    PipelineSpace,
+)
+
+
+class HNASLikePipeline(PipelineSpace):
+    """Based on the `hierarchical+shared` variant (cell block is shared everywhere).
+    Across _CONVBLOCK items, _ACT and _CONV also shared. Only the _NORM changes.
+
+    Additionally, this variant now has a PReLU operation with a float hyperparameter (init).
+    The same value of that hyperparameter would is used everywhere a _PRELU is used.
+    """
+
+    # ------------------------------------------------------
+    # Adding `PReLU` with a float hyperparameter `init`
+    # Note that the sampled `_prelu_init_value` will be shared across all `_PRELU` uses,
+    #  since no `Resample` was requested for it
+    _prelu_init_value = Float(lower=0.1, upper=0.9)
+    _PRELU = Operation(
+        operator="ACT prelu",
+        kwargs={"init": _prelu_init_value},
+    )
+    # ------------------------------------------------------
+
+    # Added `_PRELU` to the possible `_ACT` choices
+    _ACT = Categorical(
+        choices=(
+            Operation(operator="ACT relu"),
+            Operation(operator="ACT hardswish"),
+            Operation(operator="ACT mish"),
+            _PRELU,
+        ),
+    )
+    _CONV = Categorical(
+        choices=(
+            Operation(operator="CONV conv1x1"),
+            Operation(operator="CONV conv3x3"),
+            Operation(operator="CONV dconv3x3"),
+        ),
+    )
+    _NORM = Categorical(
+        choices=(
+            Operation(operator="NORM batch"),
+            Operation(operator="NORM instance"),
+            Operation(operator="NORM layer"),
+        ),
+    )
+
+    _CONVBLOCK = Operation(
+        operator="CONVBLOCK Sequential3",
+        args=(
+            _ACT,
+            _CONV,
+            _NORM.resample(),
+        ),
+    )
+    _CONVBLOCK_FULL = Operation(
+        operator="OPS Sequential1",
+        args=(_CONVBLOCK.resample(),),
+    )
+    _OP = Categorical(
+        choices=(
+            Operation(operator="OPS zero"),
+            Operation(operator="OPS id"),
+            Operation(operator="OPS avg_pool"),
+            _CONVBLOCK_FULL.resample(),
+        ),
+    )
+
+    CL = Operation(
+        operator="CELL Cell",
+        args=(
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+            _OP.resample(),
+        ),
+    )
+
+    _C = Categorical(
+        choices=(
+            Operation(operator="C Sequential2", args=(CL, CL)),
+            Operation(operator="C Sequential3", args=(CL, CL, CL)),
+            Operation(operator="C Residual2", args=(CL, CL, CL)),
+        ),
+    )
+
+    _RESBLOCK = Operation(operator="resBlock")
+    _DOWN = Categorical(
+        choices=(
+            Operation(operator="DOWN Sequential2", args=(CL, _RESBLOCK)),
+            Operation(operator="DOWN Sequential3", args=(CL, CL, _RESBLOCK)),
+            Operation(operator="DOWN Residual2", args=(CL, _RESBLOCK, _RESBLOCK)),
+        ),
+    )
+
+    _D0 = Categorical(
+        choices=(
+            Operation(
+                operator="D0 Sequential3",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    CL,
+                ),
+            ),
+            Operation(
+                operator="D0 Sequential4",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    _C.resample(),
+                    CL,
+                ),
+            ),
+            Operation(
+                operator="D0 Residual3",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    CL,
+                    CL,
+                ),
+            ),
+        ),
+    )
+    _D1 = Categorical(
+        choices=(
+            Operation(
+                operator="D1 Sequential3",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
+                ),
+            ),
+            Operation(
+                operator="D1 Sequential4",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
+                ),
+            ),
+            Operation(
+                operator="D1 Residual3",
+                args=(
+                    _C.resample(),
+                    _C.resample(),
+                    _DOWN.resample(),
+                    _DOWN.resample(),
+                ),
+            ),
+        ),
+    )
+
+    _D2 = Categorical(
+        choices=(
+            Operation(
+                operator="D2 Sequential3",
+                args=(
+                    _D1.resample(),
+                    _D1.resample(),
+                    _D0.resample(),
+                ),
+            ),
+            Operation(
+                operator="D2 Sequential3",
+                args=(
+                    _D0.resample(),
+                    _D1.resample(),
+                    _D1.resample(),
+                ),
+            ),
+            Operation(
+                operator="D2 Sequential4",
+                args=(
+                    _D1.resample(),
+                    _D1.resample(),
+                    _D0.resample(),
+                    _D0.resample(),
+                ),
+            ),
+        ),
+    )
+
+    ARCH: Operation = _D2
+
+
+@pytest.mark.repeat(500)
+def test_hnas_like():
+    pipeline = HNASLikePipeline()
+
+    resolved_pipeline, resolution_context = neps_space.resolve(pipeline)
+    assert resolved_pipeline is not None
+    assert resolution_context.samplings_made is not None
+    assert tuple(resolved_pipeline.get_attrs().keys()) == ("CL", "ARCH")
+
+
+@pytest.mark.repeat(500)
+def test_hnas_like_string():
+    pipeline = HNASLikePipeline()
+
+    resolved_pipeline, _ = neps_space.resolve(pipeline)
+
+    arch = resolved_pipeline.ARCH
+    arch_config_string = string_formatter.format_value(arch)
+    assert arch_config_string
+
+    cl = resolved_pipeline.CL
+    cl_config_string = string_formatter.format_value(cl)
+    assert cl_config_string
+
+
+def test_hnas_like_context():
+    samplings_to_make = {
+        "Resolvable.CL.args.sequence[0].resampled_categorical::categorical__4": 3,
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[0]::categorical__4": (
+            0
+        ),
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[1]::categorical__3": (
+            2
+        ),
+        "Resolvable.CL.args.sequence[0].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[2].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.CL.args.sequence[1].resampled_categorical::categorical__4": 0,
+        "Resolvable.CL.args.sequence[2].resampled_categorical::categorical__4": 1,
+        "Resolvable.CL.args.sequence[3].resampled_categorical::categorical__4": 2,
+        "Resolvable.CL.args.sequence[4].resampled_categorical::categorical__4": 3,
+        "Resolvable.CL.args.sequence[4].resampled_categorical.sampled_value.resampled_operation.args.sequence[0].resampled_operation.args.sequence[2].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.CL.args.sequence[5].resampled_categorical::categorical__4": 0,
+        "Resolvable.ARCH::categorical__3": 1,
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[0].resampled_categorical.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
+            2
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[0].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[1].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[2].resampled_categorical::categorical__3": (
+            0
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[1].resampled_categorical.sampled_value.args.sequence[3].resampled_categorical::categorical__3": (
+            1
+        ),
+        "Resolvable.ARCH.sampled_value.args.sequence[2].resampled_categorical::categorical__3": (
+            2
+        ),
+    }
+
+    pipeline = HNASLikePipeline()
+
+    resolved_pipeline, resolution_context = neps_space.resolve(
+        pipeline=pipeline,
+        domain_sampler=neps.space.neps_spaces.sampling.OnlyPredefinedValuesSampler(
+            predefined_samplings=samplings_to_make,
+        ),
+    )
+    sampled_values = resolution_context.samplings_made
+
+    assert resolved_pipeline is not None
+    assert sampled_values is not None
+    assert sampled_values is not samplings_to_make
+    assert sampled_values == samplings_to_make
+    assert list(sampled_values.items()) == list(samplings_to_make.items())
+
+    # we should have made exactly those samplings
+    assert sampled_values == samplings_to_make
+
+    cl = resolved_pipeline.CL
+    cl_config_string = string_formatter.format_value(cl)
+    assert cl_config_string
+    # The new formatter outputs operations in full rather than using sharing references
+    # Check for essential elements instead of exact format
+    assert "Cell(" in cl_config_string
+    assert "Sequential" in cl_config_string
+    assert "relu" in cl_config_string
+    assert "dconv3x3" in cl_config_string
+    assert "NORM batch" in cl_config_string
+    assert "NORM layer" in cl_config_string
+    assert "zero" in cl_config_string
+    assert "avg_pool" in cl_config_string
+
+    arch = resolved_pipeline.ARCH
+    arch_config_string = string_formatter.format_value(arch)
+    assert arch_config_string
+    # Check that arch contains CL-related operations (nested structure)
+    assert "Cell(" in arch_config_string
+    assert "Residual" in arch_config_string
+    assert "Sequential" in arch_config_string

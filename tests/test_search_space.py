@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import pytest
 
-from neps import Categorical, Constant, Float, Integer, SearchSpace
+from neps.space import SearchSpace
+from neps.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
 
 
 def test_search_space_orders_parameters_by_name():
-    unsorted = SearchSpace({"b": Float(0, 1), "c": Float(0, 1), "a": Float(0, 1)})
-    expected = SearchSpace({"a": Float(0, 1), "b": Float(0, 1), "c": Float(0, 1)})
+    unsorted = SearchSpace(
+        {"b": HPOFloat(0, 1), "c": HPOFloat(0, 1), "a": HPOFloat(0, 1)}
+    )
+    expected = SearchSpace(
+        {"a": HPOFloat(0, 1), "b": HPOFloat(0, 1), "c": HPOFloat(0, 1)}
+    )
     assert unsorted == expected
 
 
@@ -15,17 +20,20 @@ def test_multipe_fidelities_raises_error():
     # We should allow this at some point, but until we do, raise an error
     with pytest.raises(ValueError, match="neps only supports one fidelity parameter"):
         SearchSpace(
-            {"a": Float(0, 1, is_fidelity=True), "b": Float(0, 1, is_fidelity=True)}
+            {
+                "a": HPOFloat(0, 1, is_fidelity=True),
+                "b": HPOFloat(0, 1, is_fidelity=True),
+            }
         )
 
 
 def test_sorting_of_parameters_into_subsets():
     elements = {
-        "a": Float(0, 1),
-        "b": Integer(0, 10),
-        "c": Categorical(["a", "b", "c"]),
-        "d": Float(0, 1, is_fidelity=True),
-        "x": Constant("x"),
+        "a": HPOFloat(0, 1),
+        "b": HPOInteger(0, 10),
+        "c": HPOCategorical(["a", "b", "c"]),
+        "d": HPOFloat(0, 1, is_fidelity=True),
+        "x": HPOConstant("x"),
     }
     space = SearchSpace(elements)
     assert space.elements == elements

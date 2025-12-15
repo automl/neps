@@ -41,8 +41,8 @@ Using `neps` always follows the same pattern:
 
 1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
-1. Define a search space named `pipeline_space` of those Parameters e.g. via a dictionary
-1. Call `neps.run(evaluate_pipeline, pipeline_space)`
+2. Define a `pipeline_space` of those Parameters
+3. Call `neps.run(evaluate_pipeline, pipeline_space)`
 
 In code, the usage pattern can look like this:
 
@@ -53,7 +53,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def evaluate_pipeline(lr: float, alpha: int, optimizer: str) -> float:
+def evaluate_pipeline(lr: float, alpha: int, optimizer: str):
     # Create your model
     model = MyModel(lr=lr, alpha=alpha, optimizer=optimizer)
 
@@ -63,21 +63,20 @@ def evaluate_pipeline(lr: float, alpha: int, optimizer: str) -> float:
 
 
 # 2. Define a search space of parameters; use the same parameter names as in evaluate_pipeline
-pipeline_space = dict(
-    lr=neps.Float(
+class ExampleSpace(neps.PipelineSpace):
+    lr = neps.Float(
         lower=1e-5,
         upper=1e-1,
         log=True,   # Log spaces
-        prior=1e-3, # Incorporate you knowledge to help optimization
-    ),
-    alpha=neps.Integer(lower=1, upper=42),
-    optimizer=neps.Categorical(choices=["sgd", "adam"])
-)
+        prior=1e-3, # Incorporate your knowledge to help optimization
+    )
+    alpha = neps.Integer(lower=1, upper=42)
+    optimizer = neps.Categorical(choices=["sgd", "adam"])
 
 # 3. Run the NePS optimization
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
-    pipeline_space=pipeline_space,
+    pipeline_space=ExampleSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
     evaluations_to_spend=100,
 )
@@ -92,6 +91,8 @@ Discover how NePS works through these examples:
 - **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
 - **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
+
+- **[Benefiting NePS State and Optimizers with custom runtime](neps_examples/experimental/ask_and_tell_example.py)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
 
 - **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
 

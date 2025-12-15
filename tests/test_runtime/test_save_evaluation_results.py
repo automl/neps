@@ -4,11 +4,10 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps import save_pipeline_results
+from neps import Float, PipelineSpace, save_pipeline_results
 from neps.optimizers import OptimizerInfo
 from neps.optimizers.algorithms import random_search
 from neps.runtime import DefaultWorker
-from neps.space import Float, SearchSpace
 from neps.state import (
     DefaultReportValues,
     NePSState,
@@ -28,11 +27,16 @@ def neps_state(tmp_path: Path) -> NePSState:
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
         ),
+        pipeline_space=ASpace(),
     )
 
 
+class ASpace(PipelineSpace):
+    a = Float(0, 1)
+
+
 def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
-    optimizer = random_search(SearchSpace({"a": Float(0, 1)}))
+    optimizer = random_search(ASpace())
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(

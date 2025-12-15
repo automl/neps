@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from functools import partial
 from typing import TYPE_CHECKING, Any, Concatenate, Literal
 
 from neps.optimizers.algorithms import (
@@ -14,11 +15,12 @@ from neps.utils.common import extract_keyword_defaults
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
+    from neps.space.neps_spaces.parameters import PipelineSpace
 
 
 def _load_optimizer_from_string(
     optimizer: OptimizerChoice | Literal["auto"],
-    space: SearchSpace,
+    space: SearchSpace | PipelineSpace,
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[AskFunction, OptimizerInfo]:
@@ -37,7 +39,10 @@ def _load_optimizer_from_string(
 
     keywords = extract_keyword_defaults(optimizer_build)
     optimizer_kwargs = optimizer_kwargs or {}
-    opt = optimizer_build(space, **optimizer_kwargs)
+    optimizer_kwargs = dict(optimizer_kwargs)  # Make mutable copy
+    if _optimizer == "primo":
+        optimizer_kwargs["prior_centers"] = optimizer_kwargs.get("prior_centers", {})
+    opt = optimizer_build(space, **optimizer_kwargs)  # type: ignore
     info = OptimizerInfo(name=_optimizer, info={**keywords, **optimizer_kwargs})
     return opt, info
 
@@ -47,11 +52,13 @@ def load_optimizer(
         OptimizerChoice
         | Mapping[str, Any]
         | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
         | CustomOptimizer
         | Literal["auto"]
     ),
-    space: SearchSpace,
+    space: SearchSpace | PipelineSpace,
 ) -> tuple[AskFunction, OptimizerInfo]:
     match optimizer:
         # Predefined string (including "auto")
@@ -68,9 +75,27 @@ def load_optimizer(
 
         # Provided optimizer initializer
         case _ if callable(optimizer):
+            inner_optimizer = None
+            if isinstance(optimizer, partial):
+                inner_optimizer = optimizer.func
+                while isinstance(inner_optimizer, partial):
+                    inner_optimizer = inner_optimizer.func
+            else:
+                inner_optimizer = optimizer
             keywords = extract_keyword_defaults(optimizer)
-            _optimizer = optimizer(space)
-            info = OptimizerInfo(name=optimizer.__name__, info=keywords)
+
+            # Error catch and type ignore needed while we transition from SearchSpace to
+            # Pipeline
+            try:
+                _optimizer = inner_optimizer(space, **keywords)  # type: ignore
+            except TypeError as e:
+                raise TypeError(
+                    f"Optimizer {inner_optimizer} does not accept a space of type"
+                    f" {type(space)}."
+                ) from e
+
+            info = OptimizerInfo(name=inner_optimizer.__name__, info=keywords)
+
             return _optimizer, info
 
         # Custom optimizer, we create it

@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence, ValuesView
 from dataclasses import asdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from neps.state.neps_state import TrialRepo
+from neps.state.pipeline_eval import UserResultDict
 
 if TYPE_CHECKING:
     from neps.state.trial import Trial
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 def load_trials_from_pickle(
     root_dir: Path | str,
-) -> Sequence[tuple[Mapping[str, Any], dict]]:
+) -> Sequence[tuple[Mapping[str, Any], UserResultDict]]:
     """Load trials from a pickle-based TrialRepo.
 
     Args:
@@ -37,7 +38,7 @@ def load_trials_from_pickle(
     )
 
     return [
-        (trial.config, asdict(trial.report))
+        (trial.config, cast(UserResultDict, asdict(trial.report)))
         for trial in trials
         if trial.report is not None
     ]
