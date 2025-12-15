@@ -93,7 +93,7 @@ def _bo(  # noqa: C901, PLR0912
                 If using `cost`, cost must be provided in the reports of the trials.
 
         sample_prior_first: Whether to sample the default configuration first.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
             In this case, the max fidelity is always used.
         device: Device to use for the optimization.
         reference_point: The reference point to use for multi-objective optimization.
@@ -435,7 +435,7 @@ def random_search(
     pipeline_space: SearchSpace | PipelineSpace,
     *,
     use_priors: bool = False,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -459,16 +459,16 @@ def random_search(
     assert ignore_fidelity in (
         True,
         False,
-        "highest fidelity",
-    ), "ignore_fidelity should be either True, False or 'highest fidelity'"
+        "highest_fidelity",
+    ), "ignore_fidelity should be either True, False or 'highest_fidelity'"
     if not ignore_fidelity and pipeline_space.fidelity is not None:
         raise ValueError(
             "Fidelities are not supported for RandomSearch. Consider setting the"
             " fidelity to a constant value, or setting ignore_fidelity to True to sample"
-            " from it like any other parameter or 'highest fidelity' to always sample at"
+            " from it like any other parameter or 'highest_fidelity' to always sample at"
             f" max fidelity. Got fidelity: {pipeline_space.fidelities} "
         )
-    if ignore_fidelity in (True, "highest fidelity") and pipeline_space.fidelity is None:
+    if ignore_fidelity in (True, "highest_fidelity") and pipeline_space.fidelity is None:
         logger.warning(
             "Warning: You are using ignore_fidelity, but no fidelity is defined in the"
             " search space. Consider setting ignore_fidelity to False."
@@ -478,7 +478,7 @@ def random_search(
             parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
         case False:
             parameters = {**pipeline_space.searchables}
-        case "highest fidelity":
+        case "highest_fidelity":
             parameters = {**pipeline_space.searchables}
 
     if use_priors and not any(
@@ -1350,7 +1350,7 @@ def custom(
 def complex_random_search(
     pipeline_space: PipelineSpace,
     *,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSComplexRandomSearch:
     """A complex random search algorithm that samples configurations uniformly at random,
     but allows for more complex sampling strategies.
@@ -1359,7 +1359,7 @@ def complex_random_search(
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest fidelity.
     Raises:
         ValueError: If the pipeline has fidelity attributes and `ignore_fidelity` is
             set to `False`. Complex random search does not support fidelities by default.
@@ -1387,7 +1387,7 @@ def neps_random_search(
     pipeline_space: PipelineSpace,
     *,
     use_priors: bool = False,
-    ignore_fidelity: bool | Literal["highest fidelity"] = False,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -1398,7 +1398,7 @@ def neps_random_search(
             defined in the search space.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest fidelity.
     Raises:
         ValueError: If the pipeline space has fidelity attributes and `ignore_fidelity` is
             set to `False`. Random search does not support fidelities by default.

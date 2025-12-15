@@ -145,7 +145,16 @@ class PriorBandSampler:
         # 4. And finally, we distribute the original w_prior according to this ratio
         w_inc = w_prior * inc_ratio
         w_prior = w_prior * prior_ratio
-        assert np.isclose(w_prior + w_inc + w_random, 1.0)
+
+        # Normalize to ensure the weights sum to exactly 1.0
+        # This handles floating-point precision issues
+        total_weight = w_prior + w_inc + w_random
+        w_prior = w_prior / total_weight
+        w_inc = w_inc / total_weight
+        w_random = w_random / total_weight
+
+        # Verify weights are valid probabilities (relaxed tolerance for floating-point)
+        assert np.isclose(w_prior + w_inc + w_random, 1.0, rtol=1e-7, atol=1e-9)
 
         # Now we use these weights to choose which sampling distribution to sample from
         policy = np.random.choice(

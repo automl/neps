@@ -70,7 +70,7 @@ neps.warmstart_neps(
     optimizer=partial(
         neps.algorithms.neps_random_search,
         use_priors=True,
-        ignore_fidelity="highest fidelity",
+        ignore_fidelity="highest_fidelity",
     ),
 )
 neps.run(
@@ -81,7 +81,7 @@ neps.run(
     optimizer=partial(
         neps.algorithms.neps_random_search,
         use_priors=True,
-        ignore_fidelity="highest fidelity",
+        ignore_fidelity="highest_fidelity",
     ),
     # warmstart_configs=warmstarting_configs,
     overwrite_working_directory=False,
