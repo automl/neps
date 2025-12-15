@@ -45,13 +45,21 @@ from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
-from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+from neps.space.neps_spaces.neps_space import (
+    NepsCompatConverter,
+    convert_neps_to_classic_search_space,
+)
 from neps.space.neps_spaces.parameters import (
     Categorical,
     Float,
     Integer,
     PipelineSpace,
     Resolvable,
+)
+from neps.space.neps_spaces.sampling import (
+    DomainSampler,
+    PriorOrFallbackSampler,
+    RandomSampler,
 )
 
 if TYPE_CHECKING:
@@ -445,8 +453,10 @@ def random_search(
     Args:
         pipeline_space: The search space to sample from.
         use_priors: Whether to use priors when sampling.
-        ignore_fidelity: Whether to ignore fidelity when sampling.
-            In this case, the max fidelity is always used.
+        ignore_fidelity: Whether to ignore_fidelity when sampling.
+            Setting this to "highest_fidelity" will always sample at max fidelity.
+            Setting this to True will randomly sample from the fidelity like any other
+            parameter.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -745,7 +755,7 @@ def successive_halving(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity level.
+            and if so, should it be at the highest_fidelity level.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -775,7 +785,7 @@ def hyperband(
     eta: int = 3,
     sampler: Literal["uniform", "prior"] = "uniform",
     sample_prior_first: bool | Literal["highest_fidelity"] = False,
-) -> BracketOptimizer:
+) -> BracketOptimizer | _NePSBracketOptimizer:
     """Another bandit-based optimization algorithm that uses a _fidelity_ parameter,
     very similar to [`successive_halving`][neps.optimizers.algorithms.successive_halving],
     but hedges a bit more on the safe side, just incase your _fidelity_ parameters
@@ -818,16 +828,18 @@ def hyperband(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity level.
+            and if so, should it be at the highest_fidelity level.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
-        if converted_space is not None:
+        if converted_space:
             pipeline_space = converted_space
         else:
-            raise ValueError(
-                "This optimizer only supports HPO search spaces, please use a NePS"
-                " space-compatible optimizer."
+            return neps_hyperband(
+                pipeline_space,
+                eta=eta,
+                sampler=sampler,
+                sample_prior_first=sample_prior_first,
             )
     return _bracket_optimizer(
         pipeline_space=pipeline_space,
@@ -839,6 +851,40 @@ def hyperband(
         # TODO: Implement this
         bayesian_optimization_kick_in_point=None,
         device=None,
+    )
+
+
+def neps_hyperband(
+    pipeline_space: PipelineSpace,
+    *,
+    eta: int = 3,
+    sampler: Literal["uniform", "prior"] = "uniform",
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+) -> _NePSBracketOptimizer:
+    """
+    Hyperband optimizer for NePS search spaces.
+    Args:
+        pipeline_space: The search space to sample from.
+        eta: The reduction factor used for building brackets
+        sampler: The type of sampling procedure to use:
+
+            * If `#!python "uniform"`, samples uniformly from the space when
+                it needs to sample.
+            * If `#!python "prior"`, samples from the prior
+                distribution built from the `prior` and `prior_confidence`
+                values in the search space.
+
+        sample_prior_first: Whether to sample the prior configuration first,
+            and if so, should it be at the highest_fidelity level.
+    """
+    return _neps_bracket_optimizer(
+        pipeline_space=pipeline_space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler="prior" if sampler == "prior" else "uniform",
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        sampler_kwargs={},
     )
 
 
@@ -925,7 +971,7 @@ def asha(
                 values in the search space.
 
         sample_prior_first: Whether to sample the prior configuration first,
-            and if so, should it be at the highest fidelity.
+            and if so, should it be at the highest_fidelity.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -1359,7 +1405,7 @@ def complex_random_search(
         pipeline_space: The search space to sample from.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest_fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest_fidelity.
     Raises:
         ValueError: If the pipeline has fidelity attributes and `ignore_fidelity` is
             set to `False`. Complex random search does not support fidelities by default.
@@ -1368,7 +1414,7 @@ def complex_random_search(
     if pipeline_space.fidelity_attrs and ignore_fidelity is False:
         raise ValueError(
             "Complex Random Search does not support fidelities by default."
-            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "Consider using `ignore_fidelity=True` or `highest_fidelity`"
             "to always sample at max fidelity."
         )
     if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
@@ -1398,7 +1444,7 @@ def neps_random_search(
             defined in the search space.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If `True`, the algorithm will sample the fidelity like a normal parameter.
-            If set to `"highest_fidelity"`, it will always sample at the highest fidelity.
+            If set to `"highest_fidelity"`, it will always sample at the highest_fidelity.
     Raises:
         ValueError: If the pipeline space has fidelity attributes and `ignore_fidelity` is
             set to `False`. Random search does not support fidelities by default.
@@ -1407,7 +1453,7 @@ def neps_random_search(
     if pipeline_space.fidelity_attrs and ignore_fidelity is False:
         raise ValueError(
             "Random Search does not support fidelities by default."
-            "Consider using `ignore_fidelity=True` or `highest fidelity`"
+            "Consider using `ignore_fidelity=True` or `highest_fidelity`"
             "to always sample at max fidelity."
         )
     if not pipeline_space.fidelity_attrs and ignore_fidelity is not False:
@@ -1436,25 +1482,26 @@ def neps_random_search(
     )
 
 
-def _neps_bracket_optimizer(
+def _neps_bracket_optimizer(  # noqa: C901, PLR0915
     pipeline_space: PipelineSpace,
     *,
     bracket_type: Literal["successive_halving", "hyperband", "asha", "async_hb"],
     eta: int,
-    sampler: Literal["priorband"],
+    sampler: Literal["priorband", "uniform", "prior"],
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
-    inc_ratio: float = 0.9,
+    sampler_kwargs: dict[str, Any] | None = None,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
     if len(fidelity_attrs.items()) != 1:
         raise ValueError(
-            "Only one fidelity should be defined in the pipeline space."
+            "Exactly one fidelity should be defined in the pipeline space."
             f"\nGot: {fidelity_attrs!r}"
         )
 
     fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
+    fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
         raise ValueError(
@@ -1477,6 +1524,12 @@ def _neps_bracket_optimizer(
                 brackets.Sync.create_repeating,
                 rung_sizes=rung_sizes,
             )
+            rung_fidelity_str = "\n".join(
+                f"{k}: {v}" for k, v in rung_to_fidelity.items()
+            )
+            logging.info(f"Successive Halving Rung to Fidelity:\n{rung_fidelity_str}")
+            rung_sizes_str = "\n".join(f"{k}: {v}" for k, v in rung_sizes.items())
+            logging.info(f"Successive Halving Rung Sizes:\n{rung_sizes_str}")
 
         case "hyperband":
             assert early_stopping_rate is None
@@ -1488,6 +1541,16 @@ def _neps_bracket_optimizer(
                 brackets.Hyperband.create_repeating,
                 bracket_layouts=bracket_layouts,
             )
+            rung_fidelity_str = "\n".join(
+                f"Rung {k}: Fidelity >= {v}" for k, v in rung_to_fidelity.items()
+            )
+            logging.info(f"Hyperband Rung to Fidelity:\n{rung_fidelity_str}")
+            bracket_layouts_str = "\n\n".join(
+                f"Bracket {i}\n"
+                + "\n".join([f"At Rung {k}: {v} configs" for k, v in bracket.items()])
+                for i, bracket in enumerate(bracket_layouts)
+            )
+            logging.info(f"Hyperband Bracket Layouts:\n{bracket_layouts_str}")
 
         case "asha":
             assert early_stopping_rate is not None
@@ -1501,6 +1564,12 @@ def _neps_bracket_optimizer(
                 rungs=list(rung_to_fidelity),
                 eta=eta,
             )
+            rung_fidelity_str = "\n".join(
+                f"{k}: {v}" for k, v in rung_to_fidelity.items()
+            )
+            logging.info(f"ASHA Rung to Fidelity:\n{rung_fidelity_str}")
+            rung_sizes_str = "\n".join(f"{k}: {v}" for k, v in _rung_sizes.items())
+            logging.info(f"ASHA Rung Sizes:\n{rung_sizes_str}")
 
         case "async_hb":
             assert early_stopping_rate is None
@@ -1515,10 +1584,20 @@ def _neps_bracket_optimizer(
                 bracket_rungs=bracket_rungs,
                 eta=eta,
             )
+            rung_fidelity_str = "\n".join(
+                f"Rung {k}: Fidelity >= {v}" for k, v in rung_to_fidelity.items()
+            )
+            logging.info(f"Async HB Rung to Fidelity:\n{rung_fidelity_str}")
+            bracket_rungs_str = "\n\n".join(
+                f"Bracket {i}\n" + "\n".join([f"At Rung {k}" for k in bracket])
+                for i, bracket in enumerate(bracket_rungs)
+            )
+            logging.info(f"Async Hyperband Bracket Rungs:\n{bracket_rungs_str}")
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 
-    _sampler: NePSPriorBandSampler
+    _sampler_kwargs = sampler_kwargs or {}
+    _sampler: NePSPriorBandSampler | DomainSampler
     match sampler:
         case "priorband":
             _sampler = NePSPriorBandSampler(
@@ -1528,7 +1607,13 @@ def _neps_bracket_optimizer(
                     early_stopping_rate if early_stopping_rate is not None else 0
                 ),
                 fid_bounds=(fidelity_obj.min_value, fidelity_obj.max_value),
-                inc_ratio=inc_ratio,
+                **_sampler_kwargs,
+            )
+        case "uniform":
+            _sampler = RandomSampler({})
+        case "prior":
+            _sampler = PriorOrFallbackSampler(
+                fallback_sampler=RandomSampler({}), always_use_prior=False
             )
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
@@ -1540,6 +1625,7 @@ def _neps_bracket_optimizer(
         sampler=_sampler,
         sample_prior_first=sample_prior_first,
         create_brackets=create_brackets,
+        fid_name=fidelity_name,
     )
 
 
@@ -1558,7 +1644,7 @@ def neps_priorband(
         eta: The eta parameter for the algorithm.
         sample_prior_first: Whether to sample the prior first.
             If set to `"highest_fidelity"`, the prior will be sampled at the
-            highest fidelity, otherwise at the lowest fidelity.
+            highest_fidelity, otherwise at the lowest fidelity.
         base: The type of bracket optimizer to use. One of:
             - "successive_halving"
             - "hyperband"
@@ -1590,7 +1676,7 @@ def neps_priorband(
         sampler="priorband",
         sample_prior_first=sample_prior_first,
         early_stopping_rate=0 if base in ("successive_halving", "asha") else None,
-        inc_ratio=inc_ratio,
+        sampler_kwargs={"inc_ratio": inc_ratio},
     )
 
 
@@ -1617,6 +1703,7 @@ PredefinedOptimizers: Mapping[
         neps_random_search,
         complex_random_search,
         neps_priorband,
+        neps_hyperband,
     )
 }
 
@@ -1636,4 +1723,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_random_search",
     "complex_random_search",
     "neps_priorband",
+    "neps_hyperband",
 ]
