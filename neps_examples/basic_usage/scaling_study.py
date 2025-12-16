@@ -54,6 +54,7 @@ def evaluate_pipeline(epoch, n_layers, max_units):
 
 
 def get_total_flops(epoch, n_layers, max_units):
+    print(type(epoch))
     conf = dict(epoch=epoch, n_layers=n_layers, max_units=max_units)
     conf.update(conf_const)
     return None

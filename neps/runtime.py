@@ -833,7 +833,7 @@ class DefaultWorker:
                         best_config_path,
                     )
                     self.optimizer.callback_on_trial_complete(
-                        trials=trials,
+                        trials=evaluated_trials,
                     )
 
                 full_df, short = status(main_dir)
