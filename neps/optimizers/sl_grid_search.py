@@ -25,6 +25,8 @@ from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.util import get_trial_config_unique_key
 from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.optimizers.utils.grid import make_grid
+from neps.space.neps_spaces.neps_space import SamplingResolver, SamplingResolutionContext
+
 if TYPE_CHECKING:
     from neps.space import SearchSpace
     from neps.state import BudgetInfo, Trial
@@ -53,13 +55,17 @@ class SL_Grid_Search:
         self.params_estimator = params_estimator
         self.seen_datapoints_estimator = seen_datapoints_estimator
 
+        resolver = SamplingResolver()
+        resolution_context = SamplingResolutionContext()
+        resolved_space = resolver(space, resolution_context)
+
         # generate all possible configurations from the pipeline space
         self.config_list = make_grid(
-            space,
+            resolved_space,
             ignore_fidelity=True,
             size_per_numerical_hp=10,
         )
-        self.downscale_search_space(max_evaluation_flops=max_evaluation_flops)
+        self.down_scaled_conf_list = self.get_downscaled_search_space(max_evaluation_flops=max_evaluation_flops)
 
         self.none_evaluated_configs: TypeSequence[str] | None = None
         """List of unique keys of configurations that have not been evaluated yet."""
@@ -78,14 +84,14 @@ class SL_Grid_Search:
 
         nxt_id = len(trials)
         
-        config = self.config_list[nxt_id]
+        config = self.down_scaled_conf_list[nxt_id]
         config_id = str(nxt_id)
         return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
     # find the specific cut in space for running scaling law
-    def downscale_search_space(self, max_evaluation_flops: int) -> None:
+    def get_downscaled_search_space(self, max_evaluation_flops: int) -> None:
         # filter the search pipeline space to only include configurations with flops <= max_evaluation_flops
-        self.config_list = [conf for conf in self.config_list if self.flops_estimator(**conf) <= max_evaluation_flops]
+        return [conf for conf in self.config_list if self.flops_estimator(**conf) <= max_evaluation_flops]
 
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flop: int) -> dict[str, Any]:
