@@ -27,6 +27,7 @@ from neps.space.neps_spaces.parameters import (
     Repeated,
     Resample,
     Resolvable,
+    resolvable_is_fully_resolved,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -1089,19 +1090,23 @@ def adjust_evaluation_pipeline_for_neps_space(
         # `kwargs` can contain other things not related to
         # the samplings to make or to environment values.
         # That is not an issue. Those items will be passed through.
-
+        print(f"value of kwargs inside neps wrapper: {kwargs}")
         sampled_pipeline_data = NepsCompatConverter.from_neps_config(config=kwargs)
+        print(sampled_pipeline_data.predefined_samplings)
+        # if pipeline is resolved not do again:
+        if not isinstance(pipeline_space, Resolvable):
+            resolved_pipeline, _resolution_context = resolve(
+                pipeline=pipeline_space,
+                domain_sampler=OnlyPredefinedValuesSampler(
+                    predefined_samplings=sampled_pipeline_data.predefined_samplings,
+                ),
+                environment_values=sampled_pipeline_data.environment_values,
+            )
 
-        sampled_pipeline, _resolution_context = resolve(
-            pipeline=pipeline_space,
-            domain_sampler=OnlyPredefinedValuesSampler(
-                predefined_samplings=sampled_pipeline_data.predefined_samplings,
-            ),
-            environment_values=sampled_pipeline_data.environment_values,
-        )
-
-        config = dict(**sampled_pipeline.get_attrs())
-
+            config = dict(**resolved_pipeline.get_attrs())
+        else:
+            config = dict(**pipeline_space.get_attrs())
+            print(f"config after resolve: {config} for {evaluation_pipeline}")
         for name, value in config.items():
             if isinstance(value, Operation):
                 # If the operator is a not a string, we convert it to a callable.
@@ -1294,6 +1299,7 @@ ONLY_CLASSIC_ALGORITHMS_NAMES = [
     "successive_halving",
     "moasha",
     "pibo",
+    "scaling_law_guided_grid_search"
 ]
 CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
     "random_search",
@@ -1316,6 +1322,7 @@ def _get_only_classic_algorithms_functions() -> list[Callable]:
         algorithms.successive_halving,
         algorithms.moasha,
         algorithms.pibo,
+        algorithms.scaling_law_guided_grid_search,
     ]
 
 

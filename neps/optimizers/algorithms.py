@@ -524,7 +524,7 @@ def scaling_law_guided_primo(
 
 
 def scaling_law_guided_grid_search(
-    space: PipelineSpace,
+    space: SearchSpace,
     *,
     params_estimator: Callable[[SearchSpace], int],
     seen_datapoints_estimator: Callable[[SearchSpace], int],
@@ -541,7 +541,7 @@ def scaling_law_guided_grid_search(
     """
     
     return SL_Grid_Search(
-        space=space,
+        space=convert_neps_to_classic_search_space(space=space),
         flops_estimator=flops_estimator,
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,

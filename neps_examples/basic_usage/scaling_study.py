@@ -3,49 +3,76 @@ import numpy as np
 import neps
 import socket
 import os
-from neps.optimizers.algorithms import scaling_law_guided_primo
+from neps.optimizers.algorithms import scaling_law_guided_grid_search
+# from lcbench import estimate_lcbench_flops, Objective
 
-seq_length = 2048
+dataset_size= 1000 #TODO
+# bench_name, bench_desc = list(mfpbench_benches.items())[0]
+bench_name, bench_desc= None, None
+# bench = bench_desc.load(bench_desc)
 
-def evaluate_pipeline(hidden_size, num_layers, learning_rate, global_batch_size, num_training_steps):
+conf_const = dict(learning_rate = 0.001,
+    batch_size = 87,
+    max_dropout = 0.2442070308082,
+    momentum = 0.3778629866698,
+    num_layers = 4,
+    weight_decay = 0.0473271620733)
+
+def _get_layer_widths(max_units, n_layers):
+    """Reconstructs the funnel shape: [input, L1, L2, ..., output]"""
+    widths = []
     
-    params = get_number_of_parameters(hidden_size, num_layers, learning_rate, global_batch_size, num_training_steps)
-    total_tokens_processed = global_batch_size * num_training_steps * seq_length
-    E = 1.7 # Simulate data noise
-    # A / (N^a)
-    A = 500
-    alpha = 0.09
-    model_loss_term = A / (params**alpha)
+    current_width = max_units
     
-    # B / (D^b)
-    B = 800
-    beta = 0.15
-    data_loss_term = B / (total_tokens_processed**beta)
+    # LCBench Funnel Strategy: Halve width each layer, but keep >= 16 or num_classes
+    for _ in range(n_layers):
+        widths.append(current_width)
+        current_width = max(16, int(current_width / 2))
+    # ignore params in last layer 
+    # widths.append(self.num_classes)
+    return widths
+
+def get_number_of_parameters(epoch, n_layers, max_units):
+    """Calculates total trainable parameters (Weights + Biases)."""
+    widths = _get_layer_widths(max_units, n_layers)
+    total_params = 0
     
-    optimal_lr = 1e-4
-    lr_penalty = 1.0 + (np.log10(learning_rate) - np.log10(optimal_lr))**2 * 0.5
+    for i in range(len(widths) - 1):
+        n_in = widths[i]
+        n_out = widths[i+1]
+        
+        # Linear Layer: Weights + Biases
+        weights = n_in * n_out
+        biases = n_out
+        total_params += weights + biases
+    return total_params
 
-    final_loss = (E + model_loss_term + data_loss_term) * lr_penalty
-    return neps.UserResultDict(
-        objective_to_minimize=final_loss, 
-        cost=get_total_flops(hidden_size, num_layers, learning_rate, global_batch_size, num_training_steps)/1e12,
-    )
+def evaluate_pipeline(epoch, n_layers, max_units):
+    conf = dict(epoch=epoch, n_layers=n_layers, max_units=max_units)
+    conf.update(conf_const)
+    return bench.query(None, epoch=epoch, objectives=["val_accuracy"])[0]
 
-def get_number_of_parameters(hidden_size, num_layers, learning_rate, global_batch_size, num_training_steps):
-    vocab_size = 50257
-    return (12 * num_layers * hidden_size**2) + (vocab_size * hidden_size)
 
-def get_total_flops(hidden_size, num_layers, learning_rate, global_batch_size, num_training_steps):
-    return 2 * num_training_steps * global_batch_size * seq_length * (12 * num_layers * hidden_size**2)
+def get_total_flops(epoch, n_layers, max_units):
+    conf = dict(epoch=epoch, n_layers=n_layers, max_units=max_units)
+    conf.update(conf_const)
+    return None
+
+
+def seen_datapoints_estimator(epoch, n_layers, max_units):
+    return dataset_size * epoch
 
 class PipeSpace(neps.PipelineSpace):
-    hidden_size=neps.Integer(lower=16, upper=128, is_arch_param=True)
-    num_layers=neps.Integer(lower=4, upper=8, is_arch_param=True)
-    learning_rate=neps.Float(lower=0.000001, upper=0.001, log=True)
-    global_batch_size=neps.Integer(lower=32, upper=1024, log=True)
-    num_training_steps=neps.Integer(lower=100, upper=200, log=True)
+    epoch=neps.Integer(lower=100, upper=1000, is_arch_param=True)
+    n_layers = neps.Integer(lower=4, upper=8, is_arch_param=True)
+    max_units = neps.Integer(lower=64, upper=1024, is_arch_param=True)
 
-pipeline_space = PipeSpace()
+pipeline_space = dict(
+    epoch=neps.Integer(lower=100, upper=1000, is_arch_param=True),
+    n_layers = neps.Integer(lower=4, upper=8, is_arch_param=True),
+    max_units = neps.Integer(lower=64, upper=1024, is_arch_param=True)
+)
+
 
 logging.basicConfig(level=logging.DEBUG)
 neps.run(
@@ -55,10 +82,11 @@ neps.run(
     cost_to_spend=1000,
     worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
     overwrite_root_directory=True,
-    optimizer=lambda space: scaling_law_guided_primo(
+    optimizer=lambda space: scaling_law_guided_grid_search(
         space,
-        get_number_of_parameters=get_number_of_parameters,
-        get_total_flops=get_total_flops,
-        prior_centers=None,
+        params_estimator=get_number_of_parameters,
+        flops_estimator=get_total_flops,
+        seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=1000,
     ),
 )

@@ -25,9 +25,9 @@ from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.util import get_trial_config_unique_key
 from neps.space.neps_spaces.parameters import PipelineSpace
 from neps.optimizers.utils.grid import make_grid
-from neps.space.neps_spaces.neps_space import SamplingResolver, SamplingResolutionContext
-from neps.space.neps_spaces.neps_space import NepsCompatConverter
-
+from neps.space.neps_spaces.neps_space import SamplingResolver, SamplingResolutionContext, resolve
+from neps.space.neps_spaces import sampling
+from neps.space.neps_spaces.neps_space import NepsCompatConverter, adjust_evaluation_pipeline_for_neps_space
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
@@ -41,7 +41,7 @@ class SL_Grid_Search:
     """The Multi objective algorithm for search space including architectural choices."""
 
 
-    def __init__(self, space: PipelineSpace, 
+    def __init__(self, space: SearchSpace, 
                  flops_estimator: Callable[..., int],
                  params_estimator: Callable[..., int],
                  seen_datapoints_estimator: Callable[..., int],
@@ -56,13 +56,17 @@ class SL_Grid_Search:
         self.flops_estimator = flops_estimator
         self.params_estimator = params_estimator
         self.seen_datapoints_estimator = seen_datapoints_estimator
-
+        # self.flops_estimator = adjust_evaluation_pipeline_for_neps_space(flops_estimator, space)
+        # self.params_estimator = adjust_evaluation_pipeline_for_neps_space(params_estimator, space)
+        # self.seen_datapoints_estimator = adjust_evaluation_pipeline_for_neps_space(seen_datapoints_estimator, space)
         # generate all possible configurations from the pipeline space
         self.config_list = make_grid(
             space,
             ignore_fidelity=True,
             size_per_numerical_hp=10,
         )
+        
+        # self.config_list = [NepsCompatConverter.from_neps_config(conf).predefined_samplings for conf in self.config_list]
         self.down_scaled_conf_list = self.get_downscaled_search_space(max_evaluation_flops=max_evaluation_flops)
 
         self.none_evaluated_configs: TypeSequence[str] | None = None
@@ -77,7 +81,7 @@ class SL_Grid_Search:
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "not supported yet"
         if self.none_evaluated_configs is None:
-            self.none_evaluated_configs = [get_trial_config_unique_key(conf) for conf in self.configs_list]
+            self.none_evaluated_configs = [get_trial_config_unique_key(conf) for conf in self.config_list]
             print("at first call, none evaluated configs:", len(self.none_evaluated_configs))
 
         nxt_id = len(trials)
@@ -89,12 +93,8 @@ class SL_Grid_Search:
     # find the specific cut in space for running scaling law
     def get_downscaled_search_space(self, max_evaluation_flops: int) -> None:
         # filter the search pipeline space to only include configurations with flops <= max_evaluation_flops
-        confs = []
-        for config_dict in self.config_list:
-            converted_dict = NepsCompatConverter.from_neps_config(config_dict)
-            if self.flops_estimator(**converted_dict) <= max_evaluation_flops:
-                confs.append(config_dict)
-        return confs
+        return [conf for conf in self.config_list if self.flops_estimator(**conf) <= max_evaluation_flops]
+
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flop: int) -> dict[str, Any]:
         # considering estimating the flops and number of optimizable parameters is cheap
@@ -105,8 +105,8 @@ class SL_Grid_Search:
         
         # find closes config in config_list with n_params less but closest to max_n_params
         conf_list = copy.deepcopy(self.config_list)
-        best_param = min([self.params_estimator(**NepsCompatConverter.from_neps_config(conf)) for conf in conf_list if self.params_estimator(**NepsCompatConverter.from_neps_config(conf)) <= max_n_params])
-        candidates = [(conf, abs(6 * best_param * self.seen_datapoints_estimator(**NepsCompatConverter.from_neps_config(conf)) - max_target_flop)) for conf in conf_list if self.params_estimator(**NepsCompatConverter.from_neps_config(conf)) == best_param]
+        best_param = min([self.params_estimator(**conf) for conf in conf_list if self.params_estimator(**conf) <= max_n_params])
+        candidates = [(conf, abs(6 * best_param * self.seen_datapoints_estimator(**conf) - max_target_flop)) for conf in conf_list if self.params_estimator(**conf) == best_param]
         return candidates.sort(key=lambda x: -x[1])[0][0]
     
 
