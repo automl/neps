@@ -381,6 +381,19 @@ class PipelineSpace(Resolvable):
         """
         return {k: v for k, v in self.get_attrs().items() if isinstance(v, Fidelity)}
 
+    @property
+    def get_arch_params(self) -> Mapping[str, Integer]:
+        """Get the architecture parameters of the pipeline.
+
+        Returns:
+            A mapping of attribute names to HPOInteger objects that are marked as
+            architecture parameters.
+        """
+        return {
+            k: v
+            for k, v in self.get_attrs().items()
+            if isinstance(v, Integer) and getattr(v, "is_arch_param", False)
+        }
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the pipeline as a mapping.
         This method collects all attributes of the pipeline class and instance,
@@ -1331,6 +1344,7 @@ class Integer(Domain[int]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        is_arch_param: bool = False,
         **kwargs: object,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
@@ -1361,6 +1375,7 @@ class Integer(Domain[int]):
         self._lower = lower
         self._upper = upper
         self._log = log
+        self.is_arch_param = is_arch_param
         self._prior = prior
         self._prior_confidence = (
             convert_confidence_level(prior_confidence)

@@ -138,6 +138,8 @@ class HPOInteger:
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
 
+    is_arch_param: bool = False
+
     domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:

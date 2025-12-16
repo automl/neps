@@ -101,3 +101,17 @@ class AskFunction(Protocol):
             trials: All of the trials that are known about.
         """
         ...
+    
+    @abstractmethod
+    def callback_on_trial_complete(
+        self,
+        trials: Mapping[str, Trial],
+    ) -> None:
+        """Callback called whenever a trial is completed.
+
+        This is called whenever a trial is completed in the neps state.
+
+        Args:
+            trials: All of the trials that are known about.
+        """
+        ...

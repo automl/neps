@@ -55,6 +55,9 @@ class SearchSpace(
     Currently no optimizer supports multiple fidelities but it is defined here incase.
     """
 
+    arch_params: Mapping[str, HPOInteger] = field(init=False)
+    """The architecture parameters in the search space."""
+
     constants: Mapping[str, Any] = field(init=False, default_factory=dict)
     """The constants in the search space."""
 
@@ -67,6 +70,10 @@ class SearchSpace(
             This does not include either constants or fidelities.
         """
         return {**self.numerical, **self.categoricals}
+
+    @property
+    def architecture_parameters(self) -> Mapping[str, HPOInteger]:
+        return self.arch_params
 
     @property
     def fidelity(self) -> tuple[str, HPOFloat | HPOInteger] | None:
@@ -163,6 +170,7 @@ class SearchSpace(
         fidelities: dict[str, HPOFloat | HPOInteger] = {}
         numerical: dict[str, HPOFloat | HPOInteger] = {}
         categoricals: dict[str, HPOCategorical] = {}
+        arch_params: dict[str, HPOInteger] = {}
         constants: dict[str, Any] = {}
 
         # Process the hyperparameters
@@ -178,6 +186,10 @@ class SearchSpace(
                             f" Fidelities: {fidelities}, new: {name}"
                         )
                     fidelities[name] = hp
+                
+                case HPOInteger() if hp.is_arch_param:
+                    arch_params[name] = hp
+                    numerical[name] = hp
 
                 case HPOFloat() | HPOInteger():
                     numerical[name] = hp
@@ -193,6 +205,7 @@ class SearchSpace(
         self.numerical = numerical
         self.constants = constants
         self.fidelities = fidelities
+        self.arch_params = arch_params
 
     def __getitem__(self, key: str) -> Parameter | HPOConstant:
         return self.elements[key]

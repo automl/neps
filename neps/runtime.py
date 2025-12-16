@@ -832,6 +832,9 @@ class DefaultWorker:
                         improvement_trace_path,
                         best_config_path,
                     )
+                    self.optimizer.callback_on_trial_complete(
+                        trials=trials,
+                    )
 
                 full_df, short = status(main_dir)
                 with csv_locker.lock():

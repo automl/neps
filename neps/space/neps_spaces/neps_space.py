@@ -1258,6 +1258,7 @@ def convert_classic_to_neps_search_space(
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
                 ),
+                is_arch_param=parameter.is_arch_param,
             )
             setattr(
                 NEPSSpace,

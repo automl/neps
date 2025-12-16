@@ -459,6 +459,95 @@ def determine_optimizer_automatically(  # noqa: PLR0911
 
     raise ValueError("Could not determine optimizer automatically.")
 
+def scaling_law_guided_primo(
+    space: SearchSpace,
+    *,
+    get_number_of_parameters: Callable[[SearchSpace], int],
+    get_total_flops: Callable[[SearchSpace], int],
+    epsilon: float = 0.25,
+    prior_centers: list[Mapping[str, Any]],
+    prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
+    initial_design_size: int | Literal["ndim"] = "ndim",
+    device: torch.device | str | None = None,
+    bo_scalar_weights: dict[str, float] | None = None,
+):
+    from neps.optimizers.sl_primo import SL_PriMO
+    from neps.optimizers.utils.grid import make_grid
+    """PriMO optimizer guided by scaling laws.
+
+    Args:
+        pipeline_space: Space in which to search
+        initial_design_size: Number of samples used before using the surrogate model.
+    """
+    parameters = space.searchables
+
+    # assert space.fidelity is not None
+    # fidelity_name, fidelity = space.fidelity
+
+    match initial_design_size:
+        case "ndim":
+            n_initial_design_size = len(parameters)
+        case int():
+            if initial_design_size < 1:
+                raise ValueError("initial_design_size should be greater than 0")
+
+            n_initial_design_size = initial_design_size
+        case _:
+            raise ValueError(
+                "initial_design_size should be either 'ndim' or a positive integer"
+            )
+
+    _priors = None
+    if prior_confidences and prior_centers:
+        _priors = MOPriorSampler.dists_from_centers_and_confidences(
+            parameters=parameters,
+            prior_centers=prior_centers,
+            confidence_values=prior_confidences,
+        )
+
+    return SL_PriMO(
+        space=convert_mapping({**space.elements}),
+        encoder=ConfigEncoder.from_parameters(parameters),
+        get_number_of_parameters=get_number_of_parameters,
+        get_total_flops=get_total_flops,
+        initial_design_size=n_initial_design_size,
+        scalarization_weights=bo_scalar_weights,
+        device=device,
+        priors=_priors,
+        epsilon=epsilon,
+        # config_list=make_grid(
+        #     space,
+        #     ignore_fidelity=True,
+        #     size_per_numerical_hp=10,
+        # )
+    )
+
+
+def scaling_law_guided_grid_search(
+    space: PipelineSpace,
+    *,
+    params_estimator: Callable[[SearchSpace], int],
+    seen_datapoints_estimator: Callable[[SearchSpace], int],
+    flops_estimator: Callable[[SearchSpace], int],
+    max_evaluation_flops: int,
+):
+    from neps.optimizers.sl_grid_search import SL_Grid_Search
+    from neps.optimizers.utils.grid import make_grid
+    """PriMO optimizer guided by scaling laws.
+
+    Args:
+        pipeline_space: Space in which to search
+        initial_design_size: Number of samples used before using the surrogate model.
+    """
+    
+    return SL_Grid_Search(
+        space=space,
+        flops_estimator=flops_estimator,
+        params_estimator=params_estimator,
+        seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=max_evaluation_flops,
+    )
+
 
 def random_search(
     pipeline_space: SearchSpace | PipelineSpace,
