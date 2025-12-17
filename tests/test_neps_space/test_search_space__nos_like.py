@@ -4,11 +4,11 @@ import pytest
 
 from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
-    ByName,
     Categorical,
     Integer,
     Operation,
     PipelineSpace,
+    Resample,
 )
 
 
@@ -100,7 +100,7 @@ class NosBench(PipelineSpace):
             (_F.resample(),),
             (
                 _F.resample(),
-                ByName("_L").resample(),
+                Resample("_L"),
             ),
         ),
     )

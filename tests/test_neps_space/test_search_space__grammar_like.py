@@ -5,7 +5,7 @@ import pytest
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space, string_formatter
 from neps.space.neps_spaces.parameters import (
-    ByName,
+    Resample,
     Categorical,
     Operation,
     PipelineSpace,
@@ -22,39 +22,39 @@ class GrammarLike(PipelineSpace):
 
     _C0 = Operation(
         operator="Sequential",
-        args=(_O.resample(),),
+        args=(Resample(_O),),
     )
     _C1 = Operation(
         operator="Sequential",
         args=(
-            _O.resample(),
-            ByName("S").resample(),
+            Resample(_O),
+            Resample("S"),
             _reluconvbn,
         ),
     )
     _C2 = Operation(
         operator="Sequential",
         args=(
-            _O.resample(),
-            ByName("S").resample(),
+            Resample(_O),
+            Resample("S"),
         ),
     )
     _C3 = Operation(
         operator="Sequential",
-        args=(ByName("S").resample(),),
+        args=(Resample("S"),),
     )
     _C = Categorical(
         choices=(
-            _C0.resample(),
-            _C1.resample(),
-            _C2.resample(),
-            _C3.resample(),
+            Resample(_C0),
+            Resample(_C1),
+            Resample(_C2),
+            Resample(_C3),
         ),
     )
 
     _S0 = Operation(
         operator="Sequential",
-        args=(_C.resample(),),
+        args=(Resample(_C),),
     )
     _S1 = Operation(
         operator="Sequential",
@@ -62,44 +62,44 @@ class GrammarLike(PipelineSpace):
     )
     _S2 = Operation(
         operator="Sequential",
-        args=(ByName("S").resample(),),
+        args=(Resample("S"),),
     )
     _S3 = Operation(
         operator="Sequential",
         args=(
-            ByName("S").resample(),
-            _C.resample(),
+            Resample("S"),
+            Resample(_C),
         ),
     )
     _S4 = Operation(
         operator="Sequential",
         args=(
-            _O.resample(),
-            _O.resample(),
-            _O.resample(),
+            Resample(_O),
+            Resample(_O),
+            Resample(_O),
         ),
     )
     _S5 = Operation(
         operator="Sequential",
         args=(
-            ByName("S").resample(),
-            ByName("S").resample(),
-            _O.resample(),
-            _O.resample(),
-            _O.resample(),
-            _O.resample(),
-            _O.resample(),
-            _O.resample(),
+            Resample("S"),
+            Resample("S"),
+            Resample(_O),
+            Resample(_O),
+            Resample(_O),
+            Resample(_O),
+            Resample(_O),
+            Resample(_O),
         ),
     )
     S = Categorical(
         choices=(
-            _S0.resample(),
-            _S1.resample(),
-            _S2.resample(),
-            _S3.resample(),
-            _S4.resample(),
-            _S5.resample(),
+            Resample(_S0),
+            Resample(_S1),
+            Resample(_S2),
+            Resample(_S3),
+            Resample(_S4),
+            Resample(_S5),
         ),
     )
 
@@ -114,53 +114,53 @@ class GrammarLikeAlt(PipelineSpace):
 
     _C_ARGS = Categorical(
         choices=(
-            (_O.resample(),),
+            (Resample(_O),),
             (
-                _O.resample(),
-                ByName("S").resample(),
+                Resample(_O),
+                Resample("S"),
                 _reluconvbn,
             ),
             (
-                _O.resample(),
-                ByName("S").resample(),
+                Resample(_O),
+                Resample("S"),
             ),
-            (ByName("S").resample(),),
+            (Resample("S"),),
         ),
     )
     _C = Operation(
         operator="Sequential",
-        args=_C_ARGS.resample(),
+        args=Resample(_C_ARGS),
     )
 
     _S_ARGS = Categorical(
         choices=(
-            (_C.resample(),),
+            (Resample(_C),),
             (_reluconvbn,),
-            (ByName("S").resample(),),
+            (Resample("S"),),
             (
-                ByName("S").resample(),
-                _C.resample(),
+                Resample("S"),
+                Resample(_C),
             ),
             (
-                _O.resample(),
-                _O.resample(),
-                _O.resample(),
+                Resample(_O),
+                Resample(_O),
+                Resample(_O),
             ),
             (
-                ByName("S").resample(),
-                ByName("S").resample(),
-                _O.resample(),
-                _O.resample(),
-                _O.resample(),
-                _O.resample(),
-                _O.resample(),
-                _O.resample(),
+                Resample("S"),
+                Resample("S"),
+                Resample(_O),
+                Resample(_O),
+                Resample(_O),
+                Resample(_O),
+                Resample(_O),
+                Resample(_O),
             ),
         ),
     )
     S = Operation(
         operator="Sequential",
-        args=_S_ARGS.resample(),
+        args=Resample(_S_ARGS),
     )
 
 
@@ -502,11 +502,3 @@ def test_resolve_context_alt():
     assert "ReLUConvBN" in s_config_string
     assert "Conv2D-1" in s_config_string
     assert "Identity" in s_config_string
-
-
-def test_string_resample_raises_error():
-    """Test that using Resample with a string raises a TypeError."""
-    from neps.space.neps_spaces.parameters import Resample
-
-    with pytest.raises(TypeError, match="Resample does not accept plain strings"):
-        Resample("test_param")

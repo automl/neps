@@ -13,9 +13,9 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeVar, cast
 
 import neps
 from neps.optimizers import algorithms, optimizer
+from neps.space.neps_spaces import config_string
 from neps.space.neps_spaces.parameters import (
     _UNSET,
-    ByName,
     Categorical,
     Domain,
     Fidelity,
@@ -41,52 +41,6 @@ if TYPE_CHECKING:
     from neps.state.pipeline_eval import EvaluatePipelineReturn
 
 P = TypeVar("P", bound="PipelineSpace")
-
-
-def construct_sampling_path(
-    path_parts: list[str],
-    domain_obj: Domain,
-) -> str:
-    """Construct a sampling path for a domain object.
-
-    The sampling path uniquely identifies a sampled value in the resolution context.
-    It consists of the hierarchical path through the pipeline space and a domain
-    identifier that includes type and range information.
-
-    Args:
-        path_parts: The hierarchical path parts (e.g., ["Resolvable", "integer1"]).
-        domain_obj: The domain object for which to construct the path.
-
-    Returns:
-        A string representing the full sampling path in the format:
-        "<path.parts>::<type>__<range_compatibility_identifier>"
-        Example: "Resolvable.integer1::integer__0_1_False"
-
-    Raises:
-        ValueError: If path_parts is empty or domain_obj is not a Domain.
-    """
-    if not path_parts:
-        raise ValueError("path_parts cannot be empty")
-    if not isinstance(domain_obj, Domain):
-        raise ValueError(f"domain_obj must be a Domain, got {type(domain_obj)}")
-
-    # Get the domain type name (e.g., "integer", "float", "categorical")
-    domain_obj_type_name = type(domain_obj).__name__.lower()
-
-    # Get the range compatibility identifier (e.g., "0_1_False" for
-    # Integer(0, 1, log=False))
-    range_compatibility_identifier = domain_obj.range_compatibility_identifier
-
-    # Combine type and range: "integer__0_1_False"
-    domain_obj_identifier = f"{domain_obj_type_name}__{range_compatibility_identifier}"
-
-    # Join path parts with dots: "Resolvable.integer1"
-    current_path = ".".join(path_parts)
-
-    # Append domain identifier: "Resolvable.integer1::integer__0_1_False"
-    current_path += "::" + domain_obj_identifier
-
-    return current_path
 
 
 class SamplingResolutionContext:
@@ -299,11 +253,16 @@ class SamplingResolutionContext:
                 f" {domain_obj!r}." + "\nThis should not be happening."
             )
 
-        # Construct the unique sampling path for this domain object
-        current_path = construct_sampling_path(
-            path_parts=self._current_path_parts,
-            domain_obj=domain_obj,
+        # The range compatibility identifier is there to make sure when we say
+        # the path matches, that the range for the value we are looking up also matches.
+        domain_obj_type_name = type(domain_obj).__name__.lower()
+        range_compatibility_identifier = domain_obj.range_compatibility_identifier
+        domain_obj_identifier = (
+            f"{domain_obj_type_name}__{range_compatibility_identifier}"
         )
+
+        current_path = ".".join(self._current_path_parts)
+        current_path += "::" + domain_obj_identifier
 
         if current_path in self._samplings_made:
             # We have already sampled a value for this path. This should not happen.
@@ -579,17 +538,6 @@ class SamplingResolver:
 
         for attr_name, initial_attr_value in initial_attrs.items():
             resolved_attr_value = self._resolve(initial_attr_value, attr_name, context)
-
-            # Special handling for 'args': if it was a Resolvable that resolved to a
-            # non-iterable, wrap it in a tuple since Operation expects args to be a
-            # sequence
-            if (
-                attr_name == "args"
-                and isinstance(initial_attr_value, Resolvable)
-                and not isinstance(resolved_attr_value, tuple | list | Resolvable)
-            ):
-                resolved_attr_value = (resolved_attr_value,)
-
             final_attrs[attr_name] = resolved_attr_value
             needed_resolving = needed_resolving or (
                 initial_attr_value is not resolved_attr_value
@@ -615,13 +563,12 @@ class SamplingResolver:
         # in the resolution not doing the right thing.
 
         if resampled_obj.is_resampling_by_name:
-            # We are dealing with a resampling by name (ByName reference),
+            # We are dealing with a resampling by name
             # We will first need to look up the source object referenced by name.
             # That will then be the object to resample.
-            by_name_ref = cast(ByName, resampled_obj.source)
-            referenced_obj_name = by_name_ref.name
+            referenced_obj_name = cast(str, resampled_obj.source)
             referenced_obj = getattr(context.resolution_root, referenced_obj_name)
-            resampled_obj = referenced_obj.resample()
+            resampled_obj = Resample(referenced_obj)
 
         initial_attrs = resampled_obj.get_attrs()
         resolvable_to_resample_obj = resampled_obj.from_attrs(initial_attrs)
@@ -740,26 +687,6 @@ class SamplingResolver:
         # In this case, to stop the resolution of `resolvable_obj.content`.
         # No need to add it in the resolved cache.
         return resolvable_obj.content
-
-    @_resolver_dispatch.register
-    def _(
-        self,
-        by_name_obj: ByName,
-        context: SamplingResolutionContext,
-    ) -> Any:
-        # When resolving a ByName reference directly (not wrapped in Resample),
-        # look up the referenced parameter and resolve it.
-        # This is cached so multiple references to the same parameter will
-        # return the same resolved value.
-        if context.was_already_resolved(by_name_obj):
-            return context.get_resolved(by_name_obj)
-
-        referenced_obj_name = by_name_obj.name
-        referenced_obj = getattr(context.resolution_root, referenced_obj_name)
-        result = self._resolve(referenced_obj, referenced_obj_name, context)
-
-        context.add_resolved(by_name_obj, result)
-        return result
 
     @_resolver_dispatch.register
     def _(
@@ -949,6 +876,53 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
             )
 
     return cast(Callable, operator(*operation_args, **operation_kwargs))
+
+
+def _operation_to_unwrapped_config(
+    operation: Operation | str,
+    level: int = 1,
+) -> list[config_string.UnwrappedConfigStringPart]:
+    result = []
+
+    if isinstance(operation, Operation):
+        operator = operation.operator
+        kwargs = str(operation.kwargs)
+        item = config_string.UnwrappedConfigStringPart(
+            level=level,
+            opening_index=-1,
+            operator=operator,
+            hyperparameters=kwargs,
+            operands="",
+        )
+        result.append(item)
+        for operand in operation.args:
+            result.extend(_operation_to_unwrapped_config(operand, level + 1))
+    else:
+        item = config_string.UnwrappedConfigStringPart(
+            level=level,
+            opening_index=-1,
+            operator=operation,
+            hyperparameters="",
+            operands="",
+        )
+        result.append(item)
+    return result
+
+
+def convert_operation_to_string(operation: Operation) -> str:
+    """Convert an Operation to a string representation.
+
+    Args:
+        operation: The Operation to convert.
+
+    Returns:
+        A string representation of the operation.
+
+    Raises:
+        ValueError: If the operation is not a valid Operation object.
+    """
+    unwrapped_config = tuple(_operation_to_unwrapped_config(operation))
+    return config_string.wrap_config_into_string(unwrapped_config)
 
 
 # -------------------------------------------------

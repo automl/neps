@@ -21,7 +21,6 @@ from neps.plot.plot import plot
 from neps.plot.tensorboard_eval import tblogger
 from neps.space import HPOCategorical, HPOConstant, HPOFloat, HPOInteger, SearchSpace
 from neps.space.neps_spaces.parameters import (
-    ByName,
     Categorical,
     ConfidenceLevel,
     Fidelity,
@@ -42,7 +41,6 @@ from neps.utils.files import load_and_merge_yamls
 __all__ = [
     "AskAndTell",
     "BudgetInfo",
-    "ByName",
     "Categorical",
     "ConfidenceLevel",
     "Fidelity",

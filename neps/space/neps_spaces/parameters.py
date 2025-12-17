@@ -1666,111 +1666,6 @@ class Operation(Resolvable):
 #  in that they will be cached and then we also need to use Resample for them?
 
 
-class ByName(Resolvable):
-    """A reference to another parameter by its string name.
-
-    This class is used for self-references or forward-references in complex spaces,
-    providing a clearer and more consistent API than using plain strings.
-
-    Attributes:
-        name: The string name of the parameter to reference.
-
-    Example:
-        ```python
-        class RecursiveSpace(neps.PipelineSpace):
-            # Self-reference using ByName
-            self_ref = neps.Categorical(
-                choices=(
-                    (neps.ByName("self_ref").resample(),
-                    neps.ByName("self_ref").resample()),
-                    (neps.ByName("future_param").resample(),),
-                )
-            )
-
-            future_param = neps.Float(lower=0, upper=5)
-        ```
-    """
-
-    def __init__(self, name: str):
-        """Initialize the ByName reference with a parameter name.
-
-        Args:
-            name: The string name of the parameter to reference.
-
-        Raises:
-            ValueError: If the name is not a valid string.
-        """
-        if not isinstance(name, str) or not name:
-            raise ValueError(
-                f"ByName requires a non-empty string name. Received: {name!r}"
-            )
-        self._name = name
-
-    def __str__(self) -> str:
-        from neps.space.neps_spaces.string_formatter import format_value
-
-        return format_value(self)
-
-    @property
-    def name(self) -> str:
-        """Get the referenced parameter name.
-
-        Returns:
-            The string name of the referenced parameter.
-        """
-        return self._name
-
-    def resample(self) -> Resample:
-        """Wrap this reference in a Resample container.
-
-        This allows resampling the referenced parameter each time it's resolved,
-        useful for creating dynamic structures where the same parameter is sampled
-        multiple times independently.
-
-        Returns:
-            A Resample instance wrapping this ByName reference.
-
-        Example:
-            ```python
-            # Instead of: neps.Resample(neps.ByName("param_name"))
-            # You can write: neps.ByName("param_name").resample()
-            ```
-        """
-        return Resample(self)
-
-    def get_attrs(self) -> Mapping[str, Any]:
-        """Get the attributes of the ByName reference as a mapping.
-
-        Returns:
-            A mapping containing the referenced parameter name.
-        """
-        return {"name": self._name}
-
-    def from_attrs(self, attrs: Mapping[str, Any]) -> ByName:
-        """Create a new ByName reference from the given attributes.
-
-        Args:
-            attrs: A mapping of attribute names to their values.
-
-        Returns:
-            A new ByName instance with the specified name.
-        """
-        return ByName(name=attrs["name"])
-
-    def compare_domain_to(self, other: object) -> bool:
-        """Check if this ByName reference is equivalent to another.
-
-        Args:
-            other: The object to compare with.
-
-        Returns:
-            True if both are ByName references with the same name, False otherwise.
-        """
-        if not isinstance(other, ByName):
-            return False
-        return self.name == other.name
-
-
 class Resample(Resolvable):
     """A class representing a resampling operation in a NePS space.
 
@@ -1779,26 +1674,14 @@ class Resample(Resolvable):
             string.
     """
 
-    def __init__(self, source: Resolvable):
+    def __init__(self, source: Resolvable | str):
         """Initialize the Resample object with a source.
 
         Args:
-            source: The source of the resampling, must be a resolvable object
-                (including ByName for parameter name references).
-
-        Raises:
-            ValueError: If source is a Fidelity object or a string.
+            source: The source of the resampling, can be a resolvable object or a string.
         """
         if isinstance(source, Fidelity):
             raise ValueError("Fidelity objects cannot be resampled.")
-
-        if isinstance(source, str):
-            raise TypeError(
-                "Resample does not accept plain strings. To reference a parameter by"
-                f" name, use neps.ByName('{source}').resample() instead of"
-                f" neps.Resample('{source}')."
-            )
-
         self._source = source
 
     def __str__(self) -> str:
@@ -1807,25 +1690,25 @@ class Resample(Resolvable):
         return format_value(self)
 
     @property
-    def source(self) -> Resolvable:
+    def source(self) -> Resolvable | str:
         """Get the source of the resampling.
 
         Returns:
-            The source of the resampling, which is a resolvable object (including ByName).
+            The source of the resampling, which can be a resolvable object or a string
 
         """
         return self._source
 
     @property
     def is_resampling_by_name(self) -> bool:
-        """Check if the resampling is by name reference.
+        """Check if the resampling is by name.
 
         Returns:
-            True if the source is a ByName reference, indicating a resampling by name,
-            False if the source is another type of resolvable object.
+            True if the source is a string, indicating a resampling by name,
+            False if the source is a resolvable object.
 
         """
-        return isinstance(self._source, ByName)
+        return isinstance(self._source, str)
 
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the resampling source as a mapping.
@@ -1834,12 +1717,17 @@ class Resample(Resolvable):
           A mapping of attribute names to their values.
 
         Raises:
-          ValueError: If the resampling is by name reference.
+          ValueError: If the resampling is by name or the source is not resolvable.
 
         """
         if self.is_resampling_by_name:
-            # ByName references delegate to their own get_attrs
-            return self._source.get_attrs()
+            raise ValueError(
+                f"This is a resampling by name, can't get attrs from it: {self.source!r}."
+            )
+        if not isinstance(self._source, Resolvable):
+            raise ValueError(
+                f"Source should be a resolvable object. Is: {self._source!r}."
+            )
         return self._source.get_attrs()
 
     def from_attrs(self, attrs: Mapping[str, Any]) -> Resolvable:
@@ -1852,12 +1740,18 @@ class Resample(Resolvable):
             A new resolvable object created from the specified attributes.
 
         Raises:
-            ValueError: If the resampling is by name reference.
+            ValueError: If the resampling is by name or the source is not resolvable.
 
         """
         if self.is_resampling_by_name:
-            # ByName references delegate to their own from_attrs
-            return self._source.from_attrs(attrs)
+            raise ValueError(
+                "This is a resampling by name, can't create object for it:"
+                f" {self.source!r}."
+            )
+        if not isinstance(self._source, Resolvable):
+            raise ValueError(
+                f"Source should be a resolvable object. Is: {self._source!r}."
+            )
         return self._source.from_attrs(attrs)
 
     def compare_domain_to(self, other: object) -> bool:  # noqa: D102
