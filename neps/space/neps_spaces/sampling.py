@@ -91,7 +91,7 @@ class OnlyPredefinedValuesSampler(DomainSampler):
             ValueError: If the current path is not in the predefined samplings.
         """
         if current_path not in self._predefined_samplings:
-            raise ValueError(f"No predefined value for path: {current_path!r}.")
+            raise ValueError(f"No predefined value for path: {current_path!r}. predefined_samplings: {self._predefined_samplings}")
         return cast("T", self._predefined_samplings[current_path])
 
 
