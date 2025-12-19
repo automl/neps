@@ -284,10 +284,11 @@ root_directory
 │       └── metadata.json
 ├── optimizer_info.yaml
 └── optimizer_state.pkl     # The optimizer's state, shared between workers
+└── shared_errors.jsonl     # The optimizer's state, shared between workers
 ```
 
 1. The first thing you should do is make sure no workers are running.
-2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share between the
+2. Next, delete `shared_errors.jsonl` and `configs/.trial_cache.pkl`. This is cached information to share between the
    workers.
 3. Lastly, you can go in and modify any of the following files:
 
