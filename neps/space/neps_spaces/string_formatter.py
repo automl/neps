@@ -24,6 +24,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from neps.space.neps_spaces.neps_space import convert_operation_to_string
+
 if TYPE_CHECKING:
     from neps.space.neps_spaces.parameters import (
         Categorical,
@@ -423,58 +425,7 @@ def _format_operation(
     indent: int,
     style: FormatterStyle,
 ) -> str:
-    """Internal formatter for Operation objects."""
-    # Get operator name
-    operator_name = (
-        operation.operator
-        if isinstance(operation.operator, str)
-        else operation.operator.__name__
-    )
-
-    # Helper to safely get args/kwargs, handling unresolved Resolvables
-    def safe_get_args() -> tuple[Any, ...]:
-        """Get args, handling unresolved Resolvables by wrapping if needed."""
-        try:
-            return operation.args
-        except ValueError:
-            # Args contain unresolved Resolvables, use raw _args
-            args = operation._args
-            # Wrap single Resolvable in tuple for iteration
-            return (args,) if not isinstance(args, tuple | list) else args
-
-    def safe_get_kwargs() -> dict[str, Any]:
-        """Get kwargs, handling unresolved Resolvables."""
-        try:
-            return dict(operation.kwargs)
-        except ValueError:
-            # Kwargs contain unresolved Resolvables, skip or use raw _kwargs
-            kwargs = operation._kwargs
-            return kwargs if isinstance(kwargs, dict) else {}
-
-    # Check if we have any content
-    has_args = bool(safe_get_args())
-    has_kwargs = bool(safe_get_kwargs())
-
-    if not (has_args or has_kwargs):
-        return f"{operator_name}()" if style.show_empty_args else operator_name
-
-    # Format with multi-line layout
-    indent_str = style.indent_str * indent
-    inner_indent_str = style.indent_str * (indent + 1)
-
-    lines = [f"{operator_name}("]
-
-    for arg in safe_get_args():
-        formatted = format_value(arg, indent + 1, style)
-        lines.append(f"{inner_indent_str}{formatted},")
-
-    for key, value in safe_get_kwargs().items():
-        formatted_value = format_value(value, indent + 1, style)
-        lines.append(f"{inner_indent_str}{key}={formatted_value},")
-
-    lines.append(f"{indent_str})")
-
-    return "\n".join(lines)
+    return convert_operation_to_string(operation)
 
 
 def _format_pipeline_space(

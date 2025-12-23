@@ -21,6 +21,7 @@ from neps.space.neps_spaces.neps_space import (
     convert_classic_to_neps_search_space,
     convert_neps_to_classic_search_space,
     convert_operation_to_callable,
+    convert_operation_to_string,
     resolve,
 )
 from neps.space.neps_spaces.parameters import Operation, PipelineSpace
@@ -759,7 +760,7 @@ def create_config(  # noqa: C901
         if isinstance(value, Operation):
             # If the operator is a not a string, we convert it to a callable.
             if isinstance(value.operator, str):
-                pipeline_dict[name] = format_value(value)
+                pipeline_dict[name] = convert_operation_to_string(value)
             else:
                 pipeline_dict[name] = convert_operation_to_callable(value)
 
@@ -953,7 +954,7 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
         if isinstance(value, Operation):
             # If the operator is a not a string, we convert it to a callable.
             if isinstance(value.operator, str):
-                pipeline_dict[name] = format_value(value)
+                pipeline_dict[name] = convert_operation_to_string(value)
             else:
                 pipeline_dict[name] = convert_operation_to_callable(value)
 
