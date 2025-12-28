@@ -4176,8 +4176,9 @@ You can find most of the features NePS provides through the API of this function
 </ul>
 <h2 id="budget-how-long-to-run">Budget, how long to run?<a class="headerlink" href="#budget-how-long-to-run" title="Permanent link">#</a></h2>
 <p>To define a budget, provide <code>evaluations_to_spend=</code> to <a class="autorefs autorefs-internal" title="            run" href="../../api/neps/api/#neps.api.run"><code>neps.run()</code></a>,
-to specify the total number of evaluations to conduct before halting the optimization process,
-or <code>cost_to_spend=</code> to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .</p>
+to specify the the total number of evaluations a worker is allowed to perform before halting the optimization process,
+and/or <code>cost_to_spend=</code> to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
+and/or <code>fidelities_to_spend=</code> for multi-fidelity optimization, to specify the total fidelity to spend.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_pipeline</span><span class="p">(</span><span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
@@ -4192,8 +4193,8 @@ or <code>cost_to_spend=</code> to specify a cost threshold for your own custom c
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="p">)</span>
 </code></pre></div>
 <ol>
-<li>Specifies the total number of evaluations to conduct before halting the optimization process.</li>
-<li>Prevents the initiation of new evaluations once this cost threshold is surpassed.
+<li>Specifies the total number of evaluations a worker is allowed to perform before halting the optimization process.</li>
+<li>Prevents the worker from initiating new evaluations once this cost threshold is exceeded.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
     This requires adding a cost value to the output of the <code>evaluate_pipeline</code> function, for example, return <code class="highlight"><span class="p">{</span><span class="s1">&#39;objective_to_minimize&#39;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s1">&#39;cost&#39;</span><span class="p">:</span> <span class="n">cost</span><span class="p">}</span></code>.
     For more details, please refer <a href="../neps_spaces/">here</a></li>
@@ -4210,7 +4211,7 @@ you can enable logging through python's <a class="autorefs autorefs-external" hr
 <p>Please refer to Python's <a href="https://docs.python.org/3/library/logging.html">logging documentation</a> for more information on how to customize the logging output.</p>
 <h2 id="continuing-runs">Continuing Runs<a class="headerlink" href="#continuing-runs" title="Permanent link">#</a></h2>
 <p>To continue a run, all you need to do is provide the same <code>root_directory=</code> to <a class="autorefs autorefs-internal" title="            run" href="../../api/neps/api/#neps.api.run"><code>neps.run()</code></a> as before,
-with an increased <code>evaluations_to_spend=</code> or <code>cost_to_spend=</code>.</p>
+and specify a new stopping criterria(e.g. through <code>evaluations_to_spend=</code> and/or <code>cost_to_spend=</code>).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
@@ -4220,11 +4221,12 @@ with an increased <code>evaluations_to_spend=</code> or <code>cost_to_spend=</co
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;objective_to_minimize&quot;</span><span class="p">:</span> <span class="n">loss</span><span class="p">,</span> <span class="s2">&quot;cost&quot;</span><span class="p">:</span> <span class="n">duration</span><span class="p">}</span>
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="c1"># Increase the total number of trials from 10 as set previously to e.g. 50</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="c1"># enable stoping criteria by specifying new number of evaluation desired.</span>
 <a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="mi">50</span><span class="p">,</span>
 <a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="p">)</span>
 </code></pre></div>
-<p>If the run previously stopped due to reaching a budget and you specify the same budget, the worker will immediatly stop as it will remember the amount of budget it used previously.</p>
+<p>If a previous run stopped because a worker exhausted its budget, and you restart the run with the same stopping criterion, each worker will again be allowed to spend up to that budget on new evaluations.</p>
+<p>As a result, when running multiple workers or restarting a run, the total resource usage may exceed the originally intended global budget. If you have global resource constraints (for example, total cost or total number of evaluations across all workers), you are responsible for tracking and enforcing them externally.</p>
 <div class="admonition note">
 <p class="admonition-title">Auto-loading</p>
 <p>When continuing a run, NePS automatically loads the search space and optimizer configuration from disk. You don't need to specify <code>pipeline_space=</code> or <code>optimizer=</code> again - NePS will use the saved settings from the original run.</p>
@@ -4246,7 +4248,7 @@ with an increased <code>evaluations_to_spend=</code> or <code>cost_to_spend=</co
 <a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span>
 <a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>    <span class="n">evaluate_pipeline</span><span class="o">=</span><span class="n">my_function</span><span class="p">,</span>
 <a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
-<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>  <span class="c1"># Increase budget</span>
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>    <span class="n">evaluations_to_spend</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>  <span class="c1"># adjusted new budget</span>
 <a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a><span class="p">)</span>
 <a id="__codelineno-4-18" name="__codelineno-4-18" href="#__codelineno-4-18"></a>
 <a id="__codelineno-4-19" name="__codelineno-4-19" href="#__codelineno-4-19"></a><span class="c1"># Option 2: Start a new run with the same settings</span>

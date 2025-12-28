@@ -4277,7 +4277,7 @@
 </ul>
 <h3 id="34-common-pitfalls">3.4 Common pitfalls<a class="headerlink" href="#34-common-pitfalls" title="Permanent link">#</a></h3>
 <ul>
-<li>When using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set <code>evaluations_to_spend</code> when calling <code>neps.run</code>.</li>
+<li>When using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g <code>evaluations_to_spend</code> and/or <code>cost_to_spend</code>) when calling <code>neps.run</code>.</li>
 </ul>
 <h2 id="4-extra-injected-arguments">4 Extra injected arguments<a class="headerlink" href="#4-extra-injected-arguments" title="Permanent link">#</a></h2>
 <table>
