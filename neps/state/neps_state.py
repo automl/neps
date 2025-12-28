@@ -695,6 +695,36 @@ class NePSState:
                 if trial.metadata.state == Trial.State.EVALUATING
             ]
 
+    def lock_and_remove_trial_by_id(self, trial_id: str) -> None:
+        """Remove a trial by its id from disk and all associated caches.
+
+        Args:
+            trial_id: The trial id to remove
+
+        Raises:
+            NePSError: If an error occurs during removal
+        """
+        import shutil
+
+        with self._trial_lock.lock(), self._err_lock.lock():
+            config_path = self._trial_repo.directory / f"config_{trial_id}"
+            if not config_path.exists():
+                raise NePSError(
+                    f"Trial '{trial_id}' not found at expected path '{config_path}'."
+                )
+
+            try:
+                shutil.rmtree(config_path)
+
+                if self._trial_repo.cache_path.exists():
+                    self._trial_repo.cache_path.unlink()
+
+                if self._shared_errors_path.exists():
+                    self._shared_errors_path.unlink()
+
+            except Exception as e:
+                raise NePSError(f"Failed to remove trial '{trial_id}': {e}") from e
+
     @classmethod
     def create_or_load(  # noqa: C901, PLR0912, PLR0915
         cls,
