@@ -46,8 +46,9 @@ See the following for more:
 
 ## Budget, how long to run?
 To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
-to specify the total number of evaluations to conduct before halting the optimization process,
-or `cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline .
+to specify the the total number of evaluations a worker is allowed to perform before halting the optimization process,
+and/or `cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
+and/or `fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
 
 
 ```python
@@ -65,8 +66,8 @@ neps.run(
 )
 ```
 
-1.  Specifies the total number of evaluations to conduct before halting the optimization process.
-2.  Prevents the initiation of new evaluations once this cost threshold is surpassed.
+1.  Specifies the total number of evaluations a worker is allowed to perform before halting the optimization process.
+2.  Prevents the worker from initiating new evaluations once this cost threshold is exceeded.
     This can be any kind of cost metric you like, such as time, energy, or monetary, as long as you can calculate it.
     This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
     For more details, please refer [here](../reference/neps_spaces.md)
@@ -87,7 +88,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-with an increased `evaluations_to_spend=` or `cost_to_spend=`.
+and specify a new stopping criterria(e.g. through `evaluations_to_spend=` and/or `cost_to_spend=`).
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -99,12 +100,14 @@ def run(learning_rate: float, epochs: int) -> float:
     return {"objective_to_minimize": loss, "cost": duration}
 
 neps.run(
-    # Increase the total number of trials from 10 as set previously to e.g. 50
+    # enable stoping criteria by specifying new number of evaluation desired.
     evaluations_to_spend=50,
 )
 ```
 
-If the run previously stopped due to reaching a budget and you specify the same budget, the worker will immediatly stop as it will remember the amount of budget it used previously.
+If a previous run stopped because a worker exhausted its budget, and you restart the run with the same stopping criterion, each worker will again be allowed to spend up to that budget on new evaluations.
+
+As a result, when running multiple workers or restarting a run, the total resource usage may exceed the originally intended global budget. If you have global resource constraints (for example, total cost or total number of evaluations across all workers), you are responsible for tracking and enforcing them externally.
 
 !!! note "Auto-loading"
 
@@ -130,7 +133,7 @@ print(f"Original search space: {pipeline_space}")
 neps.run(
     evaluate_pipeline=my_function,
     root_directory=root_dir,
-    evaluations_to_spend=100,  # Increase budget
+    evaluations_to_spend=10,  # adjusted new budget
 )
 
 # Option 2: Start a new run with the same settings
