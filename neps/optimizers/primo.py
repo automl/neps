@@ -17,6 +17,10 @@ from neps.optimizers.models.gp import (
     make_default_single_obj_gp,
 )
 from neps.optimizers.optimizer import SampledConfig
+from neps.optimizers.utils.scalarization import (
+    HypervolumeScalarization,
+    LinearScalarization,
+)
 from neps.sampling import Uniform
 from neps.utils.common import disable_warnings
 
@@ -183,9 +187,27 @@ class PriMO:
                 _trial.report.objective_to_minimize = np.array(
                     _trial.report.objective_to_minimize
                 )
-            _trial.report.objective_to_minimize = self.scalarization.scalarize(
-                objective_values=_trial.report.objective_to_minimize
-            )
+
+            match self.scalarization:
+                case LinearScalarization():
+                    _trial.report.objective_to_minimize = self.scalarization.scalarize(
+                        objective_values=_trial.report.objective_to_minimize
+                    )
+                case HypervolumeScalarization():
+                    all_obj_vals = [
+                        t.report.objective_to_minimize
+                        for t in trials.values()
+                        if t.report is not None
+                    ]
+                    _trial.report.objective_to_minimize = self.scalarization.scalarize(
+                        objective_values=_trial.report.objective_to_minimize,
+                        all_obj_vals=all_obj_vals,
+                    )
+                case _:
+                    raise TypeError(
+                        "Scalarization must be of type LinearScalarization "
+                        "or HypervolumeScalarization."
+                    )
 
             # Remove the fidelity from the trial config
             # Cannot do simple pop since Config type is Mapping in most places in Neps

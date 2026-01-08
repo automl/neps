@@ -37,7 +37,10 @@ from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
-from neps.optimizers.utils.scalarization import LinearScalarization
+from neps.optimizers.utils.scalarization import (
+    HypervolumeScalarization,
+    LinearScalarization,
+)
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.space.parsing import convert_mapping
@@ -1088,11 +1091,13 @@ def primo(
             confidence_values=prior_confidences,
         )
 
+    scalar: LinearScalarization | HypervolumeScalarization
+
     match scalarization:
         case "linear":
             scalar = LinearScalarization(scalarization_weights=bo_scalar_weights)
         case "hypervolume":
-            pass
+            scalar = HypervolumeScalarization(scalarization_weights=bo_scalar_weights)
         case _:
             raise ValueError(f"Unknown scalarization: {scalarization}")
 
