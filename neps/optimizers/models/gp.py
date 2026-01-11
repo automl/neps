@@ -7,6 +7,8 @@ import warnings
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
+from functools import reduce
+from itertools import product
 from typing import TYPE_CHECKING, Any
 
 import gpytorch.constraints
@@ -21,6 +23,7 @@ from botorch.models.transforms.outcome import ChainedOutcomeTransform, Standardi
 from botorch.optim import (
     optimize_acqf,
     optimize_acqf_discrete_local_search,
+    optimize_acqf_mixed,
 )
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
@@ -133,7 +136,7 @@ def make_default_single_obj_gp(
     )
 
 
-def optimize_acq(
+def optimize_acq(  # noqa: PLR0915
     acq_fn: AcquisitionFunction,
     encoder: ConfigEncoder,
     *,
@@ -231,6 +234,41 @@ def optimize_acq(
     cat_keys = list(cats.keys())
     choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
     fixed_cat: dict[int, float] = {}
+
+    n_combos = reduce(
+        lambda x, y: x * y,  # type: ignore
+        [t.domain.cardinality for t in cat_transformers.values()],
+        1,
+    )
+
+    if n_combos < num_restarts:
+        # NOTE: Discrete local search only seems to work when the number of categorical
+        # combinations is more than num_restarts, else it's unable to generate enough
+        # candidates. Since num_restarts is usually set pretty low, we can just use
+        # optimize_acqf_mixed in this case, without incurring too high of a computational
+        # cost.
+
+        # Generate all possible categorical combinations and fix them during optimization
+        # for the outer loop inside optimize_acqf_mixed
+        fixed_cats: list[dict[int, float]]
+        if len(cats) == 1:
+            col, choice_indices = next(iter(cats.items()))
+            fixed_cats = [{col: i} for i in choice_indices]
+        else:
+            fixed_cats = [
+                dict(zip(cats.keys(), combo, strict=False))
+                for combo in product(*cats.values())
+            ]
+        with warning_context:
+            return optimize_acqf_mixed(  # type: ignore
+                acq_function=acq_fn,
+                bounds=bounds,
+                num_restarts=min(num_restarts // n_combos, 2),
+                raw_samples=n_intial_start_points,
+                q=n_candidates_required,
+                fixed_features_list=fixed_cats,
+                **acq_options,
+            )
 
     if num_numericals > 0:
         with warning_context:
