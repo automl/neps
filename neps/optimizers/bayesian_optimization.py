@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import logging
+
 import copy
 import itertools
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
+
+from tenacity import Retrying, stop_after_attempt
+
+import matplotlib.pyplot as plt
 
 import numpy as np
 import torch
@@ -15,12 +21,15 @@ from botorch.acquisition.multi_objective.logei import (
     qLogNoisyExpectedHypervolumeImprovement,
 )
 from botorch.models.transforms.outcome import Standardize
+from botorch.models import SingleTaskGP
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
     fit_and_acquire_from_gp,
     make_default_single_obj_gp,
+    encode_constraints_func,
 )
+
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
@@ -32,6 +41,7 @@ if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
 
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 def _pibo_exp_term(
     n_sampled_already: int,
@@ -91,12 +101,16 @@ class BayesianOptimization:
     reference_point: tuple[float, ...] | None = None
     """The reference point to use for the multi-objective optimization."""
 
-    def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
-        self,
-        trials: Mapping[str, Trial],
-        budget_info: BudgetInfo | None = None,
-        n: int | None = None,
-    ) -> SampledConfig | list[SampledConfig]:
+    constraints_func: Callable[[Mapping[str, Any]], Sequence[float]] | None = None
+
+    acquisition_func_type: Literal["EI", "IT-JES", "IT-MES"] = "EI" # Expected Improvement, Information Theoretic
+    cost_estimator: Callable[..., int] | None = None
+
+
+    def get_constraint_func(self) -> Callable[[Mapping[str, Any]], Sequence[float]] | None:
+        return self.constraints_func
+    
+    def __post_init__(self) -> None:
         if isinstance(self.space, PipelineSpace):
             converted_space = convert_neps_to_classic_search_space(self.space)
             if converted_space is not None:
@@ -107,6 +121,175 @@ class BayesianOptimization:
                     " space-compatible optimizer."
                 )
 
+    def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None = None,
+        n: int | None = None,
+    ) -> SampledConfig | list[SampledConfig]:
+        return self.sample_candidates(trials, budget_info, n=None)[0]
+
+    def extrapolate(
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None = None,
+    ) -> tuple[Mapping[str, Any], float]:
+        """
+        Fits the GP to existing trials, finds the global optimum via Thompson Sampling,
+        checks constraints, and visualizes the landscape.
+        """
+        # 1. Get the trained GP model
+        # We assume sample_candidates handles the fitting internally
+        print("extrapolate called")
+        _, gp, _ = self.sample_candidates(trials, budget_info, n=None)
+        if gp is None:
+            return None, None
+        # 2. Generate Optimal Samples (Global Minima of posterior samples)
+        from botorch.acquisition.utils import get_optimal_samples
+        
+        # Ensure bounds are on the correct device/dtype
+        lower = [domain.lower for domain in self.encoder.domains]
+        upper = [domain.upper for domain in self.encoder.domains]
+        bounds = torch.tensor([lower, upper], dtype=torch.float64)
+        
+        # Get samples (candidates for the global minimum)
+        # maximize=False because we are minimizing Loss
+        optimal_inputs, optimal_outputs = get_optimal_samples(
+            model=gp, 
+            bounds=bounds, 
+            num_optima=100,
+            maximize=False
+        )
+        
+        # 3. Filter Constraints (Find best VALID input)
+        best_idx = None
+        best_output = float('inf')
+        
+        # Decode all at once if supported, otherwise loop is fine for 100 items
+        decoded_optimal_configs = self.encoder.decode(optimal_inputs)
+        
+        for i in range(len(decoded_optimal_configs)):
+            config = decoded_optimal_configs[i]
+            is_valid = True
+            
+            # Check constraints
+            if self.constraints_func is not None:
+                constraints_vals = self.constraints_func(config)
+                # Assuming constraints >= 0.0 means satisfied
+                if constraints_vals < 0:
+                    is_valid = False
+            
+            if is_valid:
+                # Track the lowest loss among valid configs
+                val = optimal_outputs[i].item()
+                if val < best_output:
+                    best_output = val
+                    best_idx = i
+        
+        # Fallback: If no point satisfied constraints, pick the best unconstrained one
+        if best_idx is None:
+            print("WARNING: All extrapolated samples violated constraints. Returning best unconstrained.")
+            best_idx = torch.argmin(optimal_outputs).item()
+            best_output = optimal_outputs[best_idx].item()
+
+        best_input_tensor = optimal_inputs[best_idx]
+        best_config = decoded_optimal_configs[best_idx]
+
+        print(f"Proposed optimal input: {best_config}")
+        print(f"Predicted optimal output: {best_output}")
+
+        # ---------------------------------------------------------
+        # 4. Visualization (Fixed)
+        # ---------------------------------------------------------
+        try:
+
+            # Select dimensions to plot
+            if hasattr(self.encoder, 'numeric_dims') and len(self.encoder.numeric_dims) >= 2:
+                dim_x, dim_y = self.encoder.numeric_dims[0], self.encoder.numeric_dims[1]
+            else:
+                dim_x, dim_y = 0, 1
+
+            # A. Prepare training data
+            x_cpu = gp.train_inputs[0].detach().cpu()
+            y_cpu = gp.train_targets.detach().cpu()
+
+            # B. Generate meshgrid
+            n_grid = 50
+            bounds_cpu = bounds.detach().cpu()
+
+            x_vals = torch.linspace(bounds_cpu[0, dim_x], bounds_cpu[1, dim_x], n_grid)
+            y_vals = torch.linspace(bounds_cpu[0, dim_y], bounds_cpu[1, dim_y], n_grid)
+            gx, gy = torch.meshgrid(x_vals, y_vals, indexing="xy")
+
+            # Flatten grid
+            grid_flat = torch.zeros(
+                (n_grid * n_grid, bounds_cpu.shape[1]),
+                dtype=best_input_tensor.dtype,
+                device=best_input_tensor.device,
+            )
+
+            grid_flat[:] = best_input_tensor.detach()
+            grid_flat[:, dim_x] = gx.flatten()
+            grid_flat[:, dim_y] = gy.flatten()
+
+            # Predict
+            with torch.no_grad():
+                posterior_grid = gp.posterior(grid_flat)
+                mean_grid = posterior_grid.mean.view(n_grid, n_grid)
+
+            # C. Plot
+            fig, ax = plt.subplots(figsize=(10, 7))
+
+            c = ax.contourf(
+                gx.cpu().numpy(),
+                gy.cpu().numpy(),
+                mean_grid.cpu().numpy(),
+                levels=25,
+                cmap="viridis_r",
+                alpha=0.8,
+            )
+            cbar = plt.colorbar(c)
+            cbar.set_label("Predicted Loss (Mean)", rotation=270, labelpad=15)
+
+            ax.scatter(
+                x_cpu[:, dim_x].numpy(),
+                x_cpu[:, dim_y].numpy(),
+                c=y_cpu.numpy(),
+                cmap="viridis_r",
+                edgecolors="k",
+                s=50,
+                label="Observed Data",
+            )
+
+            ax.scatter(
+                best_input_tensor[dim_x].detach().cpu().numpy(),
+                best_input_tensor[dim_y].detach().cpu().numpy(),
+                c="red",
+                marker="*",
+                s=200,
+                label="Extrapolated Optimum",
+            )
+
+            ax.set_xlabel(f"Dimension {dim_x}")
+            ax.set_ylabel(f"Dimension {dim_y}")
+            ax.set_title("GP Extrapolation Landscape")
+            ax.legend()
+
+            plt.tight_layout()
+            fig.savefig("results4/gp_extrapolation.png")
+            plt.close(fig)
+
+        except Exception as e:
+            raise e
+
+        return best_config, best_output
+
+    def sample_candidates(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
+        self,
+        trials: Mapping[str, Trial],
+        budget_info: BudgetInfo | None = None,
+        n: int | None = None,
+    ) -> tuple[SampledConfig | list[SampledConfig], SingleTaskGP, Any]:
         # If fidelities exist, sample from them as normal
         # This is a bit of a hack, as we set them to max fidelity
         # afterwards, but we need the complete space to sample
@@ -162,7 +345,7 @@ class BayesianOptimization:
             )
 
             if len(sampled_configs) >= n_to_sample:
-                return sampled_configs[0] if n is None else sampled_configs
+                return sampled_configs[0] if n is None else sampled_configs, None, None
 
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
@@ -170,6 +353,11 @@ class BayesianOptimization:
             parameters,
             device=self.device,
             encoder=self.encoder,
+        )
+        encoded_constraints_func = encode_constraints_func(
+            constraints_func=self.constraints_func,
+            encoder=encoder,
+            device=self.device,
         )
 
         cost_percent = None
@@ -260,17 +448,63 @@ class BayesianOptimization:
                 prune_baseline=True,
             )
         else:
-            gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
-            acquisition = qLogNoisyExpectedImprovement(
-                model=gp,
-                X_baseline=data.x,
-                # Unfortunatly, there's no option to indicate that we minimize
-                # the AcqFunction so we need to do some kind of transformation.
-                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
-                X_pending=data.x_pending,
-                prune_baseline=True,
+            assert self.cost_estimator is not None, "cost_estimator must be provided for single objective optimization."
+            print(self.cost_estimator is not None)
+            gp = make_default_single_obj_gp(
+                x=data.x, y=data.y, encoder=encoder, 
+                flop_estimator=self.cost_estimator,
             )
+            from botorch.fit import fit_gpytorch_mll
+            from gpytorch import ExactMarginalLogLikelihood
+            fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
+            
+            if self.acquisition_func_type == "EI":
+                acquisition = qLogNoisyExpectedImprovement(
+                    model=gp,
+                    X_baseline=data.x,
+                    # Unfortunatly, there's no option to indicate that we minimize
+                    # the AcqFunction so we need to do some kind of transformation.
+                    # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                    objective=LinearMCObjective(weights=torch.tensor([-1.0])),
+                    X_pending=data.x_pending,
+                    prune_baseline=True,
+                )
+            elif self.acquisition_func_type == "IT-JES":
+                from botorch.acquisition.joint_entropy_search import qJointEntropySearch
+                from botorch.acquisition.utils import get_optimal_samples
+                lower = [domain.lower for domain in encoder.domains]
+                upper = [domain.upper for domain in encoder.domains]
+                bounds = torch.tensor([lower, upper], dtype=torch.float64)
+                print(bounds)
+                # torch.autograd.set_detect_anomaly(True)
+                optimal_inputs, optimal_outputs = get_optimal_samples(model=gp, bounds=bounds, num_optima=4, maximize=False)
+                acquisition = qJointEntropySearch(
+                    model=gp,
+                    optimal_inputs=optimal_inputs,
+                    optimal_outputs=optimal_outputs,
+                    condition_noiseless=False,
+                    estimation_type='LB',
+                    X_pending=data.x_pending,
+                    maximize=False,
+                )
+            elif self.acquisition_func_type == "IT-MES":
+                from botorch.acquisition.max_value_entropy_search import qMultiFidelityLowerBoundMaxValueEntropy
+                from botorch.acquisition.utils import get_optimal_samples
+                lower = [domain.lower for domain in encoder.domains]
+                upper = [domain.upper for domain in encoder.domains]
+                bounds = torch.tensor([lower, upper], dtype=torch.float64)
+                optimal_inputs, optimal_outputs = get_optimal_samples(model=gp, bounds=bounds, num_optima=10, maximize=False)
+                acquisition = qMultiFidelityLowerBoundMaxValueEntropy(
+                    model=gp,
+                    optimal_inputs=optimal_inputs,
+                    optimal_outputs=optimal_outputs,
+                    condition_noiseless=True,
+                    estimation_type='LB',
+                    X_pending=data.x_pending,
+                    maximize=False,
+                )
+            else:
+                raise NotImplemented("Acquisition function not supported for single objective optimization.")
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
@@ -283,6 +517,7 @@ class BayesianOptimization:
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
             hide_warnings=True,
+            # acq_options={"nonlinear_inequality_constraints": [(encoded_constraints_func, True)]}
         )
 
         configs = encoder.decode(candidates)
@@ -304,7 +539,17 @@ class BayesianOptimization:
                 )
             ]
         )
-        return sampled_configs[0] if n is None else sampled_configs
+        cand = sampled_configs[0] if n is None else sampled_configs
+
+        self.plot_gp_with_candidates(gp, data.x, data.y, candidates=candidates,dim_x=0, dim_y=2)
+
+        with torch.no_grad():
+            # .posterior() creates the distribution at this point
+            posterior = gp.posterior(candidates)
+            
+            # Extract the Mean (Expected Value)
+            pred_mean = posterior.mean
+        return cand, gp, pred_mean
 
     def import_trials(
         self,
@@ -322,6 +567,193 @@ class BayesianOptimization:
                 external_evaluations, start=trials_len + 1
             )
         ]
+
+    
+    @staticmethod
+    def plot_gp_with_candidates(
+        gp: SingleTaskGP,
+        x: torch.Tensor,
+        y: torch.Tensor,
+        candidates: torch.Tensor,
+        dim_x: int = 0,
+        dim_y: int = 1,
+    ) -> plt.Figure:
+        """
+        Plots a 2D slice of the GP posterior mean, existing data, and new candidates.
+        Also creates 1D slice plots for each dimension showing mean, uncertainty, and observed points.
+
+        Args:
+            gp: The trained BoTorch/GPyTorch model.
+            x: Training inputs (encoded) [N x D].
+            y: Training targets (losses) [N x 1].
+            candidates: The new `x` points proposed by the acquisition function [M x D].
+            dim_x: Index of the first dimension to plot.
+            dim_y: Index of the second dimension to plot.
+        """
+        
+        gp.eval()
+        gp.likelihood.eval()
+
+        x_cpu = x.detach().cpu()
+        y_cpu = y.detach().cpu()
+        cand_cpu = candidates.detach().cpu()
+
+        x_all = torch.cat([x_cpu[:, dim_x], cand_cpu[:, dim_x]])
+        y_all = torch.cat([x_cpu[:, dim_y], cand_cpu[:, dim_y]])
+
+        x_min, x_max = x_all.min().item(), x_all.max().item()
+        y_min, y_max = y_all.min().item(), y_all.max().item()
+
+        # Add 20% margin
+        margin_x = 0.2 * (x_max - x_min) if (x_max != x_min) else 1.0
+        margin_y = 0.2 * (y_max - y_min) if (y_max != y_min) else 1.0
+
+        resolution = 100
+        grid_x = torch.linspace(x_min - margin_x, x_max + margin_x, resolution)
+        grid_y = torch.linspace(y_min - margin_y, y_max + margin_y, resolution)
+        gx, gy = torch.meshgrid(grid_x, grid_y, indexing="xy")
+
+        # 2. Prepare Test Tensor (Slice)
+        num_dims = x.shape[1]
+        # Create test points on the same device as the GP
+        test_x = torch.zeros(resolution * resolution, num_dims, device=x.device)
+
+        # Fill background dimensions with the mean of training data
+        # This simulates "holding other parameters constant at average values"
+        for i in range(num_dims):
+            test_x[:, i] = x[:, i].mean()
+
+        # Overwrite the two active dimensions with our grid
+        # We must move grid to the device first
+        test_x[:, dim_x] = gx.flatten().to(x.device)
+        test_x[:, dim_y] = gy.flatten().to(x.device)
+
+        # 3. Predict
+        with torch.no_grad():
+            posterior = gp.posterior(test_x)
+            mean = posterior.mean.cpu().view(resolution, resolution)
+
+        # 4. Plot 2D Contour
+        fig, ax = plt.subplots(figsize=(10, 7))
+
+        # A. Contour (GP Mean)
+        # viridis_r: Purple/Dark = Low Loss (Good), Yellow/Light = High Loss (Bad)
+        c = ax.contourf(gx.numpy(), gy.numpy(), mean.numpy(), levels=25, cmap='viridis_r', alpha=0.8)
+        cbar = plt.colorbar(c)
+        cbar.set_label("Predicted Loss (Mean)", rotation=270, labelpad=15)
+
+        # B. Scatter (Existing Training Data)
+        ax.scatter(
+            x_cpu[:, dim_x],
+            x_cpu[:, dim_y],
+            c=y_cpu,
+            cmap='viridis_r',
+            edgecolors='k',
+            s=50,
+            label="Observed Data"
+        )
+
+        # C. Scatter (New Candidates)
+        ax.scatter(
+            cand_cpu[:, dim_x],
+            cand_cpu[:, dim_y],
+            c='red',
+            marker='*',
+            s=250,
+            edgecolors='white',
+            linewidth=1.5,
+            label="New Candidates"
+        )
+
+        best_idx = y_cpu.argmin()
+        best_x = x_cpu[best_idx]
+        
+        for i in range(len(cand_cpu)):
+                ax.annotate("",
+                        xy=(cand_cpu[i, dim_x].item(), cand_cpu[i, dim_y].item()),
+                        xytext=(best_x[dim_x].item(), best_x[dim_y].item()),
+                        arrowprops=dict(arrowstyle="->", color="white", alpha=0.5, linestyle="--"))
+
+        ax.set_title(f"GP Posterior & Candidates\n(Slice on Dims {dim_x} & {dim_y})")
+        ax.set_xlabel(f"Encoded Dim {dim_x}")
+        ax.set_ylabel(f"Encoded Dim {dim_y}")
+        ax.legend(loc="upper right")
+
+        plt.tight_layout()
+        fig.savefig("results4/gp_posterior.png")
+        plt.close(fig)
+
+        # ========================================================================
+        # 5. Create 1D slice plots for each dimension
+        # ========================================================================
+        fig, axes = plt.subplots(num_dims, 1, figsize=(12, 4 * num_dims))
+        if num_dims == 1:
+            axes = [axes]
+
+        for dim, ax in enumerate(axes):
+            # Create 1D grid for this dimension
+            dim_min = x_cpu[:, dim].min().item()
+            dim_max = x_cpu[:, dim].max().item()
+            dim_margin = 0.1 * (dim_max - dim_min) if dim_max != dim_min else 1.0
+
+            test_grid = torch.linspace(dim_min - dim_margin, dim_max + dim_margin, 200)
+
+            # Hold other dims at mean
+            test_points_1d = torch.zeros(len(test_grid), num_dims, device=x.device)
+            for i in range(num_dims):
+                test_points_1d[:, i] = x[:, i].mean()
+            test_points_1d[:, dim] = test_grid.to(x.device)
+
+            with torch.no_grad():
+                posterior_1d = gp.posterior(test_points_1d)
+                mean_1d = posterior_1d.mean.squeeze().cpu().numpy()
+                std_1d = posterior_1d.variance.sqrt().squeeze().cpu().numpy()
+
+            test_grid_np = test_grid.cpu().numpy()
+
+            ax.plot(test_grid_np, mean_1d, 'b-', linewidth=2, label='GP Mean')
+            ax.fill_between(
+                test_grid_np,
+                mean_1d - 1.96 * std_1d,
+                mean_1d + 1.96 * std_1d,
+                alpha=0.3,
+                color='blue',
+                label='95% CI'
+            )
+
+            ax.scatter(
+                x_cpu[:, dim].numpy(),
+                y_cpu.squeeze().numpy(),
+                c='green',
+                s=60,
+                edgecolors='k',
+                label='Observed'
+            )
+
+            if len(cand_cpu) > 0:
+                ax.scatter(
+                    cand_cpu[:, dim].numpy(),
+                    np.ones(len(cand_cpu)) * y_cpu.min().item(),
+                    c='red',
+                    marker='*',
+                    s=200,
+                    label='Candidates'
+                )
+
+            ax.set_title(f'Dimension {dim} (others at mean)')
+            ax.set_xlabel(f'Dim {dim}')
+            ax.set_ylabel('Objective')
+            ax.grid(alpha=0.3)
+
+        # One legend for everything
+        handles, labels = axes[0].get_legend_handles_labels()
+        fig.legend(handles, labels, loc='upper center', ncol=4)
+
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        fig.savefig("results4/gp_1d_slices_all_dims.png", dpi=150)
+        plt.close(fig)
+
+        return
 
 
 def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:

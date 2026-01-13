@@ -97,6 +97,7 @@ class Domain(Generic[V]):
     `cardinality` of the domain is finite, i.e. `bins` is not `None` OR `round`
     is `True` or the boundaries are both integers.
     """
+    is_scaling: bool = False
 
     is_unit_float: bool = field(init=False, repr=False)
     is_int: bool = field(init=False, repr=False)
@@ -179,6 +180,7 @@ class Domain(Generic[V]):
         log: bool = False,
         bins: int | None = None,
         is_categorical: bool = False,
+        is_scaling: bool = False,
     ) -> Domain[int]:
         """Create a domain for a range of integer values.
 
@@ -199,6 +201,7 @@ class Domain(Generic[V]):
             round=True,
             bins=bins,
             is_categorical=is_categorical,
+            is_scaling=is_scaling,
         )
 
     @classmethod

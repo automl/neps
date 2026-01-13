@@ -18,8 +18,6 @@ class GridSearch:
     configs_list: list[dict[str, Any]]
     """The list of configurations to evaluate."""
 
-    non_evaluated_trials_key: list[tuple] = None
-
     def __call__(
         self,
         trials: Mapping[str, Trial],
@@ -27,9 +25,6 @@ class GridSearch:
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
-        if self.none_evaluated_configs is None:
-            self.none_evaluated_configs = [get_trial_config_unique_key(conf) for conf in self.configs_list]
-            print("at first call, none evaluated configs:", len(self.none_evaluated_configs))
         _num_previous_configs = len(trials)
         if _num_previous_configs > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")
@@ -48,9 +43,7 @@ class GridSearch:
     ) -> list[ImportedConfig]:
         n_trials = len(trials)
         imported_configs = []
-        imported_keys = []
         for i, (config, result) in enumerate(external_evaluations):
-            imported_keys.append(get_trial_config_unique_key(config=config))
             config_id = str(n_trials + i)
             imported_configs.append(
                 ImportedConfig(
@@ -59,7 +52,4 @@ class GridSearch:
                     result=result,
                 )
             )
-        self.none_evaluated_configs = [
-            key for key in self.none_evaluated_configs if key not in imported_keys
-        ]
         return imported_configs

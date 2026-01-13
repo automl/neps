@@ -700,6 +700,18 @@ class DefaultWorker:
 
         _repeated_fail_get_next_trial_count = 0
         n_repeated_failed_check_should_stop = 0
+
+        evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
+        self.load_incumbent_trace(
+            evaluated_trials,
+            _trace_lock,
+            improvement_trace_path,
+            best_config_path,
+        )
+        self.optimizer.callback_on_trial_complete(
+            trials=evaluated_trials,
+        )
+        
         while True:
             try:
                 # First check local worker settings
@@ -781,6 +793,36 @@ class DefaultWorker:
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it
             with _set_global_trial(trial_to_eval):
+                # get optimizer has get_constraint_func method
+                # if self.optimizer.get_constraint_func is not None:
+                #     constraint_fn = self.optimizer.get_constraint_func()
+                #     if constraint_fn(trial_to_eval.config) < 0:
+                #         logger.info(
+                #             "Worker '%s': Trial %s does not satisfy constraints, marking"
+                #             " as FAILED.",
+                #             self.worker_id,
+                #             trial_to_eval.id,
+                #         )
+                #         import numpy as np
+                #         np.random.seed(None)
+                #         score = 1000000000000.0 * ( 1+ np.random.normal(0, 10))
+                #         report = Trial.Report(
+                #             reported_as='success',
+                #             objective_to_minimize=score,
+                #             err=None, cost=0, learning_curve=None,tb=None, extra=None, evaluation_duration=0.0,
+                #         )
+                #         trial_to_eval.set_complete(
+                #             time_end=time.time(),
+                #             report_as='success',
+                #             objective_to_minimize=score,
+                #             err=None, cost=0, learning_curve=None,tb=None, extra=None, evaluation_duration=0.0,
+                #         )
+                #         self.state._report_trial_evaluation(
+                #             trial=trial_to_eval,
+                #             report=report,
+                #             worker_id=self.worker_id,
+                #         )
+                #         continue
                 evaluated_trial, report = evaluate_trial(
                     trial=trial_to_eval,
                     evaluation_fn=self.evaluation_fn,

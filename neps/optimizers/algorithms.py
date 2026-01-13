@@ -82,6 +82,7 @@ def _bo(  # noqa: C901, PLR0912
     ignore_fidelity: bool = False,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
+    acquisition_func_type: str = "EI",
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -163,6 +164,7 @@ def _bo(  # noqa: C901, PLR0912
         sample_prior_first=sample_prior_first,
         device=device,
         reference_point=reference_point,
+        acquisition_func_type=acquisition_func_type,
     )
 
 
@@ -522,30 +524,77 @@ def scaling_law_guided_primo(
         # )
     )
 
-
-def scaling_law_guided_grid_search(
+def kaplan_guided_scaling(
     space: SearchSpace,
     *,
     params_estimator: Callable[[SearchSpace], int],
     seen_datapoints_estimator: Callable[[SearchSpace], int],
     flops_estimator: Callable[[SearchSpace], int],
     max_evaluation_flops: int,
+    max_target_flop: int,
 ):
-    from neps.optimizers.sl_grid_search import SL_Grid_Search
-    from neps.optimizers.utils.grid import make_grid
-    """PriMO optimizer guided by scaling laws.
-
-    Args:
-        pipeline_space: Space in which to search
-        initial_design_size: Number of samples used before using the surrogate model.
-    """
+    from neps.optimizers.kaplan_guided_scaling import Kaplan_Guided_Scaling
     
-    return SL_Grid_Search(
+    return Kaplan_Guided_Scaling(
         space=convert_neps_to_classic_search_space(space=space),
         flops_estimator=flops_estimator,
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,
         max_evaluation_flops=max_evaluation_flops,
+        max_target_flop=max_target_flop,
+    )
+
+def chinchilla_guided_scaling(
+    space: SearchSpace,
+    *,
+    params_estimator: Callable[[SearchSpace], int],
+    seen_datapoints_estimator: Callable[[SearchSpace], int],
+    flops_estimator: Callable[[SearchSpace], int],
+    max_evaluation_flops: int,
+    max_target_flop: int,
+):
+    from neps.optimizers.chinchilla_guided_scaling import Chinchilla_Guided_Scaling
+    
+    return Chinchilla_Guided_Scaling(
+        space=convert_neps_to_classic_search_space(space=space),
+        flops_estimator=flops_estimator,
+        params_estimator=params_estimator,
+        seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=max_evaluation_flops,
+        max_target_flop=max_target_flop,
+    )
+
+def bo_guided_scaling(
+    space: SearchSpace,
+    *,
+    params_estimator: Callable[[SearchSpace], int],
+    seen_datapoints_estimator: Callable[[SearchSpace], int],
+    flops_estimator: Callable[[SearchSpace], int],
+    max_evaluation_flops: int,
+    max_target_flop: int,
+    device: torch.device | str | None,
+    reference_point: tuple[float, ...] | None = None,
+):
+    from neps.optimizers.bo_guided_scaling import BO_Guided_Scaling
+    bayesian_optimizer = _bo(  # noqa: C901, PLR0912
+        pipeline_space=space,
+        initial_design_size="ndim",
+        use_priors=True,
+        cost_aware=True,
+        sample_prior_first=True,
+        ignore_fidelity=True,
+        device=device,
+        reference_point=reference_point,
+        acquisition_func_type="IT-JES",
+    )
+    return BO_Guided_Scaling(
+        space=convert_neps_to_classic_search_space(space=space),
+        bayesian_optimizer=bayesian_optimizer,
+        flops_estimator=flops_estimator,
+        params_estimator=params_estimator,
+        seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=max_evaluation_flops,
+        max_target_flop=max_target_flop,
     )
 
 
@@ -1998,6 +2047,9 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_hyperband,
         neps_regularized_evolution,
         neps_local_and_incumbent,
+        chinchilla_guided_scaling,
+        kaplan_guided_scaling,
+        bo_guided_scaling
     )
 }
 
@@ -2021,4 +2073,7 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_hyperband",
     "neps_regularized_evolution",
     "neps_local_and_incumbent",
+    "chinchilla_guided_scaling",
+    "kaplan_guided_scaling",
+    "bo_guided_scaling",
 ]

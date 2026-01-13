@@ -3,7 +3,7 @@ import numpy as np
 import neps
 import socket
 import os
-from neps.optimizers.algorithms import scaling_law_guided_grid_search
+from neps.optimizers.algorithms import kaplan_guided_scaling
 # from lcbench import estimate_lcbench_flops, Objective
 
 dataset_size= 1000 #TODO
@@ -64,14 +64,14 @@ def seen_datapoints_estimator(epoch, n_layers, max_units):
     return dataset_size * epoch
 
 class PipeSpace(neps.PipelineSpace):
-    epoch=neps.Integer(lower=100, upper=1000, is_arch_param=True)
-    n_layers = neps.Integer(lower=4, upper=8, is_arch_param=True)
-    max_units = neps.Integer(lower=64, upper=1024, is_arch_param=True)
+    epoch=neps.Integer(lower=100, upper=1000, is_scaling=True)
+    n_layers = neps.Integer(lower=4, upper=8, is_scaling=True)
+    max_units = neps.Integer(lower=64, upper=1024, is_scaling=True)
 
 pipeline_space = dict(
-    epoch=neps.Integer(lower=100, upper=1000, is_arch_param=True),
-    n_layers = neps.Integer(lower=4, upper=8, is_arch_param=True),
-    max_units = neps.Integer(lower=64, upper=1024, is_arch_param=True)
+    epoch=neps.Integer(lower=100, upper=1000, is_scaling=True),
+    n_layers = neps.Integer(lower=4, upper=8, is_scaling=True),
+    max_units = neps.Integer(lower=64, upper=1024, is_scaling=True)
 )
 
 
@@ -83,7 +83,7 @@ neps.run(
     cost_to_spend=1000,
     worker_id=f"worker_1-{socket.gethostname()}-{os.getpid()}",
     overwrite_root_directory=True,
-    optimizer=lambda space: scaling_law_guided_grid_search(
+    optimizer=lambda space: kaplan_guided_scaling(
         space,
         params_estimator=get_number_of_parameters,
         flops_estimator=get_total_flops,

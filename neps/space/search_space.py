@@ -55,7 +55,7 @@ class SearchSpace(
     Currently no optimizer supports multiple fidelities but it is defined here incase.
     """
 
-    arch_params: Mapping[str, HPOInteger] = field(init=False)
+    scaling_params: Mapping[str, HPOInteger] = field(init=False)
     """The architecture parameters in the search space."""
 
     constants: Mapping[str, Any] = field(init=False, default_factory=dict)
@@ -72,8 +72,8 @@ class SearchSpace(
         return {**self.numerical, **self.categoricals}
 
     @property
-    def architecture_parameters(self) -> Mapping[str, HPOInteger]:
-        return self.arch_params
+    def scaling_parameters(self) -> Mapping[str, HPOInteger]:
+        return self.scaling_params
 
     @property
     def fidelity(self) -> tuple[str, HPOFloat | HPOInteger] | None:
@@ -126,6 +126,7 @@ class SearchSpace(
                         prior=prior_int,
                         prior_confidence=prior_confidence_int,  # type: ignore[arg-type]
                         is_fidelity=getattr(hp, "_is_fidelity_compat", False),
+                        is_scaling=hp.is_scaling,
                     )
                 elif isinstance(hp, PSCategorical):
                     # Categorical conversion - extract choices as list
@@ -187,7 +188,7 @@ class SearchSpace(
                         )
                     fidelities[name] = hp
                 
-                case HPOInteger() if hp.is_arch_param:
+                case HPOInteger() if hp.is_scaling:
                     arch_params[name] = hp
                     numerical[name] = hp
 

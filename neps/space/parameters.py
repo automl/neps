@@ -138,7 +138,7 @@ class HPOInteger:
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
 
-    is_arch_param: bool = False
+    is_scaling: bool = False
 
     domain: Domain[int] = field(init=False, repr=False)
 
@@ -188,8 +188,7 @@ class HPOInteger:
                 "Integer parameter: Fidelity parameters "
                 f"cannot have a prior value. Got prior={self.prior}."
             )
-
-        self.domain = Domain.integer(self.lower, self.upper, log=self.log)
+        self.domain = Domain.integer(self.lower, self.upper, log=self.log, is_scaling=self.is_scaling)
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 

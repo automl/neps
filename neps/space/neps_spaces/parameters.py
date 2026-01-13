@@ -392,7 +392,7 @@ class PipelineSpace(Resolvable):
         return {
             k: v
             for k, v in self.get_attrs().items()
-            if isinstance(v, Integer) and getattr(v, "is_arch_param", False)
+            if isinstance(v, Integer) and getattr(v, "is_scaling", False)
         }
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the pipeline as a mapping.
@@ -414,7 +414,7 @@ class PipelineSpace(Resolvable):
                 continue
             attrs[attr_name] = attr_value
 
-        properties_to_ignore = ("fidelity_attrs",)
+        properties_to_ignore = ("fidelity_attrs","get_arch_params")
         for property_to_ignore in properties_to_ignore:
             attrs.pop(property_to_ignore, None)
 
@@ -1344,7 +1344,7 @@ class Integer(Domain[int]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
-        is_arch_param: bool = False,
+        is_scaling: bool = False,
         **kwargs: object,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
@@ -1375,7 +1375,7 @@ class Integer(Domain[int]):
         self._lower = lower
         self._upper = upper
         self._log = log
-        self.is_arch_param = is_arch_param
+        self._is_scaling = is_scaling
         self._prior = prior
         self._prior_confidence = (
             convert_confidence_level(prior_confidence)
@@ -1403,7 +1403,18 @@ class Integer(Domain[int]):
             and self.lower == other.lower
             and self.upper == other.upper
             and self._log == other.log
+            and self._is_scaling == other.is_scaling
         )
+
+    @property
+    def is_scaling(self) -> bool:
+        """Check if the integer domain is used for scaling purposes.
+
+        Returns:
+            True if the domain is used for scaling, False otherwise.
+
+        """
+        return self._is_scaling
 
     @property
     def lower(self) -> int:
@@ -1540,6 +1551,7 @@ class Integer(Domain[int]):
             upper=new_max,
             log=self._log,
             prior=center,
+            is_scaling=self.is_scaling,
             prior_confidence=confidence,
         )
 

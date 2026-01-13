@@ -231,7 +231,6 @@ class MinMaxNormalizer(TensorTransformer[float], Generic[V]):
         values = self.original_domain.from_unit(x)
         return values.tolist()
 
-
 @dataclass
 class ConfigEncoder:
     """An encoder for hyperparameter configurations.
@@ -452,6 +451,25 @@ class ConfigEncoder:
             dict(zip(keys, vals, strict=False))
             for vals in zip(*values.values(), strict=False)
         ]
+
+    def decode_tensor(self, x: torch.Tensor) -> torch.Tensor:
+        """Decode a tensor of hyperparameter configurations into the original tensor.
+
+        Args:
+            x: A tensor of shape `(N, ncols)` containing the encoded configurations.
+
+        Returns:
+            A list of `N` configurations, including any constants that were included
+            when creating the encoder.
+        """
+        decoded_x = torch.empty_like(x)
+        N = len(x)
+        for hp_name, transformer in self.transformers.items():
+            lookup = self.index_of[hp_name]
+            t = x[..., lookup]
+            decoded_x[..., lookup] = torch.tensor(transformer.original_domain.from_unit(t))
+        return decoded_x
+
 
     @classmethod
     def from_parameters(

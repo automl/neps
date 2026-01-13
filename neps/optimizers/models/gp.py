@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Callable
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
@@ -21,11 +21,12 @@ from botorch.optim import optimize_acqf, optimize_acqf_mixed
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
 from gpytorch.utils.warnings import NumericalWarning
-
+from gpytorch.means import Mean as GpMean
 from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 from neps.utils.common import disable_warnings
 
+from neps.sampling.samplers import Sobol
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
 
@@ -60,15 +61,101 @@ def default_categorical_kernel(
         )
     )
 
+class ScalingMeanModule(gpytorch.means.Mean):
+    """
+    Learns a scaling law trend: y = sum(w * x^p) + bias.
+    """
+    def __init__(
+        self, 
+        scaling_dims: list[int],
+        encoder: ConfigEncoder,
+        flop_estimator: Callable[..., int],
+        minimize: bool = True,  # Default to True (standard for Loss scaling)
+    ):
+        super().__init__()
+        self.scaling_dims = scaling_dims
+        self.minimize = minimize
+        self.encoder = encoder
+        self.flop_estimator = flop_estimator
 
+        n_dims = len(scaling_dims)
+        
+        # self.register_parameter(
+        #     name="powers", 
+        #     parameter=torch.nn.Parameter(torch.tensor([-0.3] * n_dims, dtype=torch.float64))
+        # )
+        
+        # self.register_parameter(
+        #     name="weights", 
+        #     parameter=torch.nn.Parameter(torch.tensor([300] * n_dims, dtype=torch.float64))
+        # )
+        
+        # self.register_parameter(
+        #     name="bias", 
+        #     parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+        # )
+
+        self.min_slope = 1e-4
+        self.max_slope = 1e-2
+        self.register_parameter(
+            name="weights", 
+            parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+        )
+        
+        self.register_parameter(
+            name="bias", 
+            parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # print current parameters
+        print(f"weights={self.weights.detach().cpu().numpy()}, bias={self.bias.item()}")
+
+        # Example: if x is (10, 5, 4), batch_shape is (10, 5)
+        batch_shape = x.shape[:-1]
+        
+        # Example: (10, 5, 4) -> (50, 4)
+        x_flat = x.view(-1, x.shape[-1])
+        
+        flops = torch.empty(x_flat.shape[0], dtype=torch.float64, device=x.device)
+        
+        x_physical = self.encoder.decode(x_flat)
+        
+        for i, conf_dict in enumerate(x_physical):
+            flop = self.flop_estimator(**conf_dict)
+            flops[i] = flop
+            
+        # (Total_Samples) -> (B1, B2)
+        flops = flops.view(batch_shape)
+        
+        log_flops = torch.log(flops)
+        weight = self.min_slope + (self.max_slope - self.min_slope) * torch.sigmoid(self.weights)
+
+        mean = log_flops * weight + self.bias
+        print(torch.exp(mean))
+        # Return to linear space (Loss = exp(Mean_Log))
+        return mean
+    
 def make_default_single_obj_gp(
     x: torch.Tensor,
     y: torch.Tensor,
     encoder: ConfigEncoder,
     *,
     y_transform: OutcomeTransform | None = None,
+    objective_minimize: bool = False,
+    flop_estimator: Callable[..., int] | None = None,
 ) -> SingleTaskGP:
-    """Default GP for single objective optimization."""
+    """Default GP for single objective optimization.
+    
+    Args:
+        x: Training input features
+        y: Training targets
+        encoder: Configuration encoder
+        y_transform: Optional outcome transformation
+        objective_type: "minimize" or "maximize" (default: "minimize")
+        use_huber_loss: Whether to use Huber loss (default: False)
+        huber_delta: Huber loss delta parameter (default: 1.0)
+    """
     if y.ndim == 1:
         y = y.unsqueeze(-1)
 
@@ -77,15 +164,28 @@ def make_default_single_obj_gp(
 
     numerics: list[int] = []
     categoricals: list[int] = []
+    scaling_dims: list[int] = []
     for hp_name, transformer in encoder.transformers.items():
         if isinstance(transformer, CategoricalToIntegerTransformer):
             categoricals.append(encoder.index_of[hp_name])
         else:
             numerics.append(encoder.index_of[hp_name])
+            if getattr(transformer.original_domain, "is_scaling", False):
+                scaling_dims.append(encoder.index_of[hp_name])
+    
+    mean_module = None
 
+    if len(scaling_dims) > 0 and flop_estimator is not None:
+        mean_module = ScalingMeanModule(
+            scaling_dims=scaling_dims,
+            encoder=encoder,
+            minimize=objective_minimize,
+            flop_estimator=flop_estimator
+        )
+        y = torch.log(y.clamp_min(1e-12))
     # Purely vectorial
     if len(categoricals) == 0:
-        return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform)
+        return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module) # filter just numericals and scaling
 
     # Purely categorical
     if len(numerics) == 0:
@@ -94,6 +194,7 @@ def make_default_single_obj_gp(
             train_Y=y,
             covar_module=default_categorical_kernel(len(categoricals)),
             outcome_transform=y_transform,
+            mean_module=None # TODO: add support for categorical
         )
 
     # Mixed
@@ -119,7 +220,7 @@ def make_default_single_obj_gp(
     kernel = numeric_kernel + cat_kernel
 
     return SingleTaskGP(
-        train_X=x, train_Y=y, covar_module=kernel, outcome_transform=y_transform
+        train_X=x, train_Y=y, covar_module=kernel, outcome_transform=y_transform, mean_module=mean_module,
     )
 
 
@@ -170,6 +271,10 @@ def optimize_acq(
         if n_intial_start_points is None:
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
+        # constraints = acq_options.get("nonlinear_inequality_constraints")
+        # if constraints is not None:        
+        #     acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
+        
         with warning_context:
             return optimize_acqf(  # type: ignore
                 acq_function=acq_fn,
@@ -374,7 +479,7 @@ def fit_and_acquire_from_gp(
     if seed is not None:
         raise NotImplementedError("Seed is not implemented yet for gps")
 
-    fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
+    # fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
 
     if prior:
         if pibo_exp_term is None:
@@ -448,3 +553,178 @@ def fit_and_acquire_from_gp(
         hide_warnings=hide_warnings,
     )
     return candidates
+
+
+import torch
+
+class BlackBoxConstraintFn(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, constraint_func, encoder):
+        # 1. Save context for backward pass
+        ctx.constraint_func = constraint_func
+        ctx.encoder = encoder
+        ctx.save_for_backward(x)
+        
+        # 2. Run your original non-differentiable logic
+        # We assume standard BoTorch shape: (batch_shape) or (batch, q, d)
+        with torch.no_grad():
+            # Flatten to handle arbitrary batch shapes safely
+            original_shape = x.shape
+            x_flat = x.reshape(-1, original_shape[-1])
+            
+            # Decode using your existing logic
+            # Move to CPU for decoding
+            conf_list = encoder.decode(x_flat.detach().cpu())
+            
+            vals = []
+            for c in conf_list:
+                # Get the value (assuming func returns tuple/list)
+                # Ensure this is a FLOAT representing "distance to feasibility"
+                val = constraint_func(c)
+                
+                # IMPORTANT: BoTorch expects Positive = Feasible.
+                # If your func returns Negative = Feasible, flip it: val = -val
+                vals.append(val)
+                
+            # Restore shape
+            res = torch.tensor(vals, dtype=x.dtype, device=x.device)
+            
+            # If input was (N, D), output is (N,). If (N, Q, D), output (N, Q)
+            if len(original_shape) > 1:
+                res = res.view(original_shape[:-1])
+                
+        return res
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        # 3. "Fake" the gradient using Finite Differences
+        x, = ctx.saved_tensors
+        func = ctx.constraint_func
+        encoder = ctx.encoder
+        
+        # A small step size
+        epsilon = 1e-3
+        
+        grad_input = torch.zeros_like(x)
+        
+        # We must iterate to compute derivatives for every dimension
+        # (This can be slow, but it's the only way for black-box funcs)
+        x_flat = x.detach().reshape(-1, x.shape[-1])
+        grad_out_flat = grad_output.reshape(-1)
+        grad_in_flat = grad_input.reshape(-1, x.shape[-1])
+        
+        for i in range(len(x_flat)):
+            # Optimization: If this point doesn't matter for the loss, skip it
+            if grad_out_flat[i] == 0:
+                continue
+
+            current_val_base = None # Cache if needed
+            
+            for d in range(x_flat.shape[1]):
+                # Create a perturbed point: x + epsilon
+                x_p = x_flat[i].clone()
+                x_p[d] += epsilon
+                
+                # Evaluate x + epsilon
+                c_p = encoder.decode(x_p.unsqueeze(0).cpu())[0]
+                val_p = func(c_p)
+                
+                # Evaluate x (Center)
+                c_base = encoder.decode(x_flat[i].unsqueeze(0).cpu())[0]
+                val_base = func(c_base)
+                
+                # Calculate Slope (Gradient) = (Rise / Run)
+                slope = (val_p - val_base) / epsilon
+                
+                # Chain Rule: Gradient = Slope * Incoming_Gradient
+                grad_in_flat[i, d] = slope * grad_out_flat[i]
+                
+        return grad_input.view_as(x), None, None
+
+
+def encode_constraints_func(
+    constraints_func,
+    *,
+    encoder,
+    device=None,
+):
+    def inner(x):
+        # Use .apply() to call the autograd function
+        return BlackBoxConstraintFn.apply(x, constraints_func, encoder)
+    return inner
+
+
+def make_ic_generator(constraint_func, encoder):
+    """
+    Creates an initial condition generator that respects non-linear constraints.
+    Uses the custom Sobol sampler from NePS.
+    """
+    def ic_generator(acq_function, bounds, q, num_restarts, raw_samples, fixed_features=None, **kwargs):
+        # 1. Initialize the custom Sobol sampler
+        ndim = bounds.shape[1]
+        sampler = Sobol(ndim=ndim, scramble=True)
+        
+        # 2. Sample raw candidates
+        # We need 'raw_samples' starting points.
+        # If q > 1, each starting point is actually a batch of q candidates.
+        # Shape needed: (raw_samples, q, ndim)
+        sample_shape = torch.Size([raw_samples, q])
+        
+        # Note: We pass 'encoder' as the target domain ('to'). 
+        # Ensure your Domain.translate supports ConfigEncoder as 'to'.
+        X_cand = sampler.sample(
+            n=sample_shape, 
+            to=encoder, 
+            device=bounds.device,
+            dtype=bounds.dtype
+        )
+
+        # 3. Filter using the constraint function
+        with torch.no_grad():
+            # constraint_func returns >= 0 for valid
+            # X_cand shape: (raw_samples, q, d)
+            # We flatten to (raw_samples * q, d) if the constraint func expects 2D, 
+            # or pass 3D if it handles it. 
+            # Your encode_constraints_func wrapper handles dimensions, so we pass as is.
+            constraint_vals = constraint_func(X_cand)
+            
+            # Constraint satisfied if >= 0
+            valid_mask = (constraint_vals >= 0)
+            
+            # If q > 1, the constraint returns shape (raw_samples, q).
+            # A starting point is only valid if ALL q candidates in it are valid.
+            if valid_mask.ndim > 1:
+                valid_mask = valid_mask.all(dim=-1)
+                
+            X_valid = X_cand[valid_mask]
+
+        # 4. Handle Insufficient Valid Points (Fallback)
+        # If strict constraints leave us with fewer points than 'num_restarts',
+        # we must fill the gap to prevent the optimizer from crashing.
+        if len(X_valid) < num_restarts:
+            logger.warning(
+                f"Constraint is too strict: found {len(X_valid)} valid points out of {raw_samples}. "
+                "Optimization performance may degrade."
+            )
+            
+            if len(X_valid) == 0:
+                # Emergency: Return the raw candidates even if invalid, 
+                # effectively falling back to standard behavior.
+                return X_cand[:num_restarts]
+                
+            # Recycle valid points to fill the quota
+            needed = num_restarts - len(X_valid)
+            repeats = (needed // len(X_valid)) + 2
+            X_valid = torch.cat([X_valid] * repeats)[:num_restarts]
+
+        # 5. Select Best Starts
+        # Evaluate the acquisition function on the valid points to pick the best starters.
+        with torch.no_grad():
+            acq_vals = acq_function(X_valid)
+        
+        # We want the indices of the highest acquisition values
+        _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
+        
+        return X_valid[best_idxs]
+
+    return ic_generator
