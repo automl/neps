@@ -1,0 +1,25 @@
+/* If anything is breaking from this css, please feel free to
+* remove it.
+*/
+
+/* Highlight None with color  inside code blocks */
+code.highlight.language-python span.kc {
+  color: var(--md-code-hl-keyword-color);
+}
+/* Make tool tip annotations wider */
+:root {
+    --md-tooltip-width: 500px;
+}
+/* api doc attribute cards
+div.doc-class > div.doc-contents > div.doc-children > div.doc-object {
+  padding-right: 20px;
+  padding-left: 20px;
+  border-radius: 15px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.2);
+  margin-right: 0px;
+  border-color: rgba(0, 0, 0, 0.2);
+  border-width: 1px;
+  border-style: solid;
+} */
