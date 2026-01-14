@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from neps.optimizers import optimizer
+from neps.optimizers.utils.util import _get_max_trial_id
 from neps.space.neps_spaces.neps_space import _prepare_sampled_configs, resolve
 from neps.space.neps_spaces.parameters import Float, Integer
 from neps.space.neps_spaces.sampling import (
@@ -118,7 +119,7 @@ class NePSRandomSearch:
             ValueError: If the pipeline is not a Pipeline object or if the trials are
                 not a valid mapping of trial IDs to Trial objects.
         """
-        n_prev_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
 
@@ -141,7 +142,9 @@ class NePSRandomSearch:
                 for _ in range(n_requested)
             ]
 
-        return _prepare_sampled_configs(chosen_pipelines, n_prev_trials, return_single)
+        return _prepare_sampled_configs(
+            chosen_pipelines, max_prev_trial_id, return_single
+        )
 
     def import_trials(
         self,
@@ -159,10 +162,10 @@ class NePSRandomSearch:
         Returns:
             A list of ImportedConfig objects representing the imported trials.
         """
-        n_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i + 1)
+            config_id = str(max_prev_trial_id + i + 1)
             imported_configs.append(
                 optimizer.ImportedConfig(
                     config=config,
@@ -270,7 +273,7 @@ class NePSComplexRandomSearch:
             ValueError: If the pipeline is not a Pipeline object or if the trials are
                 not a valid mapping of trial IDs to Trial objects.
         """
-        n_prev_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
 
@@ -425,7 +428,7 @@ class NePSComplexRandomSearch:
         # Currently, we just pick randomly from them.
         chosen_pipelines = random.sample(all_sampled_pipelines, k=n_requested)
 
-        if n_prev_trials == 0:
+        if max_prev_trial_id == 0:
             # In this case, always include the prior pipeline.
             prior_pipeline = resolve(
                 pipeline=self._pipeline,
@@ -434,7 +437,9 @@ class NePSComplexRandomSearch:
             )
             chosen_pipelines[0] = prior_pipeline
 
-        return _prepare_sampled_configs(chosen_pipelines, n_prev_trials, return_single)
+        return _prepare_sampled_configs(
+            chosen_pipelines, max_prev_trial_id, return_single
+        )
 
     def import_trials(
         self,
@@ -452,10 +457,10 @@ class NePSComplexRandomSearch:
         Returns:
             A list of ImportedConfig objects representing the imported trials.
         """
-        n_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i + 1)
+            config_id = str(max_prev_trial_id + i + 1)
             imported_configs.append(
                 optimizer.ImportedConfig(
                     config=config,
