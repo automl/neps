@@ -4053,8 +4053,8 @@ You can install it via <code>pip</code> or from <a href="https://github.com/auto
 </code></pre></div>
 <h2 id="the-3-main-components">The 3 Main Components<a class="headerlink" href="#the-3-main-components" title="Permanent link">#</a></h2>
 <ol>
-<li><strong>Establish a <a href="../reference/neps_spaces/"><code>pipeline_space=</code></a></strong>:</li>
-</ol>
+<li>
+<p><strong>Establish a <a href="../reference/neps_spaces/"><code>pipeline_space=</code></a></strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ExampleSpace</span><span class="p">(</span><span class="n">neps</span><span class="o">.</span><span class="n">PipelineSpace</span><span class="p">):</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="c1"># Define the parameters of your search space</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">some_parameter</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>       <span class="c1"># float</span>
@@ -4064,9 +4064,9 @@ You can install it via <code>pip</code> or from <a href="https://github.com/auto
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">learning_rate</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">alpha</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">Float</span><span class="p">(</span><span class="n">lower</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">upper</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">prior</span><span class="o">=</span><span class="mf">0.99</span><span class="p">,</span> <span class="n">prior_confidence</span><span class="o">=</span><span class="s2">&quot;high&quot;</span><span class="p">)</span>
 </code></pre></div>
-<ol>
-<li><strong>Define an <code>evaluate_pipeline()</code> function</strong>:</li>
-</ol>
+</li>
+<li>
+<p><strong>Define an <code>evaluate_pipeline()</code> function</strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_pipeline</span><span class="p">(</span><span class="n">some_parameter</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>                 <span class="n">another_parameter</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>                 <span class="n">optimizer</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">epoch</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -4075,11 +4075,13 @@ You can install it via <code>pip</code> or from <a href="https://github.com/auto
 <a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">loss</span> <span class="o">=</span> <span class="n">eval_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 <a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="k">return</span> <span class="n">loss</span>
 </code></pre></div>
-<ol>
-<li><strong>Execute with <a href="../reference/neps_run/"><code>neps.run()</code></a></strong>:</li>
-</ol>
+</li>
+<li>
+<p><strong>Execute with <a href="../reference/neps_run/"><code>neps.run()</code></a></strong>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">evaluate_pipeline</span><span class="p">,</span> <span class="n">ExampleSpace</span><span class="p">())</span>
 </code></pre></div>
+</li>
+</ol>
 <hr />
 <h2 id="whats-next">What's Next?<a class="headerlink" href="#whats-next" title="Permanent link">#</a></h2>
 <p>The <a href="../reference/neps_run/">reference</a> section provides detailed information on the individual components of NePS.</p>
