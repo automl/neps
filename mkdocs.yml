@@ -143,6 +143,7 @@ nav:
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - Analysing Runs: 'reference/analyse.md'
     - Optimizer: 'reference/optimizers.md'
+    - Cleaning Up Trials: 'reference/clean.md'
     - Seeding: 'reference/seeding.md'
   - Examples: "examples/"  # auto-generated
   - Algorithms:
