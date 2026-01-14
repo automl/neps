@@ -4286,20 +4286,19 @@ provided to <a class="autorefs autorefs-internal" title="            run" href="
 <p>The root directory after utilizing this argument will look like the following:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>root_directory
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>├── configs
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>│   ├── config_1
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>│   ├── config_1            # Could also be config_1_rung_0 for multi-fidelity
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>│   │   ├── config.yaml     # The configuration
 <a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>│   │   ├── report.yaml     # The results of this run, if any
 <a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>│   │   └── metadata.json   # Metadata about this run, such as state and times
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>│   └── config_2
-<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>│       ├── config.yaml
-<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>│       └── metadata.json
-<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>├── summary
-<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>│  ├── full.csv
-<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>│  └── short.csv
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>│  ├── best_config_trajectory.txt
-<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>│  └── best_config.txt
-<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>├── optimizer_info.yaml     # The optimizer&#39;s configuration
-<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>└── optimizer_state.pkl     # The optimizer&#39;s state, shared between workers
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>│   └── ...
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>├── summary
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a>│  ├── full.csv
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>│  └── short.csv
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>│  ├── best_config_trajectory.txt
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>│  └── best_config.txt
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>├── optimizer_info.yaml     # The optimizer&#39;s configuration
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>├── optimizer_state.pkl     # The optimizer&#39;s state, shared between workers
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>└── ...                     # Other neps files
 </code></pre></div>
 </div>
 </div>
@@ -4345,9 +4344,7 @@ Any new workers that come online will automatically pick up work and work togeth
 </div>
 <h2 id="handling-errors">Handling Errors<a class="headerlink" href="#handling-errors" title="Permanent link">#</a></h2>
 <p>Things go wrong during optimization runs and it's important to consider what to do in these cases.
-By default, NePS will halt the optimization process when an error but you can choose to <code>ignore_errors=</code>,
-providing a <code>loss_value_on_error=</code> and <code>cost_value_on_error=</code> to control what values should be
-reported to the optimization process.</p>
+By default, NePS will halt the optimization process when an error but you can choose to <code>ignore_errors=</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
 <a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="k">if</span> <span class="n">whoops_my_gpu_died</span><span class="p">():</span>
 <a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Oh no! GPU died!&quot;</span><span class="p">)</span>
