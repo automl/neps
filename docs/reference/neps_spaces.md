@@ -9,9 +9,6 @@
 - [`neps.Integer`][neps.space.neps_spaces.parameters.Integer]: Discrete integer values
 - [`neps.Float`][neps.space.neps_spaces.parameters.Float]: Continuous float values
 - [`neps.Categorical`][neps.space.neps_spaces.parameters.Categorical]: Discrete categorical values
-- [`neps.IntegerFidelity`][neps.space.neps_spaces.parameters.IntegerFidelity]: Integer [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., epochs, batch size)
-- [`neps.FloatFidelity`][neps.space.neps_spaces.parameters.FloatFidelity]: Float [multi-fidelity](../reference/search_algorithms/multifidelity.md) parameters (e.g., dataset subset ratio)
-- [`neps.Fidelity`][neps.space.neps_spaces.parameters.Fidelity]: Generic fidelity type (use IntegerFidelity or FloatFidelity instead)
 
 Using these types, you can define the parameters that NePS will optimize during the search process.
 A **NePS space** is defined as a subclass of [`PipelineSpace`][neps.space.neps_spaces.parameters.PipelineSpace]. Here we define the hyperparameters that make up the space, like so:
@@ -215,11 +212,11 @@ def evaluate_pipeline(cnn: torch.nn.Module):
 
 !!! tip "Complex structural spaces"
 
-    Together, [Resampling][neps.space.neps_spaces.parameters.Resample] and [operations][neps.space.neps_spaces.parameters.Operation] allow you to define complex search spaces across the whole ML-pipeline akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar), exceeding architecture search. For example, you can sample neural optimizers from a set of instructions, as done in [`NOSBench`](https://openreview.net/pdf?id=5Lm2ghxMlp) to train models.
+    Together, [Resampling][neps.space.neps_spaces.parameters.Resample] and [operations][neps.space.neps_spaces.parameters.Operation] allow you to define complex search spaces across the whole ML-pipeline akin to [Context-Free Grammars (CFGs)](https://en.wikipedia.org/wiki/Context-free_grammar), exceeding architecture search. For example, you can sample neural optimizers from a set of instructions, as done in [this example](../examples/basic_usage/5_optimizer_search.md) to train models.
 
 ## Inspecting Configurations
 
-NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, so you can load the configuration using `neps.load_config()`, which returns a dictionary with the resolved parameters and their values:
+NePS saves the configurations as paths, where each sampling decision is recorded. As they are hard to read, you can retrieve the configuration using `neps.load_config()`, which returns a dictionary with the resolved parameters and their values:
 
 ```python
 import neps
@@ -251,20 +248,3 @@ pipeline_space = neps.load_pipeline_space("Path/to/neps_folder")
 !!! tip "Reconstructing a Run"
 
     You can load both the search space and optimizer information to fully reconstruct a previous run. See [Reconstructing and Reproducing Runs](neps_run.md#reconstructing-and-reproducing-runs) for a complete example.
-
-## Using ConfigSpace
-
-For users familiar with the [`ConfigSpace`](https://automl.github.io/ConfigSpace/main/) library,
-can also define the `pipeline_space` through `ConfigurationSpace()`
-
-```python
-from configspace import ConfigurationSpace, Float
-
-configspace = ConfigurationSpace(
-    {
-        "learning_rate": Float("learning_rate", bounds=(1e-4, 1e-1), log=True)
-        "optimizer": ["adam", "sgd", "rmsprop"],
-        "dropout_rate": 0.5,
-    }
-)
-```
