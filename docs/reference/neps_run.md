@@ -178,20 +178,19 @@ provided to [`neps.run()`][neps.api.run].
     ```
     root_directory
     ├── configs
-    │   ├── config_1
+    │   ├── config_1            # Could also be config_1_rung_0 for multi-fidelity
     │   │   ├── config.yaml     # The configuration
     │   │   ├── report.yaml     # The results of this run, if any
     │   │   └── metadata.json   # Metadata about this run, such as state and times
-    │   └── config_2
-    │       ├── config.yaml
-    │       └── metadata.json
+    │   └── ...
     ├── summary
     │  ├── full.csv
     │  └── short.csv
     │  ├── best_config_trajectory.txt
     │  └── best_config.txt
     ├── optimizer_info.yaml     # The optimizer's configuration
-    └── optimizer_state.pkl     # The optimizer's state, shared between workers
+    ├── optimizer_state.pkl     # The optimizer's state, shared between workers
+    └── ...                     # Other neps files
     ```
 
 To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
@@ -239,9 +238,7 @@ Any new workers that come online will automatically pick up work and work togeth
 ## Handling Errors
 
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
-By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`,
-providing a `loss_value_on_error=` and `cost_value_on_error=` to control what values should be
-reported to the optimization process.
+By default, NePS will halt the optimization process when an error but you can choose to `ignore_errors=`.
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -252,15 +249,11 @@ def run(learning_rate: float, epochs: int) -> float:
     return loss
 
 neps.run(
-    loss_value_on_error=100, # (1)!
-    cost_value_on_error=10, # (2)!
-    ignore_errors=True, # (3)!
+    ignore_errors=True, # (1)!
 )
 ```
 
-1. If an error occurs, the **loss** value for that configuration will be set to 100.
-2. If an error occurs, the **cost** value for that configuration will be set to 100.
-3. Continue the optimization process even if an error occurs, otherwise throwing an exception and halting the process.
+1. Continue the optimization process even if an error occurs, otherwise throwing an exception and halting the process.
 
 !!! note
 
