@@ -41,7 +41,6 @@ class NePSLocalPriorIncumbentSampler:
         Args:
             table (pd.DataFrame): The table containing the configurations and their
                 performance.
-            rung (int): The current rung of the optimization.
 
         Returns:
             dict[str, Any]: A sampled configuration.

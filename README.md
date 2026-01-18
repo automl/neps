@@ -41,8 +41,8 @@ Using `neps` always follows the same pattern:
 
 1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
    for your problem.
-2. Define a `pipeline_space` of those Parameters
-3. Call `neps.run(evaluate_pipeline, pipeline_space)`
+1. Define a `pipeline_space` of those Parameters
+1. Call `neps.run(evaluate_pipeline, pipeline_space)`
 
 In code, the usage pattern can look like this:
 

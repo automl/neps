@@ -16,7 +16,7 @@ from neps.optimizers.models.ftpfn import (
 )
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
-from neps.optimizers.utils.util import get_trial_config_unique_key
+from neps.optimizers.utils.util import _get_max_trial_id, get_trial_config_unique_key
 from neps.sampling import Prior, Sampler
 from neps.space import ConfigEncoder, Domain, HPOFloat, HPOInteger, SearchSpace
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
@@ -156,8 +156,8 @@ class IFBO:
         parameters = self.space.searchables
 
         assert n is None, "TODO"
-        ids = [int(config_id.split("_", maxsplit=1)[0]) for config_id in trials]
-        new_id = max(ids) + 1 if len(ids) > 0 else 1
+        max_trial_id = _get_max_trial_id(trials)
+        new_id = max_trial_id + 1
 
         # The FTPFN surrogate takes in a budget in the range [0, 1]
         # We also need to be able to map these to discrete integers
@@ -328,7 +328,7 @@ class IFBO:
             if key not in config_to_base_id:
                 config_to_base_id[key] = base_id
 
-        next_id = max([id_tuple[0] for id_tuple in existing_trial_ids], default=0) + 1
+        next_id = _get_max_trial_id(trials) + 1
 
         for config, result in external_evaluations:
             obj = result.get("objective_to_minimize")

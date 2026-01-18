@@ -130,7 +130,7 @@ neps.save_pipeline_results(
 
 ### 3.4 Common pitfalls
 
-* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set `evaluations_to_spend` when calling `neps.run`.
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `evaluations_to_spend` and/or `cost_to_spend`) when calling `neps.run`.
 
 ## 4 Extra injected arguments
 
