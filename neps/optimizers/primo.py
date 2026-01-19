@@ -9,6 +9,7 @@ import numpy as np
 import torch
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 from botorch.acquisition.objective import LinearMCObjective
+from botorch.acquisition.thompson_sampling import PathwiseThompsonSampling
 from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.models.gp import (
@@ -82,6 +83,15 @@ class PriMO:
 
     bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo"
     """The type of Bayesian optimization to use. Defaults to "epsbo"."""
+
+    acq_fn: Literal["qlnei", "ts", "cb"] = "qlnei"
+    """The acquisition function to use for Bayesian optimization.
+    Options are:
+        - "qlnei": q-Log Noisy Expected Improvement
+        - "ts": Pathwise Thompson Sampling
+        - "cb": Confidence Bound Acquisition Function
+    Defaults to "qlnei".
+    """
 
     def __post_init__(self) -> None:
         match self.bo_type:
@@ -318,18 +328,32 @@ class PriMO:
 
         gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
         with disable_warnings(NumericalWarning):
-            acquisition = qLogNoisyExpectedImprovement(
-                model=gp,
-                X_baseline=data.x,
-                # Unfortunatly, there's no option to indicate that we minimize
-                # the AcqFunction so we need to do some kind of transformation.
-                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                objective=LinearMCObjective(
-                    weights=torch.tensor([-1.0], device=self.device)
-                ),
-                X_pending=data.x_pending,
-                prune_baseline=True,
-            )
+            match self.acq_fn:
+                case "ts":
+                    acquisition = PathwiseThompsonSampling(
+                        model=gp,
+                    )
+                case "qlnei":
+                    acquisition = qLogNoisyExpectedImprovement(
+                        model=gp,
+                        X_baseline=data.x,
+                        # Unfortunatly, there's no option to indicate that we minimize
+                        # the AcqFunction so we need to do some kind of transformation.
+                        # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                        objective=LinearMCObjective(
+                            weights=torch.tensor([-1.0], device=self.device)
+                        ),
+                        X_pending=data.x_pending,
+                        prune_baseline=True,
+                    )
+                case "cb":
+                    raise NotImplementedError(
+                        "Confidence Bound Acquisition Function not implemented yet."
+                    )
+                case _:
+                    raise ValueError(
+                        f"Acquisition function '{self.acq_fn}' not recognized."
+                    )
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
