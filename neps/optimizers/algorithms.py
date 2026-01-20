@@ -1046,7 +1046,7 @@ def primo(
     bo_scalar_weights: dict[str, float] | None = None,
     init_design_type: Literal["multifidelity", "random"] = "multifidelity",
     bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo",
-    acq_fn: Literal["qlnei", "ts", "cb"] = "qlnei",
+    acq_fn: Literal["qlnei", "ts", "lcb"] = "qlnei",
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""

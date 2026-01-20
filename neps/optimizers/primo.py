@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import torch
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.monte_carlo import qLowerConfidenceBound
 from botorch.acquisition.objective import LinearMCObjective
 from botorch.acquisition.thompson_sampling import PathwiseThompsonSampling
 from gpytorch.utils.warnings import NumericalWarning
@@ -84,12 +85,12 @@ class PriMO:
     bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo"
     """The type of Bayesian optimization to use. Defaults to "epsbo"."""
 
-    acq_fn: Literal["qlnei", "ts", "cb"] = "qlnei"
+    acq_fn: Literal["qlnei", "ts", "lcb"] = "qlnei"
     """The acquisition function to use for Bayesian optimization.
     Options are:
         - "qlnei": q-Log Noisy Expected Improvement
         - "ts": Pathwise Thompson Sampling
-        - "cb": Confidence Bound Acquisition Function
+        - "lcb": Lower Confidence Bound Acquisition Function
     Defaults to "qlnei".
     """
 
@@ -346,9 +347,14 @@ class PriMO:
                         X_pending=data.x_pending,
                         prune_baseline=True,
                     )
-                case "cb":
-                    raise NotImplementedError(
-                        "Confidence Bound Acquisition Function not implemented yet."
+                case "lcb":
+                    acquisition = qLowerConfidenceBound(
+                        model=gp,
+                        beta=2.0,
+                        objective=LinearMCObjective(
+                            weights=torch.tensor([-1.0], device=self.device)
+                        ),
+                        X_pending=data.x_pending,
                     )
                 case _:
                     raise ValueError(
