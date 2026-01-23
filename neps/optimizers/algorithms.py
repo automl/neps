@@ -1843,11 +1843,13 @@ def neps_regularized_evolution(
         ignore_fidelity=ignore_fidelity,
     )
 
+
 def neps_exhaustive_search(
     pipeline_space: PipelineSpace,
     *,
     sampling_density: int = 10,
     sampling_tries: int = 100,
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> NePSExhaustiveGridSearch:
     """Create an Exhaustive Search optimizer for the given pipeline space.
 
@@ -1855,14 +1857,26 @@ def neps_exhaustive_search(
         pipeline_space: The pipeline space to optimize over.
         sampling_density: The number of samples to take per numerical dimension.
         sampling_tries: The number of attempts to sample each new point.
+        ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
+            If set to `"highest_fidelity"`, it will always sample at the highest_fidelity
     Returns:
         An instance of NePSExhaustiveGridSearch.
     """
+
+    if pipeline_space.fidelity_attrs and ignore_fidelity is False:
+        raise ValueError(
+            "Exhaustive Grid Search does not support fidelities by default."
+            "Consider using `ignore_fidelity=True` or `highest_fidelity`"
+            "to always sample at max fidelity."
+        )
+
     return NePSExhaustiveGridSearch(
-        space=pipeline_space,
+        pipeline_space=pipeline_space,
         sampling_density=sampling_density,
         sampling_tries=sampling_tries,
+        ignore_fidelity=ignore_fidelity,
     )
+
 
 def neps_local_and_incumbent(
     pipeline_space: PipelineSpace,

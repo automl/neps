@@ -20,25 +20,31 @@ if TYPE_CHECKING:
 class NePSExhaustiveGridSearch:
     """Implement a sampler that samples from the incumbent."""
 
-    space: PipelineSpace
+    pipeline_space: PipelineSpace
     """The pipeline space to optimize over."""
 
     sampling_density: int = 10
+    """The number of samples to take per numerical dimension."""
 
     sampling_tries: int = 100
     """The number of tries to sample a new configuration."""
+
+    ignore_fidelity: bool | Literal["highest_fidelity"] = False
+    """Whether to ignore the fidelity parameter when sampling.
+    If set to `"highest_fidelity"`, it will always sample at the highest_fidelity
+    """
 
     def _sample_random(
         self,
     ):
         # Sample randomly from the space
         _environment_values = {}
-        _fidelity_attrs = self.space.fidelity_attrs
+        _fidelity_attrs = self.pipeline_space.fidelity_attrs
         for fidelity_name, fidelity_obj in _fidelity_attrs.items():
             _environment_values[fidelity_name] = fidelity_obj.upper
 
         _resolved_pipeline, resolution_context = neps_space.resolve(
-            pipeline=self.space,
+            pipeline=self.pipeline_space,
             domain_sampler=sampling.GridSampler(),
             environment_values=_environment_values,
         )
@@ -62,7 +68,6 @@ class NePSExhaustiveGridSearch:
         n_prev_trials = len(trials)
         n_requested = 1 if n is None else n
 
-
         for _ in range(self.sampling_tries):
             new_config = self._sample_random()
             if neps_space.NepsCompatConverter.to_neps_config(new_config[1]) not in [
@@ -75,3 +80,26 @@ class NePSExhaustiveGridSearch:
         raise RuntimeError(
             f"Failed to sample a new configuration after {self.sampling_tries} tries."
         )
+
+    def sampled_fidelity_values(self) -> dict[str, Any]:
+        """Sample fidelity values based on the pipeline's fidelity attributes.
+
+        Returns:
+            A dictionary mapping fidelity names to their sampled values.
+        """
+        environment_values = {}
+        fidelity_attrs = self.pipeline_space.fidelity_attrs
+        for fidelity_name, fidelity_obj in fidelity_attrs.items():
+            if self.ignore_fidelity == "highest_fidelity":
+                environment_values[fidelity_name] = fidelity_obj.upper
+            elif not self.ignore_fidelity:
+                raise ValueError(
+                    "RandomSearch does not support fidelities by default. Consider"
+                    " using a different optimizer or setting `ignore_fidelity=True` or"
+                    " `highest_fidelity`."
+                )
+            else:
+                raise NotImplementedError(
+                    f"Unknown value for `ignore_fidelity`: {self.ignore_fidelity}"
+                )
+        return environment_values
