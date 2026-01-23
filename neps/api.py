@@ -439,7 +439,12 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         )
 
     # Log the search space after conversion
-    logger.info(str(space))
+    space_str = str(space)
+    # Limit to first 30 lines to avoid flooding the logs
+    space_lines = space_str.split("\n")
+    if len(space_lines) > 30:
+        space_str = "\n".join(space_lines[:30]) + "\n..."
+    logger.info(f"Search space:\n{space_str}")
 
     _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
 
