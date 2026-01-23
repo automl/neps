@@ -37,6 +37,7 @@ from neps.optimizers.mopriors import MOPriorSampler
 from neps.optimizers.neps_bracket_optimizer import _NePSBracketOptimizer
 from neps.optimizers.neps_local_and_incumbent import NePSLocalPriorIncumbentSampler
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
+from neps.optimizers.neps_exhaustive_grid import NePSExhaustiveGridSearch
 from neps.optimizers.neps_random_search import (
     NePSComplexRandomSearch,
     NePSRandomSearch,
@@ -1842,6 +1843,26 @@ def neps_regularized_evolution(
         ignore_fidelity=ignore_fidelity,
     )
 
+def neps_exhaustive_search(
+    pipeline_space: PipelineSpace,
+    *,
+    sampling_density: int = 10,
+    sampling_tries: int = 100,
+) -> NePSExhaustiveGridSearch:
+    """Create an Exhaustive Search optimizer for the given pipeline space.
+
+    Args:
+        pipeline_space: The pipeline space to optimize over.
+        sampling_density: The number of samples to take per numerical dimension.
+        sampling_tries: The number of attempts to sample each new point.
+    Returns:
+        An instance of NePSExhaustiveGridSearch.
+    """
+    return NePSExhaustiveGridSearch(
+        space=pipeline_space,
+        sampling_density=sampling_density,
+        sampling_tries=sampling_tries,
+    )
 
 def neps_local_and_incumbent(
     pipeline_space: PipelineSpace,

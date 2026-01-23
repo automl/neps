@@ -9,6 +9,7 @@ from collections.abc import Mapping
 from typing import Any, Protocol, TypeVar, cast, runtime_checkable
 
 from scipy import stats
+import numpy as np
 
 from neps.sampling.priors import PRIOR_CONFIDENCE_MAPPING
 from neps.space.neps_spaces.parameters import (
@@ -656,3 +657,61 @@ class CrossoverByMixingSampler(DomainSampler):
                 samplings and the domain does not have a prior defined.
         """
         return self._random_sampler(domain_obj=domain_obj, current_path=current_path)
+
+
+class GridSampler(DomainSampler):
+    """A sampler that records when sampling a value (or reusing an already sampled value)."""
+
+    def __init__(
+        self,
+        sampling_density: int = 5,
+    ):
+        """Initialize the sampler with predefined samplings.
+
+        Args:
+            predefined_samplings: A mapping of paths to predefined values.
+        """
+        self._sampling_density = sampling_density
+
+    def __call__(
+        self,
+        *,
+        domain_obj: Domain[T],
+        current_path: str,
+    ) -> T:
+        """Samples a value.
+
+        Args:
+            domain_obj: The domain object, not used in this sampler.
+            current_path: The path for which to sample a value.
+        Returns:
+            The sampled value for the given path.
+        """
+
+        if isinstance(domain_obj, Float | Integer):
+            sampling_ratio = (
+                random.randint(0, self._sampling_density - 1) / (self._sampling_density - 1)
+            )
+            if domain_obj.log:
+                lower_log = np.log(domain_obj.lower)
+                upper_log = np.log(domain_obj.upper)
+                sampled_value = float(np.exp(
+                    lower_log + (upper_log - lower_log) * sampling_ratio
+                ))
+                if isinstance(domain_obj, Integer):
+                    sampled_value = round(sampled_value)
+            else:
+                sampled_value = (
+                    domain_obj.lower
+                    + (domain_obj.upper - domain_obj.lower) * sampling_ratio
+                )
+                if isinstance(domain_obj, Integer):
+                    sampled_value = round(sampled_value)
+        elif isinstance(domain_obj, Categorical):
+
+            sampled_value = random.randint(0, len(domain_obj.choices) - 1)  # type: ignore[attr-defined]
+
+        else:
+            raise ValueError(f"Unsupported domain type: {type(domain_obj).__name__}")
+
+        return cast("T", sampled_value)
