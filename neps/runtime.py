@@ -340,8 +340,10 @@ class DefaultWorker:
             ]
 
         fidelity_name = None
-        optimizer_space = getattr(self.optimizer, "space", None) or getattr(
-            self.optimizer, "pipeline_space", None
+        optimizer_space = (
+            getattr(self.optimizer, "space", None)
+            or getattr(self.optimizer, "pipeline_space", None)
+            or getattr(self.optimizer, "_pipeline", None)
         )
         if optimizer_space is not None:
             if (
