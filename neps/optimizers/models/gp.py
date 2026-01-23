@@ -69,39 +69,31 @@ class ScalingMeanModule(gpytorch.means.Mean):
         self, 
         scaling_dims: list[int],
         encoder: ConfigEncoder,
-        flop_estimator: Callable[..., int],
         minimize: bool = True,  # Default to True (standard for Loss scaling)
     ):
         super().__init__()
         self.scaling_dims = scaling_dims
         self.minimize = minimize
         self.encoder = encoder
-        self.flop_estimator = flop_estimator
-
+        
         n_dims = len(scaling_dims)
         
-        # self.register_parameter(
-        #     name="powers", 
-        #     parameter=torch.nn.Parameter(torch.tensor([-0.3] * n_dims, dtype=torch.float64))
-        # )
-        
-        # self.register_parameter(
-        #     name="weights", 
-        #     parameter=torch.nn.Parameter(torch.tensor([300] * n_dims, dtype=torch.float64))
-        # )
-        
-        # self.register_parameter(
-        #     name="bias", 
-        #     parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-        # )
-
-        self.min_slope = 1e-4
-        self.max_slope = 1e-2
+        # 1. POWERS (The Exponents alpha)
+        # Scaling laws usually have negative slopes (Loss decreases as Scale increases)
+        # We init around -0.3
         self.register_parameter(
-            name="weights", 
-            parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
+            name="powers", 
+            parameter=torch.nn.Parameter(torch.tensor([-0.3] * n_dims, dtype=torch.float64))
         )
         
+        # 2. WEIGHTS (The Coefficients A)
+        self.register_parameter(
+            name="weights", 
+            # parameter=torch.nn.Parameter(torch.rand(size=(n_dims,), dtype=torch.float64) * 100)
+            parameter=torch.nn.Parameter(torch.tensor([300] * n_dims, dtype=torch.float64))
+        )
+        
+        # 3. BIAS (The Floor / Irreducible Loss)
         self.register_parameter(
             name="bias", 
             parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
@@ -109,31 +101,15 @@ class ScalingMeanModule(gpytorch.means.Mean):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # print current parameters
-        print(f"weights={self.weights.detach().cpu().numpy()}, bias={self.bias.item()}")
+        print(f"ScalingMeanModule parameters: powers={self.powers.detach().cpu().numpy()}, weights={self.weights.detach().cpu().numpy()}, bias={self.bias.item()}")
 
-        # Example: if x is (10, 5, 4), batch_shape is (10, 5)
-        batch_shape = x.shape[:-1]
+        x_physical = self.encoder.decode_tensor(x)
+        x_physical = x_physical[..., self.scaling_dims]
         
-        # Example: (10, 5, 4) -> (50, 4)
-        x_flat = x.view(-1, x.shape[-1])
-        
-        flops = torch.empty(x_flat.shape[0], dtype=torch.float64, device=x.device)
-        
-        x_physical = self.encoder.decode(x_flat)
-        
-        for i, conf_dict in enumerate(x_physical):
-            flop = self.flop_estimator(**conf_dict)
-            flops[i] = flop
-            
-        # (Total_Samples) -> (B1, B2)
-        flops = flops.view(batch_shape)
-        
-        log_flops = torch.log(flops)
-        weight = self.min_slope + (self.max_slope - self.min_slope) * torch.sigmoid(self.weights)
+        x_physical = x_physical.clamp(min=1e-6)
+        x_physical = torch.log(x_physical)
 
-        mean = log_flops * weight + self.bias
-        print(torch.exp(mean))
-        # Return to linear space (Loss = exp(Mean_Log))
+        mean =  torch.sum((x_physical ** self.powers) * self.weights, dim=-1) + self.bias
         return mean
     
 def make_default_single_obj_gp(
@@ -180,9 +156,9 @@ def make_default_single_obj_gp(
             scaling_dims=scaling_dims,
             encoder=encoder,
             minimize=objective_minimize,
-            flop_estimator=flop_estimator
+            # flop_estimator=flop_estimator
         )
-        y = torch.log(y.clamp_min(1e-12))
+        # y = torch.log(y.clamp_min(1e-12))
     # Purely vectorial
     if len(categoricals) == 0:
         return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module) # filter just numericals and scaling
@@ -722,9 +698,43 @@ def make_ic_generator(constraint_func, encoder):
         with torch.no_grad():
             acq_vals = acq_function(X_valid)
         
+        # ROBUST NaN HANDLING: Replace NaN acquisition values with minimum valid value
+        nan_mask = torch.isnan(acq_vals)
+        if nan_mask.any():
+            # Get valid (non-NaN) values
+            valid_acq_vals = acq_vals[~nan_mask]
+            
+            if len(valid_acq_vals) > 0:
+                # Use minimum valid value for NaNs (conservative choice)
+                fill_value = valid_acq_vals.min().item()
+            else:
+                # All values are NaN - use 0 as fallback
+                fill_value = 0.0
+            
+            acq_vals[nan_mask] = fill_value
+            logger.warning(
+                f"NaN detected in acquisition function evaluation during IC generation: "
+                f"{nan_mask.sum().item()} NaN values replaced with {fill_value:.6f}"
+            )
+        
         # We want the indices of the highest acquisition values
         _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
         
-        return X_valid[best_idxs]
+        best_ics = X_valid[best_idxs]
+        
+        # ROBUST NaN HANDLING: Check if initial conditions themselves have NaN values
+        if torch.isnan(best_ics).any():
+            nan_positions = torch.isnan(best_ics)
+            logger.warning(
+                f"NaN detected in initial conditions: {nan_positions.any(dim=0).sum().item()} "
+                f"dimensions affected. Replacing with bounds midpoint."
+            )
+            # Replace NaN values with bounds midpoint
+            bounds_mid = (bounds[0] + bounds[1]) / 2
+            for dim in range(best_ics.shape[-1]):
+                if nan_positions[:, dim].any():
+                    best_ics[nan_positions[:, dim], dim] = bounds_mid[dim]
+        
+        return best_ics
 
     return ic_generator

@@ -29,7 +29,7 @@ class OptimizationState:
     """The current state of an optimizer."""
 
     budget: BudgetInfo | None
-    """Information regarind the budget used by the optimization trajectory."""
+    """Information regarding the budget used by the optimization trajectory."""
 
     seed_snapshot: SeedSnapshot
     """The state of the random number generators at the time of the last sample."""

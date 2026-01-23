@@ -62,7 +62,7 @@ class Kaplan_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.config_list = make_grid(
             space,
             ignore_fidelity=True,
-            size_per_numerical_hp=10,
+            size_per_numerical_hp=4,
         )
         self.adapt_search_space(trials=None, max_evaluation_flops=max_evaluation_flops)
 
@@ -214,53 +214,6 @@ class Kaplan_Guided_Scaling(ScalingLawGuidedOptimizer):
         plt.close(fig)
         return
 
-    def plot_params_vs_loss(self, trials):
-        """Plot FLOPs vs each objective.
-
-        - For scalar objective: single scatter (objective vs flops).
-        - For multi-objective (vector): one subplot per objective dimension.
-
-        The plot is shown with plt.show(). If you want to save, call
-        plt.savefig(...) after calling this method.
-        """
-        rows = []
-        for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
-                continue
-            obj = trial.report.objective_to_minimize
-            try:
-                flops = self.flops_estimator(**trial.config)
-            except Exception as e:
-                logger.error(f"Could not compute FLOPs for trial {trial.id}, skipping plot point. {e.__str__()}")
-                continue
-            rows.append((trial.metadata.time_sampled, obj, flops))
-
-        if not rows:
-            print("No evaluated trials with objectives/flops to plot.")
-            return
-
-        # detect number of objective dims
-        first_obj = rows[0][1]
-        if isinstance(first_obj, Sequence) and not isinstance(first_obj, (str, bytes)):
-            raise NotImplemented("Multi-objective Scaling law not implemented yet.")
-
-        # x: FLOPs, y: objective
-        times = [r[0] for r in rows]
-        xs = [r[2] for r in rows]
-        ys = [float(r[1]) for r in rows]
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sc = ax.scatter(xs, ys, c=times, cmap='coolwarm', marker='o', alpha=0.9)
-        ax.set_xlabel("FLOPs")
-        ax.set_ylabel("Objective to minimize")
-        ax.set_title("Objective vs FLOPs")
-        ax.grid(True, linestyle="--", alpha=0.4)
-        # enforce FLOPs scale to 1e15 on x-axis
-        # ax.set_xlim(0, 1e15)
-        plt.tight_layout()
-        plt.colorbar(sc, ax=ax, label="Time")
-        fig.savefig("results3/flops_per_objective.png")
-        plt.close(fig)
-        return
 
     def plot_accumulated_flops_per_objective(self, trials):
         """Plot accumulated FLOPs vs each objective.
@@ -283,7 +236,7 @@ class Kaplan_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.error(f"Could not compute FLOPs for trial {trial.id}, skipping plot point.")
                 continue
             accumulated_flops += flops
-            rows.append((trial.id, obj, accumulated_flops))
+            rows.append((trial.id, obj, flops))
 
         if not rows:
             print("No evaluated trials with objectives/flops to plot.")
@@ -299,14 +252,14 @@ class Kaplan_Guided_Scaling(ScalingLawGuidedOptimizer):
         ys = [float(r[1]) for r in rows]
         fig, ax = plt.subplots(figsize=(6, 4))
         ax.plot(xs, ys, marker='o', linestyle='-', alpha=0.9)
-        ax.set_xlabel("Accumulated FLOPs")
+        ax.set_xlabel("FLOPs")
         ax.set_ylabel("Objective to minimize")
-        ax.set_title("Objective vs Accumulated FLOPs")
+        ax.set_title("Objective vs FLOPs")
         ax.grid(True, linestyle="--", alpha=0.4)
         # enforce FLOPs scale to 1e15 on x-axis
         # ax.set_xlim(0, 1e15)
         plt.tight_layout()
-        plt.savefig("results3/accumulated_flops_per_objective.png")
+        plt.savefig("results3/accumulated_flops.png")
         plt.close(fig)
         return
 

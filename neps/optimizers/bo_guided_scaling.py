@@ -139,7 +139,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
             trials: All of the trials that are known about.
         """
         # TODO: deligate writing plots and info on disk to runtime
-        # self.plot_extrapolations(trials=trials)
+        self.plot_extrapolations(trials=trials)
         # self.plot_scaling_laws(trials=trials, metric_names=[self.PARAM_ESTIMATOR_KEY, self.SEEN_DATAPOINTS_ESTIMATOR_KEY])
     
  

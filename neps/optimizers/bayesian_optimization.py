@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
 
+logger = logging.getLogger(__name__)
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 def _pibo_exp_term(
@@ -232,10 +233,21 @@ class BayesianOptimization:
             grid_flat[:, dim_x] = gx.flatten()
             grid_flat[:, dim_y] = gy.flatten()
 
-            # Predict
+            # Predict with NaN robustness
             with torch.no_grad():
                 posterior_grid = gp.posterior(grid_flat)
                 mean_grid = posterior_grid.mean.view(n_grid, n_grid)
+                
+                # ROBUST NaN HANDLING: Replace any NaN values in grid predictions
+                if torch.isnan(mean_grid).any():
+                    y_train = gp.train_targets
+                    fill_value = torch.nanmedian(y_train).item()
+                    nan_mask = torch.isnan(mean_grid)
+                    mean_grid[nan_mask] = fill_value
+                    logger.warning(
+                        f"NaN values detected in extrapolation grid ({nan_mask.sum().item()} values). "
+                        f"Replaced with training median ({fill_value:.6f})."
+                    )
 
             # C. Plot
             fig, ax = plt.subplots(figsize=(10, 7))
@@ -449,10 +461,9 @@ class BayesianOptimization:
             )
         else:
             assert self.cost_estimator is not None, "cost_estimator must be provided for single objective optimization."
-            print(self.cost_estimator is not None)
             gp = make_default_single_obj_gp(
                 x=data.x, y=data.y, encoder=encoder, 
-                flop_estimator=self.cost_estimator,
+                # flop_estimator=self.cost_estimator,
             )
             from botorch.fit import fit_gpytorch_mll
             from gpytorch import ExactMarginalLogLikelihood
@@ -547,8 +558,25 @@ class BayesianOptimization:
             # .posterior() creates the distribution at this point
             posterior = gp.posterior(candidates)
             
-            # Extract the Mean (Expected Value)
+            # Extract the Mean (Expected Value) with NaN robustness
             pred_mean = posterior.mean
+            
+            # ROBUST NaN HANDLING: Replace any NaN values with the median of training data
+            # This prevents NaN propagation to weights and other computations
+            if torch.isnan(pred_mean).any():
+                # Get median from training data
+                y_train = gp.train_targets
+                fill_value = torch.nanmedian(y_train).item()
+                
+                # Replace NaNs with median fill value
+                nan_mask = torch.isnan(pred_mean)
+                pred_mean[nan_mask] = fill_value
+                
+                logger.warning(
+                    f"NaN values detected in GP posterior ({nan_mask.sum().item()} values). "
+                    f"Replaced with training data median ({fill_value:.6f})."
+                )
+        
         return cand, gp, pred_mean
 
     def import_trials(
@@ -628,10 +656,21 @@ class BayesianOptimization:
         test_x[:, dim_x] = gx.flatten().to(x.device)
         test_x[:, dim_y] = gy.flatten().to(x.device)
 
-        # 3. Predict
+        # 3. Predict with NaN robustness
         with torch.no_grad():
             posterior = gp.posterior(test_x)
             mean = posterior.mean.cpu().view(resolution, resolution)
+            
+            # ROBUST NaN HANDLING: Replace NaN values in plotting
+            if torch.isnan(mean).any():
+                y_train = gp.train_targets.cpu()
+                fill_value = torch.nanmedian(y_train).item()
+                nan_mask = torch.isnan(mean)
+                mean[nan_mask] = fill_value
+                logger.warning(
+                    f"NaN values in plot posterior ({nan_mask.sum().item()} values). "
+                    f"Replaced with median ({fill_value:.6f})."
+                )
 
         # 4. Plot 2D Contour
         fig, ax = plt.subplots(figsize=(10, 7))
@@ -708,6 +747,19 @@ class BayesianOptimization:
                 posterior_1d = gp.posterior(test_points_1d)
                 mean_1d = posterior_1d.mean.squeeze().cpu().numpy()
                 std_1d = posterior_1d.variance.sqrt().squeeze().cpu().numpy()
+                
+                # ROBUST NaN HANDLING: Replace NaN values in 1D plots
+                nan_mask_mean = np.isnan(mean_1d)
+                nan_mask_std = np.isnan(std_1d)
+                if nan_mask_mean.any() or nan_mask_std.any():
+                    y_train_np = gp.train_targets.cpu().numpy()
+                    fill_value = np.nanmedian(y_train_np)
+                    mean_1d[nan_mask_mean] = fill_value
+                    std_1d[nan_mask_std] = 0.0
+                    logger.warning(
+                        f"NaN in 1D plot dim {dim}: "
+                        f"{nan_mask_mean.sum()} mean NaNs, {nan_mask_std.sum()} std NaNs"
+                    )
 
             test_grid_np = test_grid.cpu().numpy()
 
