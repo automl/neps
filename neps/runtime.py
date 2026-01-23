@@ -340,15 +340,20 @@ class DefaultWorker:
             ]
 
         fidelity_name = None
-        if hasattr(self.optimizer, "space"):
-            if isinstance(self.optimizer.space, PipelineSpace):
-                if self.optimizer.space.fidelity_attrs:
-                    fidelity_name = next(iter(self.optimizer.space.fidelity_attrs.keys()))
-                    fidelity_name = (
-                        f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
-                    )
-            elif self.optimizer.space.fidelities:
-                fidelity_name = next(iter(self.optimizer.space.fidelities.keys()))
+        optimizer_space = getattr(self.optimizer, "space", None) or getattr(
+            self.optimizer, "pipeline_space", None
+        )
+        if optimizer_space is not None:
+            if (
+                hasattr(optimizer_space, "fidelity_attrs")
+                and optimizer_space.fidelity_attrs
+            ):
+                fidelity_name = next(iter(optimizer_space.fidelity_attrs.keys()))
+                fidelity_name = (
+                    f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
+                )
+            elif hasattr(optimizer_space, "fidelities") and optimizer_space.fidelities:
+                fidelity_name = next(iter(optimizer_space.fidelities.keys()))
 
         usage = ResourceUsage()
 
