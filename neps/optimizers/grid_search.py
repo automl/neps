@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
+from neps.optimizers.utils.util import _get_max_trial_id
 
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
@@ -25,15 +26,15 @@ class GridSearch:
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
-        _num_previous_configs = len(trials)
-        if _num_previous_configs > len(self.configs_list) - 1:
+        max_prev_trial_id = _get_max_trial_id(trials)
+        if max_prev_trial_id > len(self.configs_list) - 1:
             raise ValueError("Grid search exhausted!")
 
         # TODO: Revisit this. Do we really need to shuffle the configs?
         configs = self.configs_list
 
-        config = configs[_num_previous_configs]
-        config_id = str(_num_previous_configs)
+        config = configs[max_prev_trial_id]
+        config_id = str(max_prev_trial_id + 1)
         return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
     def import_trials(
@@ -41,10 +42,10 @@ class GridSearch:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        n_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i)
+            config_id = str(max_prev_trial_id + i + 1)
             imported_configs.append(
                 ImportedConfig(
                     config=config,

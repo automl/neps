@@ -261,39 +261,27 @@ neps.run(
 
 ### Re-running Failed Configurations
 
-Sometimes things go wrong but not due to the configuration itself.
-Sometimes you'd also like to change the state so that you re-evaluate that configuration.
+Sometimes things go wrong but not due to the configuration itself. If you want to remove failed or crashed trials and re-start the optimization, use the `neps clean` command:
 
-If you need to go in there and change anything, **the entire optimization state** is editable on disk.
-You can follow these steps to modify the state of things.
-
-``` python
-root_directory
-├── configs
-│   ├── .trial_cache.pkl    # A cache of all trial information for optimizers
-│   ├── config_1
-│   │   ├── config.yaml     # The configuration
-│   │   ├── report.yaml     # The results of this run, if any
-│   │   ├── metadata.json   # Metadata about this run, such as state and times
-│   └── config_2
-│       ├── config.yaml
-│       └── metadata.json
-├── optimizer_info.yaml
-└── optimizer_state.pkl     # The optimizer's state, shared between workers
+```bash
+python -m neps.clean <root_directory>
 ```
 
-1. The first thing you should do is make sure no workers are running.
-2. Next, delete `optimizer_state.pkl` and `configs/.trial_cache.pkl`. This is cached information to share between the
-   workers.
-3. Lastly, you can go in and modify any of the following files:
+This removes all failed, crashed, and corrupted trials from your working directory. To remove specific trials by ID:
 
-    * `config.yaml` - The configuration to be run. This was sampled from your search space.
-    * `report.yaml` - The results of the run. This is where you can change what was reported back.
-    * `metadata.json` - Metadata about the run. Here you can change the `"state"` key to one
-        of [`State`][neps.state.trial.State] to re-run the configuration, usually you'd want to set it
-        to `"pending"` such that the next worker will pick it up and re-run it.
-4. Once you've made your changes, you can start the workers again and they will pick up the new state
-    re-creating the caches as necessary.
+```bash
+python -m neps.clean results/my_optimization --trial_ids 1 2
+```
+
+You can preview what will be deleted with `--dry_run`:
+
+```bash
+python -m neps.clean <root_directory> --dry_run
+```
+
+Once cleaned, you can restart the optimization and workers will pick up from the cleaned state.
+
+For more details on the clean command, see the [Cleaning Up Trials documentation](./clean.md).
 
 ## Selecting an Optimizer
 By default NePS intelligently selects the most appropriate optimizer based on your defined configurations in `pipeline_space=`, one of the arguments to [`neps.run()`][neps.api.run].

@@ -1039,7 +1039,7 @@ class NepsCompatConverter:
 
 def _prepare_sampled_configs(
     chosen_pipelines: list[tuple[PipelineSpace, SamplingResolutionContext]],
-    n_prev_trials: int,
+    max_prev_trial_id: int,
     return_single: bool,  # noqa: FBT001
 ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
     configs = []
@@ -1050,7 +1050,7 @@ def _prepare_sampled_configs(
 
         config = optimizer.SampledConfig(
             config=neps_config,
-            id=str(n_prev_trials + i + 1),
+            id=str(max_prev_trial_id + i + 1),
             previous_config_id=None,
         )
         configs.append(config)
