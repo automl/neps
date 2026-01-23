@@ -1944,6 +1944,7 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_hyperband,
         neps_regularized_evolution,
         neps_local_and_incumbent,
+        neps_exhaustive_search
     )
 }
 
@@ -1967,4 +1968,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_hyperband",
     "neps_regularized_evolution",
     "neps_local_and_incumbent",
+    "neps_exhaustive_search",
 ]
