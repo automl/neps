@@ -8,8 +8,8 @@ import random
 from collections.abc import Mapping
 from typing import Any, Protocol, TypeVar, cast, runtime_checkable
 
-from scipy import stats
 import numpy as np
+from scipy import stats
 
 from neps.sampling.priors import PRIOR_CONFIDENCE_MAPPING
 from neps.space.neps_spaces.parameters import (
@@ -684,20 +684,20 @@ class GridSampler(DomainSampler):
         Args:
             domain_obj: The domain object, not used in this sampler.
             current_path: The path for which to sample a value.
+
         Returns:
             The sampled value for the given path.
         """
-
         if isinstance(domain_obj, Float | Integer):
-            sampling_ratio = (
-                random.randint(0, self._sampling_density - 1) / (self._sampling_density - 1)
+            sampling_ratio = random.randint(0, self._sampling_density - 1) / (
+                self._sampling_density - 1
             )
             if domain_obj.log:
                 lower_log = np.log(domain_obj.lower)
                 upper_log = np.log(domain_obj.upper)
-                sampled_value = float(np.exp(
-                    lower_log + (upper_log - lower_log) * sampling_ratio
-                ))
+                sampled_value = float(
+                    np.exp(lower_log + (upper_log - lower_log) * sampling_ratio)
+                )
                 if isinstance(domain_obj, Integer):
                     sampled_value = round(sampled_value)
             else:
@@ -708,10 +708,134 @@ class GridSampler(DomainSampler):
                 if isinstance(domain_obj, Integer):
                     sampled_value = round(sampled_value)
         elif isinstance(domain_obj, Categorical):
-
             sampled_value = random.randint(0, len(domain_obj.choices) - 1)  # type: ignore[attr-defined]
 
         else:
             raise ValueError(f"Unsupported domain type: {type(domain_obj).__name__}")
 
         return cast("T", sampled_value)
+
+
+class QueueBasedSampler(DomainSampler):
+    """A sampler that returns values based on a queue of indices for exhaustive grid search.
+
+    This sampler is designed for dynamic discovery of the search space structure.
+    It maintains a queue of tuples (param_type, max_value, current_index) and returns
+    values based on the current_index for each parameter.
+
+    The queue is managed externally and grows dynamically as new parameters are discovered
+    during sampling. When a parameter is first encountered, it's appended to the queue
+    with current_index=0.
+
+    Args:
+        queue: A reference to the queue list. Modified in-place when new parameters
+            are discovered.
+        sampling_density: The number of grid points to use for numerical parameters
+            (Float and Integer).
+    """
+
+    def __init__(
+        self,
+        queue: list[tuple[str, int, int]],
+        sampling_density: int = 5,
+    ):
+        """Initialize the sampler with a queue reference and sampling density.
+
+        Args:
+            queue: A reference to the queue list to use for tracking sampling decisions.
+            sampling_density: The number of grid points for numerical parameters.
+        """
+        self._queue = queue
+        self._sampling_density = sampling_density
+        self._queue_position = 0  # Track where we are in queue during sampling
+
+    def reset_position(self):
+        """Reset the queue position to the start for the next configuration sampling."""
+        self._queue_position = 0
+
+    def __call__(
+        self,
+        *,
+        domain_obj: Domain[T],
+        current_path: str,  # noqa: ARG002
+    ) -> T:
+        """Sample a value based on the next queue entry.
+
+        If this is a newly discovered parameter (queue_position >= queue length),
+        append a new entry to the queue with current_index=0.
+
+        Args:
+            domain_obj: The domain object from which to sample.
+            current_path: The path for which to sample a value (not used).
+
+        Returns:
+            A sampled value based on the queue entry's current_index.
+
+        Raises:
+            ValueError: If the domain type is unsupported or if there's a type mismatch.
+        """
+        # Handle degenerate numerical ranges first (they are never added to queue)
+        if (
+            isinstance(domain_obj, Float | Integer)
+            and domain_obj.lower == domain_obj.upper
+        ):  # type: ignore[attr-defined]
+            # Degenerate range: just return the single value without using queue
+            value = domain_obj.lower  # type: ignore[attr-defined]
+            if isinstance(domain_obj, Integer):
+                value = round(float(value))
+            else:
+                value = float(value)
+            return cast("T", value)
+
+        # Check if this is a newly discovered parameter
+        if self._queue_position >= len(self._queue):
+            # Append new entry to queue with index 0 (not for degenerate ranges, handled above)
+            if isinstance(domain_obj, Categorical):
+                n_choices = len(domain_obj.choices)  # type: ignore[attr-defined]
+                self._queue.append(("cat", n_choices, 0))
+            elif isinstance(domain_obj, Float | Integer):
+                # Non-degenerate numerical (degenerate already handled above)
+                self._queue.append(("num", self._sampling_density, 0))
+            else:
+                raise ValueError(f"Unsupported domain type: {type(domain_obj).__name__}")
+
+        # Get the current queue entry for non-degenerate parameters
+        param_type, max_value, current_index = self._queue[self._queue_position]
+        self._queue_position += 1
+
+        # Return appropriate value based on domain type
+        if isinstance(domain_obj, Categorical):
+            if param_type != "cat":
+                raise ValueError(
+                    f"Queue type mismatch: expected 'cat', got '{param_type}'"
+                )
+            # Return the choice index directly
+            return cast("T", current_index)
+
+        if isinstance(domain_obj, Float | Integer):
+            if param_type != "num":
+                raise ValueError(
+                    f"Queue type mismatch: expected 'num', got '{param_type}'"
+                )
+
+            # Generate grid values and return the one at current_index
+            if domain_obj.log:
+                lower_log = np.log(domain_obj.lower)  # type: ignore[attr-defined]
+                upper_log = np.log(domain_obj.upper)  # type: ignore[attr-defined]
+                values = np.logspace(lower_log, upper_log, max_value, base=np.e)
+            else:
+                values = np.linspace(
+                    domain_obj.lower,  # type: ignore[attr-defined]
+                    domain_obj.upper,  # type: ignore[attr-defined]
+                    max_value,
+                )
+
+            value = values[current_index]
+            if isinstance(domain_obj, Integer):
+                value = round(float(value))
+            else:
+                value = float(value)
+
+            return cast("T", value)
+
+        raise ValueError(f"Unsupported domain type: {type(domain_obj).__name__}")
