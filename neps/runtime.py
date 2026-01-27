@@ -708,9 +708,10 @@ class DefaultWorker:
             improvement_trace_path,
             best_config_path,
         )
-        self.optimizer.callback_on_trial_complete(
-            trials=evaluated_trials,
-        )
+        if hasattr(self.optimizer, 'callback_on_trial_complete'):
+            self.optimizer.callback_on_trial_complete(
+                trials=evaluated_trials,
+            )
         
         while True:
             try:
@@ -874,9 +875,10 @@ class DefaultWorker:
                         improvement_trace_path,
                         best_config_path,
                     )
-                    self.optimizer.callback_on_trial_complete(
-                        trials=evaluated_trials,
-                    )
+                    if hasattr(self.optimizer, 'callback_on_trial_complete'):
+                        self.optimizer.callback_on_trial_complete(
+                            trials=evaluated_trials,
+                        )
 
                 full_df, short = status(main_dir)
                 with csv_locker.lock():

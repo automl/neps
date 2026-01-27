@@ -24,6 +24,7 @@ from neps.optimizers.utils.grid import make_grid
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.scaling_law_guided import ScalingLawGuidedOptimizer
 
+from neps.optimizers.optimizer import ImportedConfig
 if TYPE_CHECKING:
     from neps.space import SearchSpace
     from neps.state import BudgetInfo, Trial
@@ -356,11 +357,17 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             raise NotImplemented("Multi-objective Scaling law not implemented yet.")
 
         # x: FLOPs, y: objective
-        times = [r[0] for r in rows]
+        n_param = [r[0] for r in rows]
         xs = [r[2] for r in rows]
         ys = [float(r[1]) for r in rows]
+        
         fig, ax = plt.subplots(figsize=(6, 4))
-        sc = ax.scatter(xs, ys, c=times, cmap='inferno', marker='o', alpha=0.9)
+        
+        # Normalize color scale based on actual min/max of parameters
+        from matplotlib.colors import Normalize
+        norm = Normalize(vmin=min(n_param), vmax=max(n_param))
+        
+        sc = ax.scatter(xs, ys, c=n_param, cmap='inferno', marker='o', alpha=0.9, norm=norm)
         ax.set_xlabel("FLOPs")
         ax.set_ylabel("Objective to minimize")
         ax.set_title("Objective vs FLOPs")
@@ -368,7 +375,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         # enforce FLOPs scale to 1e15 on x-axis
         # ax.set_xlim(0, 1e15)
         plt.tight_layout()
-        plt.colorbar(sc, ax=ax, label="Time")
+        plt.colorbar(sc, ax=ax, label="Parameters")
         fig.savefig("results_chinchilla/flops_per_objective.png")
         plt.close(fig)
         return
@@ -491,3 +498,12 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         plt.close(fig)
         return
     
+    def import_trials(
+        self,
+        external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
+        trials: Mapping[str, Trial],
+    ) -> list[ImportedConfig]:
+        return self.base_optimizer.import_trials(
+            external_evaluations=external_evaluations,
+            trials=trials,
+        )
