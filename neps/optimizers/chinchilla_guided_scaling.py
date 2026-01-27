@@ -246,6 +246,92 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.plot_flops_per_objective(trials)
         self.plot_flop_vs_param(trials)
         self.plot_accumulated_flops_per_objective(trials)
+        self.plot_training_curve_envelope(trials)
+    
+    def plot_training_curve_envelope(self, trials):
+        """Plot training curves showing loss vs FLOPs for different parameter counts.
+        
+        Creates an envelope plot with curves colored by parameter count, similar to
+        Chinchilla scaling curves showing how loss improves with FLOPs for fixed model sizes.
+        """
+        rows = []
+        for trial in trials.values():
+            if trial.report is None or trial.report.objective_to_minimize is None:
+                continue
+            try:
+                flops = self.flops_estimator(**trial.config)
+                n_params = self.params_estimator(**trial.config)
+                obj = float(trial.report.objective_to_minimize)
+            except Exception as e:
+                logger.error(f"Could not compute metrics for trial {trial.id}: {e}")
+                continue
+            if n_params <= 0 or flops <= 0:
+                continue
+            rows.append((flops, obj, n_params))
+
+        if len(rows) < 2:
+            print("Not enough evaluated trials to plot training curve envelope.")
+            return
+
+        # Sort by parameters
+        rows.sort(key=lambda r: r[2])
+        
+        # Group by parameter count (create bins/levels)
+        param_counts = {}
+        for flops, obj, n_params in rows:
+            # Round to nearest log-scale to group similar parameter counts
+            param_bin = round(np.log10(n_params) * 4) / 4  # 4 bins per log decade
+            if param_bin not in param_counts:
+                param_counts[param_bin] = []
+            param_counts[param_bin].append((flops, obj))
+
+        if not param_counts:
+            print("No valid parameter groups found.")
+            return
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Get unique parameter levels for coloring
+        param_levels = sorted(param_counts.keys())
+        cmap = plt.cm.get_cmap('viridis')
+        norm = plt.Normalize(vmin=min(param_levels), vmax=max(param_levels))
+        
+        # Plot lines for each parameter level
+        for param_bin in param_levels:
+            points = param_counts[param_bin]
+            # Sort by FLOPs for each parameter level
+            points.sort(key=lambda p: p[0])
+            
+            if len(points) >= 2:
+                flops_vals = [p[0] for p in points]
+                obj_vals = [p[1] for p in points]
+                
+                # Get parameter count from bin
+                param_count = 10 ** param_bin
+                color = cmap(norm(param_bin))
+                
+                ax.plot(flops_vals, obj_vals, marker='o', linestyle='-', 
+                       color=color, alpha=0.7, linewidth=2, markersize=4,
+                       label=f"{param_count:.2e}" if len(param_levels) <= 10 else "")
+
+        # Formatting
+        ax.set_xscale('log')
+        ax.set_xlabel('FLOPs', fontsize=12)
+        ax.set_ylabel('Training Loss', fontsize=12)
+        ax.set_title('Training Curve Envelope: Loss vs FLOPs (colored by Model Size)', fontsize=14)
+        ax.grid(True, linestyle='--', alpha=0.3)
+        
+        # Add colorbar
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = plt.colorbar(sm, ax=ax)
+        cbar.set_label('Log10(Parameters)', fontsize=11)
+        
+        plt.tight_layout()
+        plt.savefig("results_chinchilla/training_curve_envelope.png", dpi=150)
+        plt.close(fig)
+        logger.info("Saved training curve envelope plot to results_chinchilla/training_curve_envelope.png")
     
     def plot_flops_per_objective(self, trials):
         rows = []
