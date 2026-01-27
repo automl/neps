@@ -332,7 +332,8 @@ class BayesianOptimization:
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding, however we need to avoid repeating configs
-                sample_size=self.n_initial_design,
+                sample_size=self.n_initial_design * (1024 if self.constraints_func is not None else 1),
+                constraints_func=self.constraints_func,
             )
 
             # Then take the subset we actually need
@@ -516,6 +517,12 @@ class BayesianOptimization:
                 )
             else:
                 raise NotImplemented("Acquisition function not supported for single objective optimization.")
+        
+        # Prepare acq_options with constraints if provided
+        acq_opts = {}
+        if self.constraints_func is not None:
+            acq_opts["nonlinear_inequality_constraints"] = [(encoded_constraints_func, True)]
+        
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
@@ -527,8 +534,8 @@ class BayesianOptimization:
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
+            acq_options=acq_opts,
             hide_warnings=True,
-            # acq_options={"nonlinear_inequality_constraints": [(encoded_constraints_func, True)]}
         )
 
         configs = encoder.decode(candidates)

@@ -61,57 +61,6 @@ def default_categorical_kernel(
         )
     )
 
-class ScalingMeanModule(gpytorch.means.Mean):
-    """
-    Learns a scaling law trend: y = sum(w * x^p) + bias.
-    """
-    def __init__(
-        self, 
-        scaling_dims: list[int],
-        encoder: ConfigEncoder,
-        minimize: bool = True,  # Default to True (standard for Loss scaling)
-    ):
-        super().__init__()
-        self.scaling_dims = scaling_dims
-        self.minimize = minimize
-        self.encoder = encoder
-        
-        n_dims = len(scaling_dims)
-        
-        # 1. POWERS (The Exponents alpha)
-        # Scaling laws usually have negative slopes (Loss decreases as Scale increases)
-        # We init around -0.3
-        self.register_parameter(
-            name="powers", 
-            parameter=torch.nn.Parameter(torch.tensor([-0.3] * n_dims, dtype=torch.float64))
-        )
-        
-        # 2. WEIGHTS (The Coefficients A)
-        self.register_parameter(
-            name="weights", 
-            # parameter=torch.nn.Parameter(torch.rand(size=(n_dims,), dtype=torch.float64) * 100)
-            parameter=torch.nn.Parameter(torch.tensor([300] * n_dims, dtype=torch.float64))
-        )
-        
-        # 3. BIAS (The Floor / Irreducible Loss)
-        self.register_parameter(
-            name="bias", 
-            parameter=torch.nn.Parameter(torch.tensor(0.0, dtype=torch.float64))
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # print current parameters
-        print(f"ScalingMeanModule parameters: powers={self.powers.detach().cpu().numpy()}, weights={self.weights.detach().cpu().numpy()}, bias={self.bias.item()}")
-
-        x_physical = self.encoder.decode_tensor(x)
-        x_physical = x_physical[..., self.scaling_dims]
-        
-        x_physical = x_physical.clamp(min=1e-6)
-        x_physical = torch.log(x_physical)
-
-        mean =  torch.sum((x_physical ** self.powers) * self.weights, dim=-1) + self.bias
-        return mean
-    
 def make_default_single_obj_gp(
     x: torch.Tensor,
     y: torch.Tensor,
@@ -151,14 +100,6 @@ def make_default_single_obj_gp(
     
     mean_module = None
 
-    if len(scaling_dims) > 0 and flop_estimator is not None:
-        mean_module = ScalingMeanModule(
-            scaling_dims=scaling_dims,
-            encoder=encoder,
-            minimize=objective_minimize,
-            # flop_estimator=flop_estimator
-        )
-        # y = torch.log(y.clamp_min(1e-12))
     # Purely vectorial
     if len(categoricals) == 0:
         return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module) # filter just numericals and scaling
@@ -247,9 +188,10 @@ def optimize_acq(
         if n_intial_start_points is None:
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
-        # constraints = acq_options.get("nonlinear_inequality_constraints")
-        # if constraints is not None:        
-        #     acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
+        # Handle nonlinear inequality constraints by providing custom ic_generator
+        constraints = acq_options.get("nonlinear_inequality_constraints")
+        if constraints is not None:        
+            acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
         
         with warning_context:
             return optimize_acqf(  # type: ignore
@@ -554,13 +496,22 @@ class BlackBoxConstraintFn(torch.autograd.Function):
             
             vals = []
             for c in conf_list:
-                # Get the value (assuming func returns tuple/list)
-                # Ensure this is a FLOAT representing "distance to feasibility"
-                val = constraint_func(c)
-                
-                # IMPORTANT: BoTorch expects Positive = Feasible.
-                # If your func returns Negative = Feasible, flip it: val = -val
-                vals.append(val)
+                try:
+                    # Get the value (assuming func returns tuple/list)
+                    # Ensure this is a FLOAT representing "distance to feasibility"
+                    val = constraint_func(c)
+                    
+                    # ROBUST NaN HANDLING: Check for NaN or inf values
+                    if not torch.isfinite(torch.tensor(val, dtype=torch.float64)):
+                        logger.warning(f"Non-finite constraint value: {val}, using fallback value 0.0")
+                        val = 0.0  # Default to feasible (constraint satisfied)
+                    
+                    # IMPORTANT: BoTorch expects Positive = Feasible.
+                    # If your func returns Negative = Feasible, flip it: val = -val
+                    vals.append(val)
+                except Exception as e:
+                    logger.warning(f"Exception in constraint function evaluation: {e}. Using fallback value 0.0")
+                    vals.append(0.0)  # Fallback to feasible
                 
             # Restore shape
             res = torch.tensor(vals, dtype=x.dtype, device=x.device)
@@ -573,7 +524,7 @@ class BlackBoxConstraintFn(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        # 3. "Fake" the gradient using Finite Differences
+        # 3. "Fake" the gradient using Finite Differences with NaN Robustness
         x, = ctx.saved_tensors
         func = ctx.constraint_func
         encoder = ctx.encoder
@@ -602,18 +553,42 @@ class BlackBoxConstraintFn(torch.autograd.Function):
                 x_p[d] += epsilon
                 
                 # Evaluate x + epsilon
-                c_p = encoder.decode(x_p.unsqueeze(0).cpu())[0]
-                val_p = func(c_p)
+                try:
+                    c_p = encoder.decode(x_p.unsqueeze(0).cpu())[0]
+                    val_p = func(c_p)
+                except Exception as e:
+                    logger.warning(f"Exception in constraint evaluation (forward): {e}")
+                    val_p = float('nan')
                 
                 # Evaluate x (Center)
-                c_base = encoder.decode(x_flat[i].unsqueeze(0).cpu())[0]
-                val_base = func(c_base)
+                try:
+                    c_base = encoder.decode(x_flat[i].unsqueeze(0).cpu())[0]
+                    val_base = func(c_base)
+                except Exception as e:
+                    logger.warning(f"Exception in constraint evaluation (base): {e}")
+                    val_base = float('nan')
                 
-                # Calculate Slope (Gradient) = (Rise / Run)
-                slope = (val_p - val_base) / epsilon
+                # Calculate Slope (Gradient) = (Rise / Run) with NaN handling
+                if torch.isnan(torch.tensor(val_p)) or torch.isnan(torch.tensor(val_base)):
+                    # If either value is NaN, use zero gradient (conservative choice)
+                    slope = 0.0
+                    logger.warning(f"NaN in constraint gradient computation at dim {d}, point {i}")
+                elif torch.isinf(torch.tensor(val_p)) or torch.isinf(torch.tensor(val_base)):
+                    # If either value is inf, use zero gradient
+                    slope = 0.0
+                    logger.warning(f"Inf in constraint gradient computation at dim {d}, point {i}")
+                else:
+                    slope = (val_p - val_base) / epsilon
+                    # Clamp slope to prevent extreme gradients
+                    slope = torch.clamp(torch.tensor(slope), min=-1e6, max=1e6).item()
                 
                 # Chain Rule: Gradient = Slope * Incoming_Gradient
                 grad_in_flat[i, d] = slope * grad_out_flat[i]
+                
+        # Final NaN check on gradients before returning
+        if torch.isnan(grad_input).any():
+            logger.warning(f"NaN detected in constraint gradients. Replacing with zeros.")
+            grad_input = torch.nan_to_num(grad_input, nan=0.0, posinf=0.0, neginf=0.0)
                 
         return grad_input.view_as(x), None, None
 

@@ -96,7 +96,7 @@ class ScalingLawGuidedOptimizer:
             figs.append(fig2)
         return figs
     
-    def plot_extrapolations(self, trials: Mapping[str, Trial]):
+    def plot_extrapolations(self, trials: Mapping[str, Trial], root_dir: str):
         """Plot extrapolations to the target flops."""
         # Implementation of extrapolation plotting logic goes here
         conf, pred = self.extrapolate(trials, self.max_target_flops)
@@ -130,6 +130,6 @@ class ScalingLawGuidedOptimizer:
         target_flops = self.flops_estimator(**conf)
         ax.scatter(target_flops, pred, c='red', marker='x', s=100, label='Extrapolated Point')
         ax.legend()
-        fig.savefig("results4/extraploation.png")
+        fig.savefig(f"{root_dir}/extraploation.png")
         plt.close(fig)
         return 

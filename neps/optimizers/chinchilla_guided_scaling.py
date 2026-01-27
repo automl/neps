@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 from collections.abc import (
     Mapping,
     Sequence,
@@ -20,6 +21,8 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.grid import make_grid
+from neps.optimizers.grid_search import GridSearch
+from neps.optimizers.scaling_law_guided import ScalingLawGuidedOptimizer
 
 if TYPE_CHECKING:
     from neps.space import SearchSpace
@@ -29,7 +32,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-class Chinchilla_Guided_Scaling:
+class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
     """The Multi objective algorithm for search space including architectural choices."""
 
     PARAM_ESTIMATOR_KEY = "params_estimator"
@@ -39,7 +42,7 @@ class Chinchilla_Guided_Scaling:
                  flops_estimator: Callable[..., int],
                  params_estimator: Callable[..., int],
                  seen_datapoints_estimator: Callable[..., int],
-                 max_acculumated_evaluation_flops: int,
+                 max_evaluation_flops: int,
                  max_target_flop: int
                  ) -> None:
         """Initialize the grid search optimizer.
@@ -57,14 +60,14 @@ class Chinchilla_Guided_Scaling:
             ignore_fidelity=True,
             size_per_numerical_hp=10,
         )
-        self.adapt_search_space(trials=None, max_acculumated_evaluation_flops=max_acculumated_evaluation_flops)
+        self.adapt_search_space(trials=None, max_evaluation_cost=max_evaluation_flops)
 
         super().__init__(
             space=space,
             base_optimizer=GridSearch(
                 configs_list=self.config_list
             ),
-            max_acculumated_evaluation_flops=max_acculumated_evaluation_flops,
+            max_evaluation_flops=max_evaluation_flops,
             max_target_flops=max_target_flop,
             flops_estimator=flops_estimator,
             metric_functions={
@@ -76,13 +79,16 @@ class Chinchilla_Guided_Scaling:
         print(f"Total configurations in search space: {len(self.config_list)}")
 
     # find the specific cut in space for running scaling law
-    def adapt_search_space(self, trials: Mapping[str, Trial], max_acculumated_evaluation_flops: int) -> None:
+    def adapt_search_space(
+        self,
+        trials: Mapping[str, Trial],
+        max_evaluation_cost: int,
+    ) -> None:
         # filter the search pipeline space to only include configurations with flops <= max_evaluation_flops
         self.config_list.sort(key=lambda conf: self.flops_estimator(**conf))
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flop: int) -> dict[str, Any]:
         # considering estimating the flops and number of optimizable parameters is cheap
-        # find the closes 
         # fit the trials to a scaling law and extrapolate to target_flop_range
         E, A, B, alpha, beta = None, None, None, None, None
         try:
@@ -103,7 +109,7 @@ class Chinchilla_Guided_Scaling:
                 min_loss = estimated_loss
                 best_candidate = conf
         
-        with open("results2/scaling_law_extrapolation.txt", "w") as f:
+        with open("results_chinchilla/scaling_law_extrapolation.txt", "w") as f:
             f.write(f"Find lowest loss for L = {E=} + {A=}/N^{alpha=} {B=}/D^{beta=}\n")
             f.write(f"Selected config for target FLOPs {max_target_flop}: {best_candidate}\n")
             f.write(f"estimated FLOPs: {self.flops_estimator(**best_candidate)}\n")
@@ -113,7 +119,7 @@ class Chinchilla_Guided_Scaling:
 
     def get_power_law_curvature(self, trials: Mapping[str, Trial]) -> tuple[float, float, float, float, float]:
         # L = E + A / N^alpha + B / D^beta
-        # optimize in log-space with Huber loss
+        # where A = e^a and B = e^b
 
         def huber(residual, delta=1.0):
             abs_r = np.abs(residual)
@@ -123,15 +129,38 @@ class Chinchilla_Guided_Scaling:
                 delta * (abs_r - 0.5 * delta),
             )
 
-        def objective(theta, log_N, log_D, log_L):
-            E, logA, logB, alpha, beta = theta
-            A = np.exp(logA)
-            B = np.exp(logB)
+        def objective(theta, N, D, L):
+            E, a, b, alpha, beta = theta
+            
+            # Clip a and b to prevent overflow (exp(20) ≈ 4.85e8)
+            a_clipped = np.clip(a, -10, 10)
+            b_clipped = np.clip(b, -10, 10)
+            A = np.exp(a_clipped)
+            B = np.exp(b_clipped)
+            
+            # Compute with numerical stability
+            with np.errstate(divide='ignore', invalid='ignore'):
+                N_alpha = np.power(N, alpha, where=(N > 0), out=np.ones_like(N))
+                D_beta = np.power(D, beta, where=(D > 0), out=np.ones_like(D))
+                
+                # Avoid division by zero
+                N_alpha = np.where(N_alpha > 0, N_alpha, 1.0)
+                D_beta = np.where(D_beta > 0, D_beta, 1.0)
+                
+                L_hat = E + A / N_alpha + B / D_beta
+            
+            # Check for NaN or Inf
+            if np.any(~np.isfinite(L_hat)):
+                return 1e10  # Large penalty for invalid values
+            
+            residual = L_hat - L
+            loss = np.sum(huber(residual))
+            
+            if not np.isfinite(loss):
+                return 1e10
+                
+                return loss
 
-            L_hat = E + A * np.exp(-alpha * log_N) + B * np.exp(-beta * log_D)
-            log_L_hat = np.log(L_hat)
-
-            return np.sum(huber(log_L_hat - log_L))
 
         l_list, n_list, d_list = [], [], []
         for trial in trials.values():
@@ -148,28 +177,58 @@ class Chinchilla_Guided_Scaling:
         if len(l_list) < 5:
             raise ValueError("Not enough data points to fit scaling law.")
 
-        log_L = np.log(np.array(l_list))
-        log_N = np.log(np.array(n_list))
-        log_D = np.log(np.array(d_list))
+        N = np.array(n_list)
+        D = np.array(d_list)
+        L = np.array(l_list)
 
-        # initial guess
-        theta0 = np.array([
-            np.min(l_list),   # E
-            0.0,              # logA
-            0.0,              # logB
-            0.5,              # alpha
-            0.5,              # beta
-        ])
+        # Grid of initial guesses
+        initialization = list(itertools.product(
+            [-1, -0.5, 0, 0.5, 1],         # E
+            [0, 5, 10, 15, 20, 25],       # a
+            [0, 5, 10, 15, 20, 25],       # b
+            [0, 0.5, 1.0, 1.5, 2.0],      # alpha
+            [0, 0.5, 1.0, 1.5, 2.0],      # beta
+        ))
 
-        res = minimize(
-            objective,
-            theta0,
-            args=(log_N, log_D, log_L),
-            method="L-BFGS-B",
-        )
+        best_result = None
+        best_loss = float("inf")
 
-        E, logA, logB, alpha, beta = res.x
-        return E, np.exp(logA), np.exp(logB), alpha, beta
+        for theta0 in initialization:
+
+            try:
+                # Bounds to prevent numerical issues
+                # E: unbounded (can be negative or positive)
+                # a, b: [-10, 10] to prevent exp overflow
+                # alpha, beta: [0.01, 3] for reasonable power law exponents
+                bounds = [
+                    (None, None),      # E
+                    (-10, 10),         # a
+                    (-10, 10),         # b
+                    (0.01, 3.0),       # alpha
+                    (0.01, 3.0),       # beta
+                ]
+                
+                res = minimize(
+                    objective,
+                    theta0,
+                    args=(N, D, L),
+                    method="L-BFGS-B",
+                    bounds=bounds,
+                )
+                if res.fun < best_loss:
+                    best_loss = res.fun
+                    best_result = res
+            except Exception as e:
+                logger.debug(f"Minimize failed for theta0={theta0}: {e}")
+                continue
+
+        if best_result is None:
+            raise ValueError("Could not fit scaling law with any initialization.")
+
+        E, a, b, alpha, beta = best_result.x
+        A = np.exp(np.clip(a, -10, 10))
+        B = np.exp(np.clip(b, -10, 10))
+        return E, A, B, alpha, beta
         
 
     def callback_on_trial_complete(
@@ -224,7 +283,7 @@ class Chinchilla_Guided_Scaling:
         # ax.set_xlim(0, 1e15)
         plt.tight_layout()
         plt.colorbar(sc, ax=ax, label="Time")
-        fig.savefig("results2/flops_per_objective.png")
+        fig.savefig("results_chinchilla/flops_per_objective.png")
         plt.close(fig)
         return
 
@@ -262,7 +321,7 @@ class Chinchilla_Guided_Scaling:
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
         plt.colorbar(sc, ax=ax, label="Time")
-        fig.savefig("results2/flops_per_objective.png")
+        fig.savefig("results_chinchilla/flops_per_objective.png")
         plt.close(fig)
         return
 
@@ -300,7 +359,7 @@ class Chinchilla_Guided_Scaling:
         ax.set_title("Objective vs Accumulated FLOPs")
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
-        plt.savefig("results2/accumulated_flops_per_objective.png")
+        plt.savefig("results_chinchilla/accumulated_flops_per_objective.png")
         plt.close(fig)
         return
 
@@ -342,7 +401,7 @@ class Chinchilla_Guided_Scaling:
         ax.set_title("FLOPs vs Params")
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
-        plt.savefig("results2/flops_param_ratio.png")
+        plt.savefig("results_chinchilla/flops_param_ratio.png")
         plt.close(fig)
         return
     

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
@@ -22,6 +22,9 @@ class RandomSearch:
     space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
+    constraints_func: Callable[[Mapping[str, Any]], Sequence[float]] | None = None
+    raw_samples: int = 1024
+    
 
     def __call__(
         self,
@@ -40,11 +43,15 @@ class RandomSearch:
                 )
         n_trials = len(trials)
         _n = 1 if n is None else n
-        configs = self.sampler.sample(_n, to=self.encoder.domains)
+        configs = self.sampler.sample(_n * (self.raw_samples or 1), to=self.encoder.domains)
 
         config_dicts = self.encoder.decode(configs)
+
+        valid_configs = []
         for config in config_dicts:
             config.update(self.space.constants)
+            if self.constraints_func is not None and self.constraints_func(config) < 0:
+                continue
             if self.space.fidelity is not None:
                 config.update(
                     {
@@ -53,9 +60,19 @@ class RandomSearch:
                         if key not in config
                     }
                 )
+            valid_configs.append(config)
+        
+        if self.constraints_func is not None and len(valid_configs) < _n:
+            raise ValueError(
+                f"Could not sample enough valid configurations out of "
+                f"{_n * (self.raw_samples or 1)} samples, "
+                f"only got {len(valid_configs)} valid ones."
+            )
+        
+        valid_configs = valid_configs[:_n]
 
         if n is None:
-            config = config_dicts[0]
+            config = valid_configs[0]
             config_id = str(n_trials + 1)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
@@ -65,7 +82,7 @@ class RandomSearch:
                 id=str(n_trials + i + 1),
                 previous_config_id=None,
             )
-            for i, config in enumerate(config_dicts)
+            for i, config in enumerate(valid_configs)
         ]
 
     def import_trials(

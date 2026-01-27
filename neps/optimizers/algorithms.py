@@ -597,6 +597,26 @@ def bo_guided_scaling(
         max_target_flop=max_target_flop,
     )
 
+def rs_guided_scaling(
+    space: SearchSpace,
+    *,
+    params_estimator: Callable[[SearchSpace], int],
+    seen_datapoints_estimator: Callable[[SearchSpace], int],
+    flops_estimator: Callable[[SearchSpace], int],
+    max_evaluation_flops: int,
+    max_target_flop: int,
+):
+    from neps.optimizers.rs_guided_scaling import RandomSearch_Guided_Scaling
+    
+    return RandomSearch_Guided_Scaling(
+        space=convert_neps_to_classic_search_space(space=space),
+        random_search=random_search(space),
+        flops_estimator=flops_estimator,
+        params_estimator=params_estimator,
+        seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=max_evaluation_flops,
+        max_target_flop=max_target_flop,
+    )
 
 def random_search(
     pipeline_space: SearchSpace | PipelineSpace,
@@ -2049,7 +2069,8 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_local_and_incumbent,
         chinchilla_guided_scaling,
         kaplan_guided_scaling,
-        bo_guided_scaling
+        bo_guided_scaling,
+        rs_guided_scaling,
     )
 }
 
@@ -2076,4 +2097,5 @@ OptimizerChoice: TypeAlias = Literal[
     "chinchilla_guided_scaling",
     "kaplan_guided_scaling",
     "bo_guided_scaling",
+    "rs_guided_scaling",
 ]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Callable, Sequence
 
 import torch
 
@@ -20,6 +20,7 @@ def make_initial_design(
     sample_size: int | Literal["ndim"] | None = "ndim",
     sample_prior_first: bool = True,
     seed: torch.Generator | None = None,
+    constraints_func: Callable[[Mapping[str, Any]], Sequence[float]] | None = None
 ) -> list[dict[str, Any]]:
     """Generate the initial design of the optimization process.
 
@@ -73,7 +74,19 @@ def make_initial_design(
 
         encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
-        sample_configs = encoder.decode(uniq_x[:sample_size])
+        sample_configs = encoder.decode(uniq_x)
+        if constraints_func is not None:
+            valid_sample_configs = []
+            for config in sample_configs:
+                if constraints_func(config) >= 0:
+                    valid_sample_configs.append(config)
+            sample_configs = valid_sample_configs
+        if constraints_func is not None and len(sample_configs) < sample_size:
+                raise ValueError(
+                    f"Could not sample enough valid configurations out of "
+                    f"{sample_size * 2} samples, only got {len(sample_configs)} valid samples."
+                )
+        sample_configs = sample_configs[: sample_size]
         configs.extend(sample_configs)
 
     return configs

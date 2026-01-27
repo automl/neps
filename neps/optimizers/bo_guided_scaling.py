@@ -70,6 +70,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
 
     def __call__(self, trials, budget_info = None, n = None):
         to_spend = budget_info.cost_to_spend - sum([self.flops_estimator(**trial.config) for trial in trials.values()])
+        print(f"BO_Guided_Scaling: to spend {to_spend} FLOPs")
         self.adapt_search_space(trials=trials, max_evaluation_cost=to_spend)
         sample = self.bayesian_optimizer(trials, budget_info, n)
         self.extrapolate(trials, self.max_target_flop)
@@ -139,7 +140,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
             trials: All of the trials that are known about.
         """
         # TODO: deligate writing plots and info on disk to runtime
-        self.plot_extrapolations(trials=trials)
+        self.plot_extrapolations(trials=trials, root_dir="results4")
         # self.plot_scaling_laws(trials=trials, metric_names=[self.PARAM_ESTIMATOR_KEY, self.SEEN_DATAPOINTS_ESTIMATOR_KEY])
     
  
