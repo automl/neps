@@ -55,9 +55,6 @@ class SearchSpace(
     Currently no optimizer supports multiple fidelities but it is defined here incase.
     """
 
-    scaling_params: Mapping[str, HPOInteger] = field(init=False)
-    """The architecture parameters in the search space."""
-
     constants: Mapping[str, Any] = field(init=False, default_factory=dict)
     """The constants in the search space."""
 
@@ -70,10 +67,6 @@ class SearchSpace(
             This does not include either constants or fidelities.
         """
         return {**self.numerical, **self.categoricals}
-
-    @property
-    def scaling_parameters(self) -> Mapping[str, HPOInteger]:
-        return self.scaling_params
 
     @property
     def fidelity(self) -> tuple[str, HPOFloat | HPOInteger] | None:

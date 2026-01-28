@@ -503,7 +503,19 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
+        evals_to_add = []
+        for (conf, user_result) in external_evaluations:
+    
+            try:
+                if user_result.cost is None:
+                    flops = self.flops_estimator(**conf)
+                    user_result.cost = flops
+                n_params = self.params_estimator(**conf)
+                user_result.extra['mparameters'] = n_params
+                evals_to_add.append((conf, user_result))
+            except Exception:
+                continue
         return self.base_optimizer.import_trials(
-            external_evaluations=external_evaluations,
+            external_evaluations=evals_to_add,
             trials=trials,
         )
