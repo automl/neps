@@ -21,7 +21,7 @@ from neps.space.neps_spaces.sampling import RandomSampler
 def make_grid(  # noqa: PLR0912, PLR0915, C901
     space: SearchSpace | PipelineSpace,
     *,
-    size_per_numerical_hp: int = 10,
+    size_per_numerical_hp: int | dict[str, int] = 10,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
@@ -37,11 +37,22 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
 
     Args:
         size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
+            Can be an integer (applies to all numerical hyperparameters) or a dictionary
+            mapping parameter names to their grid sizes.
 
     Returns:
         A list of configurations from the search space.
     """
     param_ranges: dict[str, list[Any]] = {}
+    
+    # Normalize size_per_numerical_hp to a dictionary
+    if isinstance(size_per_numerical_hp, int):
+        size_mapping: dict[str, int] = {}
+        default_size = size_per_numerical_hp
+    else:
+        size_mapping = size_per_numerical_hp
+        default_size = 10
+    
     if isinstance(space, SearchSpace):
         for name, hp in space.items():
             match hp:
@@ -63,10 +74,14 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                                     "natively. Please use the"
                                     "ignore_fidelity parameter."
                                 )
+                    
+                    # Get grid size for this parameter
+                    steps = size_mapping.get(name, default_size)
+                    
                     if hp.domain.cardinality is None:
-                        steps = size_per_numerical_hp
+                        steps = steps
                     else:
-                        steps = min(size_per_numerical_hp, hp.domain.cardinality)
+                        steps = min(steps, hp.domain.cardinality)
 
                     xs = torch.linspace(0, 1, steps=steps)
                     numeric_values = hp.domain.cast(xs, frm=Domain.unit_float())
@@ -99,7 +114,8 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     " Please use the ignore_fidelity parameter."
                 )
             elif isinstance(hp, Integer | Float):
-                steps = size_per_numerical_hp  # type: ignore[unreachable]
+                # Get grid size for this parameter
+                steps = size_mapping.get(name, default_size)  # type: ignore[unreachable]
                 xs = torch.linspace(0, 1, steps=steps)
                 numeric_values = xs * (hp.upper - hp.lower) + hp.lower
                 if isinstance(hp, Integer):

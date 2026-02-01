@@ -149,23 +149,6 @@ class Kaplan_Guided_Scaling(ScalingLawGuidedOptimizer):
         return C, alpha
         
 
-    def callback_on_trial_complete(
-        self,
-        trials: Mapping[str, Trial],
-    ) -> None:
-        """Callback when a trial is completed.
-
-        This is used to update the internal state of the optimizer.
-
-        Args:
-            trials: All of the trials that are known about.
-        """
-        # TODO: delicate writing plots and info on disk to runtime
-        self.extrapolate(trials, max_target_flop=self.max_target_flop)
-        self.plot_flops_per_objective(trials)
-        self.plot_flop_vs_param(trials)
-        self.plot_accumulated_flops_per_objective(trials)
-    
     def plot_flops_per_objective(self, trials):
         """Plot FLOPs vs each objective.
 

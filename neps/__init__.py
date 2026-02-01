@@ -13,6 +13,7 @@ from neps.api import (
     load_pipeline_space,
     run,
     save_pipeline_results,
+    extrapolate,
 )
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
@@ -74,4 +75,5 @@ __all__ = [
     "save_pipeline_results",
     "status",
     "tblogger",
+    "extrapolate",
 ]

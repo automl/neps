@@ -1067,8 +1067,110 @@ def load_optimizer_info(
         ) from e
 
 
+def extrapolate(
+    root_directory: Path | str,
+    max_target_flops: int,
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+) -> dict[str, Any] | None:
+    """Extrapolate to find the best configuration at target FLOPs using the optimizer.
+
+    This function loads the optimizer and calls its extrapolate method if available.
+    It adjusts the search space and returns the best recommended configuration.
+
+    Args:
+        root_directory (Path or str): The root directory of the NePS run.
+        max_target_flops (int): Maximum target FLOPs for extrapolation.
+        optimizer: The optimizer to use. Defaults to "auto" which loads the optimizer
+            from the saved optimizer info in the neps run. Can be specified similarly
+            to neps.run().
+
+    Returns:
+        dict[str, Any] | None: The best recommended configuration, or None if the
+            optimizer does not support extrapolation.
+
+    Raises:
+        FileNotFoundError: If the root directory does not exist or is not a valid NePS run.
+        RuntimeError: If the optimizer lacks required methods or the state cannot be loaded.
+
+    Example:
+        >>> import neps
+        >>> best_config = neps.extrapolate("my_results", max_target_flops=1e16)
+        >>> if best_config:
+        ...     print(f"Best configuration: {best_config}")
+        ... else:
+        ...     print("Optimizer does not support extrapolation")
+    """
+    from neps.state import NePSState
+
+    root_directory = Path(root_directory)
+
+    if not root_directory.exists():
+        raise FileNotFoundError(
+            f"No neps state found at: {root_directory}\n"
+            "Please provide a valid neps results directory."
+        )
+
+    # Load the state
+    try:
+        state = NePSState.create_or_load(path=root_directory, load_only=True)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"Could not load neps state from: {root_directory}"
+        ) from e
+
+    # Load space and trials
+    with state._trial_lock.lock():
+        space = state.lock_and_get_search_space()
+        trials = state._trial_repo.latest()
+
+    if space is None:
+        raise RuntimeError("Could not load search space from neps state.")
+
+    # If optimizer is "auto", load from saved optimizer info
+    if optimizer == "auto":
+        try:
+            optimizer_info = load_optimizer_info(root_directory)
+            optimizer = (
+                optimizer_info["name"],
+                optimizer_info.get("info", {}),
+            )
+        except FileNotFoundError as e:
+            raise FileNotFoundError(
+                f"Could not load optimizer info from {root_directory}. "
+                "Please specify optimizer explicitly."
+            ) from e
+
+    # Load the optimizer
+    optimizer_ask, _ = load_optimizer(optimizer=optimizer, space=space)
+
+    # Check if optimizer has extrapolate method
+    if not hasattr(optimizer_ask, "extrapolate"):
+        logger.info(
+            f"Optimizer {type(optimizer_ask).__name__} does not support extrapolation."
+        )
+        return None
+
+    # Call extrapolate with max_target_flops
+    try:
+        best_config = optimizer_ask.extrapolate(trials=trials, max_target_flops=max_target_flops)
+        return best_config
+    except Exception as e:
+        logger.error(f"Extrapolation failed: {e}")
+        raise RuntimeError(f"Failed to extrapolate: {e}") from e
+
+
 __all__ = [
     "create_config",
+    "extrapolate",
     "import_trials",
     "load_config",
     "load_optimizer_info",

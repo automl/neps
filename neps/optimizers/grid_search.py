@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
@@ -18,6 +18,9 @@ class GridSearch:
     configs_list: list[dict[str, Any]]
     """The list of configurations to evaluate."""
 
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = field(default=None)
+    """Optional constraint function that returns >= 0 for valid configs."""
+
     def __call__(
         self,
         trials: Mapping[str, Trial],
@@ -26,14 +29,21 @@ class GridSearch:
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
         _num_previous_configs = len(trials)
-        if _num_previous_configs > len(self.configs_list) - 1:
-            raise ValueError("Grid search exhausted!")
+        
+        # Find the next valid config respecting constraints
+        config = None
+        config_id = None
+        for i in range(_num_previous_configs, len(self.configs_list)):
+            candidate = self.configs_list[i]
+            if self.constraints_func is not None and self.constraints_func(candidate) < 0:
+                continue
+            config = candidate
+            config_id = str(i)
+            break
+        
+        if config is None:
+            raise ValueError("Grid search exhausted or no valid configs found!")
 
-        # TODO: Revisit this. Do we really need to shuffle the configs?
-        configs = self.configs_list
-
-        config = configs[_num_previous_configs]
-        config_id = str(_num_previous_configs)
         return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
     def import_trials(

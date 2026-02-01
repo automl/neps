@@ -49,6 +49,7 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
+from neps.utils.files import get_file_writer
 from neps.status.status import (
     _build_incumbent_content,
     _build_optimal_set_content,
@@ -530,7 +531,7 @@ class DefaultWorker:
         best_config_path: Path,
         final_stopping_criteria: ResourceUsage | None = None,
     ) -> None:
-        """Writes the trajectory and best config files safely."""
+        """Writes the trajectory and best config files safely using generic file writer."""
         trace_text = _build_incumbent_content(incumbent_configs)
 
         best_config_text = _build_optimal_set_content(optimal_configs)
@@ -542,12 +543,44 @@ class DefaultWorker:
                 best_config_text += f"\n{metric}: {value}"
 
         with trace_lock:
+            text_writer = get_file_writer("text")
             if incumbent_configs:
-                with improvement_trace_path.open(mode="w") as f:
-                    f.write(trace_text)
+                try:
+                    text_writer.write(trace_text, improvement_trace_path)
+                except Exception as e:
+                    logger.error(f"Failed to write improvement trace: {e}")
             if optimal_configs:
-                with best_config_path.open(mode="w") as f:
-                    f.write(best_config_text)
+                try:
+                    text_writer.write(best_config_text, best_config_path)
+                except Exception as e:
+                    logger.error(f"Failed to write best config: {e}")
+
+    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
+        """Save optimizer artifacts to summary directory.
+        
+        Args:
+            artifacts: List of Artifact objects to persist.
+            summary_dir: Summary directory where artifacts will be saved.
+        """
+        logger.info("saving artifacts...")
+        if artifacts is None:
+            logger.warning("No artifacts found to save.")
+            return
+
+        for artifact in artifacts:
+            try:
+                # Map ArtifactType enum to string for writer lookup
+                content_type = artifact.artifact_type.value
+                writer = get_file_writer(content_type)
+                file_path = summary_dir / artifact.name
+                writer.write(artifact.content, file_path)
+            except Exception as e:
+                logger.error(
+                    f"Failed to save artifact '{artifact.name}' "
+                    f"(type={artifact.artifact_type.value}): {e}"
+                )
+                # Don't raise - allow optimization to continue even if artifact save fails
+                continue
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -708,11 +741,7 @@ class DefaultWorker:
             improvement_trace_path,
             best_config_path,
         )
-        if hasattr(self.optimizer, 'callback_on_trial_complete'):
-            self.optimizer.callback_on_trial_complete(
-                trials=evaluated_trials,
-            )
-        
+
         while True:
             try:
                 # First check local worker settings
@@ -794,36 +823,6 @@ class DefaultWorker:
 
             # We (this worker) has managed to set it to evaluating, now we can evaluate it
             with _set_global_trial(trial_to_eval):
-                # get optimizer has get_constraint_func method
-                # if self.optimizer.get_constraint_func is not None:
-                #     constraint_fn = self.optimizer.get_constraint_func()
-                #     if constraint_fn(trial_to_eval.config) < 0:
-                #         logger.info(
-                #             "Worker '%s': Trial %s does not satisfy constraints, marking"
-                #             " as FAILED.",
-                #             self.worker_id,
-                #             trial_to_eval.id,
-                #         )
-                #         import numpy as np
-                #         np.random.seed(None)
-                #         score = 1000000000000.0 * ( 1+ np.random.normal(0, 10))
-                #         report = Trial.Report(
-                #             reported_as='success',
-                #             objective_to_minimize=score,
-                #             err=None, cost=0, learning_curve=None,tb=None, extra=None, evaluation_duration=0.0,
-                #         )
-                #         trial_to_eval.set_complete(
-                #             time_end=time.time(),
-                #             report_as='success',
-                #             objective_to_minimize=score,
-                #             err=None, cost=0, learning_curve=None,tb=None, extra=None, evaluation_duration=0.0,
-                #         )
-                #         self.state._report_trial_evaluation(
-                #             trial=trial_to_eval,
-                #             report=report,
-                #             worker_id=self.worker_id,
-                #         )
-                #         continue
                 evaluated_trial, report = evaluate_trial(
                     trial=trial_to_eval,
                     evaluation_fn=self.evaluation_fn,
@@ -875,10 +874,15 @@ class DefaultWorker:
                         improvement_trace_path,
                         best_config_path,
                     )
-                    if hasattr(self.optimizer, 'callback_on_trial_complete'):
-                        self.optimizer.callback_on_trial_complete(
-                            trials=evaluated_trials,
-                        )
+                            # Persist optimizer artifacts if available
+                if hasattr(self.optimizer, 'get_trial_artifacts'):
+                    try:
+                        artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
+                        if artifacts is not None:
+                            self._save_optimizer_artifacts(artifacts, summary_dir)
+                    except Exception as e:
+                        logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
+                
 
                 full_df, short = status(main_dir)
                 with csv_locker.lock():

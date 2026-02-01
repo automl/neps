@@ -26,7 +26,8 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict
 
 if TYPE_CHECKING:
@@ -46,6 +47,31 @@ class OptimizerInfo(TypedDict):
 
     Usually this will be the keyword arguments used to initialize the optimizer.
     """
+
+
+class ArtifactType(Enum):
+    """Supported artifact types for optimizer results."""
+    TEXT = "text"
+    FIGURE = "figure"
+    JSON = "json"
+    PICKLE = "pickle"
+    BYTES = "bytes"
+
+
+@dataclass
+class Artifact:
+    """Single artifact produced by optimizer.
+    
+    Attributes:
+        name: Unique identifier for this artifact.
+        content: The actual artifact content (string, Figure, dict, bytes, etc).
+        artifact_type: Type of artifact, determines how it will be persisted.
+        metadata: Optional metadata about the artifact (e.g., format, dimensions).
+    """
+    name: str
+    content: Any
+    artifact_type: ArtifactType
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -101,17 +127,48 @@ class AskFunction(Protocol):
             trials: All of the trials that are known about.
         """
         ...
-    
-    @abstractmethod
-    def callback_on_trial_complete(
-        self,
-        trials: Mapping[str, Trial],
-    ) -> None:
-        """Callback called whenever a trial is completed.
 
-        This is called whenever a trial is completed in the neps state.
+    @abstractmethod
+    def get_trial_artifacts(
+        self,
+        trials: Mapping[str, Trial] | None = None,
+    ) -> list[Artifact] | None:
+        """Return artifacts for the runtime to persist.
+
+        This is an optional method that optimizers can implement to return artifacts
+        (figures, logs, metadata, etc) that the neps runtime will handle for persistence.
+        The runtime takes responsibility for all I/O operations, enabling:
+
+        - Clean separation between optimizer logic and I/O concerns
+        - Uniform handling of different artifact types (figures, text, JSON, etc)
+        - Future extensibility without optimizer changes
+        - Easy testing and mocking
 
         Args:
-            trials: All of the trials that are known about.
+            trials: All evaluated trials, passed by runtime for context.
+                Optional - optimizers can ignore if not needed.
+
+        Returns:
+            List of Artifact objects to persist, or None if no artifacts should be persisted.
+
+        Note:
+            This method is optional. Optimizers that don't need to persist artifacts
+            should return None (the default behavior).
+
+        Example:
+            >>> from neps.optimizers.optimizer import Artifact, ArtifactType
+            >>> def get_trial_artifacts(self, trials=None) -> list[Artifact] | None:
+            ...     import matplotlib.pyplot as plt
+            ...     fig, ax = plt.subplots()
+            ...     
+            ...     # Can use trials to generate more meaningful artifacts
+            ...     if trials:
+            ...         results = [t.report.objective_to_minimize for t in trials.values()]
+            ...         ax.plot(results)
+            ...     
+            ...     return [
+            ...         Artifact("loss_curve", fig, ArtifactType.FIGURE),
+            ...         Artifact("best_config", self.best_config, ArtifactType.JSON),
+            ...     ]
         """
-        ...
+        return None

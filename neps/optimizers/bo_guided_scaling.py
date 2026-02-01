@@ -127,20 +127,3 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         # find the N_opt for target_flops from config_list that is closest to the 
         return C, alpha
         
-
-    def callback_on_trial_complete(
-        self,
-        trials: Mapping[str, Trial],
-    ) -> None:
-        """Callback when a trial is completed.
-
-        This is used to update the internal state of the optimizer.
-
-        Args:
-            trials: All of the trials that are known about.
-        """
-        # TODO: deligate writing plots and info on disk to runtime
-        self.plot_extrapolations(trials=trials, root_dir="results4")
-        # self.plot_scaling_laws(trials=trials, metric_names=[self.PARAM_ESTIMATOR_KEY, self.SEEN_DATAPOINTS_ESTIMATOR_KEY])
-    
- 

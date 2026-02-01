@@ -33,13 +33,6 @@ class ScalingLawGuidedOptimizer:
             n=n,
         )
 
-    def callback_on_trial_complete(
-        self,
-        trials: Mapping[str, Trial],
-    ) -> None:
-        self.plot_extrapolations(trials=trials)
-        self.plot_scaling_laws(trials=trials)
-        
     @abc.abstractmethod
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flops: int) -> tuple[dict[str, Any], float]:
         """Extrapolate the performance of a trial to the target flops."""

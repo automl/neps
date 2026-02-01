@@ -4,14 +4,18 @@ from __future__ import annotations
 
 import dataclasses
 import io
+import json
+import logging
 import os
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from enum import Enum
 from pathlib import Path
-from typing import IO, Any, Literal
+from typing import IO, Any, Literal, Protocol
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 try:
     from yaml import (
@@ -148,3 +152,170 @@ def load_and_merge_yamls(*paths: str | Path | IO[str]) -> dict[str, Any]:
         config.update(read_config)
 
     return config
+
+
+# ============================================================================
+# Generic File Persistence System
+# ============================================================================
+
+
+class FileWriter(Protocol):
+    """Protocol for writing content to disk."""
+
+    def write(self, content: Any, file_path: Path | str) -> None:
+        """Write content to disk.
+
+        Args:
+            content: Content to write.
+            file_path: Path where content should be saved.
+        """
+        ...
+
+
+class TextWriter:
+    """Write text content to disk."""
+
+    def write(self, content: str, file_path: Path | str) -> None:
+        """Write text to file.
+
+        Args:
+            content: Text content to save.
+            file_path: Path to save to (will use .txt extension).
+        """
+        file_path = Path(file_path).with_suffix(".txt")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content)
+            logger.debug(f"Wrote text to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to write text to {file_path}: {e}")
+            raise
+
+
+class JsonWriter:
+    """Write JSON-serializable content to disk."""
+
+    def write(self, content: Any, file_path: Path | str) -> None:
+        """Write JSON to file.
+
+        Args:
+            content: JSON-serializable object to save.
+            file_path: Path to save to (will use .json extension).
+        """
+        file_path = Path(file_path).with_suffix(".json")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "w") as f:
+                json.dump(content, f, indent=2, default=str)
+            logger.debug(f"Wrote JSON to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to write JSON to {file_path}: {e}")
+            raise
+
+
+class FigureWriter:
+    """Write matplotlib Figure objects to disk."""
+
+    def write(
+        self,
+        content: Any,
+        file_path: Path | str,
+        dpi: int = 100,
+        fmt: str = "png",
+    ) -> None:
+        """Write matplotlib figure to file.
+
+        Args:
+            content: matplotlib Figure object.
+            file_path: Path to save to (extension added based on fmt).
+            dpi: Resolution for raster formats (default 100).
+            fmt: Format to save as (default 'png'). Can also be 'pdf', 'svg', etc.
+        """
+        file_path = Path(file_path).with_suffix(f".{fmt}")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            content.savefig(file_path, dpi=dpi, bbox_inches="tight")
+            logger.debug(f"Wrote figure to {file_path}")
+            # Clean up matplotlib resource
+            try:
+                import matplotlib.pyplot as plt
+
+                plt.close(content)
+            except ImportError:
+                pass
+        except Exception as e:
+            logger.error(f"Failed to write figure to {file_path}: {e}")
+            raise
+
+
+class PickleWriter:
+    """Write Python objects using pickle."""
+
+    def write(self, content: Any, file_path: Path | str) -> None:
+        """Write object using pickle.
+
+        Args:
+            content: Python object to pickle.
+            file_path: Path to save to (will use .pkl extension).
+        """
+        import pickle
+
+        file_path = Path(file_path).with_suffix(".pkl")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(file_path, "wb") as f:
+                pickle.dump(content, f)
+            logger.debug(f"Wrote pickle to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to write pickle to {file_path}: {e}")
+            raise
+
+
+class BytesWriter:
+    """Write raw bytes to disk."""
+
+    def write(self, content: bytes, file_path: Path | str) -> None:
+        """Write bytes to file.
+
+        Args:
+            content: Bytes content to save.
+            file_path: Path to save to (will use .bin extension).
+        """
+        file_path = Path(file_path).with_suffix(".bin")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_bytes(content)
+            logger.debug(f"Wrote bytes to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to write bytes to {file_path}: {e}")
+            raise
+
+
+# Writer registry - maps content type to writer instance
+FILE_WRITERS = {
+    "text": TextWriter(),
+    "json": JsonWriter(),
+    "figure": FigureWriter(),
+    "pickle": PickleWriter(),
+    "bytes": BytesWriter(),
+}
+
+
+def get_file_writer(content_type: str) -> FileWriter:
+    """Get the appropriate writer for a content type.
+
+    Args:
+        content_type: Type of content ('text', 'json', 'figure', 'pickle', 'bytes').
+
+    Returns:
+        Writer instance for the given type.
+
+    Raises:
+        ValueError: If content type is not supported.
+    """
+    if content_type not in FILE_WRITERS:
+        raise ValueError(
+            f"Unsupported content type: {content_type}. "
+            f"Supported types: {list(FILE_WRITERS.keys())}"
+        )
+    return FILE_WRITERS[content_type]
