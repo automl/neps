@@ -1253,7 +1253,6 @@ def convert_classic_to_neps_search_space(
         elif isinstance(parameter, neps.HPOConstant):
             setattr(NEPSSpace, parameter_name, parameter.value)
         elif isinstance(parameter, neps.HPOInteger):
-            print("stone1")
             new_integer = Integer(
                 lower=parameter.lower,
                 upper=parameter.upper,

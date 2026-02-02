@@ -412,7 +412,7 @@ class DefaultWorker:
         if log_status:
             # Log current budget status
             budget_info_parts = []
-            if self.settings.evaluations_to_spend is not None:
+            if self.settings.evaluations_to_spend:
                 eval_percentage = int(
                     (
                         worker_resource_usage.evaluations
@@ -426,7 +426,7 @@ class DefaultWorker:
                     f"{self.settings.evaluations_to_spend}"
                     f" ({eval_percentage}%)"
                 )
-            if self.settings.fidelities_to_spend is not None:
+            if self.settings.fidelities_to_spend:
                 fidelity_percentage = int(
                     (worker_resource_usage.fidelities / self.settings.fidelities_to_spend)
                     * 100
@@ -437,7 +437,7 @@ class DefaultWorker:
                     f"{self.settings.fidelities_to_spend}"
                     f" ({fidelity_percentage}%)"
                 )
-            if self.settings.cost_to_spend is not None:
+            if self.settings.cost_to_spend:
                 cost_percentage = int(
                     (worker_resource_usage.cost / self.settings.cost_to_spend) * 100
                 )
@@ -446,7 +446,7 @@ class DefaultWorker:
                     f" {worker_resource_usage.cost}/"
                     f"{self.settings.cost_to_spend} ({cost_percentage}%)"
                 )
-            if self.settings.max_evaluation_time_total_seconds is not None:
+            if self.settings.max_evaluation_time_total_seconds:
                 time_percentage = int(
                     (
                         worker_resource_usage.time
@@ -741,6 +741,13 @@ class DefaultWorker:
             improvement_trace_path,
             best_config_path,
         )
+        if hasattr(self.optimizer, 'get_trial_artifacts'):
+            try:
+                artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
+                if artifacts is not None:
+                    self._save_optimizer_artifacts(artifacts, summary_dir)
+            except Exception as e:
+                logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
 
         while True:
             try:
