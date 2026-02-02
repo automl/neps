@@ -547,11 +547,9 @@ def kaplan_guided_scaling(
 def chinchilla_guided_scaling(
     space: SearchSpace,
     *,
-    params_estimator: Callable[[SearchSpace], int],
-    seen_datapoints_estimator: Callable[[SearchSpace], int],
-    flops_estimator: Callable[[SearchSpace], int],
-    max_evaluation_flops: int,
-    max_target_flops: int,
+    params_estimator: Callable[[SearchSpace], int] = None,
+    seen_datapoints_estimator: Callable[[SearchSpace], int] = None,
+    flops_estimator: Callable[[SearchSpace], int] = None,
     base_optimizer: Callable[..., Any] = None,
 ):
     from neps.optimizers.chinchilla_guided_scaling import Chinchilla_Guided_Scaling
@@ -563,12 +561,10 @@ def chinchilla_guided_scaling(
         )
     return Chinchilla_Guided_Scaling(
         space=convert_neps_to_classic_search_space(space=space),
+        base_optimizer=base_optimizer,
         flops_estimator=flops_estimator,
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,
-        max_evaluation_flops=max_evaluation_flops,
-        max_target_flops=max_target_flops,
-        base_optimizer=base_optimizer
     )
 
 def bo_guided_scaling(

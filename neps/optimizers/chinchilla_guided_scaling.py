@@ -50,16 +50,13 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
 
     def __init__(self,
                 space,
+                base_optimizer,
                 flops_estimator,
                 params_estimator,
                 seen_datapoints_estimator,
-                max_evaluation_flops,
-                max_target_flops,
-                base_optimizer,
                 ) -> None:
         
         self.base_optimizer = base_optimizer
-        self.adapt_search_space(trials=None, max_evaluation_cost=max_evaluation_flops)
         
         self._scaling_law_params: ScalingLawParameters | None = None
         self._best_candidate: dict[str, Any] | None = None
@@ -68,28 +65,9 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.params_estimator = params_estimator
         self.seen_datapoints_estimator = seen_datapoints_estimator
         self.flops_estimator = flops_estimator
+        self.space = space
 
-        super().__init__(
-            space=space,
-            base_optimizer=base_optimizer,
-            max_evaluation_flops=max_evaluation_flops,
-            max_target_flops=max_target_flops,
-            flops_estimator=flops_estimator,
-            metric_functions={},
-        )
-
-    # find the specific cut in space for running scaling law
-    def adapt_search_space(
-        self,
-        trials: Mapping[str, Trial],
-        max_evaluation_cost: int,
-    ) -> None:
-        # filter the search pipeline space to only include configurations with flops <= max_evaluation_flops
-        def constraint_func(conf: Mapping[str, Any]) -> float:
-            return max_evaluation_cost - self.flops_estimator(**conf)
-        self.base_optimizer.constraints_func = constraint_func
-
-    def extrapolate(self, trials: Mapping[str, Trial], max_target_flops: int) -> dict[str, Any] | None:
+    def extrapolate(self, trials: Mapping[str, Trial], max_target_flops,) -> dict[str, Any] | None:
         # considering estimating the flops and number of optimizable parameters is cheap
         # fit the trials to a scaling law and extrapolate to target_flop_range
         E, A, B, alpha, beta = None, None, None, None, None
@@ -114,13 +92,18 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         conf_list = copy.deepcopy(self.base_optimizer.configs_list)
         best_candidate = None
         min_loss = float("inf")
-        conf_list = [conf for conf in conf_list if self.flops_estimator(**conf) <= max_target_flops]
+        conf_list = [
+            conf for conf in conf_list if (
+                conf.update(self.space.constants), flops_estimator(**conf)
+                )[1] <= max_target_flops
+        ]
         for conf in conf_list:
-            n, d = self.params_estimator(**conf), self.seen_datapoints_estimator(**conf)
+            conf.update(self.space.constants)
+            n, d = params_estimator(**conf), seen_datapoints_estimator(**conf)
             estimated_loss = E + A / (n ** alpha) + B / (d ** beta)
             if estimated_loss < min_loss:
                 min_loss = estimated_loss
-                best_candidate = conf
+                best_candidate = (conf, n, d, estimated_loss)
         
         # for artifact generation
         self._best_candidate = best_candidate
@@ -687,9 +670,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         # Highlight best candidate if available
         if self._best_candidate is not None:
             try:
-                best_n = self.params_estimator(**self._best_candidate)
-                best_d = self.seen_datapoints_estimator(**self._best_candidate)
-                best_loss = self._best_loss
+                _, best_n, best_d, best_loss = self._best_candidate
                 ax.scatter([best_n], [best_d], [best_loss], c='red', marker='*', s=500, 
                           alpha=1.0, edgecolors='black', linewidth=2, label='Best candidate')
             except Exception as e:
