@@ -557,7 +557,7 @@ def chinchilla_guided_scaling(
         base_optimizer = grid_search(
             space,
             ignore_fidelity=True,
-            size_per_numerical_dimension=10,
+            size_per_numerical_dimension=5,
         )
     return Chinchilla_Guided_Scaling(
         space=convert_neps_to_classic_search_space(space=space),
@@ -686,7 +686,7 @@ def grid_search(
     pipeline_space: SearchSpace | PipelineSpace,
     *,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
-    size_per_numerical_dimension: int = 5,
+    size_per_numerical_dimension: int | dict[str, int] = 5,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -698,7 +698,9 @@ def grid_search(
             Setting this to True will make a grid over the fidelity like any other
             parameter.
         size_per_numerical_dimension: The number of points to use per numerical
-            dimension when discretizing the space.
+            dimension when discretizing the space. Can be an integer (applies to all
+            numerical hyperparameters) or a dictionary mapping parameter names to
+            their grid sizes.
     """
     from neps.optimizers.utils.grid import make_grid
 
@@ -743,7 +745,7 @@ def neps_grid_search(
     pipeline_space: PipelineSpace,
     *,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
-    size_per_numerical_dimension: int = 5,
+    size_per_numerical_dimension: int | dict[str, int] = 5,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -755,7 +757,9 @@ def neps_grid_search(
             Setting this to True will make a grid over the fidelity like any other
             parameter.
         size_per_numerical_dimension: The number of points to use per numerical
-            dimension when discretizing the space.
+            dimension when discretizing the space. Can be an integer (applies to all
+            numerical hyperparameters) or a dictionary mapping parameter names to
+            their grid sizes.
     """
     from neps.optimizers.utils.grid import make_grid
 

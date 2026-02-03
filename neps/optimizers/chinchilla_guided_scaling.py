@@ -94,12 +94,12 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         min_loss = float("inf")
         conf_list = [
             conf for conf in conf_list if (
-                conf.update(self.space.constants), flops_estimator(**conf)
+                conf.update(self.space.constants), self.flops_estimator(**conf)
                 )[1] <= max_target_flops
         ]
         for conf in conf_list:
             conf.update(self.space.constants)
-            n, d = params_estimator(**conf), seen_datapoints_estimator(**conf)
+            n, d = self.params_estimator(**conf), self.seen_datapoints_estimator(**conf)
             estimated_loss = E + A / (n ** alpha) + B / (d ** beta)
             if estimated_loss < min_loss:
                 min_loss = estimated_loss

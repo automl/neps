@@ -21,7 +21,7 @@ from neps.space.neps_spaces.sampling import RandomSampler
 def make_grid(  # noqa: PLR0912, PLR0915, C901
     space: SearchSpace | PipelineSpace,
     *,
-    size_per_numerical_hp: int | dict[str, int] = 10,
+    size_per_numerical_hp: int | dict[str, int] = 5,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
@@ -52,7 +52,33 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
     else:
         size_mapping = size_per_numerical_hp
         default_size = 10
-    
+        
+        # Validate that all keys in size_mapping correspond to numerical parameters
+        if isinstance(space, SearchSpace):
+            numerical_params = {
+                name for name, hp in space.items()
+                if isinstance(hp, (HPOInteger, HPOFloat))
+            }
+            invalid_keys = set(size_mapping.keys()) - numerical_params
+            if invalid_keys:
+                raise ValueError(
+                    f"size_per_numerical_hp dictionary contains invalid keys: {invalid_keys}. "
+                    f"Only numerical parameters (HPOInteger, HPOFloat) are allowed. "
+                    f"Valid numerical parameters are: {numerical_params}"
+                )
+        elif isinstance(space, PipelineSpace):
+            numerical_params = {
+                name for name, hp in space.get_attrs().items()
+                if isinstance(hp, (Integer, Float))
+            }
+            invalid_keys = set(size_mapping.keys()) - numerical_params
+            if invalid_keys:
+                raise ValueError(
+                    f"size_per_numerical_hp dictionary contains invalid keys: {invalid_keys}. "
+                    f"Only numerical parameters (Integer, Float) are allowed. "
+                    f"Valid numerical parameters are: {numerical_params}"
+                )
+        
     if isinstance(space, SearchSpace):
         for name, hp in space.items():
             match hp:
@@ -91,7 +117,8 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
         keys = list(space.keys())
         values = product(*param_ranges.values())
-        return [dict(zip(keys, p, strict=False)) for p in values]
+        configs = [dict(zip(keys, p, strict=False)) for p in values]
+        return configs
     if isinstance(space, PipelineSpace):
         fid_ranges: dict[str, list[float]] = {}
         for name, hp in space.get_attrs().items():
