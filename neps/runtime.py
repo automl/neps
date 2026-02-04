@@ -555,32 +555,6 @@ class DefaultWorker:
                 except Exception as e:
                     logger.error(f"Failed to write best config: {e}")
 
-    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
-        """Save optimizer artifacts to summary directory.
-        
-        Args:
-            artifacts: List of Artifact objects to persist.
-            summary_dir: Summary directory where artifacts will be saved.
-        """
-        logger.info("saving artifacts...")
-        if artifacts is None:
-            logger.warning("No artifacts found to save.")
-            return
-
-        for artifact in artifacts:
-            try:
-                # Map ArtifactType enum to string for writer lookup
-                content_type = artifact.artifact_type.value
-                writer = get_file_writer(content_type)
-                file_path = summary_dir / artifact.name
-                writer.write(artifact.content, file_path)
-            except Exception as e:
-                logger.error(
-                    f"Failed to save artifact '{artifact.name}' "
-                    f"(type={artifact.artifact_type.value}): {e}"
-                )
-                # Don't raise - allow optimization to continue even if artifact save fails
-                continue
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -745,7 +719,7 @@ class DefaultWorker:
             try:
                 artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
                 if artifacts is not None:
-                    self._save_optimizer_artifacts(artifacts, summary_dir)
+                    _save_optimizer_artifacts(artifacts, summary_dir)
             except Exception as e:
                 logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
 
@@ -886,7 +860,7 @@ class DefaultWorker:
                     try:
                         artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
                         if artifacts is not None:
-                            self._save_optimizer_artifacts(artifacts, summary_dir)
+                            _save_optimizer_artifacts(artifacts, summary_dir)
                     except Exception as e:
                         logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
                 
@@ -981,6 +955,32 @@ class DefaultWorker:
             best_config_path=best_config_path,
         )
 
+def _save_optimizer_artifacts(artifacts: list, summary_dir: Path) -> None:
+    """Save optimizer artifacts to summary directory.
+    
+    Args:
+        artifacts: List of Artifact objects to persist.
+        summary_dir: Summary directory where artifacts will be saved.
+    """
+    logger.info("saving artifacts...")
+    if artifacts is None:
+        logger.warning("No artifacts found to save.")
+        return
+
+    for artifact in artifacts:
+        try:
+            # Map ArtifactType enum to string for writer lookup
+            content_type = artifact.artifact_type.value
+            writer = get_file_writer(content_type)
+            file_path = summary_dir / artifact.name
+            writer.write(artifact.content, file_path)
+        except Exception as e:
+            logger.error(
+                f"Failed to save artifact '{artifact.name}' "
+                f"(type={artifact.artifact_type.value}): {e}"
+            )
+            # Don't raise - allow optimization to continue even if artifact save fails
+            continue
 
 def _save_results(
     user_result: dict,

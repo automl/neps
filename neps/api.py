@@ -13,7 +13,7 @@ import yaml
 
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
-from neps.runtime import _launch_runtime, _save_results
+from neps.runtime import _launch_runtime, _save_results, _save_optimizer_artifacts
 from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
@@ -1159,14 +1159,19 @@ def extrapolate(
         )
         return None
 
-    # Call extrapolate with max_target_flops
     try:
         best_config = optimizer_ask.extrapolate(trials=trials, max_target_flops=max_target_flops)
+        print(f"Best configuration at {max_target_flops} FLOPs: {best_config}")
+        if hasattr(optimizer_ask, 'get_trial_artifacts'):
+            try:
+                artifacts = optimizer_ask.get_trial_artifacts(trials)
+                if artifacts is not None:
+                    _save_optimizer_artifacts(artifacts, Path(root_directory) / "summary")
+            except Exception as e:
+                logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
         return best_config
     except Exception as e:
-        logger.error(f"Extrapolation failed: {e}")
-        raise RuntimeError(f"Failed to extrapolate: {e}") from e
-
+        raise e
 
 __all__ = [
     "create_config",

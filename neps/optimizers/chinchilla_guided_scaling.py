@@ -5,7 +5,6 @@ import itertools
 from collections.abc import (
     Mapping,
     Sequence,
-    Callable
 )
 from dataclasses import dataclass
 
@@ -20,6 +19,8 @@ from scipy.optimize import minimize
 
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
+
 from neps.optimizers.optimizer import Artifact, ArtifactType
 from neps.optimizers.scaling_law_guided import ScalingLawGuidedOptimizer
 from neps.optimizers.grid_search import GridSearch
@@ -72,7 +73,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         # fit the trials to a scaling law and extrapolate to target_flop_range
         E, A, B, alpha, beta = None, None, None, None, None
         try:
-            E, A, B, alpha, beta = self.get_power_law_curvature(trials)
+            E, A, B, alpha, beta = Chinchilla_Guided_Scaling.get_power_law_curvature(trials)
         except Exception as e:
             logger.error(f"Could not extrapolate scaling law: {e}")
             return None
@@ -85,7 +86,9 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             alpha=alpha,
             beta=beta,
         )
+        print(f"Fitted scaling law parameters: E={E}, A={A}, B={B}, alpha={alpha}, beta={beta}")
         if not isinstance(self.base_optimizer, GridSearch):
+            logger.error("Currently only GridSearch optimizer is supported for extrapolation.")
             return None
         # Find the best fit to the scaling law within the constrained search space
         # TODO: support other optimizers
@@ -111,7 +114,24 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         
         return best_candidate
 
-    def get_power_law_curvature(self, trials: Mapping[str, Trial]) -> tuple[float, float, float, float, float]:
+    @classmethod
+    def _compute_pareto_front(cls, trial_data: list[tuple]) -> list[tuple]:
+        # trial_data: (n, d, loss, flops)
+        pareto = []
+        for i, (n_i, d_i, l_i, f_i) in enumerate(trial_data):
+            dominated = False
+            for j, (_, _, l_j, f_j) in enumerate(trial_data):
+                if i == j:
+                    continue
+                if (f_j <= f_i and l_j <= l_i) and (f_j < f_i or l_j < l_i):
+                    dominated = True
+                    break
+            if not dominated:
+                pareto.append((n_i, d_i, l_i, f_i))
+        return pareto
+
+    @classmethod
+    def get_power_law_curvature(cls, trials: Mapping[str, Trial]) -> tuple[float, float, float, float, float]:
         # L = E + A / N^alpha + B / D^beta
         # where A = e^a and B = e^b
 
@@ -164,8 +184,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.warning(f"Trial {trial.id} has no extra data. Skipping.")
                 continue
             try:
-                n_list.append(trial.report.extra[self.N_PARAM_KEY])
-                d_list.append(trial.report.extra[self.N_DATA_KEY])
+                n_list.append(trial.report.extra[cls.N_PARAM_KEY])
+                d_list.append(trial.report.extra[cls.N_DATA_KEY])
                 l_list.append(float(trial.report.objective_to_minimize))
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
@@ -228,9 +248,9 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         A = np.exp(np.clip(a, -10, 10))
         B = np.exp(np.clip(b, -10, 10))
         return E, A, B, alpha, beta
-        
-    
-    def _plot_training_curve_envelope(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+     
+    @classmethod
+    def _plot_training_curve_envelope(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate training curves showing loss vs FLOPs for different parameter counts (no disk I/O).
         
         Creates an envelope plot with curves colored by parameter count, similar to
@@ -250,8 +270,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.warning(f"Trial {trial.id} has no extra data. Skipping.")
                 continue
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
-                n_params = trial.report.extra[self.N_PARAM_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
                 obj = float(trial.report.objective_to_minimize)
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
@@ -325,7 +345,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         plt.tight_layout()
         return fig
     
-    def _plot_flops_per_objective(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+    @classmethod
+    def _plot_flops_per_objective(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate FLOPs vs objective visualization (no disk I/O).
         
         Args:
@@ -342,8 +363,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
-                n_params = trial.report.extra[self.N_PARAM_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -363,29 +384,31 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
 
         # x: FLOPs, y: objective
         n_param = [r[0] for r in rows]
-        xs = [r[2] for r in rows]
-        ys = [float(r[1]) for r in rows]
+        xs = [np.log(r[2]) for r in rows]  # natural log of FLOPs
+        ys = [np.log(float(r[1])) for r in rows]  # natural log of objective
         
         fig, ax = plt.subplots(figsize=(6, 4))
         
         # Normalize color scale based on actual min/max of parameters
-        from matplotlib.colors import Normalize
         norm = Normalize(vmin=min(n_param), vmax=max(n_param))
         
         sc = ax.scatter(xs, ys, c=n_param, cmap='inferno', marker='o', alpha=0.9, norm=norm)
-        ax.set_xlabel("FLOPs")
-        ax.set_ylabel("Objective to minimize")
+        ax.set_xlabel("ln(FLOPs)")
+        ax.set_ylabel("ln(Objective to minimize)")
         ax.set_title("Objective vs FLOPs")
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
         plt.colorbar(sc, ax=ax, label="Parameters")
         return fig
 
-    def _plot_pareto_front(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+    @classmethod
+    def _plot_pareto_front(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate Pareto front visualization (non-dominated points).
         
         Plots only the Pareto optimal points where no other point has both
-        lower FLOPs and lower objective (loss).
+        lower FLOPs and lower objective (loss). Fits a robust linear trend line
+        to the Pareto frontier, with higher weight given to points at the end
+        of the curve to better capture the asymptotic behavior.
         
         Args:
             trials: All evaluated trials.
@@ -401,58 +424,61 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
-                n_params = trial.report.extra[self.N_PARAM_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_data = trial.report.extra[cls.N_DATA_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
             except Exception as e:
                 logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
                 continue
-            rows.append((n_params, float(obj), flops))
+            rows.append((n_params, n_data, float(obj), flops,))
 
         if not rows:
             logger.warning("No evaluated trials with objectives/flops to plot.")
             return None
 
-        # Compute Pareto front: points where no other point dominates
-        # Point A dominates B if: A.flops <= B.flops AND A.objective <= B.objective
-        # with at least one strict inequality
-        pareto_front = []
-        for i, (n_param_i, obj_i, flops_i) in enumerate(rows):
-            is_dominated = False
-            for j, (_, obj_j, flops_j) in enumerate(rows):
-                if i != j:
-                    # Check if point j dominates point i
-                    if flops_j <= flops_i and obj_j <= obj_i:
-                        if flops_j < flops_i or obj_j < obj_i:  # At least one strict inequality
-                            is_dominated = True
-                            break
-            if not is_dominated:
-                pareto_front.append((n_param_i, obj_i, flops_i))
+        # Compute Pareto front using unified helper function
+        pareto_front = cls._compute_pareto_front(rows)
 
         if not pareto_front:
             logger.warning("No Pareto front points found.")
             return None
 
         # Sort by FLOPs for better visualization
-        pareto_front.sort(key=lambda r: r[2])
+        pareto_front.sort(key=lambda r: r[3])
         
         # Extract coordinates
         n_params_front = [r[0] for r in pareto_front]
-        objs_front = [r[1] for r in pareto_front]
-        flops_front = [r[2] for r in pareto_front]
+        n_data_front = [r[1] for r in pareto_front]
+        objs_front = [r[2] for r in pareto_front]
+        flops_front = [r[3] for r in pareto_front]
         
         # Extract all points for context (semi-transparent)
         n_params_all = [r[0] for r in rows]
-        objs_all = [r[1] for r in rows]
-        flops_all = [r[2] for r in rows]
+        objs_all = [r[2] for r in rows]
+        flops_all = [r[3] for r in rows]
         
-        fig, ax = plt.subplots(figsize=(8, 5))
+        # Fit linear trend to Pareto front with emphasis on end of curve
+        # Use exponential weights: later points get higher weight
+        n_points = len(flops_front)
+        weights = np.exp(np.linspace(0, 2, n_points))  # Exponential weights favor end points
+        weights = weights / np.sum(weights)  # Normalize
+        
+        try:
+            # Fit linear model: obj = slope * flops + intercept
+            coeffs = np.polyfit(flops_front, objs_front, 1, w=weights)
+            slope, intercept = coeffs[0], coeffs[1]
+            fit_line = np.poly1d(coeffs)
+            fitted_objs = fit_line(flops_front)
+        except Exception as e:
+            logger.warning(f"Could not fit linear trend to Pareto front: {e}")
+            slope, intercept, fitted_objs = None, None, None
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
         
         # Plot all points in light gray (context)
-        from matplotlib.colors import Normalize
-        norm = Normalize(vmin=min(n_params_all), vmax=max(n_params_all))
         ax.scatter(flops_all, objs_all, c=n_params_all, cmap='gray', marker='o', 
                   alpha=0.2, s=30, label='All points')
         
@@ -460,21 +486,34 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         norm_front = Normalize(vmin=min(n_params_front), vmax=max(n_params_front))
         sc = ax.scatter(flops_front, objs_front, c=n_params_front, cmap='inferno', 
                        marker='D', s=100, alpha=1.0, edgecolors='black', linewidth=1.5,
-                       norm=norm_front, label='Pareto front')
+                       norm=norm_front, label='Pareto front (actual)')
         
         # Connect Pareto front points with a line
         ax.plot(flops_front, objs_front, 'k-', alpha=0.3, linewidth=1)
+        
+        # Plot fitted linear trend if available
+        if fitted_objs is not None and slope is not None:
+            ax.plot(flops_front, fitted_objs, 'r--', alpha=0.7, linewidth=2.5, 
+                   label=f'Linear fit (slope={slope:.4e})')
         
         ax.set_xlabel("FLOPs", fontsize=12)
         ax.set_ylabel("Objective to minimize", fontsize=12)
         ax.set_title(f"Pareto Front ({len(pareto_front)}/{len(rows)} points)", fontsize=13)
         ax.grid(True, linestyle="--", alpha=0.3)
         ax.legend(loc='best')
-        plt.tight_layout()
+        
+        # Add text annotation below the plot with line equation
+        if slope is not None and intercept is not None:
+            line_eq = f"Linear fit: y = {slope:.4e}·x + {intercept:.4f}"
+            fig.text(0.5, 0.02, line_eq, ha='center', fontsize=10, 
+                    bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+        plt.tight_layout(rect=[0, 0.05, 1, 1])
         plt.colorbar(sc, ax=ax, label="Parameters")
         return fig
 
-    def _plot_params_vs_loss(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+    @classmethod
+    def _plot_params_vs_loss(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate params vs loss visualization colored by time (no disk I/O).
         
         Args:
@@ -491,7 +530,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -523,7 +562,65 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         plt.colorbar(sc, ax=ax, label="Time")
         return fig
 
-    def _plot_accumulated_flops_per_objective(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+    @classmethod
+    def _plot_data_vs_loss(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
+        """Generate data points vs loss visualization colored by FLOPs (no disk I/O).
+        
+        Args:
+            trials: All evaluated trials.
+            
+        Returns:
+            matplotlib Figure or None if insufficient data.
+        """
+        rows = []
+        for trial in trials.values():
+            if trial.report is None or trial.report.objective_to_minimize is None:
+                continue
+            if trial.report.extra is None:
+                continue
+            obj = trial.report.objective_to_minimize
+            try:
+                n_data = trial.report.extra[cls.N_DATA_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
+            except KeyError as e:
+                logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
+                continue
+            except Exception as e:
+                logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
+                continue
+            rows.append((n_data, float(obj), flops))
+
+        if not rows:
+            logger.warning("No evaluated trials with data/loss to plot.")
+            return None
+
+        # detect number of objective dims
+        first_obj = rows[0][1]
+        if isinstance(first_obj, Sequence) and not isinstance(first_obj, (str, bytes)):
+            raise NotImplemented("Multi-objective Scaling law not implemented yet.")
+
+        # x: data points, y: objective
+        n_data = [r[0] for r in rows]
+        xs = [r[0] for r in rows]
+        ys = [float(r[1]) for r in rows]
+        flops = [r[2] for r in rows]
+        
+        fig, ax = plt.subplots(figsize=(6, 4))
+        
+        # Normalize color scale based on FLOPs
+        norm = Normalize(vmin=min(flops), vmax=max(flops))
+        
+        sc = ax.scatter(xs, ys, c=flops, cmap='plasma', marker='o', alpha=0.9, norm=norm)
+        ax.set_xlabel("Number of Data Points")
+        ax.set_ylabel("Objective to minimize")
+        ax.set_title("Objective vs Data Points")
+        ax.grid(True, linestyle="--", alpha=0.4)
+        plt.tight_layout()
+        plt.colorbar(sc, ax=ax, label="FLOPs")
+        return fig
+
+    @classmethod
+    def _plot_accumulated_flops_per_objective(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate accumulated FLOPs vs objective visualization (no disk I/O).
         
         Args:
@@ -541,7 +638,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -572,8 +669,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         plt.tight_layout()
         return fig
 
-
-    def _plot_flop_vs_param(self, trials: Mapping[str, Trial]) -> plt.Figure | None:
+    @classmethod
+    def _plot_flop_vs_param(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate FLOPs vs Params visualization (no disk I/O).
 
         Args:
@@ -589,8 +686,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             if trial.report.extra is None:
                 continue
             try:
-                flops = trial.report.extra[self.FLOPS_KEY]
-                n_params = trial.report.extra[self.N_PARAM_KEY]
+                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -637,7 +734,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             if trial.report.extra is None:
                 continue
             try:
-                n_params = trial.report.extra[self.N_PARAM_KEY]
+                n_params = trial.report.extra[self.N_PARAM_KEY] * 1_000_000
                 n_data = trial.report.extra[self.N_DATA_KEY]
                 loss = float(trial.report.objective_to_minimize)
             except KeyError as e:
@@ -703,7 +800,23 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             trials=trials,
         )
     
-    def get_trial_artifacts(self, trials: Mapping[str, Trial] | None = None) -> list[Artifact] | None:
+    # def get_trial_artifacts(self, trials: Mapping[str, Trial] | None = None) -> list[Artifact] | None:
+    #     artifacts = self.__class__.get_trial_artifacts(trials)
+    #     scaling_params = self._scaling_law_params
+    #     if scaling_params is not None:
+    #         try:
+    #             fig_scaling = self._plot_scaling_trend(trials, scaling_params)
+    #             if fig_scaling is not None:
+    #                 artifacts.append(
+    #                     Artifact("scaling_law_trend", fig_scaling, ArtifactType.FIGURE)
+    #                 )
+    #         except Exception as e:
+    #             logger.warning(f"Failed to generate scaling law trend plot: {e}")
+
+    #     return artifacts
+    
+    @classmethod
+    def get_trial_artifacts(cls, trials: Mapping[str, Trial] | None = None) -> list[Artifact] | None:
         """Return scaling law artifacts for runtime persistence.
 
         Consolidates all artifacts: scaling law visualization plots
@@ -717,24 +830,9 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         artifacts = []
         
-        # Use cached scaling law parameters if available, otherwise skip 3D plot
-        scaling_params = self._scaling_law_params
-        
-        # Generate plot figures if trials data is available
-        if trials is not None:
-            # Plot: Scaling law trend (3D visualization)
-            if scaling_params is not None:
-                try:
-                    fig_scaling = self._plot_scaling_trend(trials, scaling_params)
-                    if fig_scaling is not None:
-                        artifacts.append(
-                            Artifact("scaling_law_trend", fig_scaling, ArtifactType.FIGURE)
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to generate scaling law trend plot: {e}")
-            
+        if trials is not None:            
             try:
-                fig_accumulated = self._plot_accumulated_flops_per_objective(trials)
+                fig_accumulated = cls._plot_accumulated_flops_per_objective(trials)
                 if fig_accumulated is not None:
                     artifacts.append(
                         Artifact("accumulated_flops_objective", fig_accumulated, ArtifactType.FIGURE)
@@ -743,7 +841,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.warning(f"Failed to generate accumulated FLOPs plot: {e}")
             
             try:
-                fig_flops_params = self._plot_flop_vs_param(trials)
+                fig_flops_params = cls._plot_flop_vs_param(trials)
                 if fig_flops_params is not None:
                     artifacts.append(
                         Artifact("flops_vs_params", fig_flops_params, ArtifactType.FIGURE)
@@ -752,7 +850,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.warning(f"Failed to generate FLOPs vs Params plot: {e}")
             
             try:
-                fig_flops_obj = self._plot_flops_per_objective(trials)
+                fig_flops_obj = cls._plot_flops_per_objective(trials)
                 if fig_flops_obj is not None:
                     artifacts.append(
                         Artifact("flops_per_objective", fig_flops_obj, ArtifactType.FIGURE)
@@ -761,7 +859,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 logger.warning(f"Failed to generate FLOPs per objective plot: {e}")
             
             try:
-                fig_pareto = self._plot_pareto_front(trials)
+                fig_pareto = cls._plot_pareto_front(trials)
                 if fig_pareto is not None:
                     artifacts.append(
                         Artifact("pareto_front", fig_pareto, ArtifactType.FIGURE)
@@ -771,7 +869,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             
             # Plot: Params vs loss
             try:
-                fig_params_loss = self._plot_params_vs_loss(trials)
+                fig_params_loss = cls._plot_params_vs_loss(trials)
                 if fig_params_loss is not None:
                     artifacts.append(
                         Artifact("params_vs_loss", fig_params_loss, ArtifactType.FIGURE)
@@ -779,9 +877,19 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             except Exception as e:
                 logger.warning(f"Failed to generate params vs loss plot: {e}")
             
+            # Plot: Data vs loss
+            try:
+                fig_data_loss = cls._plot_data_vs_loss(trials)
+                if fig_data_loss is not None:
+                    artifacts.append(
+                        Artifact("data_vs_loss", fig_data_loss, ArtifactType.FIGURE)
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate data vs loss plot: {e}")
+            
             # Plot: Training curve envelope
             try:
-                fig_envelope = self._plot_training_curve_envelope(trials)
+                fig_envelope = cls._plot_training_curve_envelope(trials)
                 if fig_envelope is not None:
                     artifacts.append(
                         Artifact("training_curve_envelope", fig_envelope, ArtifactType.FIGURE)
