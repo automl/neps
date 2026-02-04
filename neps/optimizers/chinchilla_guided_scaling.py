@@ -384,8 +384,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
 
         # x: FLOPs, y: objective
         n_param = [r[0] for r in rows]
-        xs = [np.log(r[2]) for r in rows]  # natural log of FLOPs
-        ys = [np.log(float(r[1])) for r in rows]  # natural log of objective
+        xs = [r[2] for r in rows]  # natural log of FLOPs
+        ys = [float(r[1]) for r in rows]  # natural log of objective
         
         fig, ax = plt.subplots(figsize=(6, 4))
         
@@ -393,9 +393,11 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         norm = Normalize(vmin=min(n_param), vmax=max(n_param))
         
         sc = ax.scatter(xs, ys, c=n_param, cmap='inferno', marker='o', alpha=0.9, norm=norm)
-        ax.set_xlabel("ln(FLOPs)")
-        ax.set_ylabel("ln(Objective to minimize)")
-        ax.set_title("Objective vs FLOPs")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel("FLOPs")
+        ax.set_ylabel("Objective to minimize")
+        ax.set_title("Objective vs FLOPs (log-log scale)")
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
         plt.colorbar(sc, ax=ax, label="Parameters")
@@ -403,12 +405,12 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
 
     @classmethod
     def _plot_pareto_front(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
-        """Generate Pareto front visualization (non-dominated points).
+        """Generate Pareto front visualization (non-dominated points) in log-log scale.
         
         Plots only the Pareto optimal points where no other point has both
-        lower FLOPs and lower objective (loss). Fits a robust linear trend line
-        to the Pareto frontier, with higher weight given to points at the end
-        of the curve to better capture the asymptotic behavior.
+        lower FLOPs and lower objective (loss) in log-log space. Fits a robust linear 
+        trend line to the log-scaled Pareto frontier, with higher weight given to 
+        points at the end of the curve to better capture the asymptotic behavior.
         
         Args:
             trials: All evaluated trials.
@@ -460,18 +462,24 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         objs_all = [r[2] for r in rows]
         flops_all = [r[3] for r in rows]
         
-        # Fit linear trend to Pareto front with emphasis on end of curve
-        # Use exponential weights: later points get higher weight
-        n_points = len(flops_front)
-        weights = np.exp(np.linspace(0, 2, n_points))  # Exponential weights favor end points
+        # Convert to log scale for fitting
+        log_flops_front = np.log(flops_front)
+        log_objs_front = np.log(objs_front)
+        
+        # Fit linear trend to log-scaled data with strong emphasis on end of curve
+        # Use exponential weights: later points get much higher weight, early points treated as outliers
+        n_points = len(log_flops_front)
+        # Exponential weighting with higher range (0, 4) treats early FLOPs as outliers
+        weights = np.exp(np.linspace(0, 4, n_points))  # Exponential weights strongly favor end points
         weights = weights / np.sum(weights)  # Normalize
         
         try:
-            # Fit linear model: obj = slope * flops + intercept
-            coeffs = np.polyfit(flops_front, objs_front, 1, w=weights)
+            # Fit linear model in log space: log(obj) = slope * log(flops) + intercept
+            coeffs = np.polyfit(log_flops_front, log_objs_front, 1, w=weights)
             slope, intercept = coeffs[0], coeffs[1]
             fit_line = np.poly1d(coeffs)
-            fitted_objs = fit_line(flops_front)
+            fitted_log_objs = fit_line(log_flops_front)
+            fitted_objs = np.exp(fitted_log_objs)
         except Exception as e:
             logger.warning(f"Could not fit linear trend to Pareto front: {e}")
             slope, intercept, fitted_objs = None, None, None
@@ -494,18 +502,25 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         # Plot fitted linear trend if available
         if fitted_objs is not None and slope is not None:
             ax.plot(flops_front, fitted_objs, 'r--', alpha=0.7, linewidth=2.5, 
-                   label=f'Linear fit (slope={slope:.4e})')
+                   label=f'Linear fit (log scale, slope={slope:.4f})')
+        
+        # Set log scale for both axes
+        ax.set_xscale('log')
+        ax.set_yscale('log')
         
         ax.set_xlabel("FLOPs", fontsize=12)
         ax.set_ylabel("Objective to minimize", fontsize=12)
-        ax.set_title(f"Pareto Front ({len(pareto_front)}/{len(rows)} points)", fontsize=13)
-        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.set_title(f"Pareto Front - Log-Log Scale ({len(pareto_front)}/{len(rows)} points)", fontsize=13)
+        ax.grid(True, linestyle="--", alpha=0.3, which='both')
         ax.legend(loc='best')
         
         # Add text annotation below the plot with line equation
         if slope is not None and intercept is not None:
-            line_eq = f"Linear fit: y = {slope:.4e}·x + {intercept:.4f}"
-            fig.text(0.5, 0.02, line_eq, ha='center', fontsize=10, 
+            # In log space: log(obj) = slope * log(flops) + intercept
+            # Which means: obj = exp(intercept) * flops^slope
+            scaler = np.exp(intercept)
+            line_eq = f"Log-linear fit: log(y) = {slope:.4f}·log(x) + {intercept:.4f}  →  y = {scaler:.4e}·x^{slope:.4f}"
+            fig.text(0.5, 0.02, line_eq, ha='center', fontsize=9, 
                     bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
         
         plt.tight_layout(rect=[0, 0.05, 1, 1])
