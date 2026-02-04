@@ -1130,7 +1130,7 @@ def extrapolate(
     # Load space and trials
     with state._trial_lock.lock():
         space = state.lock_and_get_search_space()
-        trials = state._trial_repo.latest()
+        trials = state._trial_repo.latest(refresh_cache=True)
 
     if space is None:
         raise RuntimeError("Could not load search space from neps state.")

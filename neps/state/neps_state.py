@@ -144,9 +144,9 @@ class TrialRepo:
 
         return trials
 
-    def get_valid_evaluated_trials(self) -> dict[str, Trial]:
+    def get_valid_evaluated_trials(self, refresh_cache: bool = False) -> dict[str, Trial]:
         """Get all trials that have a valid evaluation report."""
-        trials = self.latest()
+        trials = self.latest(refresh_cache=refresh_cache)
         return {
             trial_id: trial
             for trial_id, trial in trials.items()
@@ -156,9 +156,9 @@ class TrialRepo:
             and not np.isnan(trial.report.objective_to_minimize)
         }
 
-    def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:
+    def latest(self, *, create_cache_if_missing: bool = True, refresh_cache: bool = False) -> dict[str, Trial]:
         """Get the latest trials from the cache."""
-        if not self.cache_path.exists():
+        if not self.cache_path.exists() or refresh_cache:
             if not create_cache_if_missing:
                 return {}
             # If we end up with no cache but there are trials on disk, we need to read in.
@@ -172,7 +172,7 @@ class TrialRepo:
                 with atomic_write(self.cache_path, "wb") as f:
                     f.write(pickle_bytes)
 
-            return {}
+            return trials
 
         return self._read_pkl_and_maybe_consolidate()
 

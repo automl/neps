@@ -16,6 +16,7 @@ from typing import (
 
 import numpy as np
 from scipy.optimize import minimize
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 
 import matplotlib.pyplot as plt
@@ -69,11 +70,19 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.space = space
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flops,) -> dict[str, Any] | None:
+        return None
+
         # considering estimating the flops and number of optimizable parameters is cheap
         # fit the trials to a scaling law and extrapolate to target_flop_range
         E, A, B, alpha, beta = None, None, None, None, None
         try:
-            E, A, B, alpha, beta = Chinchilla_Guided_Scaling.get_power_law_curvature(trials)
+            # Call get_power_law_curvature with a 10-second timeout
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(Chinchilla_Guided_Scaling.get_power_law_curvature, trials)
+                E, A, B, alpha, beta = future.result(timeout=10)
+        except TimeoutError:
+            logger.error("Scaling law fitting timed out after 10 seconds")
+            return None
         except Exception as e:
             logger.error(f"Could not extrapolate scaling law: {e}")
             return None
@@ -87,10 +96,10 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
             beta=beta,
         )
         print(f"Fitted scaling law parameters: E={E}, A={A}, B={B}, alpha={alpha}, beta={beta}")
-        if not isinstance(self.base_optimizer, GridSearch):
-            logger.error("Currently only GridSearch optimizer is supported for extrapolation.")
-            return None
-        # Find the best fit to the scaling law within the constrained search space
+        # if not isinstance(self.base_optimizer, GridSearch):
+        #     logger.error("Currently only GridSearch optimizer is supported for extrapolation.")
+        #     return None
+        # Find the best fit to the scaling law within the constrwhy ained search space
         # TODO: support other optimizers
         conf_list = copy.deepcopy(self.base_optimizer.configs_list)
         best_candidate = None
@@ -178,7 +187,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
 
         l_list, n_list, d_list = [], [], []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 logger.warning(f"Trial {trial.id} has no extra data. Skipping.")
@@ -264,7 +273,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 logger.warning(f"Trial {trial.id} has no extra data. Skipping.")
@@ -357,7 +366,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -420,7 +429,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -463,8 +472,8 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         flops_all = [r[3] for r in rows]
         
         # Convert to log scale for fitting
-        log_flops_front = np.log(flops_front)
-        log_objs_front = np.log(objs_front)
+        log_flops_front = np.log(np.array(flops_front))
+        log_objs_front = np.log(np.array(objs_front))
         
         # Fit linear trend to log-scaled data with strong emphasis on end of curve
         # Use exponential weights: later points get much higher weight, early points treated as outliers
@@ -474,12 +483,26 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         weights = weights / np.sum(weights)  # Normalize
         
         try:
+            # Validate data before fitting
+            if not np.all(np.isfinite(log_flops_front)) or not np.all(np.isfinite(log_objs_front)):
+                logger.warning("Non-finite values in log-transformed data. Using unweighted fit.")
+                weights = None
+            if weights is not None and not np.all(np.isfinite(weights)):
+                logger.warning("Weights contain non-finite values. Using unweighted fit.")
+                weights = None
+            
             # Fit linear model in log space: log(obj) = slope * log(flops) + intercept
             coeffs = np.polyfit(log_flops_front, log_objs_front, 1, w=weights)
             slope, intercept = coeffs[0], coeffs[1]
-            fit_line = np.poly1d(coeffs)
-            fitted_log_objs = fit_line(log_flops_front)
-            fitted_objs = np.exp(fitted_log_objs)
+            
+            # Validate fitted parameters
+            if not (np.isfinite(slope) and np.isfinite(intercept)):
+                logger.warning(f"Fitted parameters are non-finite: slope={slope}, intercept={intercept}")
+                slope, intercept, fitted_objs = None, None, None
+            else:
+                fit_line = np.poly1d(coeffs)
+                fitted_log_objs = fit_line(log_flops_front)
+                fitted_objs = np.exp(fitted_log_objs)
         except Exception as e:
             logger.warning(f"Could not fit linear trend to Pareto front: {e}")
             slope, intercept, fitted_objs = None, None, None
@@ -539,7 +562,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -589,7 +612,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -647,7 +670,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         rows = []
         accumulated_flops = 0
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -696,7 +719,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
@@ -744,7 +767,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         """
         rows = []
         for trial in trials.values():
-            if trial.report is None or trial.report.objective_to_minimize is None:
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
             if trial.report.extra is None:
                 continue
