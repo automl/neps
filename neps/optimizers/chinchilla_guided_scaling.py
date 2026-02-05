@@ -568,17 +568,17 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
             except Exception as e:
                 logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
                 continue
-            rows.append((trial.metadata.time_sampled, obj, flops))
+            rows.append((trial.metadata.time_sampled, obj, n_params))
 
         if not rows:
-            logger.warning("No evaluated trials with objectives/flops to plot.")
+            logger.warning("No evaluated trials with objectives/params to plot.")
             return None
 
         # detect number of objective dims
@@ -586,15 +586,16 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         if isinstance(first_obj, Sequence) and not isinstance(first_obj, (str, bytes)):
             raise NotImplemented("Multi-objective Scaling law not implemented yet.")
 
-        # x: FLOPs, y: objective
+        # x: Params, y: objective
         times = [r[0] for r in rows]
-        xs = [r[2] for r in rows]
-        ys = [float(r[1]) for r in rows]
+        xs = [r[2] for r in rows]  # n_params
+        ys = [float(r[1]) for r in rows]  # objective
         fig, ax = plt.subplots(figsize=(6, 4))
         sc = ax.scatter(xs, ys, c=times, cmap='coolwarm', marker='o', alpha=0.9)
-        ax.set_xlabel("FLOPs")
+        ax.set_xscale("log")
+        ax.set_xlabel("Parameters")
         ax.set_ylabel("Objective to minimize")
-        ax.set_title("Objective vs FLOPs (colored by Time)")
+        ax.set_title("Objective vs Parameters (colored by Time)")
         ax.grid(True, linestyle="--", alpha=0.4)
         plt.tight_layout()
         plt.colorbar(sc, ax=ax, label="Time")

@@ -1169,6 +1169,7 @@ def extrapolate(
                     _save_optimizer_artifacts(artifacts, Path(root_directory) / "summary")
             except Exception as e:
                 logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
+        post_run_csv(root_directory)
         return best_config
     except Exception as e:
         raise e
