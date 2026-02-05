@@ -172,7 +172,8 @@ class TrialRepo:
                 with atomic_write(self.cache_path, "wb") as f:
                     f.write(pickle_bytes)
 
-            return trials
+                return trials
+            return {}
 
         return self._read_pkl_and_maybe_consolidate()
 
