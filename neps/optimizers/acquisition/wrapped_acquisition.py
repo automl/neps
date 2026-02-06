@@ -57,7 +57,6 @@ class WrappedAcquisition(AcquisitionFunction):
         self.acq = acq
         self.encoder = encoder
         self.fixed_numericals = fixed_numericals
-        self.fixed_numericals = fixed_numericals
 
     @concatenate_pending_points  # type: ignore
     @t_batch_mode_transform()  # type: ignore
