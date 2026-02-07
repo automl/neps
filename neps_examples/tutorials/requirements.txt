@@ -1,0 +1,4 @@
+neural-pipeline-search>=0.15.0
+numpy>=2.0
+pandas>=2.0
+matplotlib>=3.0
