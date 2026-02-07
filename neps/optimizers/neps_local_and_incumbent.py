@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import random
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Tuple
 
 import neps.space.neps_spaces.sampling
 from neps.space.neps_spaces import neps_space, sampling
@@ -33,6 +33,11 @@ class NePSLocalPriorIncumbentSampler:
     1: Use the global incumbent.
     2: Crossover between global incumbent and first config.
     3: Choose randomly between 0, 1, and 2.
+    """
+
+    mutation_mode: Tuple[str, int] = ("random", 0.5)
+    """The mutation mode.
+    ("random", ratio): Mutate a random number of parameters up to the given ratio.
     """
 
     def sample_config(self, table: pd.DataFrame) -> dict[str, Any]:  # noqa: C901
@@ -124,11 +129,20 @@ class NePSLocalPriorIncumbentSampler:
         for fidelity_name, fidelity_obj in _fidelity_attrs.items():
             _environment_values[fidelity_name] = fidelity_obj.upper
 
+        if self.mutation_mode[0] == "random":
+            assert 0 < self.mutation_mode[1] <= 1
+            n_mutations = random.randint(1, int(len(inc_config) * self.mutation_mode[1]))
+        elif self.mutation_mode[0] == "fixed":
+            assert self.mutation_mode[1] > 0
+            n_mutations = min(len(inc_config), self.mutation_mode[1])
+        else:
+            raise ValueError(f"Invalid mutation mode: {self.mutation_mode[0]}")
+
         _resolved_pipeline, resolution_context = neps_space.resolve(
             pipeline=self.space,
             domain_sampler=neps.space.neps_spaces.sampling.MutatateUsingCentersSampler(
                 predefined_samplings=inc_config,
-                n_mutations=max(1, random.randint(1, int(len(inc_config) / 2))),
+                n_mutations=n_mutations,
             ),
             environment_values=_environment_values,
         )
