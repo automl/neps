@@ -1881,6 +1881,7 @@ def neps_local_and_incumbent(
     *,
     local_prior: dict[str, Any] | None = None,
     inc_takeover_mode: Literal[0, 1, 2, 3] = 0,
+    mutation_mode: Tuple[Literal["random", "fixed"], float] = ("random", 0.5),
     random_ratio: float = 0.0,
     eta: int = 3,
     base: Literal["successive_halving", "hyperband", "asha", "async_hb"] = "hyperband",
@@ -1891,6 +1892,7 @@ def neps_local_and_incumbent(
         pipeline_space: The pipeline space to optimize over.
         local_prior: The local prior to use for sampling.
         inc_takeover_mode: The incumbent takeover mode.
+        mutation_mode: The mutation mode and mutation rate to use for sampling.
         eta: The eta parameter for the algorithm.
         base: The type of bracket optimizer to use. One of:
             - "successive_halving"
@@ -1916,6 +1918,7 @@ def neps_local_and_incumbent(
             "local_prior": local_prior,
             "inc_takeover_mode": inc_takeover_mode,
             "random_ratio": random_ratio,
+            "mutation_mode": mutation_mode,
         },
     )
 

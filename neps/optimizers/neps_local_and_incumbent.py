@@ -35,9 +35,10 @@ class NePSLocalPriorIncumbentSampler:
     3: Choose randomly between 0, 1, and 2.
     """
 
-    mutation_mode: Tuple[str, int] = ("random", 0.5)
+    mutation_mode: Tuple[Literal["random", "fixed"], float] = ("random", 0.5)
     """The mutation mode.
     ("random", ratio): Mutate a random number of parameters up to the given ratio.
+    ("fixed", n): Mutate a fixed number of parameters given by n.
     """
 
     def sample_config(self, table: pd.DataFrame) -> dict[str, Any]:  # noqa: C901
