@@ -61,6 +61,8 @@ class RandomSearch:
                     }
                 )
             valid_configs.append(config)
+            if len(valid_configs) >= _n:
+                break
         
         if self.constraints_func is not None and len(valid_configs) < _n:
             raise ValueError(
