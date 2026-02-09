@@ -574,7 +574,7 @@ def bo_guided_scaling(
     seen_datapoints_estimator: Callable[[SearchSpace], int],
     flops_estimator: Callable[[SearchSpace], int],
     max_evaluation_flops: int,
-    max_target_flop: int,
+    max_target_flops: int,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
 ):
@@ -597,7 +597,7 @@ def bo_guided_scaling(
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,
         max_evaluation_flops=max_evaluation_flops,
-        max_target_flop=max_target_flop,
+        max_target_flops=max_target_flops,
     )
 
 
