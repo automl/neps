@@ -80,6 +80,8 @@ def make_initial_design(
             for config in sample_configs:
                 if constraints_func(config) >= 0:
                     valid_sample_configs.append(config)
+                    if len(valid_sample_configs) >= sample_size:
+                        break
             sample_configs = valid_sample_configs
         if constraints_func is not None and len(sample_configs) < sample_size:
                 raise ValueError(

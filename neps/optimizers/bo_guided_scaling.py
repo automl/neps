@@ -69,6 +69,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.seen_datapoints_estimator = seen_datapoints_estimator
         self.bayesian_optimizer = bayesian_optimizer
         self.max_target_flops = max_target_flops
+        self.max_evaluation_flops = max_evaluation_flops
         
         self._scaling_law_params: ScalingLawParameters | None = None
         self._best_candidate: dict[str, Any] | None = None
@@ -90,10 +91,18 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         )
 
     def __call__(self, trials, budget_info=None, n=None):
-        to_spend = budget_info.cost_to_spend - sum([self.flops_estimator(**trial.config) for trial in trials.values()])
-        logger.info(f"BO_Guided_Scaling: to spend {to_spend} FLOPs")
+        evaluated_trials = [
+            trial
+            for trial in trials.values()
+            if trial.report is not None and trial.report.objective_to_minimize is not None
+        ]
+        if len(evaluated_trials) < self.n_initial_design:
+            to_spend = self.max_evaluation_flops/10 - sum([self.flops_estimator(**trial.config) for trial in evaluated_trials])
+        else:
+            to_spend = self.max_evaluation_flops - sum([self.flops_estimator(**trial.config) for trial in evaluated_trials])
+        print(f"BO_Guided_Scaling: to spend {to_spend} FLOPs")
         self.adapt_search_space(trials=trials, max_evaluation_flops=to_spend)
-        sample = self.bayesian_optimizer(trials, budget_info, n)
+        sample = self.bayesian_optimizer(trials, budget_info=BudgetInfo(cost_to_spend=to_spend), n=n)
         # self.extrapolate(trials, self.max_target_flops)
         return sample
     
@@ -104,7 +113,9 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
     ) -> None:
         """Adapt the search space constraint based on remaining budget."""
         def constraint_func(conf: Mapping[str, Any]) -> float:
-            return max_evaluation_flops - self.flops_estimator(**conf)
+            flops = self.flops_estimator(**conf)
+            logger.info(f"Evaluating constraint for config: {conf} with estimated FLOPs: {flops}")
+            return max_evaluation_flops - flops
 
         self.bayesian_optimizer.constraints_func = constraint_func
 

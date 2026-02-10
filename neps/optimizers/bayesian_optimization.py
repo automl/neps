@@ -349,7 +349,7 @@ class BayesianOptimization:
                 sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
                 sampler=self.prior if self.prior is not None else "uniform",
                 seed=None,  # TODO: Seeding, however we need to avoid repeating configs
-                sample_size=self.n_initial_design * (1024 if self.constraints_func is not None else 1),
+                sample_size=self.n_initial_design,
                 constraints_func=self.constraints_func,
             )
 
