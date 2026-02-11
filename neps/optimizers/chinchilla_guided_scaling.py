@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+from neps.state import BudgetInfo, Trial
 
 from neps.optimizers.optimizer import Artifact, ArtifactType
 from neps.optimizers.scaling_law_guided import ScalingLawGuidedOptimizer
@@ -52,6 +53,7 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
                 flops_estimator,
                 params_estimator,
                 seen_datapoints_estimator,
+                max_evaluation_flops,
                 ) -> None:
         
         self.base_optimizer = base_optimizer
@@ -64,6 +66,34 @@ class Chinchilla_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.seen_datapoints_estimator = seen_datapoints_estimator
         self.flops_estimator = flops_estimator
         self.space = space
+        self.max_evaluation_flops = max_evaluation_flops
+    
+    def __call__(self, trials, budget_info=None, n=None):
+        to_spend = None
+        print(f"se")
+        if self.flops_estimator is not None and self.max_evaluation_flops is not None:
+            to_spend = self.max_evaluation_flops - sum([self.flops_estimator(**trial.config) for trial in trials.values()])
+            print(f"BO_Guided_Scaling: to spend {to_spend} FLOPs")
+            if to_spend <= 0:
+                raise ValueError("No remaining FLOPs budget to spend on evaluation.")
+            self.adapt_search_space(trials=trials, max_evaluation_flops=to_spend)
+            
+        sample = self.base_optimizer(trials, budget_info=BudgetInfo(cost_to_spend=to_spend), n=n)
+        return sample
+    
+    def adapt_search_space(
+        self,
+        trials: Mapping[str, Trial] | None,
+        max_evaluation_flops: int,
+    ) -> None:
+        """Adapt the search space constraint based on remaining budget."""
+        def constraint_func(conf: Mapping[str, Any]) -> float:
+            flops = self.flops_estimator(**conf)
+            logger.info(f"Evaluating constraint for config: {conf} with estimated FLOPs: {flops}")
+            return max_evaluation_flops - flops
+
+        self.base_optimizer.constraints_func = constraint_func
+
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flops,) -> dict[str, Any] | None:
         return None

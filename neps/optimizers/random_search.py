@@ -24,6 +24,7 @@ class RandomSearch:
     sampler: Sampler
     constraints_func: Callable[[Mapping[str, Any]], Sequence[float]] | None = None
     raw_samples: int = 1024
+    constraint_cache: dict[str, bool] | None = None
     
 
     def __call__(
@@ -43,15 +44,31 @@ class RandomSearch:
                 )
         n_trials = len(trials)
         _n = 1 if n is None else n
+        
+        # Initialize constraint cache if needed
+        if self.constraint_cache is None:
+            self.constraint_cache = {}
+        
+        # Generate fresh samples each time
         configs = self.sampler.sample(_n * (self.raw_samples or 1), to=self.encoder.domains)
-
         config_dicts = self.encoder.decode(configs)
-
+        
         valid_configs = []
         for config in config_dicts:
             config.update(self.space.constants)
-            if self.constraints_func is not None and self.constraints_func(config) < 0:
+            
+            # Check constraints using cache to avoid re-evaluation
+            config_key = str(sorted(config.items()))
+            if config_key not in self.constraint_cache:
+                if self.constraints_func is not None:
+                    result = self.constraints_func(config)
+                    self.constraint_cache[config_key] = result >= 0
+                else:
+                    self.constraint_cache[config_key] = True
+            
+            if not self.constraint_cache[config_key]:
                 continue
+            
             if self.space.fidelity is not None:
                 config.update(
                     {
@@ -61,6 +78,7 @@ class RandomSearch:
                     }
                 )
             valid_configs.append(config)
+            print(f"RandomSearch: sampled config {config} with constraint value {len(valid_configs)} / {_n} valid so far.")
             if len(valid_configs) >= _n:
                 break
         
@@ -70,11 +88,13 @@ class RandomSearch:
                 f"{_n * (self.raw_samples or 1)} samples, "
                 f"only got {len(valid_configs)} valid ones."
             )
-        
-        valid_configs = valid_configs[:_n]
 
-        if n is None:
-            config = valid_configs[0]
+        confs = valid_configs[: _n]
+        print(f"RandomSearch: returning {len(confs)} valid configurations out of {_n} requested.")
+        
+
+        if n is None or n == 1:
+            config = confs[0]
             config_id = str(n_trials + 1)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
@@ -84,7 +104,7 @@ class RandomSearch:
                 id=str(n_trials + i + 1),
                 previous_config_id=None,
             )
-            for i, config in enumerate(valid_configs)
+            for i, config in enumerate(confs)
         ]
 
     def import_trials(

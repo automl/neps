@@ -45,13 +45,20 @@ def make_initial_design(
 
     """
     configs: list[dict[str, Any]] = []
+    prior_configs: list[dict[str, Any]] = []
     if sample_prior_first:
-        configs.append(
+        prior_configs.append(
             {
                 name: p.prior if p.prior is not None else p.center
                 for name, p in parameters.items()
             }
         )
+    
+    for conf in prior_configs:
+        if constraints_func is not None:
+            constraint_val = constraints_func(conf)
+            if constraint_val > 0:
+                configs.append(conf)
 
     ndims = len(parameters)
     if sample_size == "ndim":
@@ -71,23 +78,24 @@ def make_initial_design(
                 sampler = Prior.from_parameters(parameters)
             case _:
                 pass
-
-        encoded_configs = sampler.sample(sample_size * 2, to=encoder.domains, seed=seed)
+        print(f"Sampling {sample_size} configurations for initial design using sampler: {sampler}")
+        encoded_configs = sampler.sample(sample_size * 40, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
         sample_configs = encoder.decode(uniq_x)
         if constraints_func is not None:
             valid_sample_configs = []
             for config in sample_configs:
-                if constraints_func(config) >= 0:
+                constraint_val = constraints_func(config)
+                if constraint_val >= 0:
                     valid_sample_configs.append(config)
                     if len(valid_sample_configs) >= sample_size:
                         break
             sample_configs = valid_sample_configs
         if constraints_func is not None and len(sample_configs) < sample_size:
-                raise ValueError(
-                    f"Could not sample enough valid configurations out of "
-                    f"{sample_size * 2} samples, only got {len(sample_configs)} valid samples."
-                )
+            raise ValueError(
+                f"Could not sample enough valid configurations out of "
+                f"{sample_size * 5} samples, only got {len(sample_configs)} valid samples."
+            )
         sample_configs = sample_configs[: sample_size]
         configs.extend(sample_configs)
 

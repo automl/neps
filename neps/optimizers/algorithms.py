@@ -551,6 +551,7 @@ def chinchilla_guided_scaling(
     seen_datapoints_estimator: Callable[[SearchSpace], int] = None,
     flops_estimator: Callable[[SearchSpace], int] = None,
     base_optimizer: Callable[..., Any] = None,
+    max_evaluation_flops: int | None = None,
 ):
     from neps.optimizers.chinchilla_guided_scaling import Chinchilla_Guided_Scaling
     if base_optimizer is None:
@@ -565,6 +566,7 @@ def chinchilla_guided_scaling(
         flops_estimator=flops_estimator,
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,
+        max_evaluation_flops=max_evaluation_flops,
     )
 
 def bo_guided_scaling(

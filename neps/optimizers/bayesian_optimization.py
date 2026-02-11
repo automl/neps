@@ -121,6 +121,7 @@ class BayesianOptimization:
                     "This optimizer only supports HPO search spaces, please use a NePS"
                     " space-compatible optimizer."
                 )
+        self.design_samples = None
 
     def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
         self,
@@ -336,25 +337,28 @@ class BayesianOptimization:
         n_evaluated = sum(
             1
             for trial in trials.values()
-            if trial.report is not None and trial.report.objective_to_minimize is not None
+            if (trial.report is not None and trial.report.objective_to_minimize is not None) or (trial.metadata.state == "evaluating")
         )
         sampled_configs: list[SampledConfig] = []
 
         if n_evaluated < self.n_initial_design:
             # For reproducibility, we need to ensure we do the same sample of all
             # configs each time.
-            design_samples = make_initial_design(
-                parameters=parameters,
-                encoder=self.encoder,
-                sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
-                sampler=self.prior if self.prior is not None else "uniform",
-                seed=None,  # TODO: Seeding, however we need to avoid repeating configs
-                sample_size=self.n_initial_design,
-                constraints_func=self.constraints_func,
-            )
+            if self.design_samples is not None and len(self.design_samples) >= n_evaluated + n_to_sample:
+                print(f"Using cached design samples for initial design: {len(self.design_samples)} samples available.")
+            else:
+                self.design_samples = make_initial_design(
+                    parameters=parameters,
+                    encoder=self.encoder,
+                    sample_prior_first=self.sample_prior_first if n_sampled == 0 else False,
+                    sampler=self.prior if self.prior is not None else "uniform",
+                    seed=None,  # TODO: Seeding, however we need to avoid repeating configs
+                    sample_size=self.n_initial_design,
+                    constraints_func=self.constraints_func,
+                )
 
             # Then take the subset we actually need
-            design_samples = design_samples[n_evaluated:]
+            design_samples = self.design_samples[n_evaluated:]
             for sample in design_samples:
                 sample.update(self.space.constants)
                 if self.space.fidelity is not None:
