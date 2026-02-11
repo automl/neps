@@ -484,7 +484,7 @@ class BayesianOptimization:
         else:
             assert self.cost_estimator is not None, "cost_estimator must be provided for single objective optimization."
             gp = make_default_single_obj_gp(
-                x=data.x, y=data.y, encoder=encoder, 
+                x=data.x, y=data.y, encoder=encoder,
                 # flop_estimator=self.cost_estimator,
             )
             from botorch.fit import fit_gpytorch_mll

@@ -428,8 +428,8 @@ def fit_and_acquire_from_gp(
 
         if missing_costs.any():
             not_missing_mask = ~missing_costs
-            x_train_cost = costs[not_missing_mask]
-            y_train_cost = x_train[not_missing_mask]
+            x_train_cost = x_train[not_missing_mask]
+            y_train_cost = costs[not_missing_mask]
         else:
             x_train_cost = x_train
             y_train_cost = costs
@@ -455,6 +455,7 @@ def fit_and_acquire_from_gp(
             acq_fn=acquisition,
             model=cost_gp,
             used_max_cost_total_percentage=cost_percentage_used,
+            cost_in_log_scale=costs_on_log_scale,
         )
 
     _n = n_candidates_required if n_candidates_required is not None else 1

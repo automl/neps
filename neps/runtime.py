@@ -522,6 +522,50 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
+    def _write_budget_stats_file(
+        self,
+        budget_stats_path: Path,
+        global_resource_usage: ResourceUsage,
+        trace_lock: FileLock,
+    ) -> None:
+        """Writes the budget stats file with accumulated budget usage.
+        
+        Args:
+            budget_stats_path: Path to write the budget stats file.
+            global_resource_usage: Global resource usage object with accumulated metrics.
+            trace_lock: File lock for thread-safe writing.
+        """
+        budget_lines = ["ACCUMULATED BUDGET USAGE", "=" * 80]
+        
+        # Evaluations used
+        if global_resource_usage.evaluations > 0:
+            budget_lines.append("\nEvaluations:")
+            budget_lines.append(f"  Total spent: {global_resource_usage.evaluations}")
+        
+        # Cost used
+        if global_resource_usage.cost > 0:
+            budget_lines.append("\nCost:")
+            budget_lines.append(f"  Total spent: {global_resource_usage.cost:.4f}")
+        
+        # Fidelities used
+        if global_resource_usage.fidelities > 0:
+            budget_lines.append("\nFidelities:")
+            budget_lines.append(f"  Total spent: {global_resource_usage.fidelities:.4f}")
+        
+        # Time used
+        if global_resource_usage.time > 0:
+            budget_lines.append("\nEvaluation Time:")
+            budget_lines.append(f"  Total spent: {global_resource_usage.time:.2f}s")
+        
+        budget_text = "\n".join(budget_lines)
+        
+        with trace_lock:
+            text_writer = get_file_writer("text")
+            try:
+                text_writer.write(budget_text, budget_stats_path)
+            except Exception as e:
+                logger.error(f"Failed to write budget stats: {e}")
+
     def _write_trajectory_files(
         self,
         incumbent_configs: list,

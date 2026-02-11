@@ -585,7 +585,7 @@ def bo_guided_scaling(
         pipeline_space=space,
         initial_design_size="ndim",
         use_priors=True,
-        cost_aware=True,
+        cost_aware=False,
         sample_prior_first=True,
         ignore_fidelity=True,
         device=device,
