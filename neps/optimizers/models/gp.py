@@ -190,7 +190,7 @@ def optimize_acq(
 
         # Handle nonlinear inequality constraints by providing custom ic_generator
         constraints = acq_options.get("nonlinear_inequality_constraints")
-        if constraints is not None:        
+        if constraints is not None:
             acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
         
         with warning_context:

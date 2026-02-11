@@ -113,7 +113,6 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         """Adapt the search space constraint based on remaining budget."""
         def constraint_func(conf: Mapping[str, Any]) -> float:
             flops = self.flops_estimator(**conf)
-            logger.info(f"Evaluating constraint for config: {conf} with estimated FLOPs: {flops}")
             return max_evaluation_flops - flops
 
         self.bayesian_optimizer.constraints_func = constraint_func
