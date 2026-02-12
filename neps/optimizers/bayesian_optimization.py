@@ -397,8 +397,8 @@ class BayesianOptimization:
         cost_percent = None
         if self.cost_aware:
             # TODO: Interaction with `"log"` cost aware
-            if self.cost_aware == "log":
-                raise NotImplementedError("Log cost aware not implemented yet.")
+            # if self.cost_aware == "log":
+            #     raise NotImplementedError("Log cost aware not implemented yet.")
 
             if budget_info is None:
                 raise ValueError(

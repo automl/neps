@@ -579,13 +579,14 @@ def bo_guided_scaling(
     max_target_flops: int,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
+    cost_aware: bool | Literal["log"] = False,
 ):
     from neps.optimizers.bo_guided_scaling import BO_Guided_Scaling
     bayesian_optimizer = _bo(  # noqa: C901, PLR0912
         pipeline_space=space,
         initial_design_size="ndim",
         use_priors=True,
-        cost_aware=False,
+        cost_aware=cost_aware,
         sample_prior_first=True,
         ignore_fidelity=True,
         device=device,

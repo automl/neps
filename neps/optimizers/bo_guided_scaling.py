@@ -91,17 +91,23 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         )
 
     def __call__(self, trials, budget_info=None, n=None):
+        spent = sum([self.flops_estimator(**trial.config) for trial in trials.values()])
         if len(trials) < self.bayesian_optimizer.n_initial_design:
             print("using initial design")
             to_spend = self.max_evaluation_flops/(10* self.bayesian_optimizer.n_initial_design)
         else:
-            to_spend = self.max_evaluation_flops - sum([self.flops_estimator(**trial.config) for trial in trials.values()])
+            to_spend = self.max_evaluation_flops - spent
         print(f"BO_Guided_Scaling: to spend {to_spend} FLOPs")
         if to_spend <= 0:
             logger.warning("No remaining FLOPs budget for evaluation. Returning None.")
             return None
         self.adapt_search_space(trials=trials, max_evaluation_flops=to_spend)
-        sample = self.bayesian_optimizer(trials, budget_info=BudgetInfo(cost_to_spend=to_spend), n=n)
+        sample = self.bayesian_optimizer(
+            trials, budget_info=BudgetInfo(
+                cost_to_spend=self.max_evaluation_flops, used_cost_budget=spent,
+                ), 
+            n=n,
+        )
         # self.extrapolate(trials, self.max_target_flops)
         return sample
     

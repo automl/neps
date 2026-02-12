@@ -47,9 +47,8 @@ def apply_cost_cooling(
     # Untransform to get costs in original scale (handles Log + Standardize or just Standardize)
     if hasattr(cost_model, 'outcome_transform') and cost_model.outcome_transform is not None:
         cost_for_untransform = cost.unsqueeze(-1)
-        dummy_var = torch.ones_like(cost_for_untransform)
         cost_untransformed, _ = cost_model.outcome_transform.untransform(
-            cost_for_untransform, dummy_var
+            cost_for_untransform, None
         )
         cost = cost_untransformed.squeeze(-1)
     
