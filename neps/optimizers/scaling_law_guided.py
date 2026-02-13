@@ -300,6 +300,93 @@ class ScalingLawGuidedOptimizer:
         return fig
 
     @classmethod
+    def _compute_pareto_front_params_data(cls, trial_data: list[tuple]) -> list[tuple]:
+        """Compute Pareto front from trial data based on params and data (n_params, n_data, loss, flops).
+        Lower params AND lower data is better."""
+        pareto = []
+        for i, (p_i, d_i, l_i, f_i) in enumerate(trial_data):
+            dominated = False
+            for j, (p_j, d_j, l_j, f_j) in enumerate(trial_data):
+                if i == j:
+                    continue
+                if (p_j <= p_i and d_j <= d_i) and (p_j < p_i or d_j < d_i):
+                    dominated = True
+                    break
+            if not dominated:
+                pareto.append((p_i, d_i, l_i, f_i))
+        return pareto
+
+    @classmethod
+    def _plot_pareto_front_params_vs_data(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
+        """Generate Pareto front visualization (non-dominated points) for params vs data points in log-log scale."""
+        from matplotlib.colors import Normalize
+        
+        rows = []
+        for trial in trials.values():
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
+                continue
+            if trial.report.extra is None:
+                continue
+            obj = trial.report.objective_to_minimize
+            try:
+                flops = trial.report.extra[cls.FLOPS_KEY]
+                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_data = trial.report.extra[cls.N_DATA_KEY]
+            except KeyError as e:
+                logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
+                continue
+            except Exception as e:
+                logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
+                continue
+            rows.append((n_params, n_data, float(obj), flops))
+
+        if not rows:
+            logger.warning("No evaluated trials with params/data to plot.")
+            return None
+
+        pareto_front = cls._compute_pareto_front_params_data(rows)
+
+        if not pareto_front:
+            logger.warning("No Pareto front points found for params vs data.")
+            return None
+
+        pareto_front.sort(key=lambda r: r[1])  # Sort by data points
+        
+        n_params_front = [r[0] for r in pareto_front]
+        n_data_front = [r[1] for r in pareto_front]
+        objs_front = [r[2] for r in pareto_front]
+        
+        n_params_all = [r[0] for r in rows]
+        n_data_all = [r[1] for r in rows]
+        objs_all = [r[2] for r in rows]
+        
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        ax.scatter(n_data_all, n_params_all, c=objs_all, cmap='gray', marker='o', 
+                  alpha=0.2, s=30, label='All points')
+        
+        norm_front = Normalize(vmin=min(objs_front), vmax=max(objs_front))
+        sc = ax.scatter(n_data_front, n_params_front, c=objs_front, cmap='inferno', 
+                       marker='D', s=100, alpha=1.0, edgecolors='black', linewidth=1.5,
+                       norm=norm_front, label='Pareto front (actual)')
+        
+        ax.plot(n_data_front, n_params_front, 'k-', alpha=0.3, linewidth=1)
+        
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        
+        ax.set_xlabel("Data Points", fontsize=12)
+        ax.set_ylabel("Parameters", fontsize=12)
+        ax.set_title(f"Pareto Front (Params vs Data) - Log-Log Scale ({len(pareto_front)}/{len(rows)} points)", fontsize=13)
+        ax.grid(True, linestyle="--", alpha=0.3, which='both')
+        ax.legend(loc='best')
+        
+        plt.tight_layout()
+        plt.colorbar(sc, ax=ax, label="Objective (Loss)")
+        return fig
+
+    @classmethod
     def _plot_params_vs_loss(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
         """Generate params vs loss visualization colored by time (no disk I/O)."""
         rows = []
@@ -469,6 +556,105 @@ class ScalingLawGuidedOptimizer:
         return fig
 
     @classmethod
+    def _plot_hypervolume_over_time(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
+        """Generate hypervolume (area under Pareto front) over accumulated FLOPs visualization."""
+        rows = []
+        for trial in trials.values():
+            if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
+                continue
+            obj = trial.report.objective_to_minimize
+            try:
+                time_sampled = trial.metadata.time_sampled
+                flops = trial.report.extra[cls.FLOPS_KEY]
+            except (AttributeError, KeyError) as e:
+                logger.warning(f"Trial {trial.id} missing time_sampled or FLOPs: {e}")
+                continue
+            except Exception as e:
+                logger.error(f"Could not extract metrics for trial {trial.id}: {e}")
+                continue
+            rows.append((time_sampled, float(obj), flops))
+
+        if not rows:
+            logger.warning("No evaluated trials with time_sampled/FLOPs to plot.")
+            return None
+
+        # Sort by time
+        rows.sort(key=lambda r: r[0])
+        
+        # Compute cumulative FLOPs
+        accumulated_flops_list = []
+        total_flops = 0
+        for _, _, flops in rows:
+            total_flops += flops
+            accumulated_flops_list.append(total_flops)
+        
+        # Compute hypervolume at each step
+        hypervolumes = []
+        objs_so_far = []
+        flops_so_far = []
+        
+        for i, (_, obj, _) in enumerate(rows):
+            objs_so_far.append(obj)
+            flops_so_far.append(accumulated_flops_list[i])
+            
+            # Compute Pareto front from points so far
+            pareto_indices = []
+            for j in range(len(objs_so_far)):
+                dominated = False
+                for k in range(len(objs_so_far)):
+                    if j == k:
+                        continue
+                    # For minimization: lower flops AND lower obj is better
+                    if (flops_so_far[k] <= flops_so_far[j] and objs_so_far[k] <= objs_so_far[j]) and \
+                       (flops_so_far[k] < flops_so_far[j] or objs_so_far[k] < objs_so_far[j]):
+                        dominated = True
+                        break
+                if not dominated:
+                    pareto_indices.append(j)
+            
+            # Extract Pareto front and sort by FLOPs
+            pareto_points = [(flops_so_far[idx], objs_so_far[idx]) for idx in pareto_indices]
+            pareto_points.sort(key=lambda p: p[0])
+            
+            # Compute reference point (worst values seen so far)
+            ref_flops = max(flops_so_far) * 1.1
+            ref_obj = max(objs_so_far) * 1.1
+            
+            # Compute hypervolume as area under Pareto curve
+            hv = 0.0
+            prev_flops = 0
+            for flops_p, obj_p in pareto_points:
+                # Area of rectangle from prev_flops to flops_p, height is (ref_obj - obj_p)
+                width = flops_p - prev_flops
+                height = ref_obj - obj_p
+                hv += width * height
+                prev_flops = flops_p
+            
+            # Add final rectangle from last Pareto point to reference
+            width = ref_flops - prev_flops
+            height = ref_obj - pareto_points[-1][1]
+            hv += width * height
+            
+            hypervolumes.append(hv)
+        
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Plot hypervolume growth
+        ax.plot(accumulated_flops_list, hypervolumes, marker='o', linestyle='-', alpha=0.9, 
+               linewidth=2.5, color='blue', label='Hypervolume', markersize=6)
+        ax.fill_between(accumulated_flops_list, hypervolumes, alpha=0.3, color='blue')
+        
+        ax.set_xscale('log')
+        ax.set_xlabel("Accumulated FLOPs", fontsize=12)
+        ax.set_ylabel("Hypervolume (Area)", fontsize=12)
+        ax.set_title("Hypervolume (Area Under Pareto Front) Over Accumulated FLOPs", fontsize=13)
+        ax.grid(True, linestyle="--", alpha=0.3)
+        ax.legend(loc='best')
+        
+        plt.tight_layout()
+        return fig
+
+    @classmethod
     def get_trial_artifacts(cls, trials: Mapping[str, Trial] | None = None) -> list[Artifact] | None:
         """Return scaling law artifacts for runtime persistence.
 
@@ -520,6 +706,15 @@ class ScalingLawGuidedOptimizer:
                 logger.warning(f"Failed to generate Pareto front plot: {e}")
             
             try:
+                fig_pareto_params_data = cls._plot_pareto_front_params_vs_data(trials)
+                if fig_pareto_params_data is not None:
+                    artifacts.append(
+                        Artifact("pareto_front_params_vs_data", fig_pareto_params_data, ArtifactType.FIGURE)
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate Pareto front (params vs data) plot: {e}")
+            
+            try:
                 fig_params_loss = cls._plot_params_vs_loss(trials)
                 if fig_params_loss is not None:
                     artifacts.append(
@@ -536,6 +731,15 @@ class ScalingLawGuidedOptimizer:
                     )
             except Exception as e:
                 logger.warning(f"Failed to generate data vs loss plot: {e}")
+            
+            try:
+                fig_hypervolume = cls._plot_hypervolume_over_time(trials)
+                if fig_hypervolume is not None:
+                    artifacts.append(
+                        Artifact("hypervolume_over_time", fig_hypervolume, ArtifactType.FIGURE)
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to generate hypervolume over time plot: {e}")
             
             try:
                 fig_envelope = cls._plot_training_curve_envelope(trials)
