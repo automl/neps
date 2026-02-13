@@ -41,18 +41,22 @@ def apply_pibo_acquisition_weight(
     
     Note: X may have shape (batch, q, d) where q includes X_pending points
     concatenated by the WeightedAcquisition decorator. The prior returns
-    per-candidate values (batch, q), but acq_values is (batch, 1) after the
+    per-candidate values (batch, q), but acq_values is (batch,) after the
     base acquisition has already reduced over q. We only weight based on the
     FIRST candidate (the new one being proposed), not the pending ones.
     """
-    if acq._log:
+    # Check if acquisition is log-scale (safe attribute access)
+    is_log_acq = getattr(acq, '_log', False)
+    
+    if is_log_acq:
         # prior.log_pdf returns (batch, q) for X shape (batch, q, d)
         log_probs = prior.log_pdf(X, frm=x_domain)
         
         # Only use the first candidate's prior (not pending points)
         # log_probs shape: (batch, q) or (batch,)
+        # Keep as (batch, 1) to match acq_values shape from WeightedAcquisition
         if log_probs.ndim > 1 and log_probs.shape[-1] > 1:
-            log_probs = log_probs[..., :1]  # Take only first candidate: (batch, 1)
+            log_probs = log_probs[..., :1]  # (batch, 1) - keep dim!
         elif log_probs.ndim == 1:
             log_probs = log_probs.unsqueeze(-1)  # (batch,) -> (batch, 1)
             
@@ -63,8 +67,9 @@ def apply_pibo_acquisition_weight(
     probs = prior.pdf(X, frm=x_domain)
     
     # Only use the first candidate's prior (not pending points)
+    # Keep as (batch, 1) to match acq_values shape from WeightedAcquisition
     if probs.ndim > 1 and probs.shape[-1] > 1:
-        probs = probs[..., :1]  # Take only first candidate: (batch, 1)
+        probs = probs[..., :1]  # (batch, 1) - keep dim!
     elif probs.ndim == 1:
         probs = probs.unsqueeze(-1)  # (batch,) -> (batch, 1)
         
