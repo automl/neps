@@ -56,6 +56,7 @@ class ArtifactType(Enum):
     JSON = "json"
     PICKLE = "pickle"
     BYTES = "bytes"
+    CSV = "csv"
 
 
 @dataclass

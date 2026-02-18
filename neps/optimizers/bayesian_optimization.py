@@ -122,6 +122,7 @@ class BayesianOptimization:
                     " space-compatible optimizer."
                 )
         self.design_samples = None
+        self._artifacts: dict[str, Artifact] = None
 
     def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
         self,
@@ -249,7 +250,6 @@ class BayesianOptimization:
         """
         # 1. Get the trained GP model
         # We assume sample_candidates handles the fitting internally
-        print("extrapolate called")
         _, gp, _ = self.sample_candidates(trials, budget_info, n=None)
         if gp is None:
             return None, None
@@ -327,6 +327,8 @@ class BayesianOptimization:
             parameters = {**self.space.searchables, **self.space.fidelities}
         else:
             parameters = {**self.space.searchables}
+        
+        param_keys = list(parameters.keys())
 
         n_to_sample = 1 if n is None else n
         n_sampled = len(trials)
@@ -508,7 +510,6 @@ class BayesianOptimization:
                 lower = [domain.lower for domain in encoder.domains]
                 upper = [domain.upper for domain in encoder.domains]
                 bounds = torch.tensor([lower, upper], dtype=torch.float64)
-                print(bounds)
                 # torch.autograd.set_detect_anomaly(True)
                 optimal_inputs, optimal_outputs = get_optimal_samples(model=gp, bounds=bounds, num_optima=4, maximize=False)
                 acquisition = qJointEntropySearch(
@@ -579,12 +580,9 @@ class BayesianOptimization:
             ]
         )
         cand = sampled_configs[0] if n is None else sampled_configs
-
-        figs = self.plot_gp_with_candidates(gp, data.x, data.y, candidates=candidates, dim_x=0, dim_y=2, return_figures=True)
-        if figs:
-            self._artifacts = figs
-        else:
+        if self._artifacts is None:
             self._artifacts = {}
+        self._artifacts.update(self.plot_gp_with_candidates(param_keys, gp, data.x, data.y, candidates=candidates))
 
         with torch.no_grad():
             # .posterior() creates the distribution at this point
@@ -652,19 +650,17 @@ class BayesianOptimization:
                 logger.warning(f"Failed to convert BO figures to artifacts: {e}")
         
         return artifacts
-
+    
     @staticmethod
     def plot_gp_with_candidates(
+        param_keys: list[str],
         gp: SingleTaskGP,
         x: torch.Tensor,
         y: torch.Tensor,
         candidates: torch.Tensor,
-        dim_x: int = 0,
-        dim_y: int = 1,
-        return_figures: bool = True,
     ) -> dict[str, plt.Figure] | None:
         """
-        Plots a 2D slice of the GP posterior mean, existing data, and new candidates.
+        Plots 2D slices of the GP posterior mean for all dimension pairs, with existing data and new candidates.
         Also creates 1D slice plots for each dimension showing mean, uncertainty, and observed points.
 
         Args:
@@ -672,13 +668,9 @@ class BayesianOptimization:
             x: Training inputs (encoded) [N x D].
             y: Training targets (losses) [N x 1].
             candidates: The new `x` points proposed by the acquisition function [M x D].
-            dim_x: Index of the first dimension to plot.
-            dim_y: Index of the second dimension to plot.
-            return_figures: If True, return figures. Always save to disk.
             
         Returns:
-            If return_figures=True: Dict with keys 'posterior' and 'slices' containing Figure objects
-            If return_figures=False: None (figures saved to disk)
+            Dict with keys 'posterior' and 'slices' containing Figure objects
         """
         
         gp.eval()
@@ -687,99 +679,122 @@ class BayesianOptimization:
         x_cpu = x.detach().cpu()
         y_cpu = y.detach().cpu()
         cand_cpu = candidates.detach().cpu()
-
-        x_all = torch.cat([x_cpu[:, dim_x], cand_cpu[:, dim_x]])
-        y_all = torch.cat([x_cpu[:, dim_y], cand_cpu[:, dim_y]])
-
-        x_min, x_max = x_all.min().item(), x_all.max().item()
-        y_min, y_max = y_all.min().item(), y_all.max().item()
-
-        # Add 20% margin
-        margin_x = 0.2 * (x_max - x_min) if (x_max != x_min) else 1.0
-        margin_y = 0.2 * (y_max - y_min) if (y_max != y_min) else 1.0
-
-        resolution = 100
-        grid_x = torch.linspace(x_min - margin_x, x_max + margin_x, resolution)
-        grid_y = torch.linspace(y_min - margin_y, y_max + margin_y, resolution)
-        gx, gy = torch.meshgrid(grid_x, grid_y, indexing="xy")
-
-        # 2. Prepare Test Tensor (Slice)
         num_dims = x.shape[1]
-        # Create test points on the same device as the GP
-        test_x = torch.zeros(resolution * resolution, num_dims, device=x.device)
-
-        # Fill background dimensions with the mean of training data
-        # This simulates "holding other parameters constant at average values"
-        for i in range(num_dims):
-            test_x[:, i] = x[:, i].mean()
-
-        # Overwrite the two active dimensions with our grid
-        # We must move grid to the device first
-        test_x[:, dim_x] = gx.flatten().to(x.device)
-        test_x[:, dim_y] = gy.flatten().to(x.device)
-
-        # 3. Predict with NaN robustness
-        with torch.no_grad():
-            posterior = gp.posterior(test_x)
-            mean = posterior.mean.cpu().view(resolution, resolution)
-            
-            # ROBUST NaN HANDLING: Replace NaN values in plotting
-            if torch.isnan(mean).any():
-                y_train = gp.train_targets.cpu()
-                fill_value = torch.nanmedian(y_train).item()
-                nan_mask = torch.isnan(mean)
-                mean[nan_mask] = fill_value
-                logger.warning(
-                    f"NaN values in plot posterior ({nan_mask.sum().item()} values). "
-                    f"Replaced with median ({fill_value:.6f})."
-                )
-
-        # 4. Plot 2D Contour
-        fig, ax = plt.subplots(figsize=(10, 7))
-
-        # A. Contour (GP Mean)
-        # viridis_r: Purple/Dark = Low Loss (Good), Yellow/Light = High Loss (Bad)
-        c = ax.contourf(gx.numpy(), gy.numpy(), mean.numpy(), levels=25, cmap='viridis_r', alpha=0.8)
-        cbar = plt.colorbar(c)
-        cbar.set_label("Predicted Loss (Mean)", rotation=270, labelpad=15)
-
-        # B. Scatter (Existing Training Data)
-        ax.scatter(
-            x_cpu[:, dim_x],
-            x_cpu[:, dim_y],
-            c=y_cpu,
-            cmap='viridis_r',
-            edgecolors='k',
-            s=50,
-            label="Observed Data"
-        )
-
-        # C. Scatter (New Candidates)
-        ax.scatter(
-            cand_cpu[:, dim_x],
-            cand_cpu[:, dim_y],
-            c='red',
-            marker='*',
-            s=250,
-            edgecolors='white',
-            linewidth=1.5,
-            label="New Candidates"
-        )
-
+        resolution = 100
         best_idx = y_cpu.argmin()
         best_x = x_cpu[best_idx]
+
+        # Generate all unique dimension pairs
+        dim_pairs = [(i, j) for i in range(num_dims) for j in range(i + 1, num_dims)]
         
-        for i in range(len(cand_cpu)):
-                ax.annotate("",
+        if len(dim_pairs) == 0:
+            # Only 1 dimension, skip 2D plots
+            fig_posterior = plt.figure(figsize=(6, 4))
+            ax = fig_posterior.add_subplot(111)
+            ax.text(0.5, 0.5, 'Only 1 dimension in search space', ha='center', va='center')
+            return {"posterior": fig_posterior, "slices": fig_posterior}
+        
+        # Create grid of subplots
+        n_pairs = len(dim_pairs)
+        n_cols = min(3, n_pairs)  # Max 3 columns
+        n_rows = (n_pairs + n_cols - 1) // n_cols  # Ceiling division
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 5 * n_rows))
+        
+        # Flatten axes for easier iteration
+        if n_pairs == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten()
+
+        # Plot each dimension pair
+        for plot_idx, (dim_x, dim_y) in enumerate(dim_pairs):
+            ax = axes[plot_idx]
+            
+            # Get data ranges for this dimension pair
+            x_all = torch.cat([x_cpu[:, dim_x], cand_cpu[:, dim_x]])
+            y_all = torch.cat([x_cpu[:, dim_y], cand_cpu[:, dim_y]])
+
+            x_min, x_max = x_all.min().item(), x_all.max().item()
+            y_min, y_max = y_all.min().item(), y_all.max().item()
+
+            # Add 20% margin
+            margin_x = 0.2 * (x_max - x_min) if (x_max != x_min) else 1.0
+            margin_y = 0.2 * (y_max - y_min) if (y_max != y_min) else 1.0
+
+            grid_x = torch.linspace(x_min - margin_x, x_max + margin_x, resolution)
+            grid_y = torch.linspace(y_min - margin_y, y_max + margin_y, resolution)
+            gx, gy = torch.meshgrid(grid_x, grid_y, indexing="xy")
+
+            # Prepare test tensor
+            test_x = torch.zeros(resolution * resolution, num_dims, device=x.device)
+            for i in range(num_dims):
+                test_x[:, i] = x[:, i].mean()
+
+            test_x[:, dim_x] = gx.flatten().to(x.device)
+            test_x[:, dim_y] = gy.flatten().to(x.device)
+
+            # Predict with NaN robustness
+            with torch.no_grad():
+                posterior = gp.posterior(test_x)
+                mean = posterior.mean.cpu().view(resolution, resolution)
+                
+                if torch.isnan(mean).any():
+                    y_train = gp.train_targets.cpu()
+                    fill_value = torch.nanmedian(y_train).item()
+                    nan_mask = torch.isnan(mean)
+                    mean[nan_mask] = fill_value
+                    logger.warning(
+                        f"NaN values in posterior pair ({dim_x}, {dim_y}): "
+                        f"{nan_mask.sum().item()} values replaced."
+                    )
+
+            # Plot 2D Contour
+            c = ax.contourf(gx.numpy(), gy.numpy(), mean.numpy(), levels=25, cmap='viridis_r', alpha=0.8)
+            plt.colorbar(c, ax=ax, label="Predicted Loss")
+
+            # Scatter (Existing Training Data)
+            ax.scatter(
+                x_cpu[:, dim_x],
+                x_cpu[:, dim_y],
+                c=y_cpu,
+                cmap='viridis_r',
+                edgecolors='k',
+                s=50,
+                label="Observed Data"
+            )
+
+            # Scatter (New Candidates)
+            if len(cand_cpu) > 0:
+                ax.scatter(
+                    cand_cpu[:, dim_x],
+                    cand_cpu[:, dim_y],
+                    c='red',
+                    marker='*',
+                    s=250,
+                    edgecolors='white',
+                    linewidth=1.5,
+                    label="New Candidates"
+                )
+
+                # Arrows from best point to candidates
+                for i in range(len(cand_cpu)):
+                    ax.annotate(
+                        "",
                         xy=(cand_cpu[i, dim_x].item(), cand_cpu[i, dim_y].item()),
                         xytext=(best_x[dim_x].item(), best_x[dim_y].item()),
-                        arrowprops=dict(arrowstyle="->", color="white", alpha=0.5, linestyle="--"))
+                        arrowprops=dict(arrowstyle="->", color="white", alpha=0.5, linestyle="--")
+                    )
 
-        ax.set_title(f"GP Posterior & Candidates\n(Slice on Dims {dim_x} & {dim_y})")
-        ax.set_xlabel(f"Encoded Dim {dim_x}")
-        ax.set_ylabel(f"Encoded Dim {dim_y}")
-        ax.legend(loc="upper right")
+            ax.set_title(f"{param_keys[dim_x]} vs {param_keys[dim_y]}")
+            ax.set_xlabel(f"{param_keys[dim_x]}")
+            ax.set_ylabel(f"{param_keys[dim_y]}")
+            ax.legend(loc="upper right", fontsize=8)
 
+        # Hide unused subplots
+        for idx in range(len(dim_pairs), len(axes)):
+            axes[idx].set_visible(False)
+
+        fig.suptitle("GP Posterior: All Dimension Pairs", fontsize=14, y=0.995)
         plt.tight_layout()
         
         # Keep figure reference for returning
@@ -855,8 +870,8 @@ class BayesianOptimization:
                     label='Candidates'
                 )
 
-            ax.set_title(f'Dimension {dim} (others at mean)')
-            ax.set_xlabel(f'Dim {dim}')
+            ax.set_title(f'{param_keys[dim]} (others at mean)')
+            ax.set_xlabel(f'{param_keys[dim]}')
             ax.set_ylabel('Objective')
             ax.grid(alpha=0.3)
 

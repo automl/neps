@@ -580,6 +580,11 @@ def bo_guided_scaling(
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
     cost_aware: bool | Literal["log"] = False,
+    sampling_strategy: Literal[
+                     "space_expansion", 
+                     "const_cost", 
+                     "left_budget_contraction",
+                    ] = "space_expansion",
 ):
     from neps.optimizers.bo_guided_scaling import BO_Guided_Scaling
     bayesian_optimizer = _bo(  # noqa: C901, PLR0912
@@ -601,6 +606,7 @@ def bo_guided_scaling(
         seen_datapoints_estimator=seen_datapoints_estimator,
         max_evaluation_flops=max_evaluation_flops,
         max_target_flops=max_target_flops,
+        sampling_strategy=sampling_strategy
     )
 
 

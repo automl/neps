@@ -191,11 +191,17 @@ class ScalingLawGuidedOptimizer:
         return pareto
 
     @classmethod
-    def _plot_pareto_front(cls, trials: Mapping[str, Trial]) -> plt.Figure | None:
-        """Generate Pareto front visualization (non-dominated points) in log-log scale."""
+    def _plot_pareto_front(cls, trials: Mapping[str, Trial]) -> tuple[plt.Figure | None, str | None]:
+        """Generate Pareto front visualization (non-dominated points) in log-log scale.
+        
+        Returns:
+            Tuple of (figure, csv_string) where csv_string contains Pareto front trial configs.
+        """
         from matplotlib.colors import Normalize
         
         rows = []
+        trial_map = {}  # Map (n_params, n_data, obj, flops) to trial for tracking
+        
         for trial in trials.values():
             if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
@@ -212,17 +218,19 @@ class ScalingLawGuidedOptimizer:
             except Exception as e:
                 logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
                 continue
-            rows.append((n_params, n_data, float(obj), flops,))
+            row = (n_params, n_data, float(obj), flops)
+            rows.append(row)
+            trial_map[row] = trial
 
         if not rows:
             logger.warning("No evaluated trials with objectives/flops to plot.")
-            return None
+            return None, None
 
         pareto_front = cls._compute_pareto_front(rows)
 
         if not pareto_front:
             logger.warning("No Pareto front points found.")
-            return None
+            return None, None
 
         pareto_front.sort(key=lambda r: r[3])
         
@@ -297,7 +305,34 @@ class ScalingLawGuidedOptimizer:
         
         plt.tight_layout(rect=[0, 0.05, 1, 1])
         plt.colorbar(sc, ax=ax, label="Parameters")
-        return fig
+        
+        # Generate CSV with Pareto front trial configs
+        try:
+            import csv
+            import io
+            import json
+            
+            csv_buffer = io.StringIO()
+            writer = csv.writer(csv_buffer)
+            
+            # Write header
+            header = ["trial_id", "n_params", "n_data", "objective", "flops", "config"]
+            writer.writerow(header)
+            
+            # Write Pareto front trials
+            for row in pareto_front:
+                n_p, n_d, obj, flops = row
+                trial = trial_map.get(row)
+                trial_id = trial.id if trial else "unknown"
+                config_str = json.dumps(dict(trial.config)) if trial and trial.config else "{}"
+                writer.writerow([trial_id, n_p, n_d, obj, flops, config_str])
+            
+            csv_string = csv_buffer.getvalue()
+        except Exception as e:
+            logger.warning(f"Failed to generate Pareto front CSV: {e}")
+            csv_string = None
+        
+        return fig, csv_string
 
     @classmethod
     def _compute_pareto_front_params_data(cls, trial_data: list[tuple]) -> list[tuple]:
@@ -697,10 +732,14 @@ class ScalingLawGuidedOptimizer:
                 logger.warning(f"Failed to generate FLOPs per objective plot: {e}")
             
             try:
-                fig_pareto = cls._plot_pareto_front(trials)
+                fig_pareto, csv_pareto = cls._plot_pareto_front(trials)
                 if fig_pareto is not None:
                     artifacts.append(
                         Artifact("pareto_front", fig_pareto, ArtifactType.FIGURE)
+                    )
+                if csv_pareto is not None:
+                    artifacts.append(
+                        Artifact("pareto_front_configs", csv_pareto, ArtifactType.CSV)
                     )
             except Exception as e:
                 logger.warning(f"Failed to generate Pareto front plot: {e}")

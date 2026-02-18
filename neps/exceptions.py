@@ -70,3 +70,6 @@ class TrialValidationError(ValueError):
             f"Trial validation failed for configuration {self.config}. "
             f"Reason: {self.message}"
         )
+
+class ConstraintViolationError(NePSError):
+    """Raised when a configuration violates the constraints of the search space."""

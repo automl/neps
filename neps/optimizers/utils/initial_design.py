@@ -78,7 +78,6 @@ def make_initial_design(
                 sampler = Prior.from_parameters(parameters)
             case _:
                 pass
-        print(f"Sampling {sample_size} configurations for initial design using sampler: {sampler}")
         encoded_configs = sampler.sample(sample_size * 40, to=encoder.domains, seed=seed)
         uniq_x = torch.unique(encoded_configs, dim=0)
         sample_configs = encoder.decode(uniq_x)

@@ -25,7 +25,7 @@ from gpytorch.means import Mean as GpMean
 from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 from neps.utils.common import disable_warnings
-
+from neps.exceptions import ConstraintViolationError
 from neps.sampling.samplers import Sobol
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
@@ -662,7 +662,8 @@ def make_ic_generator(constraint_func, encoder):
             if len(X_valid) == 0:
                 # Emergency: Return the raw candidates even if invalid, 
                 # effectively falling back to standard behavior.
-                return X_cand[:num_restarts]
+                raise ConstraintViolationError(
+                    "No valid initial conditions found under the given constraints.")
                 
             # Recycle valid points to fill the quota
             needed = num_restarts - len(X_valid)

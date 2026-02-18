@@ -291,6 +291,26 @@ class BytesWriter:
             raise
 
 
+class CsvWriter:
+    """Write CSV content to disk."""
+
+    def write(self, content: str, file_path: Path | str) -> None:
+        """Write CSV to file.
+
+        Args:
+            content: CSV content to save (as string).
+            file_path: Path to save to (will use .csv extension).
+        """
+        file_path = Path(file_path).with_suffix(".csv")
+        try:
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content)
+            logger.debug(f"Wrote CSV to {file_path}")
+        except Exception as e:
+            logger.error(f"Failed to write CSV to {file_path}: {e}")
+            raise
+
+
 # Writer registry - maps content type to writer instance
 FILE_WRITERS = {
     "text": TextWriter(),
@@ -298,6 +318,7 @@ FILE_WRITERS = {
     "figure": FigureWriter(),
     "pickle": PickleWriter(),
     "bytes": BytesWriter(),
+    "csv": CsvWriter(),
 }
 
 

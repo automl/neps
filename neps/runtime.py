@@ -853,7 +853,18 @@ class DefaultWorker:
                     evaluation_fn=self.evaluation_fn,
                     default_report_values=self.settings.default_report_values,
                 )
-
+            full_df, short = status(main_dir)
+            with csv_locker.lock():
+                full_df.to_csv(full_df_path)
+                short.to_frame().to_csv(short_path)
+            if hasattr(self.optimizer, 'get_trial_artifacts'):
+                try:
+                    artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
+                    if artifacts is not None:
+                        _save_optimizer_artifacts(artifacts, summary_dir)
+                except Exception as e:
+                    logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
+            
             if report is None:
                 logger.info(
                     "Worker '%s' evaluated trial: %s async task detected.",
@@ -900,19 +911,7 @@ class DefaultWorker:
                         best_config_path,
                     )
                             # Persist optimizer artifacts if available
-                if hasattr(self.optimizer, 'get_trial_artifacts'):
-                    try:
-                        artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
-                        if artifacts is not None:
-                            _save_optimizer_artifacts(artifacts, summary_dir)
-                    except Exception as e:
-                        logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
                 
-
-                full_df, short = status(main_dir)
-                with csv_locker.lock():
-                    full_df.to_csv(full_df_path)
-                    short.to_frame().to_csv(short_path)
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
