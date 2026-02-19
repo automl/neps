@@ -137,7 +137,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         if to_spend <= 0:
             logger.warning("No remaining FLOPs budget for evaluation. Returning None.")
             return None
-        self.adapt_search_space(max_flops=to_spend)
+        self.adapt_search_space(max_flops=to_spend, around_max_flops=(self.sampling_strategy == "const_cost"))
         
         try:
             sample = self.bayesian_optimizer(
@@ -226,10 +226,13 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
     def adapt_search_space(
         self,
         max_flops: int,
+        around_max_flops: bool = False,
     ) -> None:
         """Adapt the search space constraint based on remaining budget."""
         def constraint_func(conf: Mapping[str, Any]) -> float:
             flops = self.flops_estimator(**conf)
+            if around_max_flops:
+                return 1 if max_flops - flops <= 0.1 * max_flops and flops <= 1.1 * max_flops else -1.0
             return max_flops - flops
 
         if max_flops <= 0:
