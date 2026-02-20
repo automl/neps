@@ -8,24 +8,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Add changelog and the workflow
+- Add changelog workflow
+- Add Clean command line for pruning trials
 
 ### Changed
-- Use git-cliff for tracing changes
-- Update ifbo dependency version in pyproject.toml
-- Remove global (cross-worker) stopping criteria
-- Enhancing analysis docs discoverability
-- Import pre-evaluated trials
-- Cache uv prune unused wheels
+- Improve Acquisition Function optimization in discrete and mixed search spaces
+- Update ifbo
+- Clean command
+- Update usage patterns and examples in documentation
 
 ### Fixed
-- A test
+- Fixes to fidelity resource calculation
+- Trial id generation
+- Docs for stopping criteria
+
+## [0.15.0] - 2025-12-15
+
+### Added
+- Add import_trials method to NePSRandomSearch and NePSRegularizedEvolution for importing external evaluations as trials
+- Add load_config function and update utility imports for better configuration handling
+- Enhance NEPS API and examples: add create_config function, improve parameter handling, and update example scripts for better usability
+- Add Regularized Evolution optimizer and integrate into NePS algorithms
+- Add conversion logic for classic to NEPS search space in API
+- Add string representation methods for Fidelity, Categorical, Float, Integer, Operation, and Resampled classes
+- Add convert_classic_to_neps_search_space function to convert classic SearchSpace to NePS PipelineSpace
+- Add inc_ratio parameter to _neps_bracket_optimizer and NePSPriorBandSampler for configurable incumbent ratio
+- Add repeated resolvable type and dict resolving
+- Add `Lazy` component to stop categoricals from eagerly resolving provided choices
+- Add resolving for tuples and lists
+- Add warning log for missing priors when use_priors is set to True in neps_random_search function
+- Add location parameter and timing parameters to warmstart_neps function for configuration and performance tracking
+- Add error handling and logging for pipeline space resolution in warmstart_neps function
+- Add warnings for repeated warmstarting and compatibility checks for warmstarting in warmstart_neps function
+- Add Gaussian priors to NePS Integer and Floats
+- Add warmstarting functionality to the run method and create example script
+- Add optimizer compatibility check for Pipeline in run function
+- Add neps_algorithms as direct sub-import of neps
+- Add documentation for NePS Spaces framework and usage examples
+- Add Pytorch Neural Network example
+- Add comprehensive tests for NEPS space functionality and conversion
+- Add NOS like space
+- Add bracket optimizers
+- Add centering
+
+### Changed
+- Introduce NePS-Spaces framework with enhanced pipeline space and parameter management
+- Enhance optimizer implementations: improve bracket calculations, logging, and sampling strategies
+- Refactor and enhance fidelity handling across optimizers with improved sampling and configuration normalization
+- Add LocalAndIncumbent optimizer and integrate NePS Regularized Evolution with new sampling strategies
+- Improve NePS space compatibility checks and enhance PipelineSpace serialization and persistence
+- Consolidate resource tracking and enhance metric handling in state management
+- Refactor documentation and examples for improved clarity and consistency across NePS spaces usage
+- Simplify and enhance string representation methods for better readability of configuration objects
 - Update ifbo dependency version in pyproject.toml
+
+### Fixed
+- Remove unused parameter 'rung' from sample_config method in NePSLocalPriorIncumbentSampler
+- Remove mf check
+- Refactor bracket creation logic to group configurations by starting rung for improved sampling
+- Remove fidelity value check and improve Hyperband bracket allocation logic
+- Fix: Standardize ignore_fidelity parameter to use "highest_fidelity" across optimizers and related functions
+- Add xfail for tests requiring additional setup in test_sample_trial
+- Add additional setup requirement for neps_local_and_incumbent optimizer tests
+- Update load_config to require either config or config_path and improve error handling
+- Update _mutate_inc method to use fidelity attributes for environment values
+- Update kernel_size in Conv2d operations from [3, 3] to [3, 4]
+- Update kernel_size in test_list_as_arg for Conv2d operation
+- Standardize ignore_fidelity parameter to use "highest_fidelity" instead of "highest fidelity"
+- Improve error handling for args and kwargs in _format_operation function
+- Improve error messages for incompatible optimizers in PipelineSpace
+- Improve error messages and enhance user result filtering in evaluation
+- Rename hyperparameter optimization example file for consistency
+- Update ifbo dependency version in pyproject.toml
+- Fix linter
+- Update import_trials to use pipeline_space parameter and improve logging
+- Enhance configuration handling by updating return types and adding prior checks in PipelineSpace
+- Prevent resampling of Fidelity objects in Resampled class and add Operation to config_creation example
+- Change status parameters
+- Update load_config return type and improve operation string representation
+- Simplify string representation in Operation class
+- Improve string representation for Categorical and Operation classes
+- Update string representation test to reflect BasicSpace instead of PipelineSpace
+- Fix report loading
+- Update docstring for NePSRegularizedEvolution to clarify functionality and parameters
+- Update best score calculation to use actual best from trajectory and improve config selection logic
+- Normalize weights in PriorBandSampler to handle floating-point precision issues and increase np.isclose tolerance
+- Update optimizer names in tests for consistency and clarity
+- Normalize weights in PriorBandSampler to handle floating-point precision issues
+- Improve path formatting in tests and enhance readability of assertions
+- Update root directory paths in tests for consistency and clarity
+- Enhance configuration string formatting for hyperparameters and improve test assertions
+- Improve formatting in wrap_config_into_string for better readability
+- Update confidence level in MutatateUsingCentersSampler to MEDIUM for improved sampling accuracy
 - Docs & remove .trace.lock
 - Update contributors
 
 ### Removed
 - Remove write_summary_to_disk
+- Remove obsolete Jupyter notebook for prior tests and update test handling for core examples
+- Remove old warmstarting functionality, unused example notebooks and scripts
+- Remove redundant check for 'auto' in compatibility verification
 
 ## [0.14.0] - 2025-09-16
 
