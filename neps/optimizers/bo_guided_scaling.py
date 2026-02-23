@@ -52,8 +52,8 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                  max_evaluation_flops: int,
                  max_target_flops: int,
                  sampling_strategy: Literal[
-                     "space_expansion", 
-                     "const_cost", 
+                     "space_expansion",
+                     "const_cost",
                      "left_budget_contraction",
                     ] = "space_expansion",
                  ) -> None:
@@ -163,7 +163,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                 return self.bayesian_optimizer(
                     trials, budget_info=BudgetInfo(
                         cost_to_spend=to_spend + spent, used_cost_budget=spent,
-                        ), 
+                        ),
                     n=n,
                 )
             raise e
@@ -172,7 +172,13 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         """Calculate which expansion level we're at based on budget spent.
         
         Level 0: Initial design phase (0 to _total_budget_for_initial_design)
-        Level i (i >= 1): Expansion phases where level i allows max_evaluation_flops / 2^i
+        Level i (i >= 1): Expansion phases where level i allows max_evaluation_flops / 2^(max_expansion - i)
+        
+        Budget allocation for max_expansion=4:
+        - Level 0: max_evaluation_flops / 2^4
+        - Level 1: max_evaluation_flops / 2^3
+        - Level 2: max_evaluation_flops / 2^2
+        - Level 3: max_evaluation_flops / 2^1
         
         Args:
             spent: Total FLOPs spent so far
@@ -186,11 +192,11 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         # We're in expansion phases
         spent_in_expansion = spent - self._total_budget_for_initial_design
         
-        # Level i uses budget of max_evaluation_flops / 2^i
+        # Level i uses budget of max_evaluation_flops / 2^(max_expansion - i)
         # Find which level we're in based on cumulative spending
         level = 1
         while level <= self.max_expansion:
-            budget_for_level = self.max_evaluation_flops / (2 ** level)
+            budget_for_level = self.max_evaluation_flops / (2 ** (self.max_expansion - level))
             if spent_in_expansion < budget_for_level:
                 return level
             spent_in_expansion -= budget_for_level
@@ -204,7 +210,13 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         
         Strategy:
         - Level 0 (Initial design): spend up to _total_budget_for_initial_design
-        - Level i (i >= 1): max_evaluation_flops / 2^i
+        - Level i (i >= 1): max_evaluation_flops / 2^(max_expansion - i)
+        
+        Budget allocation for max_expansion=4:
+        - Level 0: max_evaluation_flops / 2^4
+        - Level 1: max_evaluation_flops / 2^3
+        - Level 2: max_evaluation_flops / 2^2
+        - Level 3: max_evaluation_flops / 2^1
         
         Args:
             spent: Total FLOPs spent so far
@@ -221,7 +233,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                 per_trial = self._total_budget_for_initial_design / self.bayesian_optimizer.n_initial_design
                 return per_trial
         else:
-            return self.max_evaluation_flops / (2 ** expansion_level)
+            return self.max_evaluation_flops / (2 ** (self.max_expansion - expansion_level))
     
     def adapt_search_space(
         self,

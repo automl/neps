@@ -574,6 +574,7 @@ class DefaultWorker:
         improvement_trace_path: Path,
         best_config_path: Path,
         final_stopping_criteria: ResourceUsage | None = None,
+        used_resources_list: list | None = None,
     ) -> None:
         """Writes the trajectory and best config files safely using generic file writer."""
         trace_text = _build_incumbent_content(incumbent_configs)
