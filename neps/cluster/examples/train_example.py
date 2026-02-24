@@ -119,6 +119,7 @@ def main(args):
 
     # Model setup
     model = nn.Sequential(
+        nn.Flatten(),  # Flatten (batch, 1, 28, 28) -> (batch, 784)
         nn.Linear(784, 128),
         nn.ReLU(),
         nn.Linear(128, 64),

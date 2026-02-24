@@ -6,19 +6,19 @@ with async evaluation via SLURM.
 
 from pathlib import Path
 import neps
-from neps_cluster import NepsAsyncEvaluator, SlurmConfig
+from cluster import NepsAsyncEvaluator, SlurmConfig
 
 
 # Configure SLURM job settings
 # Job names will be auto-generated from root_dir and config_id
 slurm_config = SlurmConfig(
     root_dir="results/mnist_scaling_study",  # Used to generate job name
-    partition="gdllabdlc_gpu-rtx2080u",
+    partition="testdlc2_gpu-l40s",
     gpus_per_node=1,
     cpus_per_task=1,
     mem_gb=32,
     output_dir="logs/slurm",
-    workspace_dir=".",
+    workspace_dir="neps_cluster/examples",
     # Environment: using conda (default)
     environment_manager="conda",
     conda_env_name="scaling",
@@ -55,14 +55,16 @@ def evaluate_pipeline_async(pipeline_id, learning_rate, optimizer, **kwargs):
     # Submit SLURM job with these parameters
     # run_pipeline.py will be called as:
     # python run_pipeline.py --pipeline-id <id> --learning-rate <lr> --optimizer <opt> ...
-    return evaluator.submit(
+    evaluator.lazy_submit(
         pipeline_id=pipeline_id,
         learning_rate=learning_rate,
         optimizer=optimizer,
         **kwargs
     )
+    
 
-
+import logging
+logging.basicConfig(level=logging.DEBUG)
 # Define the search space
 class ExampleSpace(neps.PipelineSpace):
     """Hyperparameter space for the optimization."""
@@ -77,5 +79,7 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline_async,
         pipeline_space=ExampleSpace(),
         root_directory="results/mnist_scaling_study",
-        evaluations_to_spend=10,  # Total configs to try
+        evaluations_to_spend=1,  # Total configs to try
+        overwrite_root_directory=True,
+        optimizer="random_search"
     )
