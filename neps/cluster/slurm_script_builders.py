@@ -1,7 +1,7 @@
 """Script builders for various SLURM job types."""
 
 from pathlib import Path
-from cluster.slurm_config import SlurmConfig, get_environment_setup, get_account_header
+from neps.cluster.slurm_config import SlurmConfig, get_environment_setup, get_account_header
 
 
 class BasicScriptBuilder:

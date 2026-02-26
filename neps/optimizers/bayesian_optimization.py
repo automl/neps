@@ -9,8 +9,6 @@ from collections.abc import Mapping, Sequence, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from tenacity import Retrying, stop_after_attempt
-
 import matplotlib.pyplot as plt
 
 import numpy as np

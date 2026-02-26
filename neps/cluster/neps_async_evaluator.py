@@ -1,9 +1,9 @@
 """Async evaluation wrapper for NEPS integration with SLURM."""
 
 from pathlib import Path
-from cluster.slurm_config import SlurmConfig
-from cluster.slurm_script_builders import BasicScriptBuilder
-from cluster.job_submitter import JobSubmitter
+from neps.cluster.slurm_config import SlurmConfig
+from neps.cluster.slurm_script_builders import BasicScriptBuilder
+from neps.cluster.job_submitter import JobSubmitter
 
 
 class NepsAsyncEvaluator:

@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from cluster.slurm_config import SlurmConfig
+from neps.cluster.slurm_config import SlurmConfig
 
 
 class JobSubmitter:
