@@ -61,6 +61,41 @@ def default_categorical_kernel(
         )
     )
 
+
+class PowerLawMean(GpMean):
+    def __init__(self, encoder, flop_estimator, fixed_slope: float, fixed_bias: float):
+        super().__init__()
+        self.encoder = encoder
+        self.flop_estimator = flop_estimator
+        
+        # Store them as standard tensors, NOT learnable parameters
+        self.register_buffer("fixed_slope", torch.tensor(fixed_slope, dtype=torch.float64))
+        self.register_buffer("fixed_bias", torch.tensor(fixed_bias, dtype=torch.float64))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x shape: (Batch, N_Dims)
+        batch_shape = x.shape[:-1]
+        x_flat = x.view(-1, x.shape[-1])
+        
+        flops_list = []
+        
+        # 1. The Bridge: N-Dims -> 1D FLOPs
+        with torch.no_grad():
+            x_physical = self.encoder.decode(x_flat)
+            for conf in x_physical:
+                val = self.flop_estimator(**conf)
+                flops_list.append(val)
+                
+        flops = torch.tensor(flops_list, dtype=x.dtype, device=x.device)
+        
+        # 2. Convert to Log Space
+        log_flops = torch.log10(flops.clamp(min=1.0))
+        
+        # 3. Apply the Hardcoded Linear Scaling Law
+        # log(Loss) = slope * log(FLOPs) + bias
+        mean_flat = self.fixed_slope * log_flops + self.fixed_bias
+        return mean_flat.view(batch_shape)
+
 def make_default_single_obj_gp(
     x: torch.Tensor,
     y: torch.Tensor,
@@ -69,6 +104,8 @@ def make_default_single_obj_gp(
     y_transform: OutcomeTransform | None = None,
     objective_minimize: bool = False,
     flop_estimator: Callable[..., int] | None = None,
+    mean_slope: float = -0.5,
+    mean_bias: float = 5.0,
 ) -> SingleTaskGP:
     """Default GP for single objective optimization.
     
@@ -99,6 +136,13 @@ def make_default_single_obj_gp(
                 scaling_dims.append(encoder.index_of[hp_name])
     
     mean_module = None
+    # if flop_estimator is not None:
+    mean_module = PowerLawMean(
+        encoder=encoder,
+        flop_estimator=flop_estimator,
+        fixed_slope=mean_slope,
+        fixed_bias=mean_bias,
+    )
 
     # Purely vectorial
     if len(categoricals) == 0:

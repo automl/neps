@@ -483,9 +483,22 @@ class BayesianOptimization:
             )
         else:
             assert self.cost_estimator is not None, "cost_estimator must be provided for single objective optimization."
+            # fit a linear line to the evaluated trials to adjust the kernel
+            from neps.optimizers.scaling_law_guided import fit_pareto_front_loglog
+            # evaluated_trials = [trial for trial in trials.values()
+            #     if (
+            #         trial.report is not None 
+            #         and trial.report.objective_to_minimize is not None 
+            #         and np.isfinite(trial.report.objective_to_minimize)
+            #         )
+            # ]
+            slope, intercept, _, _ , _, _, _ = fit_pareto_front_loglog(
+                trials=trials,)
             gp = make_default_single_obj_gp(
                 x=data.x, y=data.y, encoder=encoder,
-                # flop_estimator=self.cost_estimator,
+                flop_estimator=self.cost_estimator,
+                mean_slope=slope,
+                mean_bias=intercept,
             )
             from botorch.fit import fit_gpytorch_mll
             from gpytorch import ExactMarginalLogLikelihood

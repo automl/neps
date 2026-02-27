@@ -14,6 +14,142 @@ if TYPE_CHECKING:
     pass
 
 logger = getLogger(__name__)
+
+
+def fit_pareto_front_loglog(
+    trials: Mapping[str, Trial],
+) -> tuple[float | None, float | None, np.ndarray | None, list[float], list[float], list[tuple], list[tuple]]:
+    """Fit a line to the Pareto front in log-log space.
+    
+    Extracts the Pareto front from trials, enforces monotonicity, and fits a linear
+    regression in log-log space: log(loss) = slope * log(flops) + intercept
+    
+    Args:
+        trials: Mapping of trial IDs to Trial objects.
+    
+    Returns:
+        Tuple of (slope, intercept, fitted_objs, flops_front, objs_front, pareto_front, all_rows) where:
+            - slope: Scaling exponent (None if fitting failed)
+            - intercept: Log-space intercept (None if fitting failed)
+            - fitted_objs: Predicted losses at pareto front flops (None if fitting failed)
+            - flops_front: FLOPs values of pareto front
+            - objs_front: Loss values of pareto front
+            - pareto_front: List of pareto front tuples (n_params, n_data, loss, flops)
+            - all_rows: List of all valid trial tuples (n_params, n_data, loss, flops)
+    """
+    FLOPS_KEY = "flops"
+    N_PARAM_KEY = "n_param"
+    N_DATA_KEY = "n_data"
+    
+    # Extract trial data
+    rows = []
+    for trial in trials.values():
+        if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
+            continue
+        if trial.report.extra is None:
+            continue
+        obj = trial.report.objective_to_minimize
+        try:
+            flops = trial.report.extra[FLOPS_KEY]
+            n_params = trial.report.extra[N_PARAM_KEY]
+            n_data = trial.report.extra[N_DATA_KEY]
+        except KeyError as e:
+            logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
+            continue
+        except Exception as e:
+            logger.error(f"Could not extract metrics for trial {trial.id}, skipping. {e}")
+            continue
+        row = (n_params, n_data, float(obj), flops)
+        rows.append(row)
+    
+    if not rows:
+        logger.warning("No evaluated trials to fit Pareto front.")
+        return None, None, None, [], [], [], []
+    
+    # Compute Pareto front
+    pareto = []
+    for i, (n_i, d_i, l_i, f_i) in enumerate(rows):
+        dominated = False
+        for j, (_, _, l_j, f_j) in enumerate(rows):
+            if i == j:
+                continue
+            if (f_j <= f_i and l_j <= l_i) and (f_j < f_i or l_j < l_i):
+                dominated = True
+                break
+        if not dominated:
+            pareto.append((n_i, d_i, l_i, f_i))
+    
+    if not pareto:
+        logger.warning("No Pareto front points found.")
+        return None, None, None, [], [], [], rows
+    
+    # Enforce monotonicity
+    if len(pareto) > 1:
+        sorted_front = sorted(pareto, key=lambda x: x[3], reverse=True)
+        monotonic_front = [sorted_front[0]]
+        prev_n = sorted_front[0][0]
+        
+        for i in range(1, len(sorted_front)):
+            n_p, n_d, loss, flops = sorted_front[i]
+            if n_p <= prev_n:
+                monotonic_front.append((n_p, n_d, loss, flops))
+                prev_n = n_p
+            else:
+                logger.debug(f"Removing non-monotonic point: flops={flops:.2e}, loss={loss:.4f}")
+        
+        pareto = monotonic_front
+    
+    if not pareto:
+        logger.warning("No Pareto front points found after enforcing monotonicity.")
+        return None, None, None, [], [], [], rows
+    
+    # Sort by FLOPs and extract data
+    pareto.sort(key=lambda r: r[3])
+    objs_front = [r[2] for r in pareto]
+    flops_front = [r[3] for r in pareto]
+    
+    # Log-log transformation
+    log_flops_front = np.log(np.array(flops_front))
+    log_objs_front = np.log(np.array(objs_front))
+    
+    # Compute weights (emphasize higher FLOPS)
+    try:
+        if not np.all(np.isfinite(log_flops_front)) or not np.all(np.isfinite(log_objs_front)):
+            logger.warning("Non-finite values in log-transformed data. Using unweighted fit.")
+            weights = None
+        else:
+            max_log_flops, min_log_flops = np.max(log_flops_front), np.min(log_flops_front)
+            if max_log_flops - min_log_flops < 1e-8:
+                logger.warning("FLOPs values are too close. Using unweighted fit.")
+                weights = None
+            else:
+                weights = np.exp(3 * (log_flops_front - min_log_flops) / (max_log_flops - min_log_flops + 1e-8))
+                if weights is not None and not np.all(np.isfinite(weights)):
+                    logger.warning("Weights contain non-finite values. Using unweighted fit.")
+                    weights = None
+    except Exception as e:
+        logger.warning(f"Could not compute weights: {e}")
+        weights = None
+    
+    # Fit linear regression in log-log space
+    try:
+        coeffs = np.polyfit(log_flops_front, log_objs_front, 1, w=weights)
+        slope, intercept = coeffs[0], coeffs[1]
+        
+        if not (np.isfinite(slope) and np.isfinite(intercept)):
+            logger.warning(f"Fitted parameters are non-finite: slope={slope}, intercept={intercept}")
+            return None, None, None, flops_front, objs_front, pareto, rows
+        
+        fit_line = np.poly1d(coeffs)
+        fitted_log_objs = fit_line(log_flops_front)
+        fitted_objs = np.exp(fitted_log_objs)
+        
+        return slope, intercept, fitted_objs, flops_front, objs_front, pareto, rows
+    except Exception as e:
+        logger.warning(f"Could not fit linear trend to Pareto front: {e}")
+        return None, None, None, flops_front, objs_front, pareto, rows
+
+
 @dataclass
 class ScalingLawGuidedOptimizer:
     space: SearchSpace
@@ -61,7 +197,7 @@ class ScalingLawGuidedOptimizer:
                 continue
             try:
                 flops = trial.report.extra[cls.FLOPS_KEY]
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
                 obj = float(trial.report.objective_to_minimize)
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
@@ -137,7 +273,7 @@ class ScalingLawGuidedOptimizer:
             obj = trial.report.objective_to_minimize
             try:
                 flops = trial.report.extra[cls.FLOPS_KEY]
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -191,6 +327,44 @@ class ScalingLawGuidedOptimizer:
         return pareto
 
     @classmethod
+    def _enforce_monotonicity(cls, pareto_front: list[tuple]) -> list[tuple]:
+        """Enforce monotonicity on Pareto front: loss must decrease as FLOPs increase.
+        
+        Sorts by FLOPs (ascending) and removes points where loss increases compared to 
+        previous point. This ensures the Pareto front respects monotonic scaling laws.
+        
+        Args:
+            pareto_front: List of tuples (n_params, n_data, loss, flops)
+        
+        Returns:
+            Monotonic pareto front with non-monotonic points removed.
+        """
+        if not pareto_front or len(pareto_front) <= 1:
+            return pareto_front
+        
+        # Sort by FLOPs (descending: bigger to smaller)
+        sorted_front = sorted(pareto_front, key=lambda x: x[3], reverse=True)
+        
+        # Enforce monotonic decrease in loss
+        monotonic_front = [sorted_front[0]]
+        prev_n = sorted_front[0][0]  # Track minimum loss seen so far
+        
+        for i in range(1, len(sorted_front)):
+            n_p, n_d, loss, flops = sorted_front[i]
+            
+            # Only keep points where loss is strictly decreasing (or equal, but prefer to rule out)
+            if n_p <= prev_n:
+                monotonic_front.append((n_p, n_d, loss, flops))
+                min_loss = loss
+            else:
+                logger.debug(
+                    f"Removing non-monotonic point: flops={flops:.2e}, loss={loss:.4f} "
+                    f"(previous min_loss={min_loss:.4f})"
+                )
+        
+        return monotonic_front
+
+    @classmethod
     def _plot_pareto_front(cls, trials: Mapping[str, Trial]) -> tuple[plt.Figure | None, str | None]:
         """Generate Pareto front visualization (non-dominated points) in log-log scale.
         
@@ -199,9 +373,15 @@ class ScalingLawGuidedOptimizer:
         """
         from matplotlib.colors import Normalize
         
-        rows = []
-        trial_map = {}  # Map (n_params, n_data, obj, flops) to trial for tracking
+        # Get Pareto front and fit using the standalone function
+        slope, intercept, fitted_objs, flops_front, objs_front, pareto_front, rows = fit_pareto_front_loglog(trials)
         
+        if not pareto_front:
+            logger.warning("No Pareto front points found.")
+            return None, None
+        
+        # Build trial_map for CSV generation
+        trial_map = {}
         for trial in trials.values():
             if trial.report is None or trial.report.objective_to_minimize is None or not np.isfinite(trial.report.objective_to_minimize):
                 continue
@@ -210,67 +390,20 @@ class ScalingLawGuidedOptimizer:
             obj = trial.report.objective_to_minimize
             try:
                 flops = trial.report.extra[cls.FLOPS_KEY]
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
                 n_data = trial.report.extra[cls.N_DATA_KEY]
-            except KeyError as e:
-                logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
-                continue
-            except Exception as e:
-                logger.error(f"Could not extract metrics for trial {trial.id}, skipping plot point. {e}")
+            except (KeyError, Exception):
                 continue
             row = (n_params, n_data, float(obj), flops)
-            rows.append(row)
             trial_map[row] = trial
-
-        if not rows:
-            logger.warning("No evaluated trials with objectives/flops to plot.")
-            return None, None
-
-        pareto_front = cls._compute_pareto_front(rows)
-
-        if not pareto_front:
-            logger.warning("No Pareto front points found.")
-            return None, None
-
-        pareto_front.sort(key=lambda r: r[3])
         
+        # Extract data from pareto front
         n_params_front = [r[0] for r in pareto_front]
         n_data_front = [r[1] for r in pareto_front]
-        objs_front = [r[2] for r in pareto_front]
-        flops_front = [r[3] for r in pareto_front]
         
         n_params_all = [r[0] for r in rows]
         objs_all = [r[2] for r in rows]
         flops_all = [r[3] for r in rows]
-        
-        log_flops_front = np.log(np.array(flops_front))
-        log_objs_front = np.log(np.array(objs_front))
-        
-        n_points = len(log_flops_front)
-        weights = np.exp(np.linspace(0, 4, n_points))
-        weights = weights / np.sum(weights)
-        
-        try:
-            if not np.all(np.isfinite(log_flops_front)) or not np.all(np.isfinite(log_objs_front)):
-                logger.warning("Non-finite values in log-transformed data. Using unweighted fit.")
-                weights = None
-            if weights is not None and not np.all(np.isfinite(weights)):
-                logger.warning("Weights contain non-finite values. Using unweighted fit.")
-                weights = None
-            
-            coeffs = np.polyfit(log_flops_front, log_objs_front, 1, w=weights)
-            slope, intercept = coeffs[0], coeffs[1]
-            
-            if not (np.isfinite(slope) and np.isfinite(intercept)):
-                logger.warning(f"Fitted parameters are non-finite: slope={slope}, intercept={intercept}")
-                slope, intercept, fitted_objs = None, None, None
-            else:
-                fit_line = np.poly1d(coeffs)
-                fitted_log_objs = fit_line(log_flops_front)
-                fitted_objs = np.exp(fitted_log_objs)
-        except Exception as e:
-            logger.warning(f"Could not fit linear trend to Pareto front: {e}")
-            slope, intercept, fitted_objs = None, None, None
         
         fig, ax = plt.subplots(figsize=(10, 6))
         
@@ -281,8 +414,6 @@ class ScalingLawGuidedOptimizer:
         sc = ax.scatter(flops_front, objs_front, c=n_params_front, cmap='inferno', 
                        marker='D', s=100, alpha=1.0, edgecolors='black', linewidth=1.5,
                        norm=norm_front, label='Pareto front (actual)')
-        
-        ax.plot(flops_front, objs_front, 'k-', alpha=0.3, linewidth=1)
         
         if fitted_objs is not None and slope is not None:
             ax.plot(flops_front, fitted_objs, 'r--', alpha=0.7, linewidth=2.5, 
@@ -335,6 +466,21 @@ class ScalingLawGuidedOptimizer:
         return fig, csv_string
 
     @classmethod
+    def compute_fit_weights(cls, log_flops_front, log_objs_front):
+        if not np.all(np.isfinite(log_flops_front)) or not np.all(np.isfinite(log_objs_front)):
+            logger.warning("Non-finite values in log-transformed data. Using unweighted fit.")
+            return None
+        max_log_flops, min_log_flops = np.max(log_flops_front), np.min(log_flops_front)
+        if max_log_flops - min_log_flops < 1e-8:
+            logger.warning("FLOPs values for Pareto front are too close. Using unweighted fit.")
+            return None
+        weights = np.exp(3 * (log_flops_front - min_log_flops) / (max_log_flops - min_log_flops + 1e-8))
+        if weights is not None and not np.all(np.isfinite(weights)):
+            logger.warning("Weights contain non-finite values. Using unweighted fit.")
+            return None
+        return weights
+
+    @classmethod
     def _compute_pareto_front_params_data(cls, trial_data: list[tuple]) -> list[tuple]:
         """Compute Pareto front from trial data based on params and data (n_params, n_data, loss, flops).
         Lower params AND lower data is better."""
@@ -365,7 +511,7 @@ class ScalingLawGuidedOptimizer:
             obj = trial.report.objective_to_minimize
             try:
                 flops = trial.report.extra[cls.FLOPS_KEY]
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
                 n_data = trial.report.extra[cls.N_DATA_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
@@ -432,7 +578,7 @@ class ScalingLawGuidedOptimizer:
                 continue
             obj = trial.report.objective_to_minimize
             try:
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
@@ -562,7 +708,7 @@ class ScalingLawGuidedOptimizer:
                 continue
             try:
                 flops = trial.report.extra[cls.FLOPS_KEY]
-                n_params = trial.report.extra[cls.N_PARAM_KEY] * 1_000_000
+                n_params = trial.report.extra[cls.N_PARAM_KEY]
             except KeyError as e:
                 logger.error(f"Trial {trial.id} missing required key {e} in extra. Skipping.")
                 continue
