@@ -132,13 +132,13 @@ class NePSLocalPriorIncumbentSampler:
 
         if self.mutation_mode[0] == "random":
             assert 0 < self.mutation_mode[1] <= 1
-            n_mutations = random.randint(1, int(len(inc_config) * self.mutation_mode[1]))
+            n_mutations = random.randint(1, max(1, int(len(inc_config) * self.mutation_mode[1])))
         elif self.mutation_mode[0] == "fixed":
             assert self.mutation_mode[1] > 0
             n_mutations = min(len(inc_config), self.mutation_mode[1])
         elif self.mutation_mode[0] == "ratio":
             assert 0 < self.mutation_mode[1] <= 1
-            n_mutations = int(len(inc_config) * self.mutation_mode[1])
+            n_mutations = max(1, int(len(inc_config) * self.mutation_mode[1]))
         else:
             raise ValueError(f"Invalid mutation mode: {self.mutation_mode[0]}")
 
