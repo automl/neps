@@ -22,7 +22,7 @@ class SlurmConfig:
     mem_gb: int = 32
     time_hours: int = 24
     output_dir: Path | str = "slurm_logs"
-    workspace_dir: Path | str = "."
+    python_path: Path | str = "."
     
     # Environment management
     environment_manager: Literal["conda", "virtualenv"] = "conda"
@@ -44,8 +44,8 @@ class SlurmConfig:
         """Validate, convert paths, and auto-generate job_name if needed."""
         if isinstance(self.output_dir, str):
             self.output_dir = Path(self.output_dir)
-        if isinstance(self.workspace_dir, str):
-            self.workspace_dir = Path(self.workspace_dir)
+        if isinstance(self.python_path, str):
+            self.python_path = Path(self.python_path)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         # Auto-generate job_name if not provided

@@ -39,7 +39,7 @@ class BasicScriptBuilder:
 echo "Started at $(date)"
 start=$(date +%s)
 
-cd {self.config.workspace_dir}
+export PYTHONPATH={self.config.python_path}:$PYTHONPATH
 
 {cmd}
 
@@ -89,7 +89,7 @@ class ArrayScriptBuilder:
 echo "Started at $(date)"
 echo "Array task: $SLURM_ARRAY_TASK_ID"
 
-cd {self.config.workspace_dir}
+export PYTHONPATH={self.config.python_path}:$PYTHONPATH
 
 {cmd_template}
 
