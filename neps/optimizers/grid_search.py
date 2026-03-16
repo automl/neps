@@ -51,10 +51,10 @@ class GridSearch:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        n_trials = len(trials)
+        max_prev_trial_id = _get_max_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i)
+            config_id = str(max_prev_trial_id + i + 1)
             imported_configs.append(
                 ImportedConfig(
                     config=config,

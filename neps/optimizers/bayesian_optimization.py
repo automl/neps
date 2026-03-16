@@ -30,6 +30,7 @@ from neps.optimizers.models.gp import (
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig, Artifact, ArtifactType
 from neps.optimizers.utils.initial_design import make_initial_design
+from neps.optimizers.utils.util import _get_max_trial_id
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
 
@@ -329,8 +330,11 @@ class BayesianOptimization:
         param_keys = list(parameters.keys())
 
         n_to_sample = 1 if n is None else n
+
         n_sampled = len(trials)
-        id_generator = iter(str(i) for i in itertools.count(n_sampled + 1))
+        
+        max_trial_id = _get_max_trial_id(trials)
+        id_generator = iter(str(i) for i in itertools.count(max_trial_id + 1))
 
         # If the amount of configs evaluated is less than the initial design
         # requirement, keep drawing from initial design
@@ -340,7 +344,7 @@ class BayesianOptimization:
             if (trial.report is not None and trial.report.objective_to_minimize is not None) or (trial.metadata.state == "evaluating")
         )
         sampled_configs: list[SampledConfig] = []
-
+        
         if n_evaluated < self.n_initial_design:
             # For reproducibility, we need to ensure we do the same sample of all
             # configs each time.
@@ -414,7 +418,9 @@ class BayesianOptimization:
         pibo_exp_term = None
         prior = None
         if self.prior:
-            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_initial_design)
+            pibo_exp_term = _pibo_exp_term(
+                len(trials), encoder.ndim, self.n_initial_design
+            )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
@@ -625,7 +631,7 @@ class BayesianOptimization:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        trials_len = len(trials)
+        max_trial_id = _get_max_trial_id(trials)
         return [
             ImportedConfig(
                 id=str(i),
@@ -633,7 +639,7 @@ class BayesianOptimization:
                 result=copy.deepcopy(result),
             )
             for i, (config, result) in enumerate(
-                external_evaluations, start=trials_len + 1
+                external_evaluations, start=max_trial_id + 1
             )
         ]
 

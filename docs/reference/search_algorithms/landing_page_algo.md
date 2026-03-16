@@ -6,19 +6,20 @@ We distinguish between algorithms that use different types of information and st
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-constructing-architecture-spaces) |
-| :- | :------------: | :----: | :---------: | :-----------------: |
-| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|❌|
-| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|
-| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|
-| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
-| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|❌|
-| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|❌|
-| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|❌|
-| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|❌|
-| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|
-| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|
-| [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|
+| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
+| :- | :------------: | :----: | :---------: | :-----------------: | :---------------: |
+| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
+| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|❌|
+| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|❌|
+| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
+| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|✅|❌|
+| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|❌|
+| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|✅|❌|
+| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|❌|
+| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|❌|
+| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|❌|
+| [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
+| `PriMO`|❌|✅|❌|❌|✅|
 
 ## What is Multi-Fidelity Optimization?
 

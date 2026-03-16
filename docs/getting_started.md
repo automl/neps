@@ -15,34 +15,34 @@ pip install neural-pipeline-search
 
 1. **Establish a [`pipeline_space=`](reference/neps_spaces.md)**:
 
-```python
-class ExampleSpace(neps.PipelineSpace):
-    # Define the parameters of your search space
-    some_parameter = neps.Float(lower=0.0, upper=1.0)       # float
-    another_parameter = neps.Integer(lower=0, upper=10)     # integer
-    optimizer = neps.Categorical(choices=("sgd", "adam"))           # categorical
-    epoch = neps.IntegerFidelity(lower=1, upper=100)
-    learning_rate = neps.Float(lower=1e-5, upper=1, log=True)
-    alpha = neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
-```
+    ```python
+    class ExampleSpace(neps.PipelineSpace):
+        # Define the parameters of your search space
+        some_parameter = neps.Float(lower=0.0, upper=1.0)       # float
+        another_parameter = neps.Integer(lower=0, upper=10)     # integer
+        optimizer = neps.Categorical(choices=("sgd", "adam"))           # categorical
+        epoch = neps.IntegerFidelity(lower=1, upper=100)
+        learning_rate = neps.Float(lower=1e-5, upper=1, log=True)
+        alpha = neps.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
+    ```
 
-2. **Define an `evaluate_pipeline()` function**:
+1. **Define an `evaluate_pipeline()` function**:
 
-```python
-def evaluate_pipeline(some_parameter: float,
-                 another_parameter: float,
-                 optimizer: str, epoch: int,
-                 learning_rate: float, alpha: float) -> float:
-    model = make_model(...)
-    loss = eval_model(model)
-    return loss
-```
+    ```python
+    def evaluate_pipeline(some_parameter: float,
+                     another_parameter: float,
+                     optimizer: str, epoch: int,
+                     learning_rate: float, alpha: float) -> float:
+        model = make_model(...)
+        loss = eval_model(model)
+        return loss
+    ```
 
-3. **Execute with [`neps.run()`](reference/neps_run.md)**:
+1. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
-```python
-neps.run(evaluate_pipeline, ExampleSpace())
-```
+    ```python
+    neps.run(evaluate_pipeline, ExampleSpace())
+    ```
 
 ---
 

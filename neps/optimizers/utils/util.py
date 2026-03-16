@@ -59,3 +59,26 @@ def get_config_key_to_id_mapping(
         # we always want to keep the highest config_id for a given config_key
         config_to_id[config_key] = config_id
     return config_to_id
+
+
+def _get_max_trial_id(trials: Mapping[str, Any]) -> int:
+    """Get the maximum numeric trial ID from the trials mapping.
+    Args:
+        trials: Mapping of trial IDs to Trial objects.
+    Returns:
+        The maximum numeric trial ID as an integer.
+        If no numeric IDs are found, returns 0.
+    """
+    if not trials:
+        return 0
+    max_id = 0
+    for trial_id in trials:
+        try:
+            # For hierarchical IDs like "1_rung_2", extract the base ID
+            parts = trial_id.split("_")
+            base_id = int(parts[0])
+            max_id = max(max_id, base_id)
+        except (ValueError, IndexError):
+            # If not numeric, skip
+            pass
+    return max_id

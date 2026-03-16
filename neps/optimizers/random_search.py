@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
+from neps.optimizers.utils.util import _get_max_trial_id
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
 
@@ -42,7 +43,7 @@ class RandomSearch:
                     "This optimizer only supports HPO search spaces, please use a NePS"
                     " space-compatible optimizer."
                 )
-        n_trials = len(trials)
+        max_trial_id = _get_max_trial_id(trials)
         _n = 1 if n is None else n
         
         # Initialize constraint cache if needed
@@ -95,13 +96,13 @@ class RandomSearch:
 
         if n is None or n == 1:
             config = confs[0]
-            config_id = str(n_trials + 1)
+            config_id = str(max_trial_id + 1)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
         return [
             SampledConfig(
                 config=config,
-                id=str(n_trials + i + 1),
+                id=str(max_trial_id + i + 1),
                 previous_config_id=None,
             )
             for i, config in enumerate(confs)
@@ -112,10 +113,10 @@ class RandomSearch:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        n_trials = len(trials)
+        max_trial_id = _get_max_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i + 1)
+            config_id = str(max_trial_id + i + 1)
             imported_configs.append(
                 ImportedConfig(
                     config=config,
