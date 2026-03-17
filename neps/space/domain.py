@@ -304,9 +304,14 @@ class Domain(Generic[V]):
 
         q = self.cardinality
         
-        # For log-scaled integer domains, don't quantize in unit space
+        # For log-scaled integer domains, quantize in log space to integer exponent levels
         if self.log_bounds is not None and self.round and q is not None:
-            q = None
+            lower, upper = self.log_bounds
+            # Number of integer log-space levels: e.g., for log_2[3, 6] -> [3, 4, 5, 6] = 4 levels
+            n_log_levels = round(upper - lower) + 1
+            quantization_levels = torch.floor(x * n_log_levels).clip(0, n_log_levels - 1)
+            x = quantization_levels / (n_log_levels - 1)
+            q = None  # Don't quantize again after exponential
 
         if q is not None:
             quantization_levels = torch.floor(x * q).clip(0, q - 1)

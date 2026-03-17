@@ -129,7 +129,10 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         elif self.sampling_strategy == "space_expansion":
             expansion_level = self._calculate_expansion_level(spent)
             print(f"expansion_level {expansion_level}")
-            to_spend = self._get_space_expansion_budget(spent, expansion_level)
+            to_spend = self._get_space_expansion_budget(
+                spent, expansion_level, 
+                is_initial_design=(len(trials) < self.bayesian_optimizer.n_initial_design),
+            )
         else:
             raise ValueError(f"Unknown sampling strategy: {self.sampling_strategy}")
         
@@ -158,7 +161,10 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                     f"Retrying at expanded level {expanded_level}."
                 )
                 # Retry with expanded search space
-                to_spend = self._get_space_expansion_budget(spent, expanded_level)
+                to_spend = self._get_space_expansion_budget(
+                    spent, expanded_level, 
+                    is_initial_design=(len(trials) < self.bayesian_optimizer.n_initial_design),
+                )
                 self.adapt_search_space(max_flops=to_spend)
                 return self.bayesian_optimizer(
                     trials, budget_info=BudgetInfo(
@@ -205,7 +211,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         # Beyond max_expansion, return max_expansion
         return self.max_expansion
 
-    def _get_space_expansion_budget(self, spent: float, expansion_level: int) -> float:
+    def _get_space_expansion_budget(self, spent: float, expansion_level: int, is_initial_design: bool) -> float:
         """Compute budget allocation for space_expansion strategy (stateless).
         
         Strategy:
@@ -225,13 +231,10 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         Returns:
             Budget (max FLOPs) for this sampling round
         """
-        if expansion_level == 0:
-            # Initial design phase
-            print(
-                f"Initial {self._total_budget_for_initial_design:e} spent {spent:e} FLOPs")
-            if spent < self._total_budget_for_initial_design:
-                per_trial = self._total_budget_for_initial_design / self.bayesian_optimizer.n_initial_design
-                return per_trial
+        print(f"Initial {self._total_budget_for_initial_design:e} spent {spent:e} FLOPs")
+        if spent < self._total_budget_for_initial_design and is_initial_design:
+            per_trial = self._total_budget_for_initial_design / self.bayesian_optimizer.n_initial_design
+            return per_trial
         else:
             return self.max_evaluation_flops / (2 ** (self.max_expansion - expansion_level))
     
