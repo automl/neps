@@ -382,12 +382,12 @@ class PipelineSpace(Resolvable):
         return {k: v for k, v in self.get_attrs().items() if isinstance(v, Fidelity)}
 
     @property
-    def get_arch_params(self) -> Mapping[str, Integer]:
-        """Get the architecture parameters of the pipeline.
+    def get_scaling_params(self) -> Mapping[str, Integer]:
+        """Get the scaling parameters of the pipeline.
 
         Returns:
             A mapping of attribute names to HPOInteger objects that are marked as
-            architecture parameters.
+            scaling parameters.
         """
         return {
             k: v
@@ -414,7 +414,7 @@ class PipelineSpace(Resolvable):
                 continue
             attrs[attr_name] = attr_value
 
-        properties_to_ignore = ("fidelity_attrs","get_arch_params")
+        properties_to_ignore = ("fidelity_attrs","get_scaling_params")
         for property_to_ignore in properties_to_ignore:
             attrs.pop(property_to_ignore, None)
 
@@ -1120,6 +1120,7 @@ class Float(Domain[float]):
         lower: float,
         upper: float,
         log: bool = False,  # noqa: FBT001, FBT002
+        log_base: float | None = None,
         prior: float | _Unset = _UNSET,
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
@@ -1132,6 +1133,7 @@ class Float(Domain[float]):
             lower: The minimum value of the domain.
             upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
+            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
@@ -1155,6 +1157,7 @@ class Float(Domain[float]):
         self._lower = lower
         self._upper = upper
         self._log = log
+        self._log_base = log_base
         self._prior = prior
         self._prior_confidence = (
             convert_confidence_level(prior_confidence)
@@ -1182,6 +1185,7 @@ class Float(Domain[float]):
             and self.lower == other.lower
             and self.upper == other.upper
             and self._log == other.log
+            and self._log_base == other.log_base
         )
 
     @property
@@ -1219,6 +1223,16 @@ class Float(Domain[float]):
 
         """
         return self._log
+
+    @property
+    def log_base(self) -> float | None:
+        """Get the logarithm base used for log scaling.
+
+        Returns:
+            The logarithm base if log is True, otherwise None.
+
+        """
+        return self._log_base
 
     @property
     def has_prior(self) -> bool:
@@ -1319,6 +1333,7 @@ class Float(Domain[float]):
             lower=new_min,
             upper=new_max,
             log=self._log,
+            log_base=self._log_base,
             prior=center,
             prior_confidence=confidence,
         )
@@ -1340,6 +1355,7 @@ class Integer(Domain[int]):
         lower: int,
         upper: int,
         log: bool = False,  # noqa: FBT001, FBT002
+        log_base: float | None = None,
         prior: float | int | _Unset = _UNSET,
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
@@ -1353,6 +1369,7 @@ class Integer(Domain[int]):
             lower: The minimum value of the domain.
             upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
+            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
@@ -1375,6 +1392,7 @@ class Integer(Domain[int]):
         self._lower = lower
         self._upper = upper
         self._log = log
+        self._log_base = log_base
         self._is_scaling = is_scaling
         self._prior = prior
         self._prior_confidence = (
@@ -1403,6 +1421,7 @@ class Integer(Domain[int]):
             and self.lower == other.lower
             and self.upper == other.upper
             and self._log == other.log
+            and self._log_base == other.log_base
             and self._is_scaling == other.is_scaling
         )
 
@@ -1451,6 +1470,16 @@ class Integer(Domain[int]):
 
         """
         return self._log
+
+    @property
+    def log_base(self) -> float | None:
+        """Get the logarithm base used for log scaling.
+
+        Returns:
+            The logarithm base if log is True, otherwise None.
+
+        """
+        return self._log_base
 
     @property
     def has_prior(self) -> bool:
@@ -1550,6 +1579,7 @@ class Integer(Domain[int]):
             lower=new_min,
             upper=new_max,
             log=self._log,
+            log_base=self._log_base,
             prior=center,
             is_scaling=self.is_scaling,
             prior_confidence=confidence,

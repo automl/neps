@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import pytest
 import torch
 from pytest_cases import parametrize
@@ -226,3 +227,111 @@ def test_translate(
 ) -> None:
     y = Domain.translate(x, frm=frm, to=to)
     torch.testing.assert_close(y, expected, check_dtype=True, msg=f"{y} != {expected}")
+
+
+def test_log_base_2_to_unit() -> None:
+    """Test converting values with log base 2 to unit interval."""
+    # Domain: 2^0 to 2^8 (1 to 256)
+    # Values: 1, 2, 4, 8, 16, 32, 64, 128, 256
+    # log2 values: 0, 1, 2, 3, 4, 5, 6, 7, 8
+    # normalized to [0, 1]: 0/8, 1/8, 2/8, 3/8, 4/8, 5/8, 6/8, 7/8, 8/8
+    domain = Domain.integer(1, 256, log=True, log_base=2)
+    x = T([1, 2, 4, 8, 16, 32, 64, 128, 256], dtype=torch.float64)
+    expected = T([0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0])
+    
+    y = domain.to_unit(x)
+    torch.testing.assert_close(y, expected, check_dtype=False, atol=1e-6, rtol=1e-6)
+
+
+def test_log_base_10_to_unit() -> None:
+    """Test converting values with log base 10 to unit interval."""
+    # Domain: 10^-2 to 10^2 (0.01 to 100)
+    # Values: 0.01, 0.1, 1, 10, 100
+    # log10 values: -2, -1, 0, 1, 2
+    # normalized to [0, 1]: 0/4, 1/4, 2/4, 3/4, 4/4
+    domain = Domain.floating(0.01, 100, log=True, log_base=10)
+    x = T([0.01, 0.1, 1.0, 10.0, 100.0])
+    expected = T([0.0, 0.25, 0.5, 0.75, 1.0])
+    
+    y = domain.to_unit(x)
+    torch.testing.assert_close(y, expected, check_dtype=False, atol=1e-6, rtol=1e-6)
+
+
+def test_log_base_e_natural_log() -> None:
+    """Test that log_base=e gives same result as no log_base (natural log)."""
+    import math
+    
+    domain_natural = Domain.floating(1.0, math.e**4, log=True, log_base=None)
+    
+    x = T([1.0, math.e, math.e**2, math.e**3, math.e**4])
+    x_expected = T([0.0, 1/4, 2/4, 3/4, 1.0])
+    
+    y_natural = domain_natural.to_unit(x)
+    
+    torch.testing.assert_close(y_natural, x_expected, check_dtype=False, atol=1e-6, rtol=1e-6)
+
+
+def test_log_base_2_from_unit() -> None:
+    """Test converting from unit interval back to log base 2 domain."""
+    domain = Domain.integer(1, 256, log=True, log_base=2)
+    x = T([0.0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1.0], dtype=torch.float64)
+    expected = T([1, 2, 4, 8, 16, 32, 64, 128, 256], dtype=torch.int64)
+    
+    y = domain.from_unit(x)
+    torch.testing.assert_close(y, expected, check_dtype=True, atol=1e-5, rtol=1e-5)
+
+
+def test_log_base_10_from_unit() -> None:
+    """Test converting from unit interval back to log base 10 domain."""
+    domain = Domain.floating(0.01, 100, log=True, log_base=10)
+    x = T([0.0, 0.25, 0.5, 0.75, 1.0], dtype=torch.float64)
+    expected = T([0.01, 0.1, 1.0, 10.0, 100.0])
+    
+    y = domain.from_unit(x)
+    torch.testing.assert_close(y, expected, check_dtype=False, atol=1e-6, rtol=1e-6)
+
+
+def test_log_base_round_trip() -> None:
+    """Test that to_unit and from_unit are inverses with log_base."""
+    import math
+    
+    domain = Domain.floating(10, 10000, log=True, log_base=10)
+    original = T([10.0, 50.0, 100.0, 500.0, 1000.0, 5000.0, 10000.0])
+    
+    # to_unit and back
+    normalized = domain.to_unit(original)
+    reconstructed = domain.from_unit(normalized)
+    
+    torch.testing.assert_close(reconstructed, original, check_dtype=False, atol=1e-5, rtol=1e-5)
+
+
+def test_log_base_2_vs_natural_different() -> None:
+    """Verify that log_bounds differ between different log bases."""
+    domain_base2 = Domain.floating(1.0, 256.0, log=True, log_base=2)
+    domain_natural = Domain.floating(1.0, 256.0, log=True, log_base=None)
+    
+    # Log bounds should be different
+    assert domain_base2.log_bounds != domain_natural.log_bounds
+    
+    # Base 2: log_bounds should be (0, 8) since log2(1)=0, log2(256)=8
+    assert abs(domain_base2.log_bounds[0] - 0.0) < 1e-10
+    assert abs(domain_base2.log_bounds[1] - 8.0) < 1e-10
+    
+    # Natural log: log_bounds should be (0, ~5.545) since ln(1)=0, ln(256)≈5.545
+    assert abs(domain_natural.log_bounds[0] - 0.0) < 1e-10
+    assert abs(domain_natural.log_bounds[1] - math.log(256)) < 1e-10
+
+
+def test_log_base_casting_with_different_bases() -> None:
+    """Test casting between domains with different log bases."""
+    # From log base 2, to log base 10
+    domain_from = Domain.floating(1.0, 1024.0, log=True, log_base=2)
+    domain_to = Domain.floating(1.0, 1024.0, log=True, log_base=10)
+    
+    x = T([1.0, 32.0, 1024.0])
+    
+    # Cast through unit interval
+    y = domain_to.cast(x, frm=domain_from)
+    
+    # All values should remain the same (same original domain just different base)
+    torch.testing.assert_close(y, x, check_dtype=False, atol=1e-5, rtol=1e-5)

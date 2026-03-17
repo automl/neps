@@ -82,6 +82,9 @@ class Domain(Generic[V]):
     log_bounds: tuple[float, float] | None = None
     """The log bounds of the domain, if the domain is in log space."""
 
+    log_base: float | None = None
+    """The logarithm base used for log scaling. If None and log_bounds is set, natural log is used."""
+
     bins: int | None = None
     """The number of discrete bins to split the domain into.
 
@@ -147,6 +150,7 @@ class Domain(Generic[V]):
         upper: Number,
         *,
         log: bool = False,
+        log_base: float | None = None,
         bins: int | None = None,
         is_categorical: bool = False,
     ) -> Domain[float]:
@@ -156,16 +160,26 @@ class Domain(Generic[V]):
             lower: The lower bound of the domain.
             upper: The upper bound of the domain.
             log: Whether the domain is in log space.
+            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
             bins: The number of discrete bins to split the domain into.
             is_categorical: Whether the domain is representing a categorical.
 
         Returns:
             A domain for a range of float values.
         """
+        log_bounds = None
+        if log:
+            if log_base is None:
+                log_bounds = (math.log(lower), math.log(upper))
+            else:
+                log_base_val = math.log(log_base)
+                log_bounds = (math.log(lower) / log_base_val, math.log(upper) / log_base_val)
+        
         return Domain(
             lower=float(lower),
             upper=float(upper),
-            log_bounds=(math.log(lower), math.log(upper)) if log else None,
+            log_bounds=log_bounds,
+            log_base=log_base,
             bins=bins,
             round=False,
             is_categorical=is_categorical,
@@ -178,6 +192,7 @@ class Domain(Generic[V]):
         upper: Number,
         *,
         log: bool = False,
+        log_base: float | None = None,
         bins: int | None = None,
         is_categorical: bool = False,
         is_scaling: bool = False,
@@ -188,16 +203,27 @@ class Domain(Generic[V]):
             lower: The lower bound of the domain.
             upper: The upper bound of the domain (inclusive).
             log: Whether the domain is in log space.
+            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
             bins: The number of discrete bins to split the domain into.
             is_categorical: Whether the domain is representing a categorical.
+            is_scaling: Whether this domain is used for scaling purposes.
 
         Returns:
             A domain for a range of integer values.
         """
+        log_bounds = None
+        if log:
+            if log_base is None:
+                log_bounds = (math.log(lower), math.log(upper))
+            else:
+                log_base_val = math.log(log_base)
+                log_bounds = (math.log(lower) / log_base_val, math.log(upper) / log_base_val)
+        
         return Domain(
             lower=round(lower),
             upper=round(upper),
-            log_bounds=(math.log(lower), math.log(upper)) if log else None,
+            log_bounds=log_bounds,
+            log_base=log_base,
             round=True,
             bins=bins,
             is_categorical=is_categorical,
@@ -239,8 +265,17 @@ class Domain(Generic[V]):
         if self.is_unit_float and q is None:
             return x.to(dtype)
 
+        # For log-scaled integer domains, quantize before taking log
+        if self.log_bounds is not None and self.round and q is not None:
+            quantization_levels = torch.floor(x).clip(self.lower, self.upper)
+            x = quantization_levels.to(dtype)
+            q = None  # Don't apply quantization again after normalization
+
         if self.log_bounds is not None:
-            x = torch.log(x)
+            if self.log_base is None:
+                x = torch.log(x)
+            else:
+                x = torch.log(x) / math.log(self.log_base)
             lower, upper = self.log_bounds
         else:
             lower, upper = self.lower, self.upper
@@ -268,6 +303,11 @@ class Domain(Generic[V]):
             return x.to(dtype)
 
         q = self.cardinality
+        
+        # For log-scaled integer domains, don't quantize in unit space
+        if self.log_bounds is not None and self.round and q is not None:
+            q = None
+
         if q is not None:
             quantization_levels = torch.floor(x * q).clip(0, q - 1)
             x = quantization_levels / (q - 1)
@@ -276,7 +316,10 @@ class Domain(Generic[V]):
         if self.log_bounds is not None:
             lower, upper = self.log_bounds
             x = x * (upper - lower) + lower
-            x = torch.exp(x)
+            if self.log_base is None:
+                x = torch.exp(x)
+            else:
+                x = torch.pow(torch.tensor(self.log_base, dtype=x.dtype, device=x.device), x)
         else:
             lower, upper = self.lower, self.upper
             x = x * (upper - lower) + lower

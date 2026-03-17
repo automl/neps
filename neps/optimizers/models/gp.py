@@ -104,7 +104,7 @@ class PowerLawMean(GpMean):
         flops = torch.tensor(flops_list, dtype=x.dtype, device=x.device)
         
         # 2. Convert to Log Space
-        log_flops = torch.log10(flops.clamp(min=1.0))
+        log_flops = torch.log(flops.clamp(min=1.0))
         
         # 3. Apply the Hardcoded Linear Scaling Law
         # log(Loss) = slope * log(FLOPs) + bias
@@ -117,7 +117,6 @@ def make_default_single_obj_gp(
     encoder: ConfigEncoder,
     *,
     y_transform: OutcomeTransform | None = None,
-    objective_minimize: bool = False,
     flop_estimator: Callable[..., int] | None = None,
     mean_slope: float = -0.5,
     mean_bias: float = 5.0,

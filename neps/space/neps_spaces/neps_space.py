@@ -1170,6 +1170,7 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         lower=value.lower,
                         upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
+                        log_base=value._log_base if hasattr(value, "_log_base") else None,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
@@ -1181,6 +1182,7 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         lower=value.lower,
                         upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
+                        log_base=value._log_base if hasattr(value, "_log_base") else None,
                         prior=value.prior if value.has_prior else None,
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
@@ -1195,6 +1197,11 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                                 value.domain._log
                                 if hasattr(value.domain, "_log")
                                 else False
+                            ),
+                            log_base=(
+                                value.domain._log_base
+                                if hasattr(value.domain, "_log_base")
+                                else None
                             ),
                             is_fidelity=True,
                         )
@@ -1257,6 +1264,7 @@ def convert_classic_to_neps_search_space(
                 lower=parameter.lower,
                 upper=parameter.upper,
                 log=parameter.log,
+                log_base=parameter.log_base if hasattr(parameter, "log_base") else None,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
@@ -1273,6 +1281,7 @@ def convert_classic_to_neps_search_space(
                 lower=parameter.lower,
                 upper=parameter.upper,
                 log=parameter.log,
+                log_base=parameter.log_base if hasattr(parameter, "log_base") else None,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
