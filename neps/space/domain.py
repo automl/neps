@@ -330,8 +330,8 @@ class Domain(Generic[V]):
         if (x > upper).any():
             # Decoded value is above the upper bound of the domain.
             # Clipping to the upper bound.
-            # This is likely due floating point precision in `torch.exp(x)`
-            # with torch.float64.
+            # This is likely due floating point precision in the exponential operation
+            # (torch.exp or torch.pow) with torch.float64.
             x = torch.clip(x, max=self.upper)
 
         return x.type(dtype)
@@ -375,9 +375,12 @@ class Domain(Generic[V]):
         # Shortcut 3. (Log lift)
         # We can also shortcut out if the only diffrence is that we are coming frm the
         # log bounds of this domain. We dont care if where we came from was binned or not,
-        # we just lift it up with `np.exp` and round if needed
+        # we just lift it up with the appropriate exponential (exp or pow) and round if needed
         if (self.lower, self.upper) == frm.log_bounds and self.cardinality is None:
-            x = torch.exp(x)
+            if frm.log_base is None:
+                x = torch.exp(x)
+            else:
+                x = torch.pow(torch.tensor(frm.log_base, dtype=x.dtype, device=x.device), x)
             if self.round:
                 x = torch.round(x)
             return x.type(dtype)
