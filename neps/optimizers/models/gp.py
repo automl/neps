@@ -804,6 +804,7 @@ def make_ic_generator(constraint_func, encoder):
             # We flatten to (raw_samples * q, d) if the constraint func expects 2D, 
             # or pass 3D if it handles it. 
             # Your encode_constraints_func wrapper handles dimensions, so we pass as is.
+            print("ic_generator: get constraint vals")
             constraint_vals = constraint_func(X_cand)
             
             # Constraint satisfied if >= 0

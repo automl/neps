@@ -562,6 +562,7 @@ class BayesianOptimization:
         if self.constraints_func is not None:
             acq_opts["nonlinear_inequality_constraints"] = [(encoded_constraints_func, True)]
         
+        logger.info("Start Gaussian Process fitting and acquisition...")
         candidates = fit_and_acquire_from_gp(
             gp=gp,
             x_train=data.x,
