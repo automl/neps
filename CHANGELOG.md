@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixes to fidelity resource calculation
 - Trial id generation
 - Docs for stopping criteria
+- Fix link to examples in readme
 
 ## [0.15.0] - 2025-12-15
 
