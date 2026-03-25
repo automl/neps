@@ -31,7 +31,11 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
 
     * [Reference documentation](./reference/neps_run.md) for a quick overview.
     * [API](api/neps/api.md) for a more detailed reference.
-    * [Colab Tutorial](https://colab.research.google.com/drive/11IOhkmMKsIUhWbHyMYzT0v786O9TPWlH?usp=sharing) walking through NePS's main features.
+    * **Interactive Tutorials** (click to run in Google Colab):
+      - [Getting Started with Basic HPO](https://colab.research.google.com/github/automl/neps/blob/notebooks/notebooks/neps_examples/tutorials/1_getting_started_hpo.ipynb) - Learn HPO fundamentals
+      - [Defining Search Spaces](https://colab.research.google.com/github/automl/neps/blob/notebooks/notebooks/neps_examples/tutorials/2_search_spaces.ipynb) - Master parameter types
+      - [Efficiency Techniques](https://colab.research.google.com/github/automl/neps/blob/notebooks/notebooks/neps_examples/tutorials/3_efficiency_techniques.ipynb) - Multi-fidelity & advanced methods
+    * [Tutorial Repository](https://github.com/automl/neps/tree/notebooks) for all available notebooks.
     * [Examples](examples/index.md) for basic code snippets to get started.
 
 ## Installation
