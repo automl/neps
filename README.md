@@ -68,6 +68,7 @@ class ExampleSpace(neps.PipelineSpace):
         lower=1e-5,
         upper=1e-1,
         log=True,   # Log spaces
+        log_base=10, # Logarithm base, by default it's natural log
         prior=1e-3, # Incorporate your knowledge to help optimization
     )
     alpha = neps.Integer(lower=1, upper=42)

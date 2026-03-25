@@ -42,6 +42,10 @@ class HPOFloat:
     log: bool = False
     """Whether the hyperparameter is in log space."""
 
+    log_base: float | None = None
+    """The base for logarithmic scaling. If None, uses natural log.
+      Ignored if log is False."""
+
     prior: float | None = None
     """Prior value for the hyperparameter."""
 
@@ -64,6 +68,17 @@ class HPOFloat:
             raise ValueError(
                 "Float parameter: bounds error (log scale cant have bounds <= 0). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
+            )
+        if self.log_base is not None and self.log_base <= 0:
+            raise ValueError(
+                "Float parameter: log_base must be positive. "
+                f"Actual value: log_base={self.log_base}"
+            )
+
+        if self.log_base is not None and self.log_base == 1:
+            raise ValueError(
+                "Float parameter: log_base cannot be 1. "
+                f"Actual value: log_base={self.log_base}"
             )
 
         if self.prior is not None and not self.lower <= self.prior <= self.upper:
@@ -94,7 +109,9 @@ class HPOFloat:
         if np.isnan(self.upper):
             raise ValueError("Can not have upper bound that is nan")
 
-        self.domain = Domain.floating(self.lower, self.upper, log=self.log)
+        self.domain = Domain.floating(
+            self.lower, self.upper, log=self.log, log_base=self.log_base
+        )
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
@@ -128,6 +145,10 @@ class HPOInteger:
 
     log: bool = False
     """Whether the hyperparameter is in log space."""
+
+    log_base: float | None = None
+    """The base for logarithmic scaling. If None, uses natural log.
+    Ignored if log is False."""
 
     prior: int | None = None
     """Prior value for the hyperparameter."""
@@ -175,6 +196,18 @@ class HPOInteger:
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
 
+        if self.log_base is not None and self.log_base <= 0:
+            raise ValueError(
+                "Integer parameter: log_base must be positive. "
+                f"Actual value: log_base={self.log_base}"
+            )
+
+        if self.log_base is not None and self.log_base == 1:
+            raise ValueError(
+                "Integer parameter: log_base cannot be 1. "
+                f"Actual value: log_base={self.log_base}"
+            )
+
         if self.prior is not None and not self.lower <= self.prior <= self.upper:
             raise ValueError(
                 "Integer parameter: Expected lower <= prior <= upper,"
@@ -187,7 +220,9 @@ class HPOInteger:
                 f"cannot have a prior value. Got prior={self.prior}."
             )
 
-        self.domain = Domain.integer(self.lower, self.upper, log=self.log)
+        self.domain = Domain.integer(
+            self.lower, self.upper, log=self.log, log_base=self.log_base
+        )
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
