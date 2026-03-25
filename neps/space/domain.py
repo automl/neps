@@ -122,6 +122,9 @@ class Domain(Generic[V]):
 
         if self.bins:
             cardinality = self.bins
+        elif self.log_bounds is not None and self.round:
+            log_lower, log_upper = self.log_bounds
+            cardinality = int(round(log_upper - log_lower)) + 1
         elif self.round:
             cardinality = int(self.upper - self.lower + 1)
         else:
@@ -136,10 +139,6 @@ class Domain(Generic[V]):
 
         preferred_dtype = torch.int64 if is_int else torch.float64
         object.__setattr__(self, "preffered_dtype", preferred_dtype)
-
-        mid = self.from_unit(torch.tensor(0.5)).item()
-        if is_int:
-            mid = round(mid)
 
         object.__setattr__(self, "bounds", (self.lower, self.upper))
 
@@ -270,11 +269,9 @@ class Domain(Generic[V]):
         if self.is_unit_float and q is None:
             return x.to(dtype)
 
-        # For log-scaled integer domains, quantize before taking log
-        if self.log_bounds is not None and self.round and q is not None:
+        if self.log_bounds is not None and self.round:
             quantization_levels = torch.floor(x).clip(self.lower, self.upper)
             x = quantization_levels.to(dtype)
-            q = None  # Don't apply quantization again after normalization
 
         if self.log_bounds is not None:
             if self.log_base is None:
@@ -308,10 +305,6 @@ class Domain(Generic[V]):
             return x.to(dtype)
 
         q = self.cardinality
-        # For log-scaled integer domains, don't quantize in unit space
-        if self.log_bounds is not None and self.round and q is not None:
-            q = None
-
         if q is not None:
             quantization_levels = torch.floor(x * q).clip(0, q - 1)
             x = quantization_levels / (q - 1)
@@ -383,7 +376,12 @@ class Domain(Generic[V]):
         # log bounds of this domain. We dont care if where we came from was binned or not,
         # we just lift it up with `np.exp` and round if needed
         if (self.lower, self.upper) == frm.log_bounds and self.cardinality is None:
-            x = torch.exp(x)
+            if frm.log_base is None:
+                x = torch.exp(x)
+            else:
+                x = torch.pow(
+                    torch.tensor(frm.log_base, dtype=x.dtype, device=x.device), x
+                )
             if self.round:
                 x = torch.round(x)
             return x.type(dtype)

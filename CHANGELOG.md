@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add changelog workflow
 - Add Clean command line for pruning trials
+- support logarithm base for parameters
 
 ### Changed
 - Improve Acquisition Function optimization in discrete and mixed search spaces
