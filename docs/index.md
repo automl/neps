@@ -31,7 +31,7 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
 
     * [Reference documentation](./reference/neps_run.md) for a quick overview.
     * [API](api/neps/api.md) for a more detailed reference.
-    * [Colab Tutorial](https://colab.research.google.com/drive/11IOhkmMKsIUhWbHyMYzT0v786O9TPWlH?usp=sharing) walking through NePS's main features.
+    * [Colab Tutorial](https://colab.research.google.com/drive/1FRM4m0tWWgH3xTJTU5_DWlO3o6n1GI_5?usp=sharing) walking through NePS's main features.
     * [Examples](examples/index.md) for basic code snippets to get started.
 
 ## Installation

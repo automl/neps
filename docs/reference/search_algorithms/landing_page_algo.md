@@ -19,7 +19,7 @@ We distinguish between algorithms that use different types of information and st
 | [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|❌|
 | [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|❌|
 | [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
-| `PriMO`|✅|✅|❌|❌|✅|
+| [`PriMO`](../search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
 
 ## What is Multi-Fidelity Optimization?
 
