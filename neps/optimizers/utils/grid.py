@@ -17,11 +17,13 @@ from neps.space import (
 from neps.space.neps_spaces import neps_space
 from neps.space.neps_spaces.sampling import RandomSampler
 
+DEFAULT_SIZE_PER_NUMERICAL_HP = 5
+
 
 def make_grid(  # noqa: PLR0912, PLR0915, C901
     space: SearchSpace | PipelineSpace,
     *,
-    size_per_numerical_hp: int = 10,
+    size_per_numerical_hp: int | dict[str, int] = DEFAULT_SIZE_PER_NUMERICAL_HP,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
 ) -> list[dict[str, Any]]:
     """Get a grid of configurations from the search space.
@@ -37,11 +39,51 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
 
     Args:
         size_per_numerical_hp: The size of the grid for each numerical hyperparameter.
+            Can be an integer (applies to all numerical hyperparameters) or a dictionary
+            mapping parameter names to their grid sizes.
 
     Returns:
         A list of configurations from the search space.
     """
     param_ranges: dict[str, list[Any]] = {}
+
+    # Normalize size_per_numerical_hp to a dictionary
+    if isinstance(size_per_numerical_hp, int):
+        size_mapping: dict[str, int] = {}
+        default_size = size_per_numerical_hp
+    else:
+        size_mapping = size_per_numerical_hp
+        default_size = DEFAULT_SIZE_PER_NUMERICAL_HP
+
+        if isinstance(space, SearchSpace):
+            numerical_params = {
+                name
+                for name, hp in space.items()
+                if isinstance(hp, HPOInteger | HPOFloat)
+            }
+            invalid_keys = set(size_mapping.keys()) - numerical_params
+            if invalid_keys:
+                raise ValueError(
+                    f"size_per_numerical_hp dictionary contains "
+                    f"invalid keys: {invalid_keys}. "
+                    f"Only numerical parameters (HPOInteger, HPOFloat) are allowed. "
+                    f"Valid numerical parameters are: {numerical_params}"
+                )
+        elif isinstance(space, PipelineSpace):
+            numerical_params = {
+                name
+                for name, hp in space.get_attrs().items()
+                if isinstance(hp, Integer | Float)
+            }
+            invalid_keys = set(size_mapping.keys()) - numerical_params
+            if invalid_keys:
+                raise ValueError(
+                    f"size_per_numerical_hp dictionary contains "
+                    f"invalid keys: {invalid_keys}. "
+                    f"Only numerical parameters (Integer, Float) are allowed. "
+                    f"Valid numerical parameters are: {numerical_params}"
+                )
+
     if isinstance(space, SearchSpace):
         for name, hp in space.items():
             match hp:
@@ -63,10 +105,11 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                                     "natively. Please use the"
                                     "ignore_fidelity parameter."
                                 )
-                    if hp.domain.cardinality is None:
-                        steps = size_per_numerical_hp
-                    else:
-                        steps = min(size_per_numerical_hp, hp.domain.cardinality)
+
+                    steps = size_mapping.get(name, default_size)
+
+                    if hp.domain.cardinality is not None:
+                        steps = min(steps, hp.domain.cardinality)
 
                     xs = torch.linspace(0, 1, steps=steps)
                     numeric_values = hp.domain.cast(xs, frm=Domain.unit_float())
@@ -99,13 +142,15 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     " Please use the ignore_fidelity parameter."
                 )
             elif isinstance(hp, Integer | Float):
-                steps = size_per_numerical_hp  # type: ignore[unreachable]
+                steps = size_mapping.get(name, default_size)  # type: ignore[unreachable]
                 xs = torch.linspace(0, 1, steps=steps)
                 numeric_values = xs * (hp.upper - hp.lower) + hp.lower
                 if isinstance(hp, Integer):
                     numeric_values = torch.round(numeric_values)
                 uniq_values = torch.unique(numeric_values).tolist()
                 param_ranges[name] = uniq_values
+            elif isinstance(hp, int | float | str):
+                param_ranges[name] = [hp]
             else:
                 raise NotImplementedError(
                     f"Parameter type: {type(hp)}\n{hp} not supported yet in GridSearch"
