@@ -55,7 +55,6 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
         size_mapping = size_per_numerical_hp
         default_size = DEFAULT_SIZE_PER_NUMERICAL_HP
 
-        # Validate that all keys in size_mapping correspond to numerical parameters
         if isinstance(space, SearchSpace):
             numerical_params = {
                 name
@@ -107,7 +106,6 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                                     "ignore_fidelity parameter."
                                 )
 
-                    # Get grid size for this parameter
                     steps = size_mapping.get(name, default_size)
 
                     if hp.domain.cardinality is not None:
@@ -144,7 +142,6 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     " Please use the ignore_fidelity parameter."
                 )
             elif isinstance(hp, Integer | Float):
-                # Get grid size for this parameter
                 steps = size_mapping.get(name, default_size)  # type: ignore[unreachable]
                 xs = torch.linspace(0, 1, steps=steps)
                 numeric_values = xs * (hp.upper - hp.lower) + hp.lower

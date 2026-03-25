@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add changelog workflow
 - Add Clean command line for pruning trials
 - support logarithm base for parameters
+- Support individual discretization factors per hyperparameter in grid search
 
 ### Changed
 - Improve Acquisition Function optimization in discrete and mixed search spaces
