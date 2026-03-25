@@ -152,9 +152,16 @@ class TrialRepo:
             for trial_id, trial in trials.items()
             if trial.report is not None
             and trial.report.err is None
-            and trial.report.objective_to_minimize is not None
-            and not np.isnan(trial.report.objective_to_minimize)
+            and self._is_valid_objective(trial.report.objective_to_minimize)
         }
+
+    def _is_valid_objective(self, objective: float | list[float] | None) -> bool:
+        """Check if an objective value is valid (not NaN)."""
+        if objective is None:
+            return False
+        if isinstance(objective, list | tuple):
+            return all(obj is not None and not np.isnan(obj) for obj in objective)
+        return not np.isnan(objective)
 
     def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:
         """Get the latest trials from the cache."""

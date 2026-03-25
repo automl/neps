@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add Clean command line for pruning trials
 - support logarithm base for parameters
 - Support individual discretization factors per hyperparameter in grid search
+- Documentation and Example on PriMO
 
 ### Changed
 - Improve Acquisition Function optimization in discrete and mixed search spaces
