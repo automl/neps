@@ -95,6 +95,8 @@ Discover how NePS works through these examples:
 
 - **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
 
+- **[Multi-Objective Optimization](examples/efficiency/multi_objective.md)**: Learn how to optimize multiple competing objectives simultaneously using PriMO with expert priors and multi-fidelity.
+
 - **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 
 - **[Benefiting NePS State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
