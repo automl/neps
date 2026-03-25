@@ -54,7 +54,7 @@ NePS provides a multitude of optimizers from the literature, the [algorithms](..
 | [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|❌|
 | [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|❌|
 | [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
-| `PriMO`|❌|✅|❌|❌|✅|
+| [`PriMO`](../reference/search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
 
 If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
 for the neps optimizer. This provides a hassle-free way to get started quickly, as NePS will automatically choose the best optimizer based on the characteristics of your search
