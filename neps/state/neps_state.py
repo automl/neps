@@ -831,28 +831,38 @@ class NePSState:
                             if pickle.dumps(existing_space.get_attrs()) != pickle.dumps(
                                 pipeline_space.get_attrs()
                             ):
-                                raise NePSError(
-                                    "The pipeline space parameters on disk do not match"
-                                    " those provided.\nPipeline space is saved at:"
-                                    f" {pipeline_space_path}\n\nTo continue this run:"
-                                    " either omit the pipeline_space parameter or use"
-                                    " neps.load_pipeline_space() to load the existing"
-                                    " one.\n\nTo start a new run with different"
-                                    " parameters, use a different root_directory or set"
-                                    " overwrite_root_directory=True."
+                                logger.warning(
+                                    "Pipeline space attributes on disk do not match those " \
+                                    "provided. Using the given version."
                                 )
+                                existing_space = pipeline_space
+                                # raise NePSError(
+                                #     "The pipeline space parameters on disk do not match"
+                                #     " those provided.\nPipeline space is saved at:"
+                                #     f" {pipeline_space_path}\n\nTo continue this run:"
+                                #     " either omit the pipeline_space parameter or use"
+                                #     " neps.load_pipeline_space() to load the existing"
+                                #     " one.\n\nTo start a new run with different"
+                                #     " parameters, use a different root_directory or set"
+                                #     " overwrite_root_directory=True."
+                                # )
                         elif pickle.dumps(existing_space) != pickle.dumps(pipeline_space):
                             # Fallback for non-PipelineSpace objects (SearchSpace)
-                            raise NePSError(
-                                "The pipeline space on disk does not match the one"
-                                " provided.\nPipeline space is saved at:"
-                                f" {pipeline_space_path}\n\nTo continue this run: either"
-                                " omit the pipeline_space parameter or use"
-                                " neps.load_pipeline_space() to load the existing"
-                                " one.\n\nTo start a new run with a different pipeline"
-                                " space, use a different root_directory or set"
-                                " overwrite_root_directory=True."
+                            # raise NePSError(
+                            #     "The pipeline space on disk does not match the one"
+                            #     " provided.\nPipeline space is saved at:"
+                            #     f" {pipeline_space_path}\n\nTo continue this run: either"
+                            #     " omit the pipeline_space parameter or use"
+                            #     " neps.load_pipeline_space() to load the existing"
+                            #     " one.\n\nTo start a new run with a different pipeline"
+                            #     " space, use a different root_directory or set"
+                            #     " overwrite_root_directory=True."
+                            # )
+                            logger.warning(
+                                "Pipeline space attributes on disk do not match those " \
+                                "provided. Using the given version."
                             )
+                            existing_space = pipeline_space
                     pipeline_space = existing_space
             elif pipeline_space is None and not load_only:
                 # No pipeline space on disk and none provided for a new/continued run
