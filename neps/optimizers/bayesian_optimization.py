@@ -11,10 +11,6 @@ import numpy as np
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
-from botorch.acquisition.multi_objective.logei import (
-    qLogNoisyExpectedHypervolumeImprovement,
-)
-from botorch.models.transforms.outcome import Standardize
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -167,9 +163,51 @@ class BayesianOptimization:
             if len(sampled_configs) >= n_to_sample:
                 return sampled_configs[0] if n is None else sampled_configs
 
+        num_objectives = None
+        _trials: Mapping[str, Trial] = {}
+        scalarization_weights = None
+        for trial in trials.values():
+            if trial.report is not None:
+                match trial.report.objective_to_minimize:
+                    case None:
+                        continue
+                    case Sequence():
+                        if num_objectives is None:
+                            num_objectives = len(trial.report.objective_to_minimize)
+                        assert (
+                            len(trial.report.objective_to_minimize) == num_objectives
+                        ), "All trials must have the same number of objectives."
+
+                        if scalarization_weights is None:
+                            scalarization_weights = np.random.uniform(size=num_objectives)
+                            scalarization_weights /= np.sum(scalarization_weights)
+                        _trial = copy.deepcopy(trial)
+                        _trial.report.objective_to_minimize = np.dot(
+                            _trial.report.objective_to_minimize, scalarization_weights
+                        )
+                        _trials[trial.id] = _trial
+                    case float():
+                        if num_objectives is None:
+                            num_objectives = 1
+                        assert num_objectives == 1, (
+                            "All trials must have the same number of objectives."
+                        )
+                    case _:
+                        raise TypeError(
+                            "Objective to minimize must be a float or a sequence "
+                            "of floats."
+                        )
+
+        # Sanity check, but this shouldn't happen in the first place since we
+        # check `n_evaluated < self.n_initial_design` above.
+        assert num_objectives is not None, (
+            "Either no trials have been completed or"
+            " No trials reports have objective values."
+        )
+
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
-            trials,
+            _trials,
             parameters,
             device=self.device,
             encoder=self.encoder,
@@ -196,71 +234,26 @@ class BayesianOptimization:
         prior = None
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                len(trials), encoder.ndim, self.n_initial_design
+                len(_trials), encoder.ndim, self.n_initial_design
             )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         n_to_acquire = n_to_sample - len(sampled_configs)
 
-        num_objectives = None
-        for trial in trials.values():
-            if trial.report is not None:
-                match trial.report.objective_to_minimize:
-                    case None:
-                        continue
-                    case Sequence():
-                        if num_objectives is None:
-                            num_objectives = len(trial.report.objective_to_minimize)
-                        assert (
-                            len(trial.report.objective_to_minimize) == num_objectives
-                        ), "All trials must have the same number of objectives."
-                    case float():
-                        if num_objectives is None:
-                            num_objectives = 1
-                        assert num_objectives == 1, (
-                            "All trials must have the same number of objectives."
-                        )
-                    case _:
-                        raise TypeError(
-                            "Objective to minimize must be a float or a sequence "
-                            "of floats."
-                        )
-
-        # Sanity check, but this shouldn't happen in the first place since we
-        # check `n_evaluated < self.n_initial_design` above.
-        assert num_objectives is not None, (
-            "Either no trials have been completed or"
-            " No trials reports have objective values."
-        )
-
         if num_objectives > 1:
             gp = make_default_single_obj_gp(
                 x=data.x,
                 y=data.y,
                 encoder=encoder,
-                y_transform=Standardize(m=data.y.shape[-1]),
             )
-            if self.reference_point is not None:
-                assert len(self.reference_point) == num_objectives, (
-                    "Reference point must have the same number of objectives as the"
-                    " trials."
-                )
-                ref_point = torch.tensor(
-                    self.reference_point,
-                    dtype=data.x.dtype,
-                    device=data.x.device,
-                )
-            else:
-                ref_point = torch.tensor(
-                    _get_reference_point(data.y.numpy()),
-                    dtype=data.x.dtype,
-                    device=data.x.device,
-                )
-            acquisition = qLogNoisyExpectedHypervolumeImprovement(
+            acquisition = qLogNoisyExpectedImprovement(
                 model=gp,
-                ref_point=ref_point,
                 X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
                 X_pending=data.x_pending,
                 prune_baseline=True,
             )
