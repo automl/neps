@@ -342,8 +342,6 @@ plt.show()
 
 # %% [markdown]
 # ## Key Takeaways
-
-# %% [markdown]
 # 1. **Multi-Fidelity**: Use cheaper proxies (fewer epochs) to quickly filter bad configs
 # 2. **Expert Priors**: Warm-start with good defaults and confidence levels
 # 3. **Parallelization**: Simply run multiple processes with the same `root_directory`

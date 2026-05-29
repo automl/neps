@@ -13,16 +13,16 @@
 # ---
 
 # # Getting Started with NePS: Basic HPO
-# Welcome! This tutorial introduces you to **Hyperparameter Optimization (HPO)** with NePS.
-# We'll start with simple synthetic functions, then move to a real deep learning task.
+# This tutorial introduces **Hyperparameter Optimization (HPO)** with NePS, starting with synthetic functions and progressing to real deep learning tasks.
 
-# ## Installation and Setup
+# ## Installation
+# Requires Python 3.10+. Install NePS via:
 
-# %%capture
+# %%
 # !pip install neural-pipeline-search
 
-# ## Quick Start: Optimizing a Synthetic Function
-# Let's start with a simple optimization problem to understand NePS basics.
+# ## Example 1: Synthetic Function Optimization
+# We start with a simple optimization problem to understand NePS basics.
 
 # %%
 import math
@@ -31,9 +31,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# The task: minimize the 2D Branin function
 def branin(x1, x2):
-    """The 2-dimensional Branin function.
+    """Minimize the 2D Branin function.
     
     Reference: https://www.sfu.ca/~ssurjano/branin.html
     """
@@ -48,14 +47,13 @@ def branin(x1, x2):
     return f
 
 # %%
-# Define the search space
-class MyTestSpace(neps.PipelineSpace):
-    x1=neps.Float(-5, 10)
-    x2=neps.Float(0, 15)
+# Define the search space and run optimization
+class BraninSpace(neps.PipelineSpace):
+    x1 = neps.Float(-5, 10)
+    x2 = neps.Float(0, 15)
 
-# Run the optimization
 neps.run(
-    pipeline_space=MyTestSpace(),
+    pipeline_space=BraninSpace(),
     root_directory="branin_demo/",
     evaluations_to_spend=25,
     evaluate_pipeline=branin,
@@ -67,86 +65,131 @@ neps.run(
 # !tail ./branin_demo/best_config_trajectory.txt
 
 # Great! NePS found the minimum loss over 25 evaluations. 
-# This demonstrates the basic workflow:
-# 1. Define an objective function (`branin`)
-# 2. Specify a search space
-# 3. Call `neps.run()` to optimize
+# The NePS workflow always follows this pattern:
+# 1. **Define** an objective function
+# 2. **Specify** a search space
+# 3. **Call** `neps.run()` to optimize
 
-# ## Running a Basic HPO on a Real Deep Learning Task
-# Now let's optimize hyperparameters for an actual neural network.
-
-# ### Step 1: Define the Training Pipeline
-
-# %%
-import numpy as np
-from typing import Optional
-
-# For demo purposes, we create a simple synthetic training function
-def evaluate_pipeline(
-    learning_rate: float,
-    optimizer: str,
-    num_neurons: int,
-    **kwargs
-) -> float:
-    """Mock training function that simulates a deep learning pipeline.
-    
-    In practice, this would train a real model.
-    """
-    # Simulate training: create a synthetic loss that decreases with good hyperparams
-    np.random.seed(42)
-    
-    # Optimizer impact
-    optimizer_bonus = {"sgd": 0.0, "adamw": 0.02}.get(optimizer, 0)
-    
-    # Learning rate impact (log scale)
-    lr_impact = -0.1 * np.log10(learning_rate / 0.01)
-    
-    # Network size impact
-    neurons_impact = -0.01 * np.log2(num_neurons / 256)
-    
-    # Simulated noisy loss
-    loss = 0.5 + optimizer_bonus + lr_impact + neurons_impact + np.random.normal(0, 0.02)
-    loss = max(0.1, loss)  # Ensure positive loss
-    
-    return loss
-
-# ### Step 2: Define the Search Space
-
-# Define hyperparameters to optimize
-class MySpace(neps.PipelineSpace):
-    learning_rate=neps.Float(1e-6, 1e-1, log=True)
-    optimizer=neps.Categorical(["sgd", "adamw"])
-    num_neurons=neps.Integer(64, 1024)
-
-# ### Step 3: Run NePS Optimization
+# ## Example 2: Deep Learning HPO
+# Now we optimize hyperparameters for a neural network on MNIST (multi-class classification with CNNs).
+#
+# For the full training code, see [neps_tutorial_DL2024/train.py](https://github.com/automl/neps_tutorial_DL2024/blob/main/train.py).
 
 # %%
-neps.run(
-    evaluate_pipeline=evaluate_pipeline,
-    root_directory="results_hpo_basic/",
-    pipeline_space=MySpace(),
-    evaluations_to_spend=10,
-    optimizer="random_search",
-    overwrite_root_directory=True,
+from train import training_pipeline
+from utils import set_seeds
+
+# Test the training pipeline with a small subset
+training_pipeline(
+    # checkpoint controller
+    out_dir=None,
+    load_dir=None,
+    # possible hyperparameters
+    num_layers=1,
+    batch_size=512,
+    # possible fidelities
+    subsample=0.1,
+    epochs=2,
+    val_fraction=0.3,
+    allow_checkpointing=False,
+    verbose=True,
 )
 
-# ### Analyzing the Results
-# Check the status of your run:
-
-# %%capture
-# !python -m neps.status results_hpo_basic/ --best_configs
-
-# The `root_directory` contains:
-# - `configs/`: Individual configurations and their evaluations
-# - `summary/`: Summary of all trials, contaning best configurations and their trajectory.
+# Note: `objective_to_minimize = 1 - val_accuracy` (validation error), since NePS minimizes.
 
 # %%
+# ## Running the HPO
+# Now we apply the standard NePS pattern to optimize the training pipeline.
+
+# Step 1: Create a NePS wrapper
+def evaluate_pipeline(
+    pipeline_directory,  # For saving checkpoints
+    previous_pipeline_directory,  # For loading checkpoints
+    **hyperparameters,  # Determined by HPO algorithms and passed by NePS
+):
+    return training_pipeline(
+        **hyperparameters,
+        out_dir=pipeline_directory,
+        load_dir=previous_pipeline_directory,
+        # misc settings
+        batch_size=512,
+        log_neps_tensorboard=True,
+        verbose=False,
+        allow_checkpointing=True,
+        use_for_demo=True  # toggle as desired
+    )
+
+# Step 2: Define the search space (tuning learning rate)
+pipeline_space = dict(
+    learning_rate=neps.Float(1e-6, 1e-1, log=True),
+)
+
+# Step 3: Run optimization
+logging.basicConfig(level=logging.INFO, force=True)
+set_seeds(1)
+neps.run(
+    evaluate_pipeline=evaluate_pipeline,
+    root_directory="results_hpo_demo",
+    pipeline_space=pipeline_space,
+    evaluations_to_spend=3  # HPO budget
+)
+
+# %%
+# ## Analyzing Results
+# Check the status and outputs:
+
+!python -m neps.status results_hpo_demo/
+
+# %%
+# View the summary files:
+!cat results_hpo_demo/summary/short.csv
+
+!cat results_hpo_demo/summary/best_config_trajectory.txt
+
+!cat results_hpo_demo/summary/best_config.txt
+
 import pandas as pd
 
-# Load and inspect the results
-df = pd.read_csv("results_hpo_basic/summary/full.csv")
-print("\nTop 3 configurations by objective_to_minimize:")
-print(df.nsmallest(3, "objective_to_minimize")[["objective_to_minimize", "config.learning_rate", "config.optimizer", "config.num_neurons"]])
+df = pd.read_csv("results_hpo_demo/summary/full.csv")
+df.head()
+
+# Commented out IPython magic to ensure Python compatibility.
+# Load the tensorboard
+# %load_ext tensorboard
+
+# %tensorboard --logdir /content/neps_colab_playground/results_hpo_demo
+
+"""For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
+
+## A slightly more elaborate HPO
+
+Now, we construct a slightly more elaborate search space and perform a longer HPO run.
+
+<!-- *NOTE*: If using a GPU or with time in hand, we recommend `run_pipeline()` or else `run_pipeline_demo()` for shorter, quicker runs. -->
+
+<!-- *NOTE, again*: Using `run_pipeline_demo()` may affect the multi-fidelity runs in this notebook. -->
+"""
+
+# Commented out IPython magic to ensure Python compatibility.
+# (Optional) Activate live view of Tensorboard output
+# NOTE: this will populate once the next run is active and `results_hpo/` is storing data (refresh to see)
+# %tensorboard --logdir /content/neps_colab_playground/results_hpo
+
+pipeline_space = dict(
+    learning_rate=neps.Float(1e-6, 1e-1, log=True),
+    optimizer=neps.Categorical(["sgd", "adamw"]),
+    num_neurons=neps.Integer(64, 1024),
+)
+
+set_seeds(1)
+neps.run(
+    evaluate_pipeline=evaluate_pipeline,
+    root_directory="results_hpo",
+    pipeline_space=pipeline_space,
+    evaluations_to_spend=8,
+)
+
+!python -m neps.status results_hpo/
 
 # ## Key Takeaways
 # 1. **NePS Pattern**: Define function → Define space → Call `neps.run()`
@@ -155,10 +198,4 @@ print(df.nsmallest(3, "objective_to_minimize")[["objective_to_minimize", "config
 # 4. **Scalability**: Same API works for complex deep learning tasks
 #
 # Next steps:
-# - Learn about **Multi-Fidelity Optimization** (faster convergence)
-# - Explore **Expert Priors** (incorporate domain knowledge)
-# - Try **Parallelization** (distributed optimization)
-
-# For more examples and documentation:
-# - [NePS Examples](https://github.com/automl/neps/tree/master/neps_examples)
-# - [NePS Documentation](https://automl.github.io/neps/latest/)
+# - Learn about **Multi-Fidelity Optimization**
