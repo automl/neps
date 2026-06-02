@@ -77,7 +77,7 @@ neps.run(
 
 # %%
 from train import training_pipeline
-from utils import set_seeds
+from tutorials.utils import set_seeds
 
 # Test the training pipeline with a small subset
 training_pipeline(

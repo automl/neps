@@ -109,7 +109,7 @@ To view the full training code visit [here](https://github.com/automl/neps_tutor
 To edit the training code directly in Colab, navigate to `model.py` on the file explorer in Colab (on the left), edit the file, `Runtime -> Restart session` and re-execute the relevant cells."""
 
 from train import training_pipeline
-from utils import set_seeds
+from tutorials.utils import set_seeds
 
 # Test the pipeline on a subsampled dataset for a few epochs
 training_pipeline(
