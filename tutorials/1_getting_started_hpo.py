@@ -61,8 +61,7 @@ neps.run(
 )
 
 # Check the optimization results:
-# %%capture
-# !tail ./branin_demo/best_config_trajectory.txt
+#!tail ./branin_demo/summary/best_config_trajectory.txt
 
 # Great! NePS found the minimum loss over 25 evaluations. 
 # The NePS workflow always follows this pattern:
@@ -97,8 +96,7 @@ training_pipeline(
 
 # Note: `objective_to_minimize = 1 - val_accuracy` (validation error), since NePS minimizes.
 
-# %%
-# ## Running the HPO
+# ### Running the HPO
 # Now we apply the standard NePS pattern to optimize the training pipeline.
 
 # Step 1: Create a NePS wrapper
@@ -134,8 +132,7 @@ neps.run(
     evaluations_to_spend=3  # HPO budget
 )
 
-# %%
-# ## Analyzing Results
+# ### Analyzing Results
 # Check the status and outputs:
 
 !python -m neps.status results_hpo_demo/
