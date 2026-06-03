@@ -1,4 +1,4 @@
-name: Check Notebooks Sync
+name: check-notebooks-sync
 
 on:
   pull_request:
@@ -40,7 +40,7 @@ jobs:
               
               echo "Generating $notebook_file from $py_file..."
               
-              jupytext --to notebook "$py_file" --output "$notebook_file"
+              jupytext --to notebook "$py_file" --output "$notebook_file" --update
             fi
           done
           

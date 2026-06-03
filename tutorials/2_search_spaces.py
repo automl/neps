@@ -18,7 +18,9 @@
 # ## Installation and Setup
 
 # %%
-# !pip install neural-pipeline-search
+# !git clone --depth 1 https://github.com/automl/neps.git /content/neps
+# %cd /content/neps
+# !pip install -e /content/neps
 
 # %%
 import neps

@@ -19,7 +19,9 @@
 # Requires Python 3.10+. Install NePS via:
 
 # %%
-# !pip install neural-pipeline-search
+# !git clone --depth 1 https://github.com/automl/neps.git /content/neps
+# %cd /content/neps
+# !pip install -e /content/neps
 
 # ## Example 1: Synthetic Function Optimization
 # We start with a simple optimization problem to understand NePS basics.
