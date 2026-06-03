@@ -61,7 +61,7 @@ neps.run(
 )
 
 # Check the optimization results:
-#!tail ./branin_demo/summary/best_config_trajectory.txt
+#!tail ./branin_demo/summary/best_config.txt
 
 # Great! NePS found the minimum loss over 25 evaluations. 
 # The NePS workflow always follows this pattern:
@@ -191,4 +191,5 @@ neps.run(
 # 4. **Scalability**: Same API works for complex deep learning tasks
 #
 # Next steps:
-# - Learn more about **Search Spaces**
+# - Learn more about [**Search Spaces**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) and how to construct them for complex pipelines.
+# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.

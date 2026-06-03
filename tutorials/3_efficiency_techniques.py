@@ -83,7 +83,6 @@ def evaluate_pipeline(
     
     return max(0.1, loss)
 
-# %% [markdown]
 # ## Technique 1: Multi-Fidelity Optimization
 # Train configurations at different fidelities (e.g., different epoch counts) 
 # to efficiently explore the search space.
@@ -125,7 +124,6 @@ neps.run(
     optimizer="asha",  # Use ASHA, designed for multi-fidelity workloads
 )
 
-# %% [markdown]
 # The optimizer intelligently samples configurations at low epochs (cheaper) 
 # and high epochs (more accurate) to find good configurations efficiently.
 # In real training code, include `pipeline_directory` and
@@ -133,7 +131,7 @@ neps.run(
 # load checkpoints from earlier fidelity rungs.
 
 # %%
-# !python -m neps.status results_multi_fidelity/ --best_configs
+# !python -m neps.status results_multi_fidelity/
 
 # %%
 # ## Technique 2: Incorporating Expert Priors
@@ -167,7 +165,6 @@ class ExpertPriorSpace(neps.PipelineSpace):
     
     epochs = neps.Fidelity(neps.Integer(1, 10))
 
-# %% [markdown]
 # ### Run Optimization with Priors
 
 # %%
@@ -180,18 +177,15 @@ neps.run(
     overwrite_root_directory=True,
 )
 
-# %% [markdown]
 # `priorband` combines the fidelity ladder with prior-guided sampling. If you leave
 # `optimizer="auto"`, NePS chooses the appropriate prior-aware multi-fidelity
 # optimizer for spaces that contain both priors and fidelities.
 
 # %%
-# !python -m neps.status results_with_priors/ --best_configs
+# !python -m neps.status results_with_priors/
 
-# %% [markdown]
 # ## Technique 3: Optimizer Selection
 
-# %% [markdown]
 # NePS supports multiple search algorithms. You can let `optimizer="auto"` pick from
 # the search-space structure, or specify an optimizer explicitly.
 
@@ -203,7 +197,6 @@ print("Available optimization algorithms:")
 for algo in sorted(PredefinedOptimizers):
     print(f"  - {algo}")
 
-# %% [markdown]
 # ### Multi-Fidelity Optimizer Parameters
 
 # %%
@@ -221,14 +214,11 @@ neps.run(
     overwrite_root_directory=True,
 )
 
-# %% [markdown]
 # ## Technique 4: Parallelization
 
-# %% [markdown]
 # NePS makes parallelization effortless. Multiple processes can work on the same 
 # `root_directory` simultaneously.
 
-# %% [markdown]
 # ### Single Process Example (Sequential)
 
 # %%
@@ -243,10 +233,8 @@ neps.run(
 
 print("Sequential run complete")
 
-# %% [markdown]
 # ### Parallel Execution Pattern
 
-# %% [markdown]
 # To parallelize, run multiple `neps.run()` calls with the same `root_directory`:
 #
 # ```bash
@@ -262,12 +250,10 @@ print("Sequential run complete")
 # the same run instead of resetting it.
 
 # %%
-# !python -m neps.status results_sequential/ --best_configs
+# !python -m neps.status results_sequential/
 
-# %% [markdown]
 # ## Technique 5: Combining Strategies
 
-# %% [markdown]
 # Combine multiple techniques for maximum efficiency.
 
 # %%
@@ -298,7 +284,6 @@ class CombinedSearchSpace(neps.PipelineSpace):
     # Multi-fidelity (epochs)
     epochs = neps.Fidelity(neps.Integer(2, 20))
 
-# %% [markdown]
 # Run optimization with combined strategies:
 
 # %%
@@ -317,12 +302,10 @@ elapsed = time.time() - start_time
 print(f"\nOptimization completed in {elapsed:.2f} seconds")
 
 # %%
-# !python -m neps.status results_combined/ --best_configs
+# !python -m neps.status results_combined/
 
-# %% [markdown]
 # ## Comparing Strategies
 
-# %% [markdown]
 # Let's visualize how the best loss improves over time for different approaches:
 
 # %%
@@ -359,7 +342,6 @@ for idx, (name, path) in enumerate(strategies):
 plt.tight_layout()
 plt.show()
 
-# %% [markdown]
 # ## Key Takeaways
 # 1. **Multi-Fidelity**: Use cheaper proxies (fewer epochs) to quickly filter bad configs
 # 2. **Expert Priors**: Warm-start with good defaults and confidence levels
@@ -369,7 +351,6 @@ plt.show()
 #
 # These techniques can reduce optimization time by 10-50% compared to standard random search!
 
-# %% [markdown]
 # For more advanced examples:
 # - [Multi-Objective Optimization](https://github.com/automl/neps/tree/master/neps_examples/efficiency)
 # - [Ask-and-Tell Interface](https://github.com/automl/neps/tree/master/neps_examples/experimental)

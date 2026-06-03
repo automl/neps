@@ -113,10 +113,8 @@ class MyOptimizationSpace(neps.PipelineSpace):
     dropout_rate = neps.Float(lower=0.0, upper=0.9, prior=0.1, prior_confidence="medium")
     weight_decay = neps.Float(lower=0.0, upper=1e-2, log=True, prior=1e-4, prior_confidence="medium")
 
-# %% [markdown]
 # ## Fidelity Parameters
 
-# %% [markdown]
 # Use fidelity parameters for multi-fidelity optimization (train with different epochs, dataset sizes, etc.).
 
 # %%
@@ -156,10 +154,8 @@ pipeline_space = dict(
 # - A constraint-free space allows the algorithm to explore the entire search region
 # - When you have interdependencies, reformulate the space to use independent dimensions
 
-# %% [markdown]
 # ## Conditional Search Spaces
 
-# %% [markdown]
 # You can also define conditional parameters that only apply under certain conditions.
 # This is useful for architecture search where some parameters only apply to certain layer types.
 #
@@ -270,7 +266,6 @@ neps.run(
 # user-facing argument names.
 #!cat conditional_search_space_example/configs/config_1/config.yaml
 
-# %% [markdown]
 # ## Example: Complete Search Space
 
 # %%
@@ -332,7 +327,6 @@ neps.run(
     evaluations_to_spend=10,  # Quick demo
 )
 
-# %% [markdown]
 # ## Key Points
 #
 # - **Float**: For continuous parameters, use `log=True` for log-scaled distributions
@@ -343,8 +337,11 @@ neps.run(
 # - **Priors**: Use `prior` and `prior_confidence` to incorporate domain knowledge
 #
 # **Critical Design Principle**: Ensure your search space is **constraint-free**.
-# If there are interdependencies between hyperparameters (e.g., max_units × max_layers ≤ 1024),
+# If there are interdependencies between hyperparameters (e.g., max_units <= 8 * max_layers),
 # refactor the space to use independent dimensions (e.g., units_per_layer and max_layers).
 # Constraints between hyperparameters can confuse optimization algorithms and reduce efficiency.
 #
 # For more details, see the [NePS Documentation](https://automl.github.io/neps/latest/reference/neps_spaces/).
+
+# Next steps:
+# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.
