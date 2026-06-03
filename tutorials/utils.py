@@ -269,10 +269,10 @@ def validate_model(
     return val_loss, val_accuracy
 
 
-def total_gradient_l2_norm(model: nn.Module) -> float:
-    total_norm = 0
-    parameters = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
-    for p in parameters:
-        param_norm = p.grad.detach().data.norm(2)
-        total_norm += param_norm.item() ** 2
-    return total_norm**0.5
+# def total_gradient_l2_norm(model: nn.Module) -> float:
+#     total_norm = 0
+#     parameters = [p for p in model.parameters() if p.grad is not None and p.requires_grad]
+#     for p in parameters:
+#         param_norm = p.grad.detach().data.norm(2)
+#         total_norm += param_norm.item() ** 2
+#     return total_norm**0.5

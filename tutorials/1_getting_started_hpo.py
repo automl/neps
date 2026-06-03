@@ -72,10 +72,10 @@ neps.run(
 # ## Example 2: Deep Learning HPO
 # Now we optimize hyperparameters for a neural network on MNIST (multi-class classification with CNNs).
 #
-# For the full training code, see [neps_tutorial_DL2024/train.py](https://github.com/automl/neps_tutorial_DL2024/blob/main/train.py).
+# For the full training code, see [train.py](https://github.com/automl/neps/blob/master/tutorials/train.py).
 
 # %%
-from train import training_pipeline
+from tutorials.train import training_pipeline
 from tutorials.utils import set_seeds
 
 # Test the training pipeline with a small subset
