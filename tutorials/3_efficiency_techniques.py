@@ -14,7 +14,7 @@
 
 # # Efficient Optimization with NePS: Multi-Fidelity and Advanced Techniques
 # This tutorial covers advanced techniques to speed up hyperparameter optimization:
-# multi-fidelity learning, expert priors, parallelization, and custom optimizers.
+# multi-fidelity learning, expert priors, optimizer selection, and parallelization.
 
 # ## Installation and Setup
 
@@ -50,13 +50,19 @@ def evaluate_pipeline(
     base_loss = 0.8
     
     # Optimizer impact
-    optimizer_bonus = {"sgd": 0.0, "adamw": 0.05}.get(optimizer, 0)
+    optimizer_bonus = {"sgd": 0.0, "adamw": -0.05, "adam": -0.03}.get(optimizer, 0)
     
     # Learning rate impact
     lr_penalty = -0.1 * np.log10(learning_rate / 0.01)
     
     # Network size impact
     neurons_impact = -0.02 * np.log2(num_neurons / 256)
+
+    # Optional architecture/regularization parameters used in later examples
+    layers_impact = -0.01 * (kwargs.get("num_layers", 3) - 3)
+    activation_impact = -0.01 if kwargs.get("activation", "relu") == "relu" else 0.0
+    dropout_penalty = 0.03 * kwargs.get("dropout_rate", 0.0)
+    weight_decay_penalty = 0.01 * np.log10(kwargs.get("weight_decay", 1e-4) / 1e-4)
     
     # Epoch impact (gets smaller as epochs increase)
     epoch_impact = -0.05 * np.sqrt(epochs / 10)
@@ -67,16 +73,33 @@ def evaluate_pipeline(
         + optimizer_bonus 
         + lr_penalty 
         + neurons_impact 
+        + layers_impact
+        + activation_impact
+        + dropout_penalty
+        + weight_decay_penalty
         + epoch_impact
         + np.random.normal(0, 0.02)
     )
     
     return max(0.1, loss)
 
-# %%
+# %% [markdown]
 # ## Technique 1: Multi-Fidelity Optimization
 # Train configurations at different fidelities (e.g., different epoch counts) 
 # to efficiently explore the search space.
+#
+# Multi-fidelity optimizers available in NePS include:
+# - `successive_halving`: synchronous promotion through one bracket
+# - `asha`: asynchronous Successive Halving, useful with parallel workers
+# - `hyperband`: multiple bracket layouts, the default for flat HPO spaces with fidelity
+# - `async_hb`: asynchronous Hyperband
+# - `ifbo`: freeze-thaw/in-context optimizer for learning-curve style fidelities
+# - `priorband`: Hyperband-style multi-fidelity search with expert priors
+# - `moasha`, `mo_hyperband`, `primo`: multi-objective variants
+#
+# For complex `PipelineSpace` objects, NePS also exposes native variants such as
+# `neps_hyperband` and `neps_priorband`, and `optimizer="auto"` chooses them when
+# the search space contains fidelity parameters.
 
 # ### Define Search Space with Fidelity
 
@@ -97,13 +120,17 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_multi_fidelity/",
     pipeline_space=MultiFidelitySpace(),
-    evaluations_to_spend=15,
+    fidelities_to_spend=60,
     overwrite_root_directory=True,
+    optimizer="asha",  # Use ASHA, designed for multi-fidelity workloads
 )
 
 # %% [markdown]
 # The optimizer intelligently samples configurations at low epochs (cheaper) 
 # and high epochs (more accurate) to find good configurations efficiently.
+# In real training code, include `pipeline_directory` and
+# `previous_pipeline_directory` in `evaluate_pipeline` so promoted configurations can
+# load checkpoints from earlier fidelity rungs.
 
 # %%
 # !python -m neps.status results_multi_fidelity/ --best_configs
@@ -148,19 +175,54 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_with_priors/",
     pipeline_space=ExpertPriorSpace(),
-    evaluations_to_spend=15,
+    fidelities_to_spend=60,
+    optimizer="priorband",
     overwrite_root_directory=True,
 )
 
 # %% [markdown]
-# The optimizer starts with your suggested configuration and uses it as a warm-start,
-# potentially finding better solutions faster.
+# `priorband` combines the fidelity ladder with prior-guided sampling. If you leave
+# `optimizer="auto"`, NePS chooses the appropriate prior-aware multi-fidelity
+# optimizer for spaces that contain both priors and fidelities.
 
 # %%
 # !python -m neps.status results_with_priors/ --best_configs
 
 # %% [markdown]
-# ## Technique 3: Parallelization
+# ## Technique 3: Optimizer Selection
+
+# %% [markdown]
+# NePS supports multiple search algorithms. You can let `optimizer="auto"` pick from
+# the search-space structure, or specify an optimizer explicitly.
+
+# %%
+from neps.optimizers.algorithms import PredefinedOptimizers
+from neps.utils.common import extract_keyword_defaults
+
+print("Available optimization algorithms:")
+for algo in sorted(PredefinedOptimizers):
+    print(f"  - {algo}")
+
+# %% [markdown]
+# ### Multi-Fidelity Optimizer Parameters
+
+# %%
+for algo in ["successive_halving", "asha", "hyperband", "async_hb", "ifbo", "priorband"]:
+    print(f"\n{algo} hyperparameters:")
+    print(extract_keyword_defaults(PredefinedOptimizers[algo]))
+
+# %%
+neps.run(
+    evaluate_pipeline=evaluate_pipeline,
+    root_directory="results_custom_optimizer/",
+    pipeline_space=MultiFidelitySpace(),
+    fidelities_to_spend=60,
+    optimizer="async_hb",
+    overwrite_root_directory=True,
+)
+
+# %% [markdown]
+# ## Technique 4: Parallelization
 
 # %% [markdown]
 # NePS makes parallelization effortless. Multiple processes can work on the same 
@@ -193,57 +255,14 @@ print("Sequential run complete")
 # python worker.py &
 # python worker.py &
 # 
-# # They'll coordinate and divide work automatically
+# # They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
 # ```
 #
-# Or continue an existing run with a higher budget:
-
-# %%
-# Continue the sequential run with more evaluations
-neps.run(
-    evaluate_pipeline=evaluate_pipeline,
-    root_directory="results_sequential/",
-    pipeline_space=ExpertPriorSpace(),
-    evaluations_to_spend=12,  # Increase from 6 to 12
-    overwrite_root_directory=True,
-)
-
-print("Extended run complete - 12 total evaluations")
+# In the worker script, keep `overwrite_root_directory=False` so workers attach to
+# the same run instead of resetting it.
 
 # %%
 # !python -m neps.status results_sequential/ --best_configs
-
-# %% [markdown]
-# ## Technique 4: Custom Optimizers
-
-# %% [markdown]
-# NePS supports multiple search algorithms. Explore available options:
-
-# %%
-from neps.optimizers.algorithms import OptimizerChoice, PredefinedOptimizers
-from neps.utils.common import extract_keyword_defaults
-
-print("Available optimization algorithms:")
-for algo in OptimizerChoice:
-    print(f"  - {algo}")
-
-# %% [markdown]
-# ### Using Different Optimizers
-
-# %%
-# Get available hyperparameters for an optimizer
-print("\nBayesian Optimization hyperparameters:")
-print(extract_keyword_defaults(PredefinedOptimizers.get("bayesian_optimization")))
-
-# %%
-neps.run(
-    evaluate_pipeline=evaluate_pipeline,
-    root_directory="results_custom_optimizer/",
-    pipeline_space=ExpertPriorSpace(),
-    evaluations_to_spend=10,
-    optimizer="asha",  # Use Async ASHA
-    overwrite_root_directory=True,
-)
 
 # %% [markdown]
 # ## Technique 5: Combining Strategies
@@ -289,8 +308,8 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_combined/",
     pipeline_space=CombinedSearchSpace(),
-    evaluations_to_spend=20,
-    optimizer="asha",
+    fidelities_to_spend=80,
+    optimizer="priorband",
     overwrite_root_directory=True,
 )
 
@@ -316,7 +335,7 @@ fig.suptitle("Optimization Strategies Comparison", fontsize=14, fontweight="bold
 strategies = [
     ("Sequential", "results_sequential/summary/full.csv"),
     ("With Priors", "results_with_priors/summary/full.csv"),
-    ("Custom Optimizer", "results_custom_optimizer/summary/full.csv"),
+    ("Async Hyperband", "results_custom_optimizer/summary/full.csv"),
     ("Combined", "results_combined/summary/full.csv"),
 ]
 
@@ -345,7 +364,7 @@ plt.show()
 # 1. **Multi-Fidelity**: Use cheaper proxies (fewer epochs) to quickly filter bad configs
 # 2. **Expert Priors**: Warm-start with good defaults and confidence levels
 # 3. **Parallelization**: Simply run multiple processes with the same `root_directory`
-# 4. **Custom Optimizers**: Choose from various search algorithms
+# 4. **Optimizer Selection**: Choose from various search algorithms, or use `auto`
 # 5. **Combination**: Stack techniques for maximum efficiency
 #
 # These techniques can reduce optimization time by 10-50% compared to standard random search!
@@ -355,3 +374,4 @@ plt.show()
 # - [Multi-Objective Optimization](https://github.com/automl/neps/tree/master/neps_examples/efficiency)
 # - [Ask-and-Tell Interface](https://github.com/automl/neps/tree/master/neps_examples/experimental)
 # - [Architecture Search](https://github.com/automl/neps/tree/master/neps_examples/basic_usage)
+# If you want to contribute new techniques or optimizers, check out the contribution guide [here](https://automl.github.io/neps/latest/dev_docs/contributing/).

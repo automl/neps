@@ -118,9 +118,9 @@ def evaluate_pipeline(
     )
 
 # Step 2: Define the search space (tuning learning rate)
-pipeline_space = dict(
-    learning_rate=neps.Float(1e-6, 1e-1, log=True),
-)
+class HPODemoSpace(neps.PipelineSpace):
+    learning_rate = neps.Float(1e-6, 1e-1, log=True)
+pipeline_space = HPODemoSpace()
 
 # Step 3: Run optimization
 logging.basicConfig(level=logging.INFO, force=True)
@@ -154,29 +154,25 @@ df.head()
 # Load the tensorboard
 # %load_ext tensorboard
 
-# %tensorboard --logdir /content/neps_colab_playground/results_hpo_demo
+# %tensorboard --logdir /content/neps/results_hpo_demo
 
-"""For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
+# %% [markdown]
+# For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
+#
+# ## A slightly more elaborate HPO
+#
+# Now, we construct a slightly more elaborate search space and perform a longer HPO run.
+#
+# <!-- *NOTE*: If using a GPU or with time in hand, we recommend `run_pipeline()` or else `run_pipeline_demo()` for shorter, quicker runs. -->
+#
+# <!-- *NOTE, again*: Using `run_pipeline_demo()` may affect the multi-fidelity runs in this notebook. -->
 
-## A slightly more elaborate HPO
 
-Now, we construct a slightly more elaborate search space and perform a longer HPO run.
-
-<!-- *NOTE*: If using a GPU or with time in hand, we recommend `run_pipeline()` or else `run_pipeline_demo()` for shorter, quicker runs. -->
-
-<!-- *NOTE, again*: Using `run_pipeline_demo()` may affect the multi-fidelity runs in this notebook. -->
-"""
-
-# Commented out IPython magic to ensure Python compatibility.
-# (Optional) Activate live view of Tensorboard output
-# NOTE: this will populate once the next run is active and `results_hpo/` is storing data (refresh to see)
-# %tensorboard --logdir /content/neps_colab_playground/results_hpo
-
-pipeline_space = dict(
-    learning_rate=neps.Float(1e-6, 1e-1, log=True),
-    optimizer=neps.Categorical(["sgd", "adamw"]),
-    num_neurons=neps.Integer(64, 1024),
-)
+class DemoSpace(neps.PipelineSpace):
+    learning_rate = neps.Float(1e-6, 1e-1, log=True)
+    optimizer = neps.Categorical(["sgd", "adamw"])
+    num_neurons = neps.Integer(64, 1024)
+pipeline_space = DemoSpace()
 
 set_seeds(1)
 neps.run(
@@ -190,9 +186,9 @@ neps.run(
 
 # ## Key Takeaways
 # 1. **NePS Pattern**: Define function → Define space → Call `neps.run()`
-# 2. **Search Space Types**: `Float`, `Integer`, `Categorical` parameters
+# 2. **search space Types**: `Float`, `Integer`, `Categorical` parameters
 # 3. **Optimization Output**: Tracked in `root_directory` with easy analysis tools
 # 4. **Scalability**: Same API works for complex deep learning tasks
 #
 # Next steps:
-# - Learn about **Multi-Fidelity Optimization**
+# - Learn more about **Search Spaces**

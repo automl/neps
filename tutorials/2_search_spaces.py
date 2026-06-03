@@ -61,10 +61,10 @@ print("Integer parameters created successfully")
 # Discrete choices with optional ordering.
 
 # %%
-# Unordered categorical
+# Basic categorical
 optimizer = neps.Categorical(choices=["sgd", "adam", "adamw"])
 
-# With prior/default value
+# With prior value
 activation = neps.Categorical(
     choices=["relu", "tanh", "sigmoid"], 
     prior=0,  # Index of default choice (relu)
@@ -86,7 +86,7 @@ simple_space = dict(
 )
 
 # ### Using a PipelineSpace Class
-# For larger search spaces, use the `PipelineSpace` class for better organization.
+# For complex search spaces, use the `PipelineSpace` class for conditioning one hyperparmater over other and better organization.
 
 # %%
 class MyOptimizationSpace(neps.PipelineSpace):
@@ -121,14 +121,12 @@ class MyOptimizationSpace(neps.PipelineSpace):
 
 # %%
 # Define a search space with a fidelity parameter
-fidelity_space = dict(
+pipeline_space = dict(
     learning_rate=neps.Float(1e-6, 1e-1, log=True),
     optimizer=neps.Categorical(["sgd", "adam"]),
-    # Fidelity: wrap Integer in neps.Fidelity()
+    # Fidelity: wrap the Integer or Float object in neps.Fidelity()
     epochs=neps.Fidelity(neps.Integer(1, 10)),
 )
-
-print("Fidelity space created successfully")
 
 # ## Important: Constraint-Free Search Spaces
 #
@@ -136,7 +134,7 @@ print("Fidelity space created successfully")
 # without hidden constraints between hyperparameters.
 #
 # **Bad Example: Constrained search space**
-# If there's an implicit constraint like `max_units * max_layers <= 1024`:
+# If there's an implicit constraint like `max_units % max_layers = 0 and max_units <= 8 * max_layers`:
 # ```python
 # max_layers = neps.Integer(1, 10)
 # max_units = neps.Integer(64, 1024)
@@ -148,7 +146,7 @@ print("Fidelity space created successfully")
 # Refactor to use independent dimensions:
 # ```python
 # max_layers = neps.Integer(1, 10)
-# units_per_layer = neps.Integer(64, 256)  # Independent of max_layers
+# units_per_layer = neps.Integer(1, 8)  # Independent of max_layers
 # # Now all combinations are valid and the optimizer can search freely!
 # ```
 #
@@ -164,35 +162,118 @@ print("Fidelity space created successfully")
 # %% [markdown]
 # You can also define conditional parameters that only apply under certain conditions.
 # This is useful for architecture search where some parameters only apply to certain layer types.
+#
+# The important pattern is to define a reusable search grammar and call `.resample()`
+# when the same grammar should be sampled independently in multiple places.
 
 # %%
-# Example: conditional parameter handling in the pipeline function
-def conditional_pipeline(
-    layer_type: str,
-    num_neurons: int = None,
-    kernel_size: int = None,
-    **kwargs
-) -> float:
-    """Example showing how to handle conditional parameters."""
-    
-    if layer_type == "dense":
-        # Only num_neurons matters for dense layers
-        config = {"neurons": num_neurons}
-    elif layer_type == "conv":
-        # Only kernel_size matters for conv layers
-        config = {"kernel_size": kernel_size}
-    
-    # Simulate some loss
-    return 0.5
+# Constructors for the conditional parts of the pipeline. In a real project these
+# would create layers, modules, preprocessing steps, or optimizer objects.
+def dense_layer(num_neurons: int, activation: str) -> dict:
+    return {
+        "layer_type": "dense",
+        "num_neurons": num_neurons,
+        "activation": activation,
+    }
 
-# %% [markdown]
-# For proper conditional parameters, use dictionary-based spaces and handle them in your pipeline function.
+
+def conv_layer(num_filters: int, kernel_size: int) -> dict:
+    return {
+        "layer_type": "conv",
+        "num_filters": num_filters,
+        "kernel_size": kernel_size,
+    }
+
+
+def make_pipeline(*blocks: dict, learning_rate: float, optimizer: str) -> dict:
+    return {
+        "blocks": list(blocks),
+        "learning_rate": learning_rate,
+        "optimizer": optimizer,
+    }
+
+
+class ConditionalPipelineSpace(neps.PipelineSpace):
+    """Build a variable pipeline from independently sampled conditional blocks.
+
+    Each block independently chooses between a dense and convolutional branch. The
+    branch-specific parameters are sampled as part of the selected operation, and
+    the final evaluation receives the constructed pipeline object.
+    """
+
+    _dense_layer = neps.Operation(
+        operator=dense_layer,
+        kwargs={
+            "num_neurons": neps.Integer(64, 512, log=True),
+            "activation": neps.Categorical(["relu", "gelu", "elu"]),
+        },
+    )
+    _conv_layer = neps.Operation(
+        operator=conv_layer,
+        kwargs={
+            "num_filters": neps.Integer(16, 128, log=True),
+            "kernel_size": neps.Categorical([3, 5, 7]),
+        },
+    )
+
+    _block = neps.Categorical(
+        choices=(
+            _dense_layer,
+            _conv_layer,
+        ),
+    )
+    _learning_rate = neps.Float(1e-5, 1e-2, log=True)
+    _optimizer = neps.Categorical(["adam", "adamw", "sgd"])
+
+    pipeline = neps.Operation(
+        operator=make_pipeline,
+        args=(
+            _block.resample(),
+            _block.resample(),
+            _block.resample(),
+        ),
+        kwargs={
+            "learning_rate": _learning_rate,
+            "optimizer": _optimizer,
+        },
+    )
+
+
+def evaluate_conditional_pipeline(pipeline: dict) -> float:
+    """Evaluate the fully constructed pipeline."""
+
+    loss = 0.5
+
+    for block in pipeline["blocks"]:
+        if block["layer_type"] == "dense":
+            loss -= 0.015 * (block["num_neurons"] / 512)
+            loss -= 0.005 if block["activation"] == "relu" else 0
+        else:
+            loss -= 0.01 * (block["num_filters"] / 128)
+            loss -= 0.005 if block["kernel_size"] == 3 else 0
+
+    loss -= 0.02 if pipeline["optimizer"] == "adamw" else 0
+    return max(0.1, loss)
+
+
+conditional_space = ConditionalPipelineSpace()
+neps.run(
+    evaluate_pipeline=evaluate_conditional_pipeline,
+    pipeline_space=conditional_space,
+    root_directory="conditional_search_space_example/",
+    evaluations_to_spend=5,
+    optimizer="random_search",
+    overwrite_root_directory=True,
+)
+
+# The serialized config stores the sampled resolution path, not just flat
+# user-facing argument names.
+#!cat conditional_search_space_example/configs/config_1/config.yaml
 
 # %% [markdown]
 # ## Example: Complete Search Space
 
 # %%
-# A complete example with a real optimization
 class ComprehensiveSpace(neps.PipelineSpace):
     """Complete example with multiple parameter types."""
     
