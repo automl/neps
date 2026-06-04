@@ -1925,7 +1925,7 @@ def neps_local_and_incumbent(
 def neps_bayesian_optimization(  # noqa: C901, PLR0912
     pipeline_space: SearchSpace | PipelineSpace,
     *,
-    initial_design_size: int | Literal["ndim"] = "ndim",
+    initial_design_size: int,
     acqu_sampling_density: int = 1000,
     acqu_function: Literal["EI", "LogEI"] | Callable = "EI",
     use_batch_acquisition: bool = False,
