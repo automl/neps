@@ -1,0 +1,54 @@
+name: check-notebooks-sync
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      # Triggers when matching Python files or their notebooks change
+      - 'tutorials/[0-9]*_*.py'
+      - 'tutorials/[0-9]*_*.ipynb'
+
+jobs:
+  check-notebooks:
+    runs-on: ubuntu-latest
+      
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install jupytext nbformat
+
+      - name: Generate notebooks and verify diff
+        run: |
+
+          # 1. Iterate through files matching i_...py
+          for py_file in tutorials/[0-9]*_*.py; do
+            if [ -f "$py_file" ]; then
+              basename=$(basename "$py_file" .py)
+              notebook_file="tutorials/${basename}.ipynb"
+              
+              echo "Generating $notebook_file from $py_file..."
+              
+              jupytext --to notebook "$py_file" --output "$notebook_file" --update
+            fi
+          done
+          
+          # 2. Check for differences using git diff
+          if ! git diff --exit-code tutorials/; then
+            echo "::error::Mismatch detected between the Python source files and the committed Jupyter notebooks."
+            echo "::error::Please regenerate the .ipynb files locally using jupytext and commit the updated notebooks."
+            exit 1
+          else
+            echo "All notebooks are up to date with their Python source files!"
+          fi

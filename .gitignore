@@ -42,6 +42,8 @@ jahs_bench_data/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+!tutorials/
+!tutorials/**/*.ipynb
 
 # MacOS
 *.DS_Store

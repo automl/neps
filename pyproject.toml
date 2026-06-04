@@ -97,6 +97,7 @@ include = [
     "neps",
     "neps.*",
     "neps_examples",
+    "tutorials",
 ]
 exclude = []
 
@@ -116,6 +117,7 @@ src = ["neps"]
 
 exclude = [
     "neps_examples",
+    "tutorials",
     ".bzr",
     ".direnv",
     ".eggs",
