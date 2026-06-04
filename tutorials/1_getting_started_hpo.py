@@ -18,7 +18,6 @@
 # ## Installation
 # Requires Python 3.10+. Install NePS via:
 
-# %%
 # !git clone --depth 1 https://github.com/automl/neps.git /content/neps
 # %cd /content/neps
 # !pip install -e /content/neps
@@ -26,7 +25,6 @@
 # ## Example 1: Synthetic Function Optimization
 # We start with a simple optimization problem to understand NePS basics.
 
-# %%
 import math
 import neps
 import logging
@@ -43,17 +41,18 @@ def branin(x1, x2):
     c = 5 / math.pi
     r = 6
     s = 10
-    t = 1 / 8 * math.pi
+    t = 1 / (8 * math.pi)
 
     f = a * (x2 - b * x1**2 + c * x1 - r) ** 2 + s * (1 - t) * math.cos(x1) + s
     return f
 
-# %%
 # Define the search space and run optimization
 class BraninSpace(neps.PipelineSpace):
     x1 = neps.Float(-5, 10)
     x2 = neps.Float(0, 15)
 
+from tutorials.utils import set_seeds
+set_seeds(1)
 neps.run(
     pipeline_space=BraninSpace(),
     root_directory="branin_demo/",
@@ -65,7 +64,7 @@ neps.run(
 # Check the optimization results:
 #!tail ./branin_demo/summary/best_config.txt
 
-# Great! NePS found the minimum loss over 25 evaluations. 
+# Great! NePS went in the direction of minimum loss over 25 evaluations. If you increase the budget to 1000 evaluations, you can get even closer to the global minimum of 0.397887.
 # The NePS workflow always follows this pattern:
 # 1. **Define** an objective function
 # 2. **Specify** a search space
@@ -76,9 +75,7 @@ neps.run(
 #
 # For the full training code, see [train.py](https://github.com/automl/neps/blob/master/tutorials/train.py).
 
-# %%
 from tutorials.train import training_pipeline
-from tutorials.utils import set_seeds
 
 # Test the training pipeline with a small subset
 training_pipeline(
@@ -139,7 +136,6 @@ neps.run(
 
 !python -m neps.status results_hpo_demo/
 
-# %%
 # View the summary files:
 !cat results_hpo_demo/summary/short.csv
 
@@ -158,7 +154,6 @@ df.head()
 
 # %tensorboard --logdir /content/neps/results_hpo_demo
 
-# %% [markdown]
 # For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
 #
 # ## A slightly more elaborate HPO
