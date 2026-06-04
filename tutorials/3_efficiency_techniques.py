@@ -18,12 +18,12 @@
 
 # ## Installation and Setup
 
-# %%
+
 # !git clone --depth 1 https://github.com/automl/neps.git /content/neps
 # %cd /content/neps
 # !pip install -e /content/neps
 
-# %%
+
 import neps
 import logging
 import numpy as np
@@ -34,7 +34,6 @@ logging.basicConfig(level=logging.INFO)
 # ## The Optimization Task
 # Let's use a simulated deep learning task throughout this tutorial.
 
-# %%
 def evaluate_pipeline(
     learning_rate: float,
     optimizer: str,
@@ -104,7 +103,6 @@ def evaluate_pipeline(
 
 # ### Define Search Space with Fidelity
 
-# %%
 class MultiFidelitySpace(neps.PipelineSpace):
     """Search space for multi-fidelity optimization."""
     learning_rate = neps.Float(1e-6, 1e-1, log=True)
@@ -113,10 +111,9 @@ class MultiFidelitySpace(neps.PipelineSpace):
     # Fidelity parameter: wrap Integer in neps.Fidelity()
     epochs = neps.Fidelity(neps.Integer(1, 10))
 
-# %%
+
 # ### Run Multi-Fidelity Optimization
 
-# %%
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_multi_fidelity/",
@@ -132,16 +129,13 @@ neps.run(
 # `previous_pipeline_directory` in `evaluate_pipeline` so promoted configurations can
 # load checkpoints from earlier fidelity rungs.
 
-# %%
 # !python -m neps.status results_multi_fidelity/
 
-# %%
 # ## Technique 2: Incorporating Expert Priors
 # Provide prior values and confidence levels to incorporate domain knowledge.
 
 # ### Define Search Space with Priors
 
-# %%
 class ExpertPriorSpace(neps.PipelineSpace):
     """Search space with expert priors incorporated."""
     
@@ -169,7 +163,6 @@ class ExpertPriorSpace(neps.PipelineSpace):
 
 # ### Run Optimization with Priors
 
-# %%
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_with_priors/",
@@ -183,7 +176,6 @@ neps.run(
 # `optimizer="auto"`, NePS chooses the appropriate prior-aware multi-fidelity
 # optimizer for spaces that contain both priors and fidelities.
 
-# %%
 # !python -m neps.status results_with_priors/
 
 # ## Technique 3: Optimizer Selection
@@ -191,7 +183,6 @@ neps.run(
 # NePS supports multiple search algorithms. You can let `optimizer="auto"` pick from
 # the search-space structure, or specify an optimizer explicitly.
 
-# %%
 from neps.optimizers.algorithms import PredefinedOptimizers
 from neps.utils.common import extract_keyword_defaults
 
@@ -201,12 +192,10 @@ for algo in sorted(PredefinedOptimizers):
 
 # ### Multi-Fidelity Optimizer Parameters
 
-# %%
 for algo in ["successive_halving", "asha", "hyperband", "async_hb", "ifbo", "priorband"]:
     print(f"\n{algo} hyperparameters:")
     print(extract_keyword_defaults(PredefinedOptimizers[algo]))
 
-# %%
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_custom_optimizer/",
@@ -223,7 +212,6 @@ neps.run(
 
 # ### Single Process Example (Sequential)
 
-# %%
 # Sequential run
 neps.run(
     evaluate_pipeline=evaluate_pipeline,
@@ -233,32 +221,37 @@ neps.run(
     overwrite_root_directory=True,
 )
 
+# !python -m neps.status results_sequential/
+
 print("Sequential run complete")
 
 # ### Parallel Execution Pattern
 
 # To parallelize, run multiple `neps.run()` calls with the same `root_directory`:
-#
-# ```bash
-# # In terminal, start multiple workers in parallel:
-# python worker.py &
-# python worker.py &
-# python worker.py &
-# 
-# # They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
-# ```
-#
-# In the worker script, keep `overwrite_root_directory=False` so workers attach to
-# the same run instead of resetting it.
 
-# %%
-# !python -m neps.status results_sequential/
+import multiprocessing as mp
+def run_worker():
+    neps.run(
+        evaluate_pipeline=evaluate_pipeline,
+        root_directory="results_parallel/",
+        pipeline_space=ExpertPriorSpace(),
+        evaluations_to_spend=6, # each worker's budget
+        overwrite_root_directory=False,  # workers attach, don't reset
+    )
+# Launch 3 workers in parallel
+processes = [mp.Process(target=run_worker) for _ in range(3)]
+for p in processes:
+    p.start()
+for p in processes:
+    p.join()
+
+# # They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
+
+# !python -m neps.status results_parallel/
 
 # ## Technique 5: Combining Strategies
 
 # Combine multiple techniques for maximum efficiency.
-
-# %%
 class CombinedSearchSpace(neps.PipelineSpace):
     """Combines multi-fidelity, priors, and complex search space."""
     
@@ -270,7 +263,6 @@ class CombinedSearchSpace(neps.PipelineSpace):
         prior=0,  # relu
         prior_confidence="high"
     )
-    
     # Training with priors
     learning_rate = neps.Float(1e-5, 1e-2, log=True, prior=1e-3, prior_confidence="high")
     optimizer = neps.Categorical(
@@ -288,7 +280,6 @@ class CombinedSearchSpace(neps.PipelineSpace):
 
 # Run optimization with combined strategies:
 
-# %%
 start_time = time.time()
 
 neps.run(
@@ -303,27 +294,22 @@ neps.run(
 elapsed = time.time() - start_time
 print(f"\nOptimization completed in {elapsed:.2f} seconds")
 
-# %%
 # !python -m neps.status results_combined/
 
 # ## Comparing Strategies
 
 # Let's visualize how the best loss improves over time for different approaches:
 
-# %%
 import pandas as pd
 import matplotlib.pyplot as plt
-
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 fig.suptitle("Optimization Strategies Comparison", fontsize=14, fontweight="bold")
-
 strategies = [
     ("Sequential", "results_sequential/summary/full.csv"),
     ("With Priors", "results_with_priors/summary/full.csv"),
     ("Async Hyperband", "results_custom_optimizer/summary/full.csv"),
     ("Combined", "results_combined/summary/full.csv"),
 ]
-
 for idx, (name, path) in enumerate(strategies):
     ax = axes[idx // 2, idx % 2]
     
@@ -340,7 +326,6 @@ for idx, (name, path) in enumerate(strategies):
     except FileNotFoundError:
         ax.text(0.5, 0.5, "Results not available", ha='center', va='center')
         ax.set_title(name)
-
 plt.tight_layout()
 plt.show()
 
