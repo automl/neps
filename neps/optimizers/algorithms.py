@@ -43,6 +43,7 @@ from neps.optimizers.neps_random_search import (
     NePSRandomSearch,
 )
 from neps.optimizers.neps_regularized_evolution import NePSRegularizedEvolution
+from neps.optimizers.neps_bayesian_optimization import NepsBayesianOptimization
 from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
@@ -1855,7 +1856,6 @@ def neps_exhaustive_search(
     Args:
         pipeline_space: The pipeline space to optimize over.
         sampling_density: The number of samples to take per numerical dimension.
-        sampling_tries: The number of attempts to sample each new point.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             If set to `"highest_fidelity"`, it will always sample at the highest_fidelity
     Returns:
@@ -1922,6 +1922,57 @@ def neps_local_and_incumbent(
         },
     )
 
+def neps_bayesian_optimization(  # noqa: C901, PLR0912
+    pipeline_space: SearchSpace | PipelineSpace,
+    *,
+    initial_design_size: int | Literal["ndim"] = "ndim",
+    acqu_sampling_density: int = 1000,
+    acqu_function: Literal["EI", "LogEI"] | Callable = "EI",
+    use_batch_acquisition: bool = False,
+    kernel_function: Literal["hamming"] | Callable = "hamming",
+    device: torch.device | str | None = None,
+) -> BayesianOptimization:
+    """Initialise the BO loop.
+
+    Args:
+        pipeline_space: Space in which to search
+        initial_design_size: Number of samples used before using the surrogate model.
+            If "ndim", it will use the number of parameters in the search space.
+        acqu_sampling_density: The number of samples to use when optimizing the acquisition function.
+        acqu_function: The acquisition function to use. One of:
+            - "EI": Expected Improvement
+            - "LogEI": Logarithmic Expected Improvement, which can be more stable when the scale of the objective is large.
+        use_batch_acquisition: Whether to use batch acquisition, to approximate noisy kernels.
+        kernel_function: The kernel function to use. One of:
+            - "hamming": A kernel that considers the Hamming distance between configurations.
+        device: Device to use for the optimization.
+    Raises:
+        ValueError: if initial_design_size < 1
+    """
+
+
+    match device:
+        case str():
+            device = torch.device(device)
+        case None:
+            device = torch.get_default_device()
+        case torch.device():
+            pass
+        case _:
+            raise ValueError("device should be a string, torch.device or None")
+
+    return NepsBayesianOptimization(
+        space=pipeline_space,
+        n_initial_design=initial_design_size,
+        device=device,
+        acqu_sampling_density=acqu_sampling_density,
+        acqu_function=acqu_function,
+        use_batch_acquisition=use_batch_acquisition,
+        kernel_function=kernel_function,
+    )
+
+
+
 
 PredefinedOptimizers: Mapping[str, Any] = {
     f.__name__: f
@@ -1947,6 +1998,7 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_local_and_incumbent,
         neps_grid_search,
         neps_exhaustive_search,
+        neps_bayesian_optimization,
     )
 }
 
@@ -1972,4 +2024,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_local_and_incumbent",
     "neps_exhaustive_search",
     "neps_grid_search",
+    "neps_bayesian_optimization",
 ]
