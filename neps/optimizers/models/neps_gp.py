@@ -75,6 +75,7 @@ def _greedy_batch_acquisition(
 
     # Greedy selection: iteratively pick best remaining candidate
     for step in range(n):
+        print(f"Batch acquisition step {step+1}/{n}.",end="\r" if step < n - 1 else "\n", flush=True)
         # Compute acquisition for all remaining candidates
         acqu_vals = np.array([
             acqu_func(pred_means[i], pred_vars[i], best_y)
