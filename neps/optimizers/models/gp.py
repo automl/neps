@@ -189,7 +189,8 @@ def optimize_acq(  # noqa: PLR0915
 
     lower = [domain.lower for domain in encoder.domains]
     upper = [domain.upper for domain in encoder.domains]
-    bounds = torch.tensor([lower, upper], dtype=torch.float64)
+    _acq_device = next(acq_fn.parameters(), torch.tensor(0.0)).device
+    bounds = torch.tensor([lower, upper], dtype=torch.float64, device=_acq_device)
 
     cat_transformers = {
         name: t
@@ -232,7 +233,9 @@ def optimize_acq(  # noqa: PLR0915
         for name, transformer in cat_transformers.items()
     }
     cat_keys = list(cats.keys())
-    choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
+    choices = [
+        torch.tensor(cats[k], dtype=torch.float, device=_acq_device) for k in cat_keys
+    ]
     fixed_cat: dict[int, float] = {}
 
     n_combos = reduce(
