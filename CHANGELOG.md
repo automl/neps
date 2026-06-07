@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process
+- fix epsnet_selector for MO branckets to filter out pending trials
 
 ## [0.16.0] - 2026-03-25
 
