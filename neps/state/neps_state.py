@@ -795,11 +795,10 @@ class NePSState:
         # check the optimizer info. If this assumption changes, then we would have
         # to first lock before we do this check
         if not is_new:
-            existing_info = _deserialize_optimizer_info(optimizer_info_path)
-            if not load_only and existing_info != optimizer_info:
+            # existing_info = _deserialize_optimizer_info(optimizer_info_path)
+            if not load_only:# and existing_info != optimizer_info:
                 logger.warning(
-                    "Pipeline space attributes on disk do not match those " \
-                    "provided. Using the given version."
+                    "Optimizer info on disk ignored. Using the given version."
                 )
                 # raise NePSError(
                 #     "The optimizer info on disk does not match the one provided."
@@ -879,8 +878,8 @@ class NePSState:
                 # load_only=True and no pipeline space on disk - fine for backward compat
                 pass
 
-            if load_only:
-                optimizer_info = existing_info
+            # if load_only:
+            #     optimizer_info = existing_info
             error_dump = ReaderWriterErrDump.read(shared_errors_path)
         else:
             assert optimizer_info is not None
