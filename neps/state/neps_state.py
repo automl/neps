@@ -797,12 +797,16 @@ class NePSState:
         if not is_new:
             existing_info = _deserialize_optimizer_info(optimizer_info_path)
             if not load_only and existing_info != optimizer_info:
-                raise NePSError(
-                    "The optimizer info on disk does not match the one provided."
-                    f"\nOn disk: {existing_info}"
-                    f"\n   Loaded from {path}."
-                    f"\nProvided: {optimizer_info}"
+                logger.warning(
+                    "Pipeline space attributes on disk do not match those " \
+                    "provided. Using the given version."
                 )
+                # raise NePSError(
+                #     "The optimizer info on disk does not match the one provided."
+                #     f"\nOn disk: {existing_info}"
+                #     f"\n   Loaded from {path}."
+                #     f"\nProvided: {optimizer_info}"
+                # )
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
 
@@ -875,7 +879,8 @@ class NePSState:
                 # load_only=True and no pipeline space on disk - fine for backward compat
                 pass
 
-            optimizer_info = existing_info
+            if load_only:
+                optimizer_info = existing_info
             error_dump = ReaderWriterErrDump.read(shared_errors_path)
         else:
             assert optimizer_info is not None
