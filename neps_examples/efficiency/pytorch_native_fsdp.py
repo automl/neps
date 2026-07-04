@@ -217,7 +217,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     class HPOSpace(neps.PipelineSpace):
-        lr = neps.Float(lower=0.0001, upper=0.1, log=True, prior=0.01)
+        lr = neps.Float(lower=0.0001, upper=0.1, log=True, prior=0.01, prior_confidence="high")
         epoch = neps.IntegerFidelity(lower=1, upper=3)
 
     neps.run(

@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import neps
 
-NUM_GPU = 8  # Number of GPUs to use for DDP
+NUM_GPU = 4  # Number of GPUs to use for DDP
 
 
 class ToyModel(nn.Module):
@@ -58,9 +58,10 @@ class LightningModel(L.LightningModule):
 def evaluate_pipeline(lr=0.1, epoch=20):
     if platform.system() != "Linux":
         raise RuntimeError(
-            "This example uses DDP with the NCCL backend, which only runs on "
-            f"Linux. Detected platform: {platform.system()}. Run it on a Linux "
-            "machine with GPUs (e.g. a Linux GPU cluster)."
+            "This example uses torch.distributed via Lightning's DDP "
+            f"strategy, which is only supported on Linux here. Detected "
+            f"platform: {platform.system()}. Run it on a Linux machine with "
+            "GPUs (e.g. a Linux GPU cluster)."
         )
 
     L.seed_everything(42)

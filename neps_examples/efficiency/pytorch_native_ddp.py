@@ -17,7 +17,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import neps
 import logging
 
-NUM_GPU = 8  # Number of GPUs to use for DDP
+NUM_GPU = 4  # Number of GPUs to use for DDP
 
 # On Windows platform, the torch.distributed package only
 # supports Gloo backend, FileStore and TcpStore.
