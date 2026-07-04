@@ -1,4 +1,5 @@
 import logging
+import platform
 
 import lightning as L
 import torch
@@ -55,6 +56,13 @@ class LightningModel(L.LightningModule):
 
 
 def evaluate_pipeline(lr=0.1, epoch=20):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses DDP with the NCCL backend, which only runs on "
+            f"Linux. Detected platform: {platform.system()}. Run it on a Linux "
+            "machine with GPUs (e.g. a Linux GPU cluster)."
+        )
+
     L.seed_everything(42)
     # Model
     model = LightningModel(lr=lr)
@@ -86,7 +94,7 @@ def evaluate_pipeline(lr=0.1, epoch=20):
 
 
 class HPOSpace(neps.PipelineSpace):
-    lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01)
+    lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01, prior_confidence="high")
     epoch = neps.IntegerFidelity(lower=1, upper=3)
 
 

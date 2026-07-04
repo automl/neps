@@ -2,6 +2,8 @@
 
 Mind that this example does not run on Windows at the moment."""
 
+import platform
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -35,6 +37,13 @@ class LanguageModel(L.LightningModule):
 
 
 def evaluate_pipeline(lr=0.1, epoch=20):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses FSDP with the NCCL backend, which only runs on "
+            f"Linux. Detected platform: {platform.system()}. Run it on a Linux "
+            "machine with GPUs (e.g. a Linux GPU cluster)."
+        )
+
     L.seed_everything(42)
 
     # Data

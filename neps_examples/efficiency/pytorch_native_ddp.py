@@ -3,6 +3,7 @@
 Mind that this example does not run on Windows at the moment."""
 
 import os
+import platform
 import sys
 import tempfile
 import torch
@@ -88,6 +89,13 @@ def demo_basic(rank, world_size, loss_dict, learning_rate, epochs):
 
 
 def evaluate_pipeline(learning_rate, epochs):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses torch.distributed DDP, which is only supported "
+            f"on Linux here. Detected platform: {platform.system()}. Run it on "
+            "a Linux machine with GPUs (e.g. a Linux GPU cluster)."
+        )
+
     from torch.multiprocessing import Manager
 
     world_size = NUM_GPU  # Number of GPUs
