@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added 3 tutorials and embended existing colab tutorial in it.
+- Support artifacts for each optimizer based on evaluated trials.
+- Add a generic structure for the filesystem writers.
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process

@@ -7,6 +7,7 @@ integration with distributed setups (e.g., PyTorch DDP).
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import shutil
@@ -18,7 +19,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from filelock import FileLock
+from filelock import BaseFileLock, FileLock
 from portalocker import portalocker
 
 from neps.env import (
@@ -56,6 +57,7 @@ from neps.status.status import (
     status,
 )
 from neps.utils.common import gc_disabled
+from neps.utils.files import get_file_writer
 
 if TYPE_CHECKING:
     from neps import SearchSpace
@@ -537,7 +539,9 @@ class DefaultWorker:
         best_config_path: Path,
         final_stopping_criteria: ResourceUsage | None = None,
     ) -> None:
-        """Writes the trajectory and best config files safely."""
+        """Writes the trajectory and best config files safely using generic file
+        writer.
+        """
         trace_text = _build_incumbent_content(incumbent_configs)
 
         best_config_text = _build_optimal_set_content(optimal_configs)
@@ -549,12 +553,50 @@ class DefaultWorker:
                 best_config_text += f"\n{metric}: {value}"
 
         with trace_lock:
+            text_writer = get_file_writer("text")
             if incumbent_configs:
-                with improvement_trace_path.open(mode="w") as f:
-                    f.write(trace_text)
+                try:
+                    text_writer.write(trace_text, improvement_trace_path)
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Failed to write improvement trace: {e}")
             if optimal_configs:
-                with best_config_path.open(mode="w") as f:
-                    f.write(best_config_text)
+                try:
+                    text_writer.write(best_config_text, best_config_path)
+                except Exception as e:  # noqa: BLE001
+                    logger.error(f"Failed to write best config: {e}")
+
+    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
+        """Save optimizer artifacts to summary directory.
+
+        Args:
+            artifacts: List of Artifact objects to persist.
+            summary_dir: Summary directory where artifacts will be saved.
+        """
+        logger.info("saving artifacts...")
+
+        for artifact in artifacts:
+            try:
+                # Map ArtifactType enum to string for writer lookup
+                content_type = artifact.artifact_type.value
+                writer = get_file_writer(content_type)
+                file_path = summary_dir / artifact.name
+
+                accepted = set(inspect.signature(writer.write).parameters)
+                unknown = set(artifact.metadata) - accepted
+                if unknown:
+                    raise TypeError(
+                        f"metadata key(s) {sorted(unknown)} are not accepted by "
+                        f"{type(writer).__name__}.write(); valid keys: {sorted(accepted)}"
+                    )
+
+                writer.write(artifact.content, file_path, **artifact.metadata)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    f"Failed to save artifact '{artifact.name}' "
+                    f"(type={artifact.artifact_type.value}): {e}"
+                )
+                # Allow optimization to continue even if artifact save fails
+                continue
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -682,13 +724,13 @@ class DefaultWorker:
         improvement_trace_path.touch(exist_ok=True)
         best_config_path = summary_dir / "best_config.txt"
         best_config_path.touch(exist_ok=True)
-        _trace_lock = FileLock(".trace.lock")
+        _trace_lock = FileLock(str(main_dir / ".trace.lock"))
         _trace_lock_path = Path(str(_trace_lock.lock_file))
         _trace_lock_path.touch(exist_ok=True)
-        full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
+        full_df_path, short_path, summary_locker = _initiate_summary_csv(main_dir)
 
         # Create empty CSV files
-        with csv_locker.lock():
+        with summary_locker.lock():
             full_df_path.parent.mkdir(parents=True, exist_ok=True)
             full_df_path.touch(exist_ok=True)
             short_path.touch(exist_ok=True)
@@ -707,6 +749,15 @@ class DefaultWorker:
 
         _repeated_fail_get_next_trial_count = 0
         n_repeated_failed_check_should_stop = 0
+
+        evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
+        self.load_incumbent_trace(
+            evaluated_trials,
+            _trace_lock,
+            improvement_trace_path,
+            best_config_path,
+        )
+
         while True:
             try:
                 # First check local worker settings
@@ -839,9 +890,22 @@ class DefaultWorker:
                         improvement_trace_path,
                         best_config_path,
                     )
+                # Persist optimizer artifacts if available
+                if hasattr(self.optimizer, "get_trial_artifacts"):
+                    try:
+                        artifacts = self.optimizer.get_trial_artifacts(
+                            trials=evaluated_trials
+                        )
+                        if artifacts is not None:
+                            with _trace_lock:
+                                self._save_optimizer_artifacts(artifacts, summary_dir)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to persist optimizer artifacts: {e}", exc_info=True
+                        )
 
                 full_df, short = status(main_dir)
-                with csv_locker.lock():
+                with summary_locker.lock():
                     full_df.to_csv(full_df_path)
                     short.to_frame().to_csv(short_path)
 
@@ -855,7 +919,7 @@ class DefaultWorker:
     def load_incumbent_trace(
         self,
         trials: dict[str, Trial],
-        _trace_lock: FileLock,
+        _trace_lock: BaseFileLock,
         improvement_trace_path: Path,
         best_config_path: Path,
     ) -> None:
@@ -865,7 +929,7 @@ class DefaultWorker:
 
         Args:
             trials (dict): A dictionary of the evaluated trials which have a valid report.
-            _trace_lock (FileLock): A file lock to ensure thread-safe writing.
+            _trace_lock (BaseFileLock): A file lock to ensure thread-safe writing.
             improvement_trace_path (Path): Path to the improvement trace file.
             best_config_path (Path): Path to the best configuration file.
         """
