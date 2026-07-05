@@ -23,6 +23,13 @@ all_main_examples = {  # Used for printing in python -m neps_examples
         "pytorch_native_ddp",
         "pytorch_lightning_ddp",
     ],
+    "async_evaluation": [
+        "submit",
+    ],
+    "experimental": [
+        "ask_and_tell_example",
+        "freeze_thaw",
+    ],
 }
 
 core_examples = [  # Run locally and on github actions
