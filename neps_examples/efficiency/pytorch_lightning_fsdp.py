@@ -2,6 +2,8 @@
 
 Mind that this example does not run on Windows at the moment."""
 
+import platform
+
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -35,6 +37,13 @@ class LanguageModel(L.LightningModule):
 
 
 def evaluate_pipeline(lr=0.1, epoch=20):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses FSDP with the NCCL backend, which only runs on "
+            f"Linux. Detected platform: {platform.system()}. Run it on a Linux "
+            "machine with GPUs (e.g. a Linux GPU cluster)."
+        )
+
     L.seed_everything(42)
 
     # Data
@@ -45,8 +54,8 @@ def evaluate_pipeline(lr=0.1, epoch=20):
     model = LanguageModel(vocab_size=dataset.vocab_size, lr=lr)
 
     # Trainer
-    trainer = L.Trainer(accelerator="cuda", strategy=FSDPStrategy())
-    trainer.fit(model, train_dataloader, max_epochs=epoch)
+    trainer = L.Trainer(accelerator="cuda", strategy=FSDPStrategy(), max_epochs=epoch)
+    trainer.fit(model, train_dataloader)
     return trainer.logged_metrics["train_loss"].detach().item()
 
 
@@ -57,7 +66,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     class HPOSpace(neps.PipelineSpace):
-        lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01)
+        lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01, prior_confidence="high")
         epoch = neps.IntegerFidelity(lower=1, upper=3)
 
     neps.run(
