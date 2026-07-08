@@ -407,9 +407,9 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileL
 
     full_path = summary_path / "full.csv"
     short_path = summary_path / "short.csv"
-    csv_locker = FileLocker(summary_path / ".csv_lock", poll=0.1, timeout=10)
+    summary_locker = FileLocker(summary_path / ".summary.lock", poll=0.1, timeout=10)
 
-    return (full_path, short_path, csv_locker)
+    return (full_path, short_path, summary_locker)
 
 
 def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
@@ -422,9 +422,9 @@ def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
         The paths to the configuration data CSV and the run data CSV.
     """
     full_df, short = status(root_directory, print_summary=False)
-    full_df_path, short_path, csv_locker = _initiate_summary_csv(root_directory)
+    full_df_path, short_path, summary_locker = _initiate_summary_csv(root_directory)
 
-    with csv_locker.lock():
+    with summary_locker.lock():
         full_df.to_csv(full_df_path)
         short.to_frame().to_csv(short_path)
 
