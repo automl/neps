@@ -103,8 +103,9 @@ class BayesianOptimization:
 
     constraints_func: Callable[[Mapping[str, Any]], Sequence[float]] | None = None
 
-    acquisition_func_type: Literal["EI", "IT-JES", "IT-MES"] = "EI" # Expected Improvement, Information Theoretic
+    acquisition_func_type: Literal["EI", "IT-JES", "IT-MES", "IT-modified-JES"] = "EI" # Expected Improvement, Information Theoretic
     cost_estimator: Callable[..., int] | None = None
+    target_flops: int | None = None
 
 
     def get_constraint_func(self) -> Callable[[Mapping[str, Any]], Sequence[float]] | None:
@@ -333,7 +334,7 @@ class BayesianOptimization:
 
         n_sampled = len(trials)
         
-        max_trial_id = _get_max_trial_id(trials)
+        max_trial_id = _get_max_trial_id(trials) or 0
         id_generator = iter(str(i) for i in itertools.count(max_trial_id + 1))
 
         # If the amount of configs evaluated is less than the initial design
@@ -489,22 +490,36 @@ class BayesianOptimization:
             )
         else:
             assert self.cost_estimator is not None, "cost_estimator must be provided for single objective optimization."
-            # fit a linear line to the evaluated trials to adjust the kernel
-            from neps.optimizers.scaling_law_guided import fit_pareto_front_loglog
-            # evaluated_trials = [trial for trial in trials.values()
-            #     if (
-            #         trial.report is not None 
-            #         and trial.report.objective_to_minimize is not None 
-            #         and np.isfinite(trial.report.objective_to_minimize)
-            #         )
-            # ]
-            slope, intercept, _, _ , _, _, _ = fit_pareto_front_loglog(
-                trials=trials,)
+            # Fit a power law to determine GP mean prior
+            from src.scaling_law_fit import fit_power_law_mean_params
+
+            completed_trials = [
+                trial for trial in trials.values()
+                if trial.report is not None and trial.report.objective_to_minimize is not None
+            ]
+            mean_params = fit_power_law_mean_params(
+                [trial.config for trial in completed_trials],
+                [trial.report.objective_to_minimize for trial in completed_trials],
+                self.cost_estimator,
+            )
+            if mean_params.fit is not None:
+                logger.info(
+                    f"Fitted power law: slope={mean_params.slope:.4f}, "
+                    f"intercept={mean_params.intercept:.4f}, "
+                    f"r²={mean_params.fit.r_squared:.4f}, n={mean_params.fit.num_points}"
+                )
+            else:
+                logger.warning(
+                    f"Insufficient data for power law fit ({len(mean_params.flops)} trials). "
+                    f"Using default slope={mean_params.slope}, intercept={mean_params.intercept}."
+                )
+
             gp = make_default_single_obj_gp(
                 x=data.x, y=data.y, encoder=encoder,
                 flop_estimator=self.cost_estimator,
-                mean_slope=slope,
-                mean_bias=intercept,
+                min_flops=mean_params.min_flops,
+                mean_slope=mean_params.slope,
+                mean_bias=mean_params.intercept,
             )
             from botorch.fit import fit_gpytorch_mll
             from gpytorch import ExactMarginalLogLikelihood
@@ -527,32 +542,103 @@ class BayesianOptimization:
                 lower = [domain.lower for domain in encoder.domains]
                 upper = [domain.upper for domain in encoder.domains]
                 bounds = torch.tensor([lower, upper], dtype=torch.float64)
-                # torch.autograd.set_detect_anomaly(True)
-                optimal_inputs, optimal_outputs = get_optimal_samples(model=gp, bounds=bounds, num_optima=4, maximize=False)
+                
+                optimal_inputs, optimal_outputs = get_optimal_samples(
+                    model=gp, bounds=bounds, num_optima=4, maximize=False
+                )
+                
+                # Check for NaN/inf in optimal samples and fallback to EI if found
+                if torch.isnan(optimal_inputs).any() or torch.isinf(optimal_inputs).any() or \
+                    torch.isnan(optimal_outputs).any() or torch.isinf(optimal_outputs).any():
+                    raise ValueError(
+                        "NaN/Inf detected in optimal_samples from get_optimal_samples. "
+                    )
+                
                 acquisition = qJointEntropySearch(
                     model=gp,
                     optimal_inputs=optimal_inputs,
                     optimal_outputs=optimal_outputs,
-                    condition_noiseless=False,
-                    estimation_type='LB',
-                    X_pending=data.x_pending,
+                    condition_noiseless=True,
+                    estimation_type='MC',
+                    num_samples=128,
+                    X_pending=None,
                     maximize=False,
                 )
             elif self.acquisition_func_type == "IT-MES":
-                from botorch.acquisition.max_value_entropy_search import qMultiFidelityLowerBoundMaxValueEntropy
-                from botorch.acquisition.utils import get_optimal_samples
+                from botorch.acquisition.max_value_entropy_search import qLowerBoundMaxValueEntropy
+                from botorch.utils.sampling import draw_sobol_samples
                 lower = [domain.lower for domain in encoder.domains]
                 upper = [domain.upper for domain in encoder.domains]
                 bounds = torch.tensor([lower, upper], dtype=torch.float64)
-                optimal_inputs, optimal_outputs = get_optimal_samples(model=gp, bounds=bounds, num_optima=10, maximize=False)
-                acquisition = qMultiFidelityLowerBoundMaxValueEntropy(
+
+                candidate_set = draw_sobol_samples(
+                    bounds=bounds, n=512, q=1
+                ).squeeze(1).to(dtype=torch.float64)
+
+                acquisition = qLowerBoundMaxValueEntropy(
+                    model=gp,
+                    candidate_set=candidate_set,
+                )
+            elif self.acquisition_func_type == "IT-modified-JES":
+                import math
+                from botorch.fit import fit_gpytorch_mll as _fit_mll
+                from botorch.utils.sampling import draw_sobol_samples
+                from gpytorch import ExactMarginalLogLikelihood as _MLL
+                from neps.optimizers.acquisition.information_theoretic import CostWeightedModifiedJES
+                from neps.optimizers.models.gp import make_default_single_obj_gp as _make_gp
+
+                lower = [domain.lower for domain in encoder.domains]
+                upper = [domain.upper for domain in encoder.domains]
+                bounds = torch.tensor([lower, upper], dtype=torch.float64)
+
+                # Build a candidate set restricted to configs within 3× of C_target.
+                raw_candidates = draw_sobol_samples(bounds=bounds, n=2048, q=1).squeeze(1).to(dtype=torch.float64)
+                target_flops = self.target_flops
+                assert target_flops is not None and self.cost_estimator is not None
+                flop_vals: list[float] = []
+                for cand in raw_candidates:
+                    try:
+                        conf = encoder.decode(cand.unsqueeze(0))[0]
+                        flop_vals.append(float(self.cost_estimator(**conf)))
+                    except Exception:
+                        flop_vals.append(0.0) # to keep dim consistent
+                log_flops = torch.tensor(flop_vals, dtype=torch.float64).clamp(min=1).log()
+                log_target = math.log(target_flops)
+                mask = (log_flops - log_target).abs() < math.log(1.5) # a bound of 2/3 to 1.5× the target FLOPs
+                candidate_set = raw_candidates[mask] if mask.sum() >= 4 else raw_candidates
+
+                # Sample S posterior paths over the C_target-filtered candidate set
+                # and take the argmin of each path to get fantasy optima at C_target.
+                num_optima = 4
+                posterior_at_candidates = gp.posterior(candidate_set.unsqueeze(-2))
+                # samples: (num_optima, N, 1, 1) → (num_optima, N)
+                samples = posterior_at_candidates.rsample(torch.Size([num_optima])).squeeze(-1).squeeze(-1)
+                best_idxs = samples.argmin(dim=-1)  # (num_optima,)
+                optimal_inputs = candidate_set[best_idxs]                                 # (S, D)
+                optimal_outputs = samples[torch.arange(num_optima), best_idxs].unsqueeze(-1)  # (S, 1)
+
+                if torch.isnan(optimal_inputs).any() or torch.isnan(optimal_outputs).any():
+                    raise ValueError("NaN in modified-JES optimal samples")
+
+                # Build cost GP trained on log-FLOPs for the normalized cost term.
+                cost_gp = None
+                c_min_log = math.log(1e10)
+                c_max_log = math.log(1e19)
+                if data.cost is not None and data.cost.numel() >= 2:
+                    costs_log = data.cost.clamp(min=1).log()
+                    c_min_log = costs_log.min().item()
+                    c_max_log = costs_log.max().item()
+                    if c_max_log > c_min_log:
+                        cost_gp = _make_gp(x=data.x, y=costs_log.unsqueeze(-1), encoder=encoder)
+                        _fit_mll(_MLL(likelihood=cost_gp.likelihood, model=cost_gp))
+
+                acquisition = CostWeightedModifiedJES(
                     model=gp,
                     optimal_inputs=optimal_inputs,
                     optimal_outputs=optimal_outputs,
-                    condition_noiseless=True,
-                    estimation_type='LB',
-                    X_pending=data.x_pending,
-                    maximize=False,
+                    cost_model=cost_gp,
+                    c_min_log=c_min_log,
+                    c_max_log=c_max_log,
                 )
             else:
                 raise NotImplemented("Acquisition function not supported for single objective optimization.")
@@ -571,7 +657,7 @@ class BayesianOptimization:
             prior=prior,
             n_candidates_required=n_to_acquire,
             pibo_exp_term=pibo_exp_term,
-            costs=data.cost if self.cost_aware is not False else None,
+            costs=data.cost if (self.cost_aware is not False and self.acquisition_func_type != "IT-modified-JES") else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
             acq_options=acq_opts,
@@ -632,7 +718,7 @@ class BayesianOptimization:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        max_trial_id = _get_max_trial_id(trials)
+        max_trial_id = _get_max_trial_id(trials) or 0
         return [
             ImportedConfig(
                 id=str(i),

@@ -28,7 +28,7 @@ from neps.space import ConfigEncoder, Domain, HPOCategorical, HPOFloat, HPOInteg
 if TYPE_CHECKING:
     from torch.distributions import Distribution
 
-PRIOR_CONFIDENCE_MAPPING = {"low": 0.25, "medium": 0.5, "high": 0.75}
+PRIOR_CONFIDENCE_MAPPING = {"low": 0.25, "medium": 0.5, "high": 1}
 
 
 class Prior(Sampler):

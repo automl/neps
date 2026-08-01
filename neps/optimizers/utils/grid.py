@@ -149,6 +149,8 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     numeric_values = torch.round(numeric_values)
                 uniq_values = torch.unique(numeric_values).tolist()
                 param_ranges[name] = uniq_values
+            elif isinstance(hp, int | float | str):
+                param_ranges[name] = [hp]
             else:
                 raise NotImplementedError(
                     f"Parameter type: {type(hp)}\n{hp} not supported yet in GridSearch"

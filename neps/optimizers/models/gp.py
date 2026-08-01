@@ -9,11 +9,12 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
 from itertools import product
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import gpytorch.constraints
 import numpy as np
 import torch
+from botorch.exceptions.errors import OptimizationGradientError
 from botorch.exceptions.warnings import InputDataWarning
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
@@ -51,7 +52,6 @@ logger = logging.getLogger(__name__)
 
 warnings.filterwarnings("ignore", category=InputDataWarning)
 
-
 @dataclass
 class GPEncodedData:
     """Tensor data of finished configurations."""
@@ -78,7 +78,7 @@ def default_categorical_kernel(
 
 
 class PowerLawMean(GpMean):
-    def __init__(self, encoder, flop_estimator, fixed_slope: float, fixed_bias: float):
+    def __init__(self, encoder, flop_estimator, fixed_slope: float, fixed_bias: float, reference_flops: float | None = None):
         super().__init__()
         self.encoder = encoder
         self.flop_estimator = flop_estimator
@@ -86,6 +86,12 @@ class PowerLawMean(GpMean):
         # Store them as standard tensors, NOT learnable parameters
         self.register_buffer("fixed_slope", torch.tensor(fixed_slope, dtype=torch.float64))
         self.register_buffer("fixed_bias", torch.tensor(fixed_bias, dtype=torch.float64))
+        
+        # Reference FLOP value for normalization (keeps mean numerically stable)
+        # When flops == reference_flops, log_flops_rel = 0, so mean = fixed_bias
+        if reference_flops is None:
+            reference_flops = 1e16  # Default: ~1e16 FLOPs
+        self.register_buffer("reference_flops", torch.tensor(reference_flops, dtype=torch.float64))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: (Batch, N_Dims)
@@ -103,12 +109,18 @@ class PowerLawMean(GpMean):
                 
         flops = torch.tensor(flops_list, dtype=x.dtype, device=x.device)
         
-        # 2. Convert to Log Space
-        log_flops = torch.log(flops.clamp(min=1.0))
+        # 2. Normalize FLOPs relative to reference value
+        # This keeps log_flops_rel centered around 0, so mean stays near fixed_bias
+        ref_flops = cast(torch.Tensor, self.reference_flops.to(flops.device))
+        slope = cast(torch.Tensor, self.fixed_slope)
+        bias = cast(torch.Tensor, self.fixed_bias)
         
-        # 3. Apply the Hardcoded Linear Scaling Law
-        # log(Loss) = slope * log(FLOPs) + bias
-        mean_flat = self.fixed_slope * log_flops + self.fixed_bias
+        log_flops_rel = torch.log((flops / ref_flops).clamp(min=1e-10))
+        
+        # 3. Apply the Hardcoded Linear Scaling Law (relative to reference)
+        # mean = slope * log(FLOPs / FLOPs_ref) + bias
+        # Example: if flops = reference_flops, then log_flops_rel = 0, so mean = bias = 5.0 (numerically stable!)
+        mean_flat = slope * log_flops_rel + bias
         return mean_flat.view(batch_shape)
 
 def make_default_single_obj_gp(
@@ -118,6 +130,7 @@ def make_default_single_obj_gp(
     *,
     y_transform: OutcomeTransform | None = None,
     flop_estimator: Callable[..., int] | None = None,
+    min_flops: int = int(1e16),
     mean_slope: float = -0.5,
     mean_bias: float = 5.0,
 ) -> SingleTaskGP:
@@ -150,13 +163,24 @@ def make_default_single_obj_gp(
                 scaling_dims.append(encoder.index_of[hp_name])
     
     mean_module = None
-    # if flop_estimator is not None:
-    mean_module = PowerLawMean(
-        encoder=encoder,
-        flop_estimator=flop_estimator,
-        fixed_slope=mean_slope,
-        fixed_bias=mean_bias,
-    )
+    # Compute reference FLOP value from training data for numerical stability
+    # This ensures the GP mean stays centered around mean_bias (e.g., 5.0)
+    # instead of huge negative values that break JES's normalization
+    if flop_estimator is not None:
+        with torch.no_grad():
+            x_physical = encoder.decode(x)
+            flops_list = []
+            for conf in x_physical:
+                val = flop_estimator(**conf)
+                flops_list.append(val)
+        
+        mean_module = PowerLawMean(
+            encoder=encoder,
+            flop_estimator=flop_estimator,
+            fixed_slope=mean_slope,
+            fixed_bias=mean_bias,
+            reference_flops=min_flops,
+        )
 
     # Purely vectorial
     if len(categoricals) == 0:
@@ -280,15 +304,33 @@ def optimize_acq(  # noqa: PLR0915
             acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
         
         with warning_context:
-            return optimize_acqf(  # type: ignore
-                acq_function=acq_fn,
-                bounds=bounds,
-                q=n_candidates_required,
-                num_restarts=num_restarts,
-                raw_samples=n_intial_start_points,
-                fixed_features=_fixed_features,
-                **acq_options,
-            )
+            try:
+                return optimize_acqf(  # type: ignore
+                    acq_function=acq_fn,
+                    bounds=bounds,
+                    q=n_candidates_required,
+                    num_restarts=num_restarts,
+                    raw_samples=n_intial_start_points,
+                    fixed_features=_fixed_features,
+                    **acq_options,
+                )
+            except OptimizationGradientError as err:
+                raise err
+                # logger.warning(
+                #     "Gradient-based acquisition optimization failed with NaN "
+                #     "gradients; falling back to derivative-free acquisition "
+                #     "optimization. Error: %s",
+                #     err,
+                # )
+                # return _derivative_free_acq_fallback(
+                #     acq_fn=acq_fn,
+                #     bounds=bounds,
+                #     q=n_candidates_required,
+                #     raw_samples=n_intial_start_points,
+                #     fixed_features=_fixed_features,
+                #     nonlinear_inequality_constraints=constraints,
+                #     num_restarts=num_restarts,
+                # )
 
     # First, just collect the possible values per cat column
     # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
@@ -508,8 +550,8 @@ def fit_and_acquire_from_gp(
     costs_on_log_scale: bool = True,
     seed: int | None = None,
     n_candidates_required: int | None = None,
-    num_restarts: int = 5,
-    n_initial_start_points: int = 128,
+    num_restarts: int = 20,
+    n_initial_start_points: int = 512,
     maximum_allowed_categorical_combinations: int = 30,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
@@ -639,8 +681,6 @@ def fit_and_acquire_from_gp(
     )
     return candidates
 
-
-import torch
 
 class BlackBoxConstraintFn(torch.autograd.Function):
     @staticmethod
@@ -804,7 +844,6 @@ def make_ic_generator(constraint_func, encoder):
             # We flatten to (raw_samples * q, d) if the constraint func expects 2D, 
             # or pass 3D if it handles it. 
             # Your encode_constraints_func wrapper handles dimensions, so we pass as is.
-            print("ic_generator: get constraint vals")
             constraint_vals = constraint_func(X_cand)
             
             # Constraint satisfied if >= 0
@@ -842,29 +881,50 @@ def make_ic_generator(constraint_func, encoder):
         with torch.no_grad():
             acq_vals = acq_function(X_valid)
         
-        # ROBUST NaN HANDLING: Replace NaN acquisition values with minimum valid value
-        nan_mask = torch.isnan(acq_vals)
-        if nan_mask.any():
-            # Get valid (non-NaN) values
-            valid_acq_vals = acq_vals[~nan_mask]
-            
-            if len(valid_acq_vals) > 0:
-                # Use minimum valid value for NaNs (conservative choice)
-                fill_value = valid_acq_vals.min().item()
-            else:
-                # All values are NaN - use 0 as fallback
-                fill_value = 0.0
-            
-            acq_vals[nan_mask] = fill_value
+        # ROBUST NaN/Inf HANDLING: Filter out problematic points BEFORE selection
+        nan_inf_mask = torch.isnan(acq_vals) | torch.isinf(acq_vals)
+        
+        if nan_inf_mask.any():
+            num_problematic = nan_inf_mask.sum().item()
             logger.warning(
-                f"NaN detected in acquisition function evaluation during IC generation: "
-                f"{nan_mask.sum().item()} NaN values replaced with {fill_value:.6f}"
+                f"Found {num_problematic} points with NaN/Inf acq values during IC generation. "
+                f"Removing these points to avoid numerical issues during optimization."
             )
-        
-        # We want the indices of the highest acquisition values
-        _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
-        
-        best_ics = X_valid[best_idxs]
+            
+            # Filter out problematic points
+            X_valid_safe = X_valid[~nan_inf_mask]
+            acq_vals_safe = acq_vals[~nan_inf_mask]
+            
+            if len(X_valid_safe) == 0:
+                # Fallback: if all points are NaN/Inf, just use bounds midpoint
+                raise Exception(
+                    "All initial conditions produced NaN/Inf acquisition values! "
+                    "Falling back to bounds midpoint."
+                )
+                # bounds_mid = (bounds[0] + bounds[1]) / 2
+                # best_ics = bounds_mid.unsqueeze(0).repeat(num_restarts, 1)
+            else:
+                # Use safe points for selection
+                X_valid = X_valid_safe
+                acq_vals = acq_vals_safe
+                
+                if len(X_valid) < num_restarts:
+                    logger.warning(
+                        f"After filtering NaN/Inf: only {len(X_valid)} safe points "
+                        f"available for {num_restarts} restarts. Will recycle points."
+                    )
+                    # Recycle safe points
+                    needed = num_restarts - len(X_valid)
+                    repeats = (needed // len(X_valid)) + 2
+                    X_valid = torch.cat([X_valid] * repeats)[:num_restarts]
+                    acq_vals = torch.cat([acq_vals] * repeats)[:num_restarts]
+                
+                _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
+                best_ics = X_valid[best_idxs]
+        else:
+            # No NaN/Inf - proceed normally
+            _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
+            best_ics = X_valid[best_idxs]
         
         # ROBUST NaN HANDLING: Check if initial conditions themselves have NaN values
         if torch.isnan(best_ics).any():

@@ -544,64 +544,46 @@ def kaplan_guided_scaling(
         max_target_flop=max_target_flop,
     )
 
-def chinchilla_guided_scaling(
-    space: SearchSpace,
-    *,
-    params_estimator: Callable[[SearchSpace], int] = None,
-    seen_datapoints_estimator: Callable[[SearchSpace], int] = None,
-    flops_estimator: Callable[[SearchSpace], int] = None,
-    base_optimizer: Callable[..., Any] = None,
-    max_evaluation_flops: int | None = None,
-):
-    from neps.optimizers.chinchilla_guided_scaling import Chinchilla_Guided_Scaling
-    if base_optimizer is None:
-        base_optimizer = grid_search(
-            space,
-            ignore_fidelity=True,
-            size_per_numerical_dimension=5,
-        )
-    return Chinchilla_Guided_Scaling(
-        space=convert_neps_to_classic_search_space(space=space),
-        base_optimizer=base_optimizer,
-        flops_estimator=flops_estimator,
-        params_estimator=params_estimator,
-        seen_datapoints_estimator=seen_datapoints_estimator,
-        max_evaluation_flops=max_evaluation_flops,
-    )
-
 def bo_guided_scaling(
-    space: SearchSpace,
+    space: SearchSpace | PipelineSpace,
     *,
     params_estimator: Callable[[SearchSpace], int],
     seen_datapoints_estimator: Callable[[SearchSpace], int],
-    flops_estimator: Callable[[SearchSpace], int],
+    flops_estimator: Callable[[SearchSpace], int] | None,
     max_evaluation_flops: int,
     max_target_flops: int,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
     cost_aware: bool | Literal["log"] = False,
+    use_priors: bool = False,
+    use_gp_scaling_mean: bool = True,
     sampling_strategy: Literal[
                      "space_expansion", 
                      "const_cost", 
                      "left_budget_contraction",
                     ] = "space_expansion",
+    acquisition_func_type: str = "EI",
 ):
     from neps.optimizers.bo_guided_scaling import BO_Guided_Scaling
     bayesian_optimizer = _bo(  # noqa: C901, PLR0912
         pipeline_space=space,
-        initial_design_size="ndim",
-        use_priors=True,
+        initial_design_size=10,
+        use_priors=use_priors,
         cost_aware=cost_aware,
         sample_prior_first=True,
         ignore_fidelity=True,
         device=device,
         reference_point=reference_point,
-        acquisition_func_type="IT-JES",
+        acquisition_func_type=acquisition_func_type,
     )
+    if isinstance(space, PipelineSpace):
+        space = convert_neps_to_classic_search_space(space=space)
+        assert space is not None, "BO guided scaling only works for HPO search spaces for now."
     return BO_Guided_Scaling(
-        space=convert_neps_to_classic_search_space(space=space),
+        space=space,
         bayesian_optimizer=bayesian_optimizer,
         flops_estimator=flops_estimator,
+        use_gp_scaling_mean=use_gp_scaling_mean,
         params_estimator=params_estimator,
         seen_datapoints_estimator=seen_datapoints_estimator,
         max_evaluation_flops=max_evaluation_flops,
@@ -615,6 +597,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
+    constraints_func,
 ) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -670,15 +653,15 @@ def random_search(
             " space. Consider setting use_priors to False."
         )
 
-    if not use_priors and any(
-        parameter.prior is not None for parameter in parameters.values()
-    ):
-        priors = [
-            parameter for parameter in parameters.values() if parameter.prior is not None
-        ]
-        raise ValueError(
-            f"To use priors, you must set use_priors=True. Got priors: {priors}"
-        )
+    # if not use_priors and any(
+    #     parameter.prior is not None for parameter in parameters.values()
+    # ):
+    #     priors = [
+    #         parameter for parameter in parameters.values() if parameter.prior is not None
+    #     ]
+    #     raise ValueError(
+    #         f"To use priors, you must set use_priors=True. Got priors: {priors}"
+    #     )
 
     return RandomSearch(
         space=pipeline_space,
@@ -688,6 +671,7 @@ def random_search(
             if use_priors
             else Uniform(ndim=len(parameters))
         ),
+        constraints_func=constraints_func,
     )
 
 
@@ -2063,8 +2047,6 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_hyperband,
         neps_regularized_evolution,
         neps_local_and_incumbent,
-        chinchilla_guided_scaling,
-        kaplan_guided_scaling,
         bo_guided_scaling,
     )
 }
@@ -2089,7 +2071,5 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_hyperband",
     "neps_regularized_evolution",
     "neps_local_and_incumbent",
-    "chinchilla_guided_scaling",
-    "kaplan_guided_scaling",
     "bo_guided_scaling",
 ]

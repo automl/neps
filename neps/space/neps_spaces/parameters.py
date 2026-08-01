@@ -1125,6 +1125,7 @@ class Float(Domain[float]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        is_scaling: bool = False,
         **kwargs: object,
     ):
         """Initialize the Float domain with min and max values, and optional prior.
@@ -1168,6 +1169,7 @@ class Float(Domain[float]):
             raise ValueError(
                 "If prior is set, prior_confidence must also be set to a valid value."
             )
+        self._is_scaling = is_scaling
 
     def __str__(self) -> str:
         """Get a string representation of the floating-point domain."""
@@ -1186,6 +1188,7 @@ class Float(Domain[float]):
             and self.upper == other.upper
             and self._log == other.log
             and self._log_base == other.log_base
+            and self._is_scaling == other._is_scaling
         )
 
     @property
@@ -1275,6 +1278,16 @@ class Float(Domain[float]):
         return cast("ConfidenceLevel", self._prior_confidence)
 
     @property
+    def is_scaling(self) -> bool:
+        """Check if the integer domain is used for scaling purposes.
+
+        Returns:
+            True if the domain is used for scaling, False otherwise.
+
+        """
+        return self._is_scaling
+
+    @property
     def range_compatibility_identifier(self) -> str:
         """Get a string identifier for the range compatibility of the floating-point
         domain.
@@ -1336,6 +1349,7 @@ class Float(Domain[float]):
             log_base=self._log_base,
             prior=center,
             prior_confidence=confidence,
+            is_scaling=self._is_scaling,
         )
 
 

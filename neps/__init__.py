@@ -13,7 +13,6 @@ from neps.api import (
     load_pipeline_space,
     run,
     save_pipeline_results,
-    extrapolate,
     plot_study_artifacts,
 )
 from neps.optimizers import algorithms
@@ -76,6 +75,5 @@ __all__ = [
     "save_pipeline_results",
     "status",
     "tblogger",
-    "extrapolate",
     "plot_study_artifacts",
 ]

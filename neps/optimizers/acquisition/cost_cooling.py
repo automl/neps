@@ -94,8 +94,18 @@ def apply_cost_cooling(
     
     # Clamp weights to prevent extreme values
     w = w.clamp(min=1e-6, max=1e6)
-    
-    # Simple division - qJES values should always be non-negative
+
+    # ---- DEBUG ----
+    import torch as _torch
+    _bad = (_torch.isnan(acq_values) | _torch.isinf(acq_values)).any().item()
+    print(f"[COST DEBUG] acq_values before div: min={acq_values.min().item():.4g}, "
+          f"max={acq_values.max().item():.4g}, has_nan_inf={_bad}; "
+          f"w: min={w.min().item():.4g}, max={w.max().item():.4g}; alpha={alpha:.4g}")
+    result = acq_values / w
+    _rbad = (_torch.isnan(result) | _torch.isinf(result)).any().item()
+    print(f"[COST DEBUG] result (acq/w): min={result[~_torch.isnan(result)].min().item() if not _torch.isnan(result).all() else 'ALL_NAN':.4g}, has_nan_inf={_rbad}")
+    # ---- DEBUG END ----
+
     return acq_values / w
 
 

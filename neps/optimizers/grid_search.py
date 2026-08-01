@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
-from neps.optimizers.utils.util import get_trial_config_unique_key
+from neps.optimizers.utils.util import get_trial_config_unique_key, _get_max_trial_id
 if TYPE_CHECKING:
     from neps.state import BudgetInfo, Trial
     from neps.state.pipeline_eval import UserResultDict
@@ -28,23 +28,45 @@ class GridSearch:
         n: int | None = None,
     ) -> SampledConfig | list[SampledConfig]:
         assert n is None, "TODO"
-        _num_previous_configs = len(trials)
         
-        # Find the next valid config respecting constraints
+        # Build a mapping of config unique keys to trial IDs for quick lookup
+        config_key_to_trial_id = {}
+        for trial_id, trial in trials.items():
+            if trial.config is not None:
+                unique_key = get_trial_config_unique_key(trial.config)
+                config_key_to_trial_id[unique_key] = trial_id
+        
+        # Get the maximum config_id assigned so far in our configs_list
+        max_assigned_config_id = -1
+        for trial_id, trial in trials.items():
+            if trial.id is not None:
+                try:
+                    config_id = int(trial.id)
+                    max_assigned_config_id = max(max_assigned_config_id, config_id)
+                except (ValueError, TypeError):
+                    pass
+        
+        next_config_id = max_assigned_config_id + 1
+        
+        # Find the next unvisited, valid config
         config = None
-        config_id = None
-        for i in range(_num_previous_configs, len(self.configs_list)):
-            candidate = self.configs_list[i]
+        for i, candidate in enumerate(self.configs_list):
+            # Check if this config has already been evaluated
+            unique_key = get_trial_config_unique_key(candidate)
+            if unique_key in config_key_to_trial_id:
+                continue  # Skip already evaluated config
+            
+            # Check if config passes constraints
             if self.constraints_func is not None and self.constraints_func(candidate) < 0:
-                continue
+                continue  # Skip configs that don't satisfy constraints
+            
             config = candidate
-            config_id = str(i)
             break
         
         if config is None:
             raise ValueError("Grid search exhausted or no valid configs found!")
 
-        return SampledConfig(config=config, id=config_id, previous_config_id=None)
+        return SampledConfig(config=config, id=str(next_config_id), previous_config_id=None)
 
     def import_trials(
         self,

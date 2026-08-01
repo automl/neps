@@ -51,6 +51,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                  seen_datapoints_estimator: Callable[..., int],
                  max_evaluation_flops: int,
                  max_target_flops: int,
+                 use_gp_scaling_mean: bool = True,
                  sampling_strategy: Literal[
                      "space_expansion",
                      "const_cost",
@@ -75,6 +76,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         self.bayesian_optimizer = bayesian_optimizer
         self.max_target_flops = max_target_flops
         self.max_evaluation_flops = max_evaluation_flops
+        self.use_gp_scaling_mean = use_gp_scaling_mean
         
         # Calculate max_expansion based on the ratio between \
         # max_target_flops and max_evaluation_flops
@@ -93,6 +95,7 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         print(f"total initial {self._total_budget_for_initial_design:e}")
         
         self.bayesian_optimizer.cost_estimator = flops_estimator
+        self.bayesian_optimizer.target_flops = max_target_flops
 
         self.sampling_strategy = sampling_strategy
         
@@ -163,8 +166,9 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
                 # Retry with expanded search space
                 to_spend = self._get_space_expansion_budget(
                     spent, expanded_level, 
-                    is_initial_design=(len(trials) < self.bayesian_optimizer.n_initial_design),
+                    is_initial_design=False,
                 )
+                print(f"Retrying with to_spend {to_spend:e} FLOPs at expanded level {expanded_level}")
                 self.adapt_search_space(max_flops=to_spend)
                 return self.bayesian_optimizer(
                     trials, budget_info=BudgetInfo(
@@ -231,10 +235,12 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         Returns:
             Budget (max FLOPs) for this sampling round
         """
-        print(f"Initial {self._total_budget_for_initial_design:e} spent {spent:e} FLOPs")
-        if spent < self._total_budget_for_initial_design and is_initial_design:
-            per_trial = self._total_budget_for_initial_design / self.bayesian_optimizer.n_initial_design
-            return per_trial
+        if expansion_level == 0 and spent < self._total_budget_for_initial_design:
+            if is_initial_design:
+                per_trial = self._total_budget_for_initial_design / self.bayesian_optimizer.n_initial_design
+                return per_trial
+            else:
+                return self._total_budget_for_initial_design - spent
         else:
             return self.max_evaluation_flops / (2 ** (self.max_expansion - expansion_level))
     
@@ -253,14 +259,15 @@ class BO_Guided_Scaling(ScalingLawGuidedOptimizer):
         if max_flops <= 0:
             logger.warning("Max FLOPs is non-positive. No configurations will be valid.")
             raise ValueError("Budget is exhausted")
-        self.bayesian_optimizer.constraints_func = constraint_func
+        logger.info(f"Adjusted search space to {max_flops:e} FLOPs")
+        self.bayesian_optimizer.constraints_func = constraint_func if self.use_gp_scaling_mean else None
 
     def extrapolate(self, trials: Mapping[str, Trial], max_target_flops: int) -> tuple[dict[str, Any], float] | None:
         """Extrapolate best configuration to target FLOPs."""
         if not trials or len([t for t in trials.values() if t.report is not None]) < 2:
             return None
         
-        self.adapt_search_space(max_flops=max_target_flops)
+        self.adapt_search_space(max_flops=max_target_flops, around_max_flops=True)
         try:
             conf, pred = self.bayesian_optimizer.extrapolate(
                 trials, budget_info=BudgetInfo(cost_to_spend=max_target_flops)
