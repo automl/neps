@@ -92,6 +92,20 @@ class BayesianOptimization:
     reference_point: tuple[float, ...] | None = None
     """The reference point to use for the multi-objective optimization."""
 
+    num_restarts: int = 20
+    """The number of restarts to use when optimizing the acquisition function.
+
+    Lowering this trades acquisition quality for a faster point acquisition.
+    """
+
+    n_initial_start_points: int | None = 256
+    """The number of initial start points to use when optimizing the acquisition
+    function.
+
+    If `None`, a dimension-dependent heuristic is used instead. Lowering this
+    trades acquisition quality for its speed.
+    """
+
     def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
@@ -287,6 +301,8 @@ class BayesianOptimization:
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
+            num_restarts=self.num_restarts,
+            n_initial_start_points=self.n_initial_start_points,
             hide_warnings=True,
         )
 
