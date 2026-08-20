@@ -23,8 +23,8 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
     NePS provides capabilities for optimizing DL architectures in an expressive and natural fashion.
      - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
 1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
-     NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
-     computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
+     NePS simplifies the process of parallelizing optimization tasks both on individual computers, where multiple workers coordinate
+     through the shared results directory, and in distributed computing environments, naturally supporting PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html). As NePS is made for deep learners, all technical choices are made with DL in mind and common
      DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
 
 ## Installation
