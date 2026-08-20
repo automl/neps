@@ -161,9 +161,9 @@ class DemoHyperparameterComplexSpace(PipelineSpace):
         partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
-def test_hyperparameter_demo(optimizer):
+def test_hyperparameter_demo(optimizer, tmp_path):
     pipeline_space = DemoHyperparameterSpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_demo__{optimizer.func.__name__}"
+    root_directory = tmp_path / f"hyperparameter_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -183,9 +183,11 @@ def test_hyperparameter_demo(optimizer):
         partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
-def test_hyperparameter_with_fidelity_demo(optimizer):
+def test_hyperparameter_with_fidelity_demo(optimizer, tmp_path):
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity_demo__{optimizer.func.__name__}"
+    root_directory = (
+        tmp_path / f"hyperparameter_with_fidelity_demo__{optimizer.func.__name__}"
+    )
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -205,9 +207,9 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
         partial(algorithms.complex_random_search, ignore_fidelity=True),
     ],
 )
-def test_hyperparameter_complex_demo(optimizer):
+def test_hyperparameter_complex_demo(optimizer, tmp_path):
     pipeline_space = DemoHyperparameterComplexSpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_complex_demo__{optimizer.func.__name__}"
+    root_directory = tmp_path / f"hyperparameter_complex_demo__{optimizer.func.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,
@@ -329,11 +331,9 @@ class DemoOperationSpace(PipelineSpace):
         algorithms.complex_random_search,
     ],
 )
-def test_operation_demo(optimizer):
+def test_operation_demo(optimizer, tmp_path):
     pipeline_space = DemoOperationSpace()
-    root_directory = (
-        f"tests_tmpdir/test_neps_spaces/results/operation_demo__{optimizer.__name__}"
-    )
+    root_directory = tmp_path / f"operation_demo__{optimizer.__name__}"
 
     neps.run(
         evaluate_pipeline=operation_pipeline_to_optimize,
@@ -356,10 +356,10 @@ def test_operation_demo(optimizer):
         algorithms.neps_hyperband,
     ],
 )
-def test_neps_hyperband_with_fidelity_demo(optimizer):
+def test_neps_hyperband_with_fidelity_demo(optimizer, tmp_path):
     """Test neps_hyperband with a fidelity space."""
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/neps_hyperband_fidelity_demo__{optimizer.__name__}"
+    root_directory = tmp_path / f"neps_hyperband_fidelity_demo__{optimizer.__name__}"
 
     neps.run(
         evaluate_pipeline=hyperparameter_pipeline_to_optimize,

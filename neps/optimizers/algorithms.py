@@ -82,6 +82,8 @@ def _bo(  # noqa: C901, PLR0912
     ignore_fidelity: bool = False,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
+    num_restarts: int = 20,
+    n_initial_start_points: int | None = 256,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -105,6 +107,9 @@ def _bo(  # noqa: C901, PLR0912
             In this case, the max fidelity is always used.
         device: Device to use for the optimization.
         reference_point: The reference point to use for multi-objective optimization.
+        num_restarts: Number of restarts used when optimizing the acquisition function.
+        n_initial_start_points: Number of initial start points used when optimizing the
+            acquisition function. If `None`, a dimension-dependent heuristic is used.
 
     Raises:
         ValueError: if initial_design_size < 1
@@ -163,6 +168,8 @@ def _bo(  # noqa: C901, PLR0912
         sample_prior_first=sample_prior_first,
         device=device,
         reference_point=reference_point,
+        num_restarts=num_restarts,
+        n_initial_start_points=n_initial_start_points,
     )
 
 
@@ -1274,6 +1281,8 @@ def bayesian_optimization(
     ignore_fidelity: bool = False,
     device: torch.device | str | None = None,
     reference_point: tuple[float, ...] | None = None,
+    num_restarts: int = 20,
+    n_initial_start_points: int | None = 256,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -1324,6 +1333,11 @@ def bayesian_optimization(
         reference_point: The reference point to use got multi-objective bayesian
             optimization. If `None`, the reference point will be calculated
             automatically.
+        num_restarts: Number of restarts used when optimizing the acquisition
+            function.
+        n_initial_start_points: Number of initial start points used when optimizing
+            the acquisition function. If `None`, a dimension-dependent heuristic is
+            used.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -1369,6 +1383,8 @@ def bayesian_optimization(
         sample_prior_first=False,
         ignore_fidelity=ignore_fidelity,
         reference_point=reference_point,
+        num_restarts=num_restarts,
+        n_initial_start_points=n_initial_start_points,
     )
 
 
@@ -1380,6 +1396,8 @@ def pibo(
     device: torch.device | str | None = None,
     sample_prior_first: bool = False,
     ignore_fidelity: bool = False,
+    num_restarts: int = 20,
+    n_initial_start_points: int | None = 256,
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -1411,6 +1429,11 @@ def pibo(
         sample_prior_first: Whether to sample the prior configuration first.
         ignore_fidelity: Whether to ignore the fidelity parameter when sampling.
             In this case, the max fidelity is always used.
+        num_restarts: Number of restarts used when optimizing the acquisition
+            function.
+        n_initial_start_points: Number of initial start points used when optimizing
+            the acquisition function. If `None`, a dimension-dependent heuristic is
+            used.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -1440,6 +1463,8 @@ def pibo(
         use_priors=True,
         sample_prior_first=sample_prior_first,
         ignore_fidelity=ignore_fidelity,
+        num_restarts=num_restarts,
+        n_initial_start_points=n_initial_start_points,
     )
 
 

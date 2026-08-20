@@ -81,6 +81,7 @@ dev = [
     "pytest>=7,<8",
     "pytest-cases>=3,<4",
     "pytest-repeat>=0,<1",
+    "pytest-xdist>=3,<4",
     "types-PyYAML>=6,<7",
     "mkdocs-material",
     "mkdocs-autorefs",
@@ -291,7 +292,7 @@ convention = "google"
 max-args = 10 # Changed from default of 5
 
 [tool.pytest.ini_options]
-addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
+addopts = "-m 'not ci_examples'"
 markers = [
     "ci_examples",
     "core_examples",

@@ -57,6 +57,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -66,6 +67,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
         neps.run(
             evaluate_pipeline=eval_fn2,
             pipeline_space=Space2(),
+            optimizer="random_search",
             root_directory=str(root_dir),
             evaluations_to_spend=2,
         )
@@ -79,6 +81,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -87,6 +90,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         # pipeline_space not provided!
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=3,  # Total evaluations wanted
     )
@@ -105,6 +109,7 @@ def test_error_when_no_space_provided_and_none_on_disk(tmp_path: Path):
         neps.run(
             evaluate_pipeline=eval_fn1,
             # pipeline_space not provided and root_dir doesn't exist!
+            optimizer="random_search",
             root_directory=str(root_dir),
             evaluations_to_spend=1,
         )
@@ -118,6 +123,7 @@ def test_load_only_does_not_validate(tmp_path: Path, caplog):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -147,6 +153,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -173,6 +180,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -200,6 +208,7 @@ def test_ddp_runtime_loads_search_space(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -221,6 +230,7 @@ def test_status_without_space_works(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
@@ -238,6 +248,7 @@ def test_status_handles_missing_search_space_gracefully(tmp_path: Path):
     neps.run(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
+        optimizer="random_search",
         root_directory=str(root_dir),
         evaluations_to_spend=1,
     )
