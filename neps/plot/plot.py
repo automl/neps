@@ -12,6 +12,8 @@ import numpy as np
 from .plotting import _get_fig_and_axs, _map_axs, _plot_incumbent, _save_fig, _set_legend
 from .read_results import process_seed
 
+logger = logging.getLogger(__name__)
+
 
 def plot(  # noqa: C901, PLR0913
     root_directory: str | Path,
@@ -51,7 +53,6 @@ def plot(  # noqa: C901, PLR0913
     Raises:
         FileNotFoundError: If the data to be plotted is not present.
     """
-    logger = logging.getLogger("neps")
     logger.info(f"Starting neps.plot using working directory {root_directory}")
 
     if benchmarks is None:
