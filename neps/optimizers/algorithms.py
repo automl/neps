@@ -1702,9 +1702,9 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
             rung_fidelity_str = "\n".join(
                 f"{k}: {v}" for k, v in rung_to_fidelity.items()
             )
-            logging.info(f"Successive Halving Rung to Fidelity:\n{rung_fidelity_str}")
+            logger.info(f"Successive Halving Rung to Fidelity:\n{rung_fidelity_str}")
             rung_sizes_str = "\n".join(f"{k}: {v}" for k, v in rung_sizes.items())
-            logging.info(f"Successive Halving Rung Sizes:\n{rung_sizes_str}")
+            logger.info(f"Successive Halving Rung Sizes:\n{rung_sizes_str}")
 
         case "hyperband":
             assert early_stopping_rate is None
