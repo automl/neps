@@ -261,23 +261,25 @@ neps.run(
 
 ### Re-running Failed Configurations
 
-Sometimes things go wrong but not due to the configuration itself. If you want to remove failed or crashed trials and re-start the optimization, use the `neps clean` command:
+Sometimes things go wrong but not due to the configuration itself. If you want to reset failed or crashed trials so they get re-evaluated, use the `neps clean` command:
 
 ```bash
-python -m neps.clean <root_directory>
+python -m neps.clean --root-dir <root_directory>
 ```
 
-This removes all failed, crashed, and corrupted trials from your working directory. To remove specific trials by ID:
+This resets all failed, crashed, and corrupted trials in your working directory back to `pending`, keeping their configs. To reset specific trials by ID:
 
 ```bash
-python -m neps.clean results/my_optimization --trial_ids 1 2
+python -m neps.clean --root-dir results/my_optimization --trial-ids 1 2
 ```
 
-You can preview what will be deleted with `--dry_run`:
+You can preview what would change with `--dry-run`:
 
 ```bash
-python -m neps.clean <root_directory> --dry_run
+python -m neps.clean --root-dir <root_directory> --dry-run
 ```
+
+If you'd rather remove the trials entirely instead of resetting them, pass `--delete`.
 
 Once cleaned, you can restart the optimization and workers will pick up from the cleaned state.
 

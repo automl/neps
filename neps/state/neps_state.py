@@ -732,6 +732,45 @@ class NePSState:
             except Exception as e:
                 raise NePSError(f"Failed to remove trial '{trial_id}': {e}") from e
 
+    def lock_and_reset_trial_by_id(self, trial_id: str) -> None:
+        """Reset a trial to a pending state, keeping its config on disk.
+
+        Clears the trial's report and resets its metadata so it will be
+        picked up and re-evaluated as if it were newly sampled.
+
+        Args:
+            trial_id: The trial id to reset
+
+        Raises:
+            NePSError: If an error occurs during reset
+        """
+        with self._trial_lock.lock(), self._err_lock.lock():
+            config_path = self._trial_repo.directory / f"config_{trial_id}"
+            if not config_path.exists():
+                raise NePSError(
+                    f"Trial '{trial_id}' not found at expected path '{config_path}'."
+                )
+
+            try:
+                trial = self._trial_repo.load_trial_from_disk(trial_id)
+                trial.reset()
+                trial.report = None
+
+                report_path = config_path / ReaderWriterTrial.REPORT_FILENAME
+                if report_path.exists():
+                    report_path.unlink()
+
+                ReaderWriterTrial.write(trial, config_path, hints="metadata")
+
+                if self._trial_repo.cache_path.exists():
+                    self._trial_repo.cache_path.unlink()
+
+                if self._shared_errors_path.exists():
+                    self._shared_errors_path.unlink()
+
+            except Exception as e:
+                raise NePSError(f"Failed to reset trial '{trial_id}': {e}") from e
+
     @classmethod
     def create_or_load(  # noqa: C901, PLR0912, PLR0915
         cls,
