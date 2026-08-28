@@ -444,7 +444,7 @@ def fit_and_acquire_from_gp(
     seed: int | None = None,
     n_candidates_required: int | None = None,
     num_restarts: int = 20,
-    n_initial_start_points: int = 256,
+    n_initial_start_points: int | None = 256,
     fixed_acq_features: dict[str, Any] | None = None,
     acq_options: Mapping[str, Any] | None = None,
     hide_warnings: bool = False,
@@ -487,7 +487,8 @@ def fit_and_acquire_from_gp(
             a list of candidates will be returned.
         num_restarts: The number of restarts to use during optimization.
         n_initial_start_points: The number of initial start points to use during
-            optimization.
+            optimization. If `None`, a dimension-dependent heuristic is used
+            (see [`optimize_acq()`][neps.optimizers.models.gp.optimize_acq]).
         acq_options: Additional options to pass to the botorch `optimizer_acqf` function.
         hide_warnings: Whether to hide numerical warnings issued during GP routines.
 
