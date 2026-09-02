@@ -154,11 +154,14 @@ class NepsBayesianOptimization:
         for c in range(self.acqu_sampling_density):
             # Sample a random config from the space
             print(f"Sampling candidate {c+1:<{len(str(self.acqu_sampling_density))}}/{self.acqu_sampling_density}. ", end="\r" if c < self.acqu_sampling_density - 1 else "\n", flush=True)
-            candidate = resolve(
-                pipeline=self._pipeline,
-                domain_sampler=self._random_sampler,
-                environment_values={},
-            )
+            if self.sampler_cache_generator is not None:
+                candidate = self.sampler_cache_generator(n_to_sample=1, repeat=False)[0]
+            else:
+                candidate = resolve(
+                    pipeline=self._pipeline,
+                    domain_sampler=self._random_sampler,
+                    environment_values={},
+                )
 
             # Extract config dict from resolution context
             config_dict = candidate[1].samplings_made
