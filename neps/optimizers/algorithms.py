@@ -1925,12 +1925,14 @@ def neps_local_and_incumbent(
 def neps_bayesian_optimization(  # noqa: C901, PLR0912
     pipeline_space: SearchSpace | PipelineSpace,
     *,
-    initial_design_size: int,
+    initial_design_size: int = 5,
     acqu_sampling_density: int = 1000,
     acqu_function: Literal["EI", "LogEI"] | Callable = "EI",
     use_batch_acquisition: bool = False,
     kernel_function: Literal["hamming"] | Callable = "hamming",
+    sampler_cache_generator: Callable | None = None,
     device: torch.device | str | None = None,
+
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -1945,6 +1947,7 @@ def neps_bayesian_optimization(  # noqa: C901, PLR0912
         use_batch_acquisition: Whether to use batch acquisition, to approximate noisy kernels.
         kernel_function: The kernel function to use. One of:
             - "hamming": A kernel that considers the Hamming distance between configurations.
+        sampler_cache_generator: A callable that samples configurations instead of using the default random sampling.
         device: Device to use for the optimization.
     Raises:
         ValueError: if initial_design_size < 1
@@ -1969,6 +1972,7 @@ def neps_bayesian_optimization(  # noqa: C901, PLR0912
         acqu_function=acqu_function,
         use_batch_acquisition=use_batch_acquisition,
         kernel_function=kernel_function,
+        sampler_cache_generator=sampler_cache_generator
     )
 
 

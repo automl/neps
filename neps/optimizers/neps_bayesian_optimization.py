@@ -66,6 +66,7 @@ class NepsBayesianOptimization:
         acqu_function: Literal["EI", "LogEI"] | Callable = "EI",
         use_batch_acquisition: bool = False,
         kernel_function: Literal["hamming"] | Callable = "hamming",
+        sampler_cache_generator: Callable | None = None,
     ) -> None:
         self._pipeline = space
         self.n_initial_design = n_initial_design
@@ -75,6 +76,7 @@ class NepsBayesianOptimization:
         self.use_batch_acquisition = use_batch_acquisition
         self.acqu_function = acqu_function
         self.kernel = kernel_function
+        self.sampler_cache_generator = sampler_cache_generator
 
         if isinstance(acqu_function, str):
             match acqu_function:
@@ -115,14 +117,18 @@ class NepsBayesianOptimization:
         )
         sampled_configs: list[SampledConfig] = []
         if n_evaluated < self.n_initial_design:
-            chosen_pipelines = [
-                resolve(
-                    pipeline=self._pipeline,
-                    domain_sampler=self._random_sampler,
-                    environment_values={},
-                )
-                for _ in range(n_to_sample)
+            if self.sampler_cache_generator is not None:
+                chosen_pipelines = self.sampler_cache_generator(n_to_sample=n_to_sample, repeat=False)
+            else:
+                chosen_pipelines = [
+                    resolve(
+                        pipeline=self._pipeline,
+                        domain_sampler=self._random_sampler,
+                        environment_values={},
+                    )
+                    for _ in range(n_to_sample)
                 ]
+                print(chosen_pipelines)
             return _prepare_sampled_configs(chosen_pipelines, max_trial_id, n_to_sample==1)
 
         training_configs, training_y = _extract_training_data(trials)
