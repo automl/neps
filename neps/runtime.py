@@ -1295,7 +1295,15 @@ def _launch_runtime(  # noqa: PLR0913
         settings=settings,
         worker_id=worker_id,
     )
-    worker.run()
+
+    # Callbacks registered during this run (e.g. by `tblogger`) hold state tied to it,
+    # so they must not fire for the trials of any later run in the same process.
+    callbacks_before_run = dict(_TRIAL_END_CALLBACKS)
+    try:
+        worker.run()
+    finally:
+        _TRIAL_END_CALLBACKS.clear()
+        _TRIAL_END_CALLBACKS.update(callbacks_before_run)
 
 
 def _make_default_report_values(
