@@ -3,7 +3,7 @@
 LAION webdataset shards hold full-size JPEGs (~150 MB-1 GB per shard). Training
 directly off those would spend most of its time decoding large images on the
 CPU -- fatal for the scaling study in `scaling_study/`, where the whole point
-is to measure what the *GPUs* do as their number grows.
+is to measure what the *GPUs* do as more workers run in parallel.
 
 So this script reads the shards once, resizes every image to
 `common.IMAGE_SIZE`, re-encodes it small, and writes a compact local parquet
@@ -37,8 +37,8 @@ from pathlib import Path
 from common import LAION_CACHE_DIR, LAION_REPO, LAION_SHARDS_DIR, local_shard_path, prepare_laion
 
 # #CHANGE_ME: how many image/caption pairs to cache. The scaling study wants
-# enough data that each GPU has real work to do -- see N_TRAIN in
-# `scaling_study/train_ddp.py`, which this must cover.
+# enough data that each worker has real work to do -- see N_TRAIN in
+# `scaling_study/train.py`, which this must cover.
 DEFAULT_N_SAMPLES = 100_000
 
 

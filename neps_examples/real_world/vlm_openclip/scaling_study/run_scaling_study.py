@@ -1,103 +1,105 @@
-"""Launches the GPU-throughput scaling study: one Slurm job per GPU count.
-
-    python run_scaling_study.py
-
-Each job runs its own independent NePS sweep (`hpo_ddp.py`) under `torchrun`
-with that many GPUs, into its own `root_directory`:
-
-    results/scaling_study/gpus_1/
-    results/scaling_study/gpus_2/
-    results/scaling_study/gpus_4/
-
-The jobs are submitted and this script exits -- they queue and run
-concurrently, since none of them shares an allocation with another. Every
-sweep evaluates the *same* configs in the same order (see `hpo_ddp.HPOSpace`,
-which is deliberately a grid), so the only difference between the three
-directories is how many GPUs the identical work was spread over. That is what
-makes `visualization.py` able to put them on one axis.
-
-Once they have finished:
-
-    python visualization.py
+"""Submits one Slurm job per `neps.run` worker, for each worker count of the study.
+Every worker gets its own 1-GPU allocation; the workers of a setting share a root directory.
 """
 
 import subprocess
 from pathlib import Path
 
-from hpo_ddp import EVALUATIONS_TO_SPEND
-from train_ddp import NUM_WORKERS
+from train import NUM_WORKERS
 
-# #CHANGE_ME: the GPU counts to benchmark, from the minimum to the maximum.
-# Every `batch_size` choice in `hpo_ddp.HPOSpace` must divide by each entry.
-N_GPUS_CHOICES = (1, 2, 4)
+# #CHANGE_ME: the parallelism levels to benchmark, and the sweep size they all
+# share. Every count must divide TOTAL_EVALUATIONS, and TOTAL_EVALUATIONS must
+# equal the grid size of `worker.HPOSpace`.
+WORKER_COUNTS = (1, 2, 4, 8)
+TOTAL_EVALUATIONS = 8
 
-# #CHANGE_ME: the GPU count you actually expect to run production training on.
-MAIN_LOAD_N_GPUS = 4
-
-# #CHANGE_ME: Slurm settings. CPUs are sized per rank (the training process
-# plus its dataloader workers) so image decoding never starves the GPUs -- if
-# the 4-GPU job got the same CPU allocation as the 1-GPU job, it would be the
-# input pipeline being measured, not the GPUs.
+# #CHANGE_ME: Slurm settings for one worker. Each job is one GPU with its own
+# CPUs and memory, so a worker never competes with another for the input
+# pipeline -- what is being measured is parallel search, not node contention.
 PARTITION = "testdlc2_gpu-h200"
 MEM_PER_GPU = "32G"
-CPUS_PER_RANK = NUM_WORKERS + 1
+CPUS_PER_WORKER = NUM_WORKERS + 1
 TIME_LIMIT = "01:00:00"
 
 SOURCE_DIR = Path(__file__).parent.resolve()
 ROOT_DIRECTORY = SOURCE_DIR.parent / "results" / "scaling_study"
 
 
-def root_dir_for(n_gpus: int) -> Path:
-    """Where the sweep for `n_gpus` keeps its NePS state.
-
-    Nothing may create or write into this directory but NePS itself:
-    `NePSState.create_or_load` treats an existing path as an existing state and
-    goes looking for an `optimizer_info.yaml` that was never written. Hence the
-    separate `job_dir_for` below for the job script and its logs.
-    """
-    return ROOT_DIRECTORY / f"gpus_{n_gpus}"
+def root_dir_for(n_workers: int) -> Path:
+    """Where one setting's workers share their NePS state. NePS owns this path."""
+    return ROOT_DIRECTORY / f"workers_{n_workers}"
 
 
-def job_dir_for(n_gpus: int) -> Path:
-    """Where one sweep's job script and Slurm logs live -- outside its NePS state."""
-    return ROOT_DIRECTORY / "jobs" / f"gpus_{n_gpus}"
+def job_dir_for(n_workers: int) -> Path:
+    """Where one setting's job scripts and Slurm logs live, outside its NePS state."""
+    return ROOT_DIRECTORY / "jobs" / f"workers_{n_workers}"
 
 
-def write_job_script(n_gpus: int) -> Path:
-    """Write the sbatch script for one GPU count's sweep."""
-    root_dir = root_dir_for(n_gpus)
-    job_dir = job_dir_for(n_gpus)
+def write_job_script(n_workers: int, worker_index: int) -> Path:
+    """The sbatch script for a single worker: one `neps.run` on one GPU."""
+    job_dir = job_dir_for(n_workers)
     job_dir.mkdir(parents=True, exist_ok=True)
 
+    # Only the first worker of a setting creates the NePS state; the rest wait
+    # for it, since `NePSState.create_or_load` does not lock its creation path.
+    wait_flag = " --wait_for_state" if worker_index > 0 else ""
+
     script = f"""#!/bin/bash
-#SBATCH --job-name=vlm_scaling_{n_gpus}gpu
+#SBATCH --job-name=vlm_scaling_{n_workers}w_{worker_index}
 #SBATCH --partition={PARTITION}
-#SBATCH --gres=gpu:{n_gpus}
+#SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task={n_gpus * CPUS_PER_RANK}
+#SBATCH --cpus-per-task={CPUS_PER_WORKER}
 #SBATCH --mem-per-gpu={MEM_PER_GPU}
 #SBATCH --time={TIME_LIMIT}
 #SBATCH --chdir={SOURCE_DIR}
-#SBATCH --output={job_dir}/slurm.out
-#SBATCH --error={job_dir}/slurm.err
+#SBATCH --output={job_dir}/worker_{worker_index}.out
+#SBATCH --error={job_dir}/worker_{worker_index}.err
 
-torchrun --standalone --nproc_per_node={n_gpus} hpo_ddp.py \\
-    --root_dir {root_dir} --n_gpus {n_gpus}
+python worker.py \\
+    --root_dir {root_dir_for(n_workers)} \\
+    --evaluations_to_spend {TOTAL_EVALUATIONS // n_workers} \\
+    --n_workers {n_workers} \\
+    --worker_id worker_{worker_index}{wait_flag}
 """
-    script_path = job_dir / "job.sh"
+    script_path = job_dir / f"worker_{worker_index}.sh"
     script_path.write_text(script)
     return script_path
 
 
+def submit(script_path: Path, after_job_id: str | None = None) -> str:
+    """Submit one worker job, optionally only once `after_job_id` has started."""
+    command = ["sbatch"]
+    if after_job_id is not None:
+        command.append(f"--dependency=after:{after_job_id}")
+    command.append(str(script_path))
+    submission = subprocess.run(command, capture_output=True, text=True, check=True)
+    return submission.stdout.strip().split()[-1]
+
+
+def submit_setting(n_workers: int) -> list[str]:
+    """Submit all of one setting's workers. The first one runs before the rest.
+
+    The others depend on it having *started*, so no GPU sits idle in
+    `worker.wait_for_state` waiting for a job that is still queued.
+    """
+    first_job_id = submit(write_job_script(n_workers, 0))
+    return [first_job_id] + [
+        submit(write_job_script(n_workers, i), after_job_id=first_job_id)
+        for i in range(1, n_workers)
+    ]
+
+
 def main():
-    for n_gpus in N_GPUS_CHOICES:
-        script_path = write_job_script(n_gpus)
-        submission = subprocess.run(
-            ["sbatch", str(script_path)], capture_output=True, text=True, check=True,
-        )
+    for n_workers in WORKER_COUNTS:
+        if TOTAL_EVALUATIONS % n_workers:
+            raise ValueError(
+                f"n_workers={n_workers} does not divide TOTAL_EVALUATIONS={TOTAL_EVALUATIONS}."
+            )
+        job_ids = submit_setting(n_workers)
         print(
-            f"{n_gpus} GPU(s): {EVALUATIONS_TO_SPEND} evaluations -> "
-            f"{submission.stdout.strip()} ({root_dir_for(n_gpus)})"
+            f"{n_workers} worker(s) x {TOTAL_EVALUATIONS // n_workers} evaluations -> "
+            f"jobs {', '.join(job_ids)} ({root_dir_for(n_workers)})"
         )
 
     print("\nOnce the jobs finish: python visualization.py")

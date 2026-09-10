@@ -1,30 +1,9 @@
-"""Shared dataset/model code used by both `train.py` (single-GPU HPO trials)
-and `scaling_study/train_ddp.py` (fixed-workload DDP scaling benchmarks).
+"""Shared dataset/model for OpenCLIP example
 
-Pre-training data is LAION image/caption pairs in webdataset-shard format --
-the same format a production LAION scaling study trains on. There are three
-places it can come from, tried in this order, so nothing is ever re-fetched
-that is already on disk:
-
-  1. `LAION_CACHE_DIR` -- the prepared parquet cache. If it already holds
-     enough samples, nothing else is touched: no shards are read, nothing is
-     downloaded.
-  2. `LAION_SHARDS_DIR` -- a local directory of webdataset `.tar` shards, e.g.
-     a LAION-400M copy already staged on the cluster. Used to fill the cache
-     without any network access.
-  3. `LAION_REPO` on the Hugging Face Hub -- streamed over HTTP, the fallback
-     for machines that have no local copy.
-
+Pre-training data:LAION image/caption pairs in webdataset-shard format.
 Shards hold full-size JPEGs, which would make CPU-side image decoding, not the
-GPUs, the thing a scaling study measures. So `download_data.py` does the
-decode/resize once, offline, and writes the cache as compact
+GPUs. `download_data.py` does the decode/resize once, offline, and writes the cache as compact
 `IMAGE_SIZE`x`IMAGE_SIZE` JPEGs; training then only has to decode those.
-
-All three paths are overridable per run without editing this file:
-`NEPS_LAION_CACHE_DIR` and `NEPS_LAION_SHARDS`.
-
-CIFAR is still here, but only as the *downstream* zero-shot benchmark in
-`post_hoc_downstream_eval.py` -- nothing trains on it.
 """
 
 import contextlib
@@ -43,14 +22,10 @@ from torchvision.transforms import CenterCrop, Compose, Normalize, Resize, ToTen
 
 DATA_DIR = Path(__file__).parent / ".data"
 
-# #CHANGE_ME: where the prepared parquet cache lives. Point this at a shared
-# filesystem to build it once and reuse it from every job.
+# #CHANGE_ME: where the prepared parquet cache lives.
 LAION_CACHE_DIR = Path(os.environ.get("NEPS_LAION_CACHE_DIR", DATA_DIR / "laion"))
 
-# #CHANGE_ME: a local directory of webdataset `.tar` shards to build the cache
-# from, if you already have LAION staged on the cluster -- then nothing is ever
-# downloaded. Set to None (or point `NEPS_LAION_SHARDS` at a missing path) to
-# always fall back to the Hub.
+# #CHANGE_ME: a local directory of webdataset `.tar` shards to build the cache from.
 LAION_SHARDS_DIR = Path(os.environ.get(
     "NEPS_LAION_SHARDS",
     "/work/dlclarge1/sinanid-VLM-scaling-law/scaling_studies_vlm/pre_training_dataset/laion400m/train_data",
@@ -94,9 +69,7 @@ def image_transform():
     ])
 
 
-# --------------------------------------------------------------------------
 # LAION pre-training data
-# --------------------------------------------------------------------------
 
 
 def _resize_encode(raw_jpeg: bytes) -> bytes | None:
@@ -255,12 +228,7 @@ def _cached_sample_count(cache_dir: Path | None = None) -> int:
 
 
 class LaionClipDataset(Dataset):
-    """Image/caption pairs from the local cache, with captions pre-tokenized.
-
-    Tokenizing up front (rather than per `__getitem__`) keeps the dataloader
-    workers doing nothing but a small JPEG decode, which is what makes the
-    input pipeline cheap enough to not dominate the DDP scaling measurement.
-    """
+    """Image/caption pairs from the local cache, with captions pre-tokenized."""
 
     def __init__(self, df, tokenizer, transform):
         self.images = df["image"].tolist()
@@ -276,13 +244,8 @@ class LaionClipDataset(Dataset):
 
 
 def load_data(tokenizer, n_train=2000, n_val=500, cache_dir=None):
-    """Return `(train_set, val_set)` over disjoint slices of the LAION cache.
-
-    Reads only the prepared cache -- training never touches shards and never
-    downloads. The split is deterministic (validation is always the first
-    `n_val` cached samples, training the `n_train` after them), so every config
-    in a sweep, and every GPU count in the scaling study, sees exactly the same
-    data.
+    """Reads only the prepared cache -- training never touches shards and never
+    downloads.
     """
     cache_dir = LAION_CACHE_DIR if cache_dir is None else Path(cache_dir)
     parts = _cached_parts(cache_dir)
@@ -308,9 +271,7 @@ def load_data(tokenizer, n_train=2000, n_val=500, cache_dir=None):
     return train, val
 
 
-# --------------------------------------------------------------------------
-# CIFAR-100: downstream zero-shot benchmark only, never trained on
-# --------------------------------------------------------------------------
+# CIFAR-100: downstream zero-shot benchmark only
 
 CIFAR100_CLASSES = [
     "apple", "aquarium_fish", "baby", "bear", "beaver", "bed", "bee", "beetle",
@@ -353,10 +314,7 @@ def load_cifar100_test(n_rows=1000):
     return pd.read_parquet(path).rename(columns={"fine_label": "label"}).iloc[:n_rows]
 
 
-# --------------------------------------------------------------------------
 # Model
-# --------------------------------------------------------------------------
-
 
 def build_model(vision_width, vision_layers, text_width, text_layers, embed_dim=128):
     vision_cfg = CLIPVisionCfg(

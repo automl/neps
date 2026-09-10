@@ -31,54 +31,24 @@ python post_hoc_downstream_eval.py --root_dir results/hpo_vlm_openclip
 ## 2. Scaling study — resource planning
 
 A different use of NePS: not searching for the best model, but measuring how a
-*fixed* representative workload actually scales with GPU count, to answer "how
-many GPUs/how long will the real run need" for a resource-grant proposal.
-
-The question is deliberately narrow: **the same sweep of training configs** is
-run on 1, 2 and 4 GPUs, and we report how many samples per second all GPUs
-together process. `n_gpus` is the only thing that varies between the three
-runs. Training is real `torchrun` DDP on 100,000 LAION image/caption pairs, and
-`ClipLoss` all-gathers features across ranks, so the contrastive batch is the
-same at every GPU count -- the all-gather cost is real CLIP-training cost and
-is inside the timed region.
-
-- `scaling_study/run_scaling_study.py` — submits one Slurm job per GPU count and exits.
-- `scaling_study/hpo_ddp.py` — one GPU count's NePS sweep, run under `torchrun` inside that job.
-- `scaling_study/train_ddp.py` — the DDP training every rank runs in lockstep.
-- `scaling_study/visualization.py` — aggregates the three sweeps into the scaling table + figure.
-
-Each job runs its own independent `neps.run()` into its own directory
-(`results/scaling_study/gpus_1/`, `gpus_2/`, `gpus_4/`), so the three sweeps
-queue and run concurrently without sharing an allocation. Those directories
-belong to NePS alone — `NePSState.create_or_load` treats an existing path as an
-existing state and looks for an `optimizer_info.yaml` in it — so the job
-scripts and Slurm logs live beside them under `results/scaling_study/jobs/`. Inside a job, **rank
-0 is the NePS worker**: its `evaluate_pipeline` broadcasts the sampled config
-to the other ranks, then every rank trains it together under DDP. The other
-ranks never call `neps.run()` — they follow rank 0 until it signals the sweep
-is over.
-
-`hpo_ddp.HPOSpace` searches `lr`, `wd` and `batch_size` and holds the
-architecture and epoch count fixed. It is a **grid** on purpose: the three GPU
-counts must evaluate the same configs in the same order, or their throughputs
-would not be comparable — a random search would hand each job a different set.
-
-Because each GPU count therefore produces several throughput measurements
-rather than one, `visualization.py` aggregates them by **median** (a single
-straggler trial — a slow node, a cold filesystem — should not move the curve)
-and draws every individual trial behind the line, so the spread stays visible.
+*fixed* 8-evaluation sweep speeds up as it is split across 1, 2, 4 and 8
+parallel NePS workers, to answer "how many GPUs/how long will the real run
+need" for a resource-grant proposal.
 
 ```bash
-python download_data.py --n_samples 102000   # if the cache is smaller than the study needs
+python download_data.py --n_samples 102000
 cd scaling_study
-python run_scaling_study.py                  # submits the 1-, 2- and 4-GPU jobs
-python visualization.py                      # -> ../results/scaling_study/summary/
+python run_scaling_study.py
+python visualization.py
 ```
 
-Edit the `#CHANGE_ME` values in `resource_map.json`,
-`scaling_study/run_scaling_study.py` (partition, memory, time limit, GPU
-counts) and `scaling_study/hpo_ddp.py` (the search space, evaluations per
-sweep) for your cluster before running either workflow.
+On H200s the sweep goes from 15.3 min at 1 worker to 2.2 min at 8 — a 7.1x
+speedup, with each worker's own throughput unchanged. See
+[`scaling_study/README.md`](scaling_study/README.md) for the setup, the results
+and how to point it at your cluster.
+
+Edit the `#CHANGE_ME` values in `resource_map.json` for your cluster before
+running the search above.
 
 ## Pre-training data
 
@@ -115,7 +85,7 @@ staged LAION-400M copy is far larger than any of this needs -- the one this
 example was developed against holds 36,192 shards at roughly 5-6.8k usable
 samples each, about 180M pairs -- so the 100k default is a deliberate choice
 about how long a training run should take, not a limit imposed by the data.
-Raising `N_TRAIN` in `train.py` / `scaling_study/train_ddp.py` and re-running
+Raising `N_TRAIN` in `train.py` / `scaling_study/train.py` and re-running
 `download_data.py` with a matching `--n_samples` is all it takes to scale up;
 100k works out to ~20 shards and ~430 MB of cache.
 
