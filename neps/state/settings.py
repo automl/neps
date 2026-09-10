@@ -154,3 +154,8 @@ class WorkerSettings:
     If `None`, there is no limit and this worker will continue to evaluate
     indefinitely or until another stopping criterion is met.
     """
+
+    live_plots: bool = False
+    """Whether to refresh the summary plots and optimizer artifacts after every
+    evaluated trial.
+    """

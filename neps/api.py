@@ -56,6 +56,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     cost_value_on_error: float | None = None,
     sample_batch_size: int | None = None,
     worker_id: str | None = None,
+    live_plots: bool = False,
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
@@ -245,6 +246,10 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
                 be able to take into account the results of any new
                 evaluations, even if they were to come in relatively
                 quickly.
+
+        live_plots: If `True`, refresh the plots in the `summary` folder after every
+            evaluated trial: the general plots like pareto frontier/incumbent trajectory, plus any artifacts the optimizer
+            provides. Off by default, as plotting adds overhead to every evaluation.
 
         worker_id: An optional string to identify the worker (run instance).
             If not provided, a `worker_id` will be automatically generated using the pattern:
@@ -478,6 +483,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         sample_batch_size=sample_batch_size,
         worker_id=worker_id,
         pipeline_space=pipeline_space,
+        live_plots=live_plots,
     )
 
     post_run_csv(root_directory)

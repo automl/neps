@@ -36,6 +36,7 @@ from neps.exceptions import (
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
+from neps.plot.generic_plots import plot_incumbent_trajectory, plot_pareto_front
 from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
 from neps.state import (
     BudgetInfo,
@@ -391,6 +392,17 @@ class DefaultWorker:
 
         return usage
 
+    def _cumulative_resource_usage(self, trials: Sequence[Trial]) -> list[ResourceUsage]:
+        """Calculates the running resource usage over `trials`, in the given order:
+        entry `i` is the usage of `trials[: i + 1]`.
+        """
+        running = ResourceUsage()
+        cumulative = []
+        for trial in trials:
+            running += self._calculate_total_resource_usage({trial.id: trial})
+            cumulative.append(ResourceUsage(**asdict(running)))
+        return cumulative
+
     def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
@@ -572,7 +584,7 @@ class DefaultWorker:
             artifacts: List of Artifact objects to persist.
             summary_dir: Summary directory where artifacts will be saved.
         """
-        logger.info("saving artifacts...")
+        logger.debug("saving artifacts...")
 
         for artifact in artifacts:
             try:
@@ -597,6 +609,39 @@ class DefaultWorker:
                 )
                 # Allow optimization to continue even if artifact save fails
                 continue
+
+    def _save_generic_artifacts(
+        self,
+        trials: Sequence[Trial],
+        cumulative_usage: Sequence[ResourceUsage],
+        incumbent_ids: set[str],
+        pareto_ids: set[str],
+        summary_dir: Path,
+    ) -> None:
+        """Save the plots every run gets, whatever the optimizer, each along with a
+        CSV of the plotted points.
+
+        With one objective, the incumbent is plotted over the cumulative cost (or
+        evaluations, if no cost is reported). With two, the objectives are plotted
+        against each other, highlighting the Pareto front.
+        """
+        assert trials[0].report is not None  # for mypy
+        n_objectives = len(_to_sequence(trials[0].report.objective_to_minimize))  # type: ignore[arg-type]
+        try:
+            if n_objectives == 1:
+                artifacts = plot_incumbent_trajectory(
+                    trials, cumulative_usage, incumbent_ids
+                )
+            elif n_objectives == 2:
+                artifacts = plot_pareto_front(trials, pareto_ids)
+            else:
+                logger.debug("No summary plot for %d objectives.", n_objectives)
+                return
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Failed to create the summary plot: {e}")
+            return
+
+        self._save_optimizer_artifacts(artifacts, summary_dir)
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -751,7 +796,7 @@ class DefaultWorker:
         n_repeated_failed_check_should_stop = 0
 
         evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-        self.load_incumbent_trace(
+        self._update_summary(
             evaluated_trials,
             _trace_lock,
             improvement_trace_path,
@@ -884,14 +929,16 @@ class DefaultWorker:
             if report.objective_to_minimize is not None and report.err is None:
                 with self.state._trial_lock.lock():
                     evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-                    self.load_incumbent_trace(
+                    self._update_summary(
                         evaluated_trials,
                         _trace_lock,
                         improvement_trace_path,
                         best_config_path,
                     )
-                # Persist optimizer artifacts if available
-                if hasattr(self.optimizer, "get_trial_artifacts"):
+                # Persist optimizer artifacts if available and asked for
+                if self.settings.live_plots and hasattr(
+                    self.optimizer, "get_trial_artifacts"
+                ):
                     try:
                         artifacts = self.optimizer.get_trial_artifacts(
                             trials=evaluated_trials
@@ -916,7 +963,7 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-    def load_incumbent_trace(
+    def _update_summary(
         self,
         trials: dict[str, Trial],
         _trace_lock: BaseFileLock,
@@ -940,8 +987,6 @@ class DefaultWorker:
         # non-dominated frontier from previous trials in chronological order.
         incumbent = []
 
-        running_usage = ResourceUsage()
-
         sorted_trials: list[Trial] = sorted(
             trials.values(),
             key=lambda t: (
@@ -955,13 +1000,9 @@ class DefaultWorker:
 
         frontier: list[Trial] = []
         trajectory_confs: dict[str, dict[str, float | int]] = {}
+        cumulative_usage = self._cumulative_resource_usage(sorted_trials)
 
-        for evaluated_trial in sorted_trials:
-            single_trial_usage = self._calculate_total_resource_usage(
-                {evaluated_trial.id: evaluated_trial}
-            )
-            running_usage += single_trial_usage
-
+        for evaluated_trial, usage in zip(sorted_trials, cumulative_usage, strict=True):
             assert evaluated_trial.report is not None  # for mypy
             new_trial_obj = evaluated_trial.report.objective_to_minimize
 
@@ -969,7 +1010,6 @@ class DefaultWorker:
                 frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
                 if not is_mo:
                     incumbent.append(evaluated_trial)
-                current_snapshot = ResourceUsage(**asdict(running_usage))
                 config_dict = {
                     "score": new_trial_obj,
                     "trial_id": evaluated_trial.id,
@@ -978,7 +1018,7 @@ class DefaultWorker:
                 if evaluated_trial.report.cost is not None:
                     config_dict["cost"] = evaluated_trial.report.cost
 
-                config_dict.update(current_snapshot.to_trajectory_dict())
+                config_dict.update(usage.to_trajectory_dict())
                 trajectory_confs[evaluated_trial.id] = config_dict
 
         optimal_configs: list[dict] = [trajectory_confs[trial.id] for trial in frontier]
@@ -993,6 +1033,16 @@ class DefaultWorker:
             improvement_trace_path=improvement_trace_path,
             best_config_path=best_config_path,
         )
+
+        if self.settings.live_plots:
+            with _trace_lock:
+                self._save_generic_artifacts(
+                    sorted_trials,
+                    cumulative_usage,
+                    incumbent_ids={trial.id for trial in incumbent},
+                    pareto_ids={trial.id for trial in frontier},
+                    summary_dir=best_config_path.parent,
+                )
 
 
 def _save_results(
@@ -1135,6 +1185,7 @@ def _launch_runtime(  # noqa: PLR0913
     fidelities_to_spend: int | float | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
+    live_plots: bool = False,
 ) -> None:
     default_report_values = _make_default_report_values(
         objective_value_on_error=objective_value_on_error,
@@ -1213,6 +1264,7 @@ def _launch_runtime(  # noqa: PLR0913
         cost_to_spend=cost_to_spend,
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
         max_wallclock_time_seconds=None,  # TODO: User can't specify yet
+        live_plots=live_plots,
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.
@@ -1261,20 +1313,12 @@ def _make_default_report_values(
 
 
 def _to_sequence(score: float | Sequence[float]) -> list[float]:
-    """Normalize score to a list of floats for pareto comparisons.
-
-    Scalars become single-element lists. Sequences are converted to lists.
-    """
     if isinstance(score, Sequence):
         return [float(x) for x in score]
     return [float(score)]
 
 
 def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
-    """Return True if `candidate` is dominated by any point in `frontier`.
-
-    `frontier` is a list of score sequences (as lists).
-    """
     cand_seq = _to_sequence(candidate)
 
     for t in frontier:
@@ -1291,11 +1335,6 @@ def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> 
 
 
 def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
-    """Add candidate Trial to frontier and remove frontier Trials dominated by it.
-
-    Frontier is a list of Trial objects (with reports). Returns the new frontier
-    as a list of Trials.
-    """
     if candidate.report is None:
         return frontier
 
