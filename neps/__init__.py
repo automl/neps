@@ -5,6 +5,8 @@ and plotting utilities, making it easy to experiment with different configuratio
 and algorithms.
 """
 
+import logging
+
 from neps.api import (
     create_config,
     import_trials,
@@ -38,6 +40,9 @@ from neps.state.pipeline_eval import UserResultDict
 from neps.status.status import status
 from neps.utils import convert_operation_to_callable
 from neps.utils.files import load_and_merge_yamls
+
+# As a library, NePS does not configure logging: no handlers, no levels, no format.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __all__ = [
     "AskAndTell",

@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
     from neps.space.neps_spaces.parameters import PipelineSpace
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class NePSLocalPriorIncumbentSampler:
@@ -48,7 +50,7 @@ class NePSLocalPriorIncumbentSampler:
 
         completed: pd.DataFrame = table[table["perf"].notna()]  # type: ignore
         if completed.empty:
-            logging.warning("No local prior found. Sampling randomly from the space.")
+            logger.warning("No local prior found. Sampling randomly from the space.")
             return (
                 self.local_prior
                 if self.local_prior is not None

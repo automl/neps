@@ -27,7 +27,7 @@ from neps.space.search_space import SearchSpace
 if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
-logger = logging.getLogger("neps")
+logger = logging.getLogger(__name__)
 
 E_NOTATION_PATTERN = r"^-?\d+(\.\d+)?[eE]-?\d+$"
 
