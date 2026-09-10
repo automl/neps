@@ -59,10 +59,16 @@ neps.run(
     evaluations_to_spend=25,
     evaluate_pipeline=branin,
     optimizer="random_search",
+    live_plots=True,
 )
 
 # Check the optimization results:
 #!tail ./branin_demo/summary/best_config.txt
+
+# View the incumbent trajectory plot:
+from IPython.display import Image
+Image(filename='./branin_demo/summary/incumbent_trajectory.png')
+
 
 # Great! NePS went in the direction of minimum loss over 25 evaluations. If you increase the budget to 1000 evaluations, you can get even closer to the global minimum of 0.397887.
 # The NePS workflow always follows this pattern:
@@ -128,7 +134,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_hpo_demo",
     pipeline_space=pipeline_space,
-    evaluations_to_spend=3  # HPO budget
+    evaluations_to_spend=10,  # HPO budget
     live_plots=True,  # Optional: visualize optimization progress
 )
 
@@ -143,6 +149,13 @@ neps.run(
 !cat results_hpo_demo/summary/best_config_trajectory.txt
 
 !cat results_hpo_demo/summary/best_config.txt
+
+#View the incumbent trajectory plot:
+from IPython.display import Image
+Image(filename='./results_hpo_demo/summary/incumbent_trajectory.png')
+
+# incumbent trajectory in CSV format to be used for plotting or analysis:
+!cat './results_hpo_demo/summary/incumbent_trajectory.csv'
 
 import pandas as pd
 
