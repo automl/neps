@@ -1,34 +1,13 @@
-"""One-time preparation of the LAION pre-training cache.
+"""Build the resized LAION parquet cache used for training (resumable).
 
-LAION webdataset shards hold full-size JPEGs (~150 MB-1 GB per shard). Training
-directly off those would spend most of its time decoding large images on the
-CPU -- fatal for the scaling study in `scaling_study/`, where the whole point
-is to measure what the *GPUs* do as more workers run in parallel.
-
-So this script reads the shards once, resizes every image to
-`common.IMAGE_SIZE`, re-encodes it small, and writes a compact local parquet
-cache (roughly 530 MB for 100k samples). Shards are never copied to disk.
-
-Nothing is fetched that is already available. In order:
-
-  1. If the parquet cache (`--cache_dir`) already holds enough samples, this
-     exits immediately -- no shards read, no download.
-  2. Otherwise it fills the cache from local `.tar` shards (`--shards_dir`),
-     e.g. a LAION-400M copy already staged on the cluster. No network needed.
-  3. Only if those are missing does it stream shards from the Hugging Face Hub.
+Uses the existing cache if full, else local `.tar` shards, else streams from the HF Hub.
 
     python download_data.py                       # 100k samples, the default
     python download_data.py --n_samples 20000     # smaller cache to try things out
     python download_data.py --shards_dir /path/to/train_data
     python download_data.py --cache_dir /work/$USER/laion_cache
 
-`--cache_dir` and `--shards_dir` default to `common.LAION_CACHE_DIR` /
-`common.LAION_SHARDS_DIR`, which also honour the `NEPS_LAION_CACHE_DIR` and
-`NEPS_LAION_SHARDS` environment variables -- set those in your sbatch scripts
-so training jobs read the same cache this script writes.
-
-It is resumable and idempotent: one parquet part is written per source shard,
-and re-running only fills in the parts that are missing.
+Defaults can also be set via `NEPS_LAION_CACHE_DIR` / `NEPS_LAION_SHARDS`.
 """
 
 import argparse

@@ -1,17 +1,13 @@
 """Groups pending configs by `batch_size` and writes one Slurm array job per
-resource tier (see `resource_map.json`), so small/medium/large batch sizes
-each get scheduled onto GPUs sized for them.
-
-The assignment of array-task-id -> config is fixed once, up front, as a
-plain list per tier (`array_group_<tier>.yaml`) -- so at run time each task
-just trains the config at its index, with no scanning or claiming needed.
-
+resource tier (see `resource_map.json`).
 Run once after `generate_configs.py` has sampled some configs:
 
     python array_job.py
+    python array_job.py --rerun_crashed   # also re-queue trials reported as crashed
     sbatch results/hpo_vlm_openclip/array_jobs/array_job_<tier>.sh
 """
 
+import argparse
 import json
 from pathlib import Path
 
@@ -23,14 +19,23 @@ from generate_configs import ROOT_DIRECTORY
 # sync with that constant), so image decoding never starves the GPU.
 CPUS_PER_TASK = 4 + 1
 
+# #CHANGE_ME: nodes Slurm must not schedule on, e.g. ones with faulty GPUs
+# (dlc2gpu07 raised "uncorrectable ECC error" on one of its GPUs).
+EXCLUDE_NODES = ["dlc2gpu07"]
+
 SOURCE_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = Path(ROOT_DIRECTORY).resolve()
 ARRAY_JOBS_DIR = ROOT_DIR / "array_jobs"
 
 
-def pending_configs():
+def pending_configs(rerun_crashed=False):
     for config_dir in sorted(ROOT_DIR.glob("configs/config_*")):
-        if (config_dir / "config.yaml").exists() and not (config_dir / "report.yaml").exists():
+        if not (config_dir / "config.yaml").exists():
+            continue
+        report_path = config_dir / "report.yaml"
+        if not report_path.exists():
+            yield config_dir
+        elif rerun_crashed and yaml.safe_load(report_path.read_text()).get("reported_as") == "crashed":
             yield config_dir
 
 
@@ -47,6 +52,7 @@ def write_array_job(tier, config_ids):
     group_file = ARRAY_JOBS_DIR / f"array_group_{tier['name']}.yaml"
     group_file.write_text(yaml.safe_dump(config_ids))
 
+    exclude = f"#SBATCH --exclude={','.join(EXCLUDE_NODES)}\n" if EXCLUDE_NODES else ""
     script = f"""#!/bin/bash
 #SBATCH --job-name=vlm_openclip_{tier["name"]}
 #SBATCH --array=0-{len(config_ids) - 1}
@@ -54,7 +60,7 @@ def write_array_job(tier, config_ids):
 #SBATCH --gres={tier["gres"]}
 #SBATCH --cpus-per-task={CPUS_PER_TASK}
 #SBATCH --mem={tier["mem"]}
-#SBATCH --chdir={SOURCE_DIR}
+{exclude}#SBATCH --chdir={SOURCE_DIR}
 #SBATCH --output={ARRAY_JOBS_DIR}/logs/%x-%A_%a.out
 #SBATCH --error={ARRAY_JOBS_DIR}/logs/%x-%A_%a.err
 
@@ -67,6 +73,14 @@ python train.py --group_file {group_file} --task_id $SLURM_ARRAY_TASK_ID --root_
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--rerun_crashed",
+        action="store_true",
+        help="Also queue configs whose report says they crashed (e.g. on a faulty GPU).",
+    )
+    args = parser.parse_args()
+
     tiers = json.loads((SOURCE_DIR / "resource_map.json").read_text())
 
     unset = [tier["name"] for tier in tiers if "CHANGE_ME" in tier["partition"]]
@@ -79,7 +93,7 @@ def main():
 
     groups = {tier["name"]: [] for tier in tiers}
 
-    for config_dir in pending_configs():
+    for config_dir in pending_configs(rerun_crashed=args.rerun_crashed):
         config = yaml.safe_load((config_dir / "config.yaml").read_text())
         tier = resource_tier(config["batch_size"], tiers)
         groups[tier["name"]].append(config_dir.name.removeprefix("config_"))
