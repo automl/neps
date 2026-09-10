@@ -1,21 +1,26 @@
-"""Visualizations built from the three per-GPU-count NePS sweeps.
-
-Run once the jobs submitted by `run_scaling_study.py` have finished:
-
-    python visualization.py
+"""Aggregates the per-worker-count sweeps into a throughput-vs-workers table and figure.
+Run after the jobs submitted by `run_scaling_study.py` have finished.
 """
 
 import pandas as pd
 
 import neps
-from run_scaling_study import MAIN_LOAD_N_GPUS, N_GPUS_CHOICES, ROOT_DIRECTORY, root_dir_for
+from run_scaling_study import ROOT_DIRECTORY, TOTAL_EVALUATIONS, WORKER_COUNTS, root_dir_for
 
 SUMMARY_DIR = ROOT_DIRECTORY / "summary"
 
+_COLUMNS = {
+    "config.lr": "lr",
+    "config.wd": "wd",
+    "config.batch_size": "batch_size",
+    "extra.wall_clock_time_sec": "wall_clock_time_sec",
+    "extra.samples_per_sec": "samples_per_sec",
+    "extra.total_train_samples": "total_train_samples",
+}
 
-def _sweep_df(n_gpus: int) -> pd.DataFrame:
-    """Every finished trial of one GPU count's sweep, one row each."""
-    root_dir = root_dir_for(n_gpus)
+
+def _sweep_df(n_workers: int) -> pd.DataFrame:
+    root_dir = root_dir_for(n_workers)
     if not root_dir.exists():
         return pd.DataFrame()
 
@@ -23,114 +28,81 @@ def _sweep_df(n_gpus: int) -> pd.DataFrame:
     if df.empty or "extra.samples_per_sec" not in df.columns:
         return pd.DataFrame()
 
-    df = df.rename(columns={
-        "config.batch_size": "batch_size",
-        "config.lr": "lr",
-        "config.wd": "wd",
-        "extra.wall_clock_time_sec": "wall_clock_time_sec",
-        "extra.samples_per_sec": "samples_per_sec",
-        "extra.total_train_samples": "total_train_samples",
-    })
-    df = df.dropna(subset=["samples_per_sec"])
-    df["n_gpus"] = n_gpus
-    keep = ["n_gpus", "lr", "wd", "batch_size", "wall_clock_time_sec",
-            "total_train_samples", "samples_per_sec"]
+    df = df.rename(columns=_COLUMNS).dropna(subset=["samples_per_sec"])
+    df["n_workers"] = n_workers
+    keep = ["n_workers", "lr", "wd", "batch_size", "wall_clock_time_sec",
+            "total_train_samples", "samples_per_sec", "time_started", "time_end"]
     return df[[c for c in keep if c in df.columns]]
 
 
 def _all_trials() -> pd.DataFrame:
-    frames = [_sweep_df(n) for n in N_GPUS_CHOICES]
-    trials = pd.concat([f for f in frames if not f.empty], ignore_index=True) if any(
-        not f.empty for f in frames
-    ) else pd.DataFrame()
-
-    if trials.empty:
+    frames = [f for f in (_sweep_df(n) for n in WORKER_COUNTS) if not f.empty]
+    if not frames:
         raise RuntimeError(
             f"No finished trials found under {ROOT_DIRECTORY}. Run "
             "run_scaling_study.py and wait for its Slurm jobs to finish first."
         )
-    return trials
+    return pd.concat(frames, ignore_index=True)
+
+
+def _sweep_row(group: pd.DataFrame) -> pd.Series:
+    sweep_sec = group["time_end"].max() - group["time_started"].min()
+    return pd.Series({
+        "n_trials": len(group),
+        "sweep_wall_clock_sec": sweep_sec,
+        "sweep_samples_per_sec": group["total_train_samples"].sum() / sweep_sec,
+        "per_trial_samples_per_sec": group["samples_per_sec"].median(),
+        "per_trial_samples_per_sec_min": group["samples_per_sec"].min(),
+        "per_trial_samples_per_sec_max": group["samples_per_sec"].max(),
+    })
 
 
 def performance_report() -> pd.DataFrame:
-    """Aggregate the three sweeps into one throughput-vs-GPUs table and figure.
-
-    Each GPU count ran the same grid of configs, so its sweep gives several
-    throughput measurements rather than one. They are aggregated by **median**,
-    which is what the figure's line and the `speedup` column are built from --
-    a single trial could be a straggler (a slow node, a cold filesystem), and
-    the median is not moved by one.
-
-    The spread across a sweep is itself worth seeing, so `samples_per_sec_min`
-    and `_max` are kept in the table and every individual trial is drawn on the
-    figure behind the line.
-    """
     trials = _all_trials()
-
     table = (
-        trials.groupby("n_gpus")
-        .agg(
-            n_trials=("samples_per_sec", "size"),
-            wall_clock_time_sec=("wall_clock_time_sec", "median"),
-            samples_per_sec=("samples_per_sec", "median"),
-            samples_per_sec_min=("samples_per_sec", "min"),
-            samples_per_sec_max=("samples_per_sec", "max"),
-        )
-        .reset_index()
-        .sort_values("n_gpus")
-        .reset_index(drop=True)
+        trials.groupby("n_workers").apply(_sweep_row, include_groups=False)
+        .reset_index().sort_values("n_workers").reset_index(drop=True)
     )
-    table["speedup"] = table["samples_per_sec"] / table.loc[0, "samples_per_sec"]
+    table["n_trials"] = table["n_trials"].astype(int)
+    table["speedup"] = table["sweep_samples_per_sec"] / table.loc[0, "sweep_samples_per_sec"]
 
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
-    trials.to_csv(SUMMARY_DIR / "scaling_trials.csv", index=False)
     table.to_csv(SUMMARY_DIR / "scaling_table.csv", index=False)
     print(table.to_string(index=False))
 
-    _plot_scaling(table, trials)
-
+    _plot_scaling(table)
     print(f"\nWrote table + plot to {SUMMARY_DIR}")
     return table
 
 
-def _plot_scaling(table: pd.DataFrame, trials: pd.DataFrame) -> None:
-    """Total throughput vs. #GPUs: every trial as a point, the median as the
-    line, against the ideal linear reference through the smallest GPU count.
-    The gap between the two curves is the cost of parallelising, in the units
-    the proposal actually cares about.
+def _plot_scaling(table: pd.DataFrame) -> None:
+    """Sweep throughput against the number of workers, on log-log axes so that
+    linear scaling reads as a straight line of slope 1.
     """
     import matplotlib.pyplot as plt
 
-    gpus = table["n_gpus"].to_numpy()
-    median = table["samples_per_sec"].to_numpy()
-    ideal = median[0] * (gpus / gpus[0])
+    workers = table["n_workers"].to_numpy()
+    sweep = table["sweep_samples_per_sec"].to_numpy()
 
-    fig, ax = plt.subplots(figsize=(6.5, 4.6))
-
-    ax.plot(gpus, ideal, "--", color="grey", label="ideal (linear)", zorder=1)
-    ax.scatter(
-        trials["n_gpus"], trials["samples_per_sec"],
-        color="tab:blue", alpha=0.45, s=28, zorder=2,
-        label=f"individual trials (n={len(trials)})",
-    )
-    ax.plot(gpus, median, "o-", color="tab:blue", label="median", zorder=3)
-    for x, y in zip(gpus, median):
+    fig, ax = plt.subplots(figsize=(6.5, 4.4))
+    ax.plot(workers, sweep, "o-", color="tab:blue", linewidth=1.8, markersize=6)
+    for x, y in zip(workers, sweep):
         ax.annotate(f"{y:,.0f}", (x, y), textcoords="offset points",
-                    xytext=(0, 9), ha="center", fontsize=8)
-
-    if MAIN_LOAD_N_GPUS in set(gpus):
-        ax.axvline(MAIN_LOAD_N_GPUS, color="tab:red", ls=":",
-                   label=f"production load ({MAIN_LOAD_N_GPUS} GPUs)", zorder=2)
+                    xytext=(0, 10), ha="center", fontsize=8.5)
 
     ax.set_xscale("log", base=2)
     ax.set_yscale("log", base=2)
-    ax.set_xticks(gpus)
-    ax.set_xticklabels(gpus)
-    ax.set_xlabel("Number of GPUs")
-    ax.set_ylabel("Total throughput (samples/sec)")
-    ax.set_title("Same job, more GPUs — total throughput")
-    ax.grid(True, which="both", alpha=0.3)
-    ax.legend(fontsize=8)
+    ax.set_ylim(sweep.min() / 1.25, sweep.max() * 1.45)
+    ax.set_xticks(workers)
+    ax.set_xticklabels(workers)
+    ax.set_xlabel("Parallel workers (one GPU each)")
+    ax.set_ylabel("Training throughput (training samples per second)")
+    ax.set_title(
+        f"Throughput scaling of a fixed {TOTAL_EVALUATIONS}-evaluation "
+        "hyperparameter optimization",
+        fontsize=11,
+    )
+    ax.grid(True, which="both", alpha=0.3, linewidth=0.6)
 
     fig.tight_layout()
     fig.savefig(SUMMARY_DIR / "scaling_study.png", dpi=150, bbox_inches="tight")
