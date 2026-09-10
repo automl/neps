@@ -129,6 +129,7 @@ neps.run(
     root_directory="results_hpo_demo",
     pipeline_space=pipeline_space,
     evaluations_to_spend=3  # HPO budget
+    live_plots=True,  # Optional: visualize optimization progress
 )
 
 # ### Analyzing Results

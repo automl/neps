@@ -55,6 +55,7 @@ class ArtifactType(Enum):
     TEXT = "text"
     FIGURE = "figure"
     JSON = "json"
+    CSV = "csv"
     PICKLE = "pickle"
     BYTES = "bytes"
 
@@ -139,12 +140,7 @@ class AskFunction(Protocol):
 
         This is an optional method that optimizers can implement to return artifacts
         (figures, logs, metadata, etc) that the neps runtime will handle for persistence.
-        The runtime takes responsibility for all I/O operations, enabling:
-
-        - Clean separation between optimizer logic and I/O concerns
-        - Uniform handling of different artifact types (figures, text, JSON, etc)
-        - Future extensibility without optimizer changes
-        - Easy testing and mocking
+        The runtime takes responsibility for all I/O operations.
 
         Args:
             trials: All evaluated trials, passed by runtime for context.
@@ -156,7 +152,8 @@ class AskFunction(Protocol):
 
         Note:
             This method is optional. Optimizers that don't need to persist artifacts
-            should return None (the default behavior).
+            should return None (the default behavior). The runtime only calls it,
+            after every evaluated trial, when running `neps.run(..., live_plots=True)`.
 
         Example:
             >>> from neps.optimizers.optimizer import Artifact, ArtifactType

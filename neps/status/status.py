@@ -67,8 +67,8 @@ def _build_incumbent_content(best_configs: list[dict]) -> str:
     trace_content = (
         "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
     )
-    for best in best_configs:
-        trace_content += _format_config_entry(best)
+    for conf in best_configs:
+        trace_content += _format_config_entry(conf)
 
     return trace_content
 
@@ -86,8 +86,8 @@ def _build_optimal_set_content(best_configs: list[dict]) -> str:
     trace_text = (
         "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
     )
-    for best in best_configs:
-        trace_text += _format_config_entry(best)
+    for conf in best_configs:
+        trace_text += _format_config_entry(conf)
     return trace_text
 
 
