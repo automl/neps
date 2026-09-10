@@ -13,6 +13,7 @@ import yaml
 
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
+from neps.optimizers.algorithms import PredefinedOptimizers
 from neps.runtime import _launch_runtime, _save_results
 from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
@@ -395,6 +396,13 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     if is_continuing_run and optimizer == "auto":
         try:
             existing_optimizer_info = load_optimizer_info(root_path)
+            if existing_optimizer_info["name"] not in PredefinedOptimizers:
+                raise ValueError(
+                    f"The run in '{root_path}' was started with the custom optimizer"
+                    f" '{existing_optimizer_info['name']}', which cannot be rebuilt"
+                    " from optimizer_info.yaml. Pass the same `optimizer` to"
+                    " `neps.run` to continue it."
+                )
             logger.info(
                 "Continuing optimization with existing optimizer: "
                 f"{existing_optimizer_info['name']}"
