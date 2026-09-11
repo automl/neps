@@ -27,7 +27,7 @@ from neps.space.neps_spaces.parameters import Operation, PipelineSpace
 from neps.space.neps_spaces.string_formatter import format_value
 from neps.space.parsing import convert_to_space
 from neps.state import NePSState, OptimizationState, SeedSnapshot
-from neps.status.status import post_run_csv
+from neps.status.summary import SummaryWriter
 from neps.utils.common import dynamic_load_object
 from neps.validation import _validate_imported_config, _validate_imported_result
 
@@ -486,8 +486,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         live_plots=live_plots,
     )
 
-    post_run_csv(root_directory)
     root_directory = Path(root_directory)
+    SummaryWriter.from_directory(root_directory, live_plots=live_plots).update(final=True)
     summary_dir = root_directory / "summary"
     logger.info(
         "The summary folder has been created, which contains csv and txt files with"
@@ -502,6 +502,8 @@ def save_pipeline_results(
     user_result: dict,
     pipeline_id: str,
     root_directory: Path,
+    *,
+    live_plots: bool = False,
 ) -> None:
     """Persist the outcome of one pipeline evaluation.
 
@@ -515,6 +517,7 @@ def save_pipeline_results(
             neps.core.trial.Trial object inside the optimisation state.
         root_directory (Path): Root directory of the NePS run (contains
             optimizer_info.yaml and configs/ folder).
+        live_plots (bool): Whether to also refresh the summary plots.
 
     """
     _save_results(
@@ -523,13 +526,30 @@ def save_pipeline_results(
         root_directory=root_directory,
     )
 
-    full_frame_path, short_path = post_run_csv(root_directory)
+    summary = SummaryWriter.from_directory(root_directory, live_plots=live_plots)
+    summary.touch()
+    summary.update()
     logger.info(
-        "The post run summary has been created, which is a csv file with the "
-        "output of all data in the run."
-        f"\nYou can find a full dataframe at: {full_frame_path}."
-        f"\nYou can find a quick summary at: {short_path}."
+        "The summary has been updated with this result."
+        f"\nYou can find it at: {summary.summary_dir}."
     )
+
+
+def analyze(root_directory: str | Path) -> None:
+    """Rebuilds the trial evaluation summaries
+    including the best-config text files, the plots and the optimizer's
+    own artifacts, without evaluating anything.
+
+    Args:
+        root_directory: Root directory of the NePS run
+    """
+    root_directory = Path(root_directory)
+    if not root_directory.is_dir():
+        raise FileNotFoundError(f"No NePS run found at {root_directory}.")
+
+    summary = SummaryWriter.from_directory(root_directory, live_plots=True)
+    summary.update(final=True)
+    logger.info(f"The summary has been refreshed at: {summary.summary_dir}.")
 
 
 def import_trials(  # noqa: C901
@@ -1074,6 +1094,7 @@ def load_optimizer_info(
 
 
 __all__ = [
+    "analyze",
     "create_config",
     "import_trials",
     "load_config",

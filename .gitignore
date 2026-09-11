@@ -8,7 +8,6 @@ uv.lock
 *.out
 *.err
 *.log
-*.json
 *.speedscope
 
 # slurm scripts
@@ -25,7 +24,6 @@ site/*
 *.sh
 *.model
 *.pth
-*.png
 
 # Results
 results
@@ -57,3 +55,5 @@ path
 .trace.lock
 
 copilot/
+
+.env

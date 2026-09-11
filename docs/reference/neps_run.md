@@ -86,6 +86,19 @@ neps.run(...)
 
 Please refer to Python's [logging documentation](https://docs.python.org/3/library/logging.html) for more information on how to customize the logging output.
 
+### Live plots
+Pass `live_plots=True` to have NePS redraw the plots in `root_directory/summary/` after
+every evaluated trial: the incumbent trajectory, or the Pareto front for two objectives,
+plus anything your optimizer provides.
+
+```python
+neps.run(..., live_plots=True)
+```
+
+It is off by default, since every refresh redraws the figures. You can always get the same
+plots later with
+`neps.analyze(root_directory)`. See [Analysing Runs](analyse.md#plots-and-reports-nepsanalyze).
+
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
 and specify a new stopping criterria(e.g. through `evaluations_to_spend=` and/or `cost_to_spend=`).
@@ -184,17 +197,19 @@ provided to [`neps.run()`][neps.api.run].
     │   │   └── metadata.json   # Metadata about this run, such as state and times
     │   └── ...
     ├── summary
-    │  ├── full.csv
-    │  └── short.csv
-    │  ├── best_config_trajectory.txt
-    │  └── best_config.txt
+    │   ├── full.csv
+    │   ├── short.csv
+    │   ├── best_config_trajectory.txt
+    │   ├── best_config.txt
+    │   └── ...                 # Plots, with live_plots=True or neps.analyze()
     ├── optimizer_info.yaml     # The optimizer's configuration
     ├── optimizer_state.pkl     # The optimizer's state, shared between workers
     └── ...                     # Other neps files
     ```
 
-To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
-closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
+To check on a run use `neps.status`, and to (re)generate its plots and reports at any time
+use `neps.analyze(root_directory)`. You can also log to TensorBoard from inside your
+training loop. For more information, please refer to the [analyses page](analyse.md).
 
 ## Parallelization
 
@@ -235,6 +250,11 @@ Any new workers that come online will automatically pick up work and work togeth
     python worker.py &
     ```
 
+Adding workers scales the throughput of a sweep almost linearly: in our VLM example,
+8 workers (one GPU each) run the same 8-evaluation sweep about 7× faster than one.
+
+![Sweep throughput against the number of workers](../doc_images/examples/scaling_workers.png)
+
 ## Handling Errors
 
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
@@ -261,23 +281,25 @@ neps.run(
 
 ### Re-running Failed Configurations
 
-Sometimes things go wrong but not due to the configuration itself. If you want to remove failed or crashed trials and re-start the optimization, use the `neps clean` command:
+Sometimes things go wrong but not due to the configuration itself. If you want to reset failed or crashed trials so they get re-evaluated, use the `neps clean` command:
 
 ```bash
-python -m neps.clean <root_directory>
+python -m neps.clean --root-dir <root_directory>
 ```
 
-This removes all failed, crashed, and corrupted trials from your working directory. To remove specific trials by ID:
+This resets all failed, crashed, and corrupted trials in your working directory back to `pending`, keeping their configs. To reset specific trials by ID:
 
 ```bash
-python -m neps.clean results/my_optimization --trial_ids 1 2
+python -m neps.clean --root-dir results/my_optimization --trial-ids 1 2
 ```
 
-You can preview what will be deleted with `--dry_run`:
+You can preview what would change with `--dry-run`:
 
 ```bash
-python -m neps.clean <root_directory> --dry_run
+python -m neps.clean --root-dir <root_directory> --dry-run
 ```
+
+If you'd rather remove the trials entirely instead of resetting them, pass `--delete`.
 
 Once cleaned, you can restart the optimization and workers will pick up from the cleaned state.
 

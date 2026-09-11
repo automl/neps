@@ -28,7 +28,11 @@ from abc import abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, TypedDict
+from typing import TYPE_CHECKING, Any, Protocol
+
+# `typing.TypedDict` does not pick up `NotRequired` through PEP-563 string
+# annotations, so we take both from `typing_extensions`.
+from typing_extensions import NotRequired, TypedDict
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
@@ -46,6 +50,15 @@ class OptimizerInfo(TypedDict):
     """Additional information about the optimizer.
 
     Usually this will be the keyword arguments used to initialize the optimizer.
+    """
+
+    fidelity_name: NotRequired[str | None]
+    """The key a fidelity takes in a trial's config, if the space has one.
+
+    Resolved once at the start of a run and persisted, so that anything
+    summarizing the run later can account for fidelities without having to
+    reconstruct the optimizer. Absent for runs created before this was stored,
+    and ignored when checking that a resumed run matches its optimizer.
     """
 
 

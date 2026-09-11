@@ -81,6 +81,7 @@ dev = [
     "pytest>=7,<8",
     "pytest-cases>=3,<4",
     "pytest-repeat>=0,<1",
+    "pytest-xdist>=3,<4",
     "types-PyYAML>=6,<7",
     "mkdocs-material",
     "mkdocs-autorefs",
@@ -248,6 +249,9 @@ ignore = [
 "tests/test_neps_space/*.py" = [
     "E501", # Line length for architecture strings
 ]
+"tests/worker_scaling_study/*.py" = [
+    "INP001", # Standalone scripts that import each other, not a package
+]
 
 "__init__.py" = ["I002"]
 "neps_examples/*" = [
@@ -291,7 +295,7 @@ convention = "google"
 max-args = 10 # Changed from default of 5
 
 [tool.pytest.ini_options]
-addopts = "--basetemp ./tests_tmpdir -m 'not ci_examples'"
+addopts = "-m 'not ci_examples'"
 markers = [
     "ci_examples",
     "core_examples",
