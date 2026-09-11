@@ -8,7 +8,7 @@ How much faster does a fixed HPO sweep finish when it gets more parallel workers
 - **Data:** 100k LAION CC12M image/caption pairs (plus 2k for validation). Each config trains a 22.3M-parameter OpenCLIP model for 3 epochs.
 - **Workers:** the sweep runs four times, with 1, 2, 4 and 8 workers. Each worker is its own single-GPU Slurm job (NVIDIA H200) calling `neps.run()` on a shared root directory, with `evaluations_to_spend = 8 / n_workers`.
 
-![Throughput against number of workers](./../../docs/doc_images/examples/scaling_study.png)
+![Throughput against number of workers](./../../docs/doc_images/examples/scaling_workers.png)
 
 | Workers | Wall clock | Throughput | Speedup |
 |---|---|---|---|

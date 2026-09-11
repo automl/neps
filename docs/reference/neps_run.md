@@ -250,6 +250,11 @@ Any new workers that come online will automatically pick up work and work togeth
     python worker.py &
     ```
 
+Adding workers scales the throughput of a sweep almost linearly: in our VLM example,
+8 workers (one GPU each) run the same 8-evaluation sweep about 7× faster than one.
+
+![Sweep throughput against the number of workers](../doc_images/examples/scaling_workers.png)
+
 ## Handling Errors
 
 Things go wrong during optimization runs and it's important to consider what to do in these cases.
