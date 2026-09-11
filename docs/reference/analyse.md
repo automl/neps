@@ -91,7 +91,7 @@ joined up (red).
 
 Pass `live_plots=True` to have the plots
 redrawn after every evaluated trial as well. Where to pass it depends on how your
-trials are evaluated; via `nep.run()` or `neps.save_user_results`. (see [the evaluate function](evaluate_pipeline.md)).
+trials are evaluated: via `neps.run()` or `neps.save_pipeline_results()` (see [the evaluate function](evaluate_pipeline.md)).
 
 !!! warning "Overhead"
 
