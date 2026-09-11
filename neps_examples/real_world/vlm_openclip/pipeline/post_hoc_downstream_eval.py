@@ -2,7 +2,7 @@
 
 The HPO objective in `train.py` only ever sees the contrastive loss on held-out
 LAION pre-training data. Here we additionally score each checkpoint zero-shot
-on CIFAR-100 -- a benchmark it never trained on and was never tuned against.
+on CIFAR-100 which was never trained on and was never tuned against.
 The result is written only to `report_down.yaml`, leaving NePS's own
 `report.yaml` untouched.
 
