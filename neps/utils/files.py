@@ -289,12 +289,19 @@ class BytesWriter:
 class CsvWriter:
     """Write tabular content to disk as CSV."""
 
-    def write(self, content: Any, file_path: Path | str) -> None:
+    def write(
+        self,
+        content: Any,
+        file_path: Path | str,
+        index: bool = False,  # noqa: FBT001, FBT002
+    ) -> None:
         """Write a table to a CSV file.
 
         Args:
             content: A pandas DataFrame, or a list of dicts with one dict per row.
             file_path: Path to save to (will use .csv extension).
+            index: Whether to write the frame's index as a column. Needed for
+                tables whose index carries information, such as the trial id.
         """
         import pandas as pd
 
@@ -304,7 +311,7 @@ class CsvWriter:
             table = (
                 content if isinstance(content, pd.DataFrame) else pd.DataFrame(content)
             )
-            table.to_csv(file_path, index=False)
+            table.to_csv(file_path, index=index)
             logger.debug(f"Wrote CSV to {file_path}")
         except Exception as e:
             logger.error(f"Failed to write CSV to {file_path}: {e}")

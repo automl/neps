@@ -29,7 +29,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict
-from typing_extensions import NotRequired
+
+from typing_extensions import NotRequired, TypedDict
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo

@@ -1,6 +1,9 @@
 """Submits one Slurm job per `neps.run` worker, for each worker count of the study.
-Every worker gets its own 1-GPU allocation; the workers of a setting share a root directory.
+Every worker gets its own 1-GPU allocation; the workers of a setting share a root
+directory.
 """
+
+from __future__ import annotations
 
 import subprocess
 from pathlib import Path
@@ -16,7 +19,7 @@ TOTAL_EVALUATIONS = 8
 # #CHANGE_ME: Slurm settings for one worker. Each job is one GPU with its own
 # CPUs and memory, so a worker never competes with another for the input
 # pipeline -- what is being measured is parallel search, not node contention.
-PARTITION = "testdlc2_gpu-h200"
+PARTITION = "CHANGE_ME_PARTITION_NAME"
 MEM_PER_GPU = "32G"
 CPUS_PER_WORKER = NUM_WORKERS + 1
 TIME_LIMIT = "01:00:00"
@@ -73,7 +76,9 @@ def submit(script_path: Path, after_job_id: str | None = None) -> str:
     if after_job_id is not None:
         command.append(f"--dependency=after:{after_job_id}")
     command.append(str(script_path))
-    submission = subprocess.run(command, capture_output=True, text=True, check=True)
+    submission = subprocess.run(  # noqa: S603
+        command, capture_output=True, text=True, check=True
+    )
     return submission.stdout.strip().split()[-1]
 
 
@@ -94,15 +99,10 @@ def main():
     for n_workers in WORKER_COUNTS:
         if TOTAL_EVALUATIONS % n_workers:
             raise ValueError(
-                f"n_workers={n_workers} does not divide TOTAL_EVALUATIONS={TOTAL_EVALUATIONS}."
+                f"n_workers={n_workers} does not divide "
+                f"TOTAL_EVALUATIONS={TOTAL_EVALUATIONS}."
             )
-        job_ids = submit_setting(n_workers)
-        print(
-            f"{n_workers} worker(s) x {TOTAL_EVALUATIONS // n_workers} evaluations -> "
-            f"jobs {', '.join(job_ids)} ({root_dir_for(n_workers)})"
-        )
-
-    print("\nOnce the jobs finish: python visualization.py")
+        submit_setting(n_workers)
 
 
 if __name__ == "__main__":

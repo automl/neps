@@ -2,13 +2,16 @@
 Calls `neps.run` on the setting's shared root directory for its share of the sweep.
 """
 
+from __future__ import annotations
+
 import argparse
 import logging
 import time
 from pathlib import Path
 
-import neps
 from train import evaluate
+
+import neps
 
 # How long a follower waits for the first worker to create the NePS state.
 STATE_WAIT_TIMEOUT_SEC = 900

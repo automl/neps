@@ -2,10 +2,17 @@
 Run after the jobs submitted by `run_scaling_study.py` have finished.
 """
 
+from __future__ import annotations
+
 import pandas as pd
+from run_scaling_study import (
+    ROOT_DIRECTORY,
+    TOTAL_EVALUATIONS,
+    WORKER_COUNTS,
+    root_dir_for,
+)
 
 import neps
-from run_scaling_study import ROOT_DIRECTORY, TOTAL_EVALUATIONS, WORKER_COUNTS, root_dir_for
 
 SUMMARY_DIR = ROOT_DIRECTORY / "summary"
 
@@ -30,8 +37,17 @@ def _sweep_df(n_workers: int) -> pd.DataFrame:
 
     df = df.rename(columns=_COLUMNS).dropna(subset=["samples_per_sec"])
     df["n_workers"] = n_workers
-    keep = ["n_workers", "lr", "wd", "batch_size", "wall_clock_time_sec",
-            "total_train_samples", "samples_per_sec", "time_started", "time_end"]
+    keep = [
+        "n_workers",
+        "lr",
+        "wd",
+        "batch_size",
+        "wall_clock_time_sec",
+        "total_train_samples",
+        "samples_per_sec",
+        "time_started",
+        "time_end",
+    ]
     return df[[c for c in keep if c in df.columns]]
 
 
@@ -47,31 +63,36 @@ def _all_trials() -> pd.DataFrame:
 
 def _sweep_row(group: pd.DataFrame) -> pd.Series:
     sweep_sec = group["time_end"].max() - group["time_started"].min()
-    return pd.Series({
-        "n_trials": len(group),
-        "sweep_wall_clock_sec": sweep_sec,
-        "sweep_samples_per_sec": group["total_train_samples"].sum() / sweep_sec,
-        "per_trial_samples_per_sec": group["samples_per_sec"].median(),
-        "per_trial_samples_per_sec_min": group["samples_per_sec"].min(),
-        "per_trial_samples_per_sec_max": group["samples_per_sec"].max(),
-    })
+    return pd.Series(
+        {
+            "n_trials": len(group),
+            "sweep_wall_clock_sec": sweep_sec,
+            "sweep_samples_per_sec": group["total_train_samples"].sum() / sweep_sec,
+            "per_trial_samples_per_sec": group["samples_per_sec"].median(),
+            "per_trial_samples_per_sec_min": group["samples_per_sec"].min(),
+            "per_trial_samples_per_sec_max": group["samples_per_sec"].max(),
+        }
+    )
 
 
 def performance_report() -> pd.DataFrame:
     trials = _all_trials()
     table = (
-        trials.groupby("n_workers").apply(_sweep_row, include_groups=False)
-        .reset_index().sort_values("n_workers").reset_index(drop=True)
+        trials.groupby("n_workers")
+        .apply(_sweep_row, include_groups=False)
+        .reset_index()
+        .sort_values("n_workers")
+        .reset_index(drop=True)
     )
     table["n_trials"] = table["n_trials"].astype(int)
-    table["speedup"] = table["sweep_samples_per_sec"] / table.loc[0, "sweep_samples_per_sec"]
+    table["speedup"] = (
+        table["sweep_samples_per_sec"] / table.loc[0, "sweep_samples_per_sec"]
+    )
 
     SUMMARY_DIR.mkdir(parents=True, exist_ok=True)
     table.to_csv(SUMMARY_DIR / "scaling_table.csv", index=False)
-    print(table.to_string(index=False))
 
     _plot_scaling(table)
-    print(f"\nWrote table + plot to {SUMMARY_DIR}")
     return table
 
 
@@ -86,9 +107,15 @@ def _plot_scaling(table: pd.DataFrame) -> None:
 
     fig, ax = plt.subplots(figsize=(6.5, 4.4))
     ax.plot(workers, sweep, "o-", color="tab:blue", linewidth=1.8, markersize=6)
-    for x, y in zip(workers, sweep):
-        ax.annotate(f"{y:,.0f}", (x, y), textcoords="offset points",
-                    xytext=(0, 10), ha="center", fontsize=8.5)
+    for x, y in zip(workers, sweep, strict=False):
+        ax.annotate(
+            f"{y:,.0f}",
+            (x, y),
+            textcoords="offset points",
+            xytext=(0, 10),
+            ha="center",
+            fontsize=8.5,
+        )
 
     ax.set_xscale("log", base=2)
     ax.set_yscale("log", base=2)
@@ -102,7 +129,7 @@ def _plot_scaling(table: pd.DataFrame) -> None:
         "hyperparameter optimization",
         fontsize=11,
     )
-    ax.grid(True, which="both", alpha=0.3, linewidth=0.6)
+    ax.grid(visible=True, which="both", alpha=0.3, linewidth=0.6)
 
     fig.tight_layout()
     fig.savefig(SUMMARY_DIR / "scaling_study.png", dpi=150, bbox_inches="tight")

@@ -2,6 +2,8 @@
 Returns the NePS result plus the throughput numbers the scaling study plots.
 """
 
+from __future__ import annotations
+
 import sys
 import time
 from pathlib import Path
@@ -12,7 +14,14 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common import build_model, count_params, get_gpu_name, get_model_flops, get_peak_gpu_memory_mb, load_data
+from common import (
+    build_model,
+    count_params,
+    get_gpu_name,
+    get_model_flops,
+    get_peak_gpu_memory_mb,
+    load_data,
+)
 
 # #CHANGE_ME: the fixed workload every trial trains on, whatever the worker
 # count. The cache must already cover it: `python ../download_data.py --n_samples 102000`.
@@ -25,8 +34,16 @@ NUM_WORKERS = 4
 
 
 def evaluate(
-    lr, wd, vision_width, vision_layers, text_width, text_layers, epoch, batch_size,
-    n_workers, checkpoint_path=None,
+    lr,
+    wd,
+    vision_width,
+    vision_layers,
+    text_width,
+    text_layers,
+    epoch,
+    batch_size,
+    n_workers,
+    checkpoint_path=None,
 ):
     is_cuda = torch.cuda.is_available()
     device = torch.device("cuda:0" if is_cuda else "cpu")
@@ -56,12 +73,13 @@ def evaluate(
     model.train()
     step, measured_steps, measured_samples, t0 = 0, 0, 0, None
     for _ in range(epoch):
-        for images, texts in train_loader:
+        for batch_images, batch_texts in train_loader:
             if step == WARMUP_STEPS:
                 # Context creation, autotuning and cache warm-up stay unmeasured.
                 sync()
                 t0 = time.perf_counter()
-            images, texts = images.to(device, non_blocking=True), texts.to(device, non_blocking=True)
+            images = batch_images.to(device, non_blocking=True)
+            texts = batch_texts.to(device, non_blocking=True)
             optimizer.zero_grad()
             out = model(images, texts)
             loss = sum(loss_fn(**out, output_dict=True).values())
@@ -75,7 +93,8 @@ def evaluate(
     if t0 is None:
         raise RuntimeError(
             f"The whole run was {step} steps, which is not more than WARMUP_STEPS="
-            f"{WARMUP_STEPS}; nothing was timed. Increase N_TRAIN/epoch or lower WARMUP_STEPS."
+            f"{WARMUP_STEPS}; nothing was timed. Increase N_TRAIN/epoch or lower "
+            "WARMUP_STEPS."
         )
     wall_clock_time_sec = time.perf_counter() - t0
 
@@ -87,10 +106,10 @@ def evaluate(
     model.eval()
     val_loss, correct, total, n_batches = 0.0, 0, 0, 0
     with torch.no_grad():
-        for images, texts in DataLoader(val_set, batch_size=VAL_BATCH_SIZE):
-            if images.shape[0] < VAL_BATCH_SIZE:
+        for batch_images, batch_texts in DataLoader(val_set, batch_size=VAL_BATCH_SIZE):
+            if batch_images.shape[0] < VAL_BATCH_SIZE:
                 continue
-            images, texts = images.to(device), texts.to(device)
+            images, texts = batch_images.to(device), batch_texts.to(device)
             out = model(images, texts)
             val_loss += sum(loss_fn(**out, output_dict=True).values()).item()
             n_batches += 1

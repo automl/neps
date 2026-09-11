@@ -1,10 +1,4 @@
-"""Shared dataset/model for OpenCLIP example
-
-Pre-training data:LAION image/caption pairs in webdataset-shard format.
-Shards hold full-size JPEGs, which would make CPU-side image decoding, not the
-GPUs. `download_data.py` does the decode/resize once, offline, and writes the cache as compact
-`IMAGE_SIZE`x`IMAGE_SIZE` JPEGs; training then only has to decode those.
-"""
+"""Shared dataset/model for OpenCLIP example"""
 
 import contextlib
 import io
@@ -25,11 +19,11 @@ DATA_DIR = Path(__file__).parent / ".data"
 # #CHANGE_ME: where the prepared parquet cache lives.
 LAION_CACHE_DIR = Path(os.environ.get("NEPS_LAION_CACHE_DIR", DATA_DIR / "laion"))
 
-# #CHANGE_ME: a local directory of webdataset `.tar` shards to build the cache from.
-LAION_SHARDS_DIR = Path(os.environ.get(
-    "NEPS_LAION_SHARDS",
-    "/work/dlclarge1/sinanid-VLM-scaling-law/scaling_studies_vlm/pre_training_dataset/laion400m/train_data",
-))
+# #CHANGE_ME: a local directory of webdataset `.tar` shards to build the cache
+# from (e.g. `export NEPS_LAION_SHARDS=/path/to/laion400m/train_data`). Optional:
+# when unset, shards are downloaded from `LAION_REPO` instead.
+_shards_env = os.environ.get("NEPS_LAION_SHARDS")
+LAION_SHARDS_DIR = Path(_shards_env) if _shards_env else None
 
 # #CHANGE_ME: the Hub fallback, used only when `LAION_SHARDS_DIR` does not
 # exist. LAION publishes this one as webdataset tar shards of ~10k samples.
@@ -197,8 +191,8 @@ def prepare_laion(
 
         if not images:
             raise RuntimeError(
-                f"Shard {shard} yielded no usable samples. Check LAION_SHARDS_DIR "
-                f"({LAION_SHARDS_DIR}) if you meant to read local shards, or that "
+                f"Shard {shard} yielded no usable samples. Check NEPS_LAION_SHARDS "
+                f"({shards_dir or LAION_SHARDS_DIR}) if you meant to read local shards, or that "
                 f"{LAION_REPO} is reachable if you meant to download."
             )
 

@@ -7,6 +7,9 @@ from pathlib import Path
 
 import neps
 
+# #CHANGE_ME: a Slurm partition of your cluster (or export SBATCH_PARTITION).
+SLURM_PARTITION = os.environ.get("SBATCH_PARTITION", "CHANGE_ME__PARTITION_NAME")
+
 
 def _ask_to_submit_slurm_script(pipeline_directory: Path, script: str):
     script_path = pipeline_directory / "submit.sh"
@@ -30,10 +33,16 @@ def _get_validation_error(pipeline_directory: Path):
 def evaluate_pipeline_via_slurm(
     pipeline_directory: Path, optimizer: str, learning_rate: float
 ):
+    if "CHANGE_ME" in SLURM_PARTITION:
+        raise ValueError(
+            "Set SLURM_PARTITION in this file (or export SBATCH_PARTITION) to a "
+            "Slurm partition of your cluster."
+        )
+
     script = f"""#!/bin/bash
 #SBATCH --time 0-00:05
 #SBATCH --job-name test
-#SBATCH --partition cpu-cascadelake
+#SBATCH --partition {SLURM_PARTITION}
 #SBATCH --error "{pipeline_directory}/%N_%A_%x_%a.oe"
 #SBATCH --output "{pipeline_directory}/%N_%A_%x_%a.oe"
 # Plugin your python script here
