@@ -24,13 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 def _yaml_safe(value: Any) -> Any:
-    """Convert `value` to what it looks like after a round-trip through YAML.
-
-    This keeps the in-memory optimizer info equal to the one read back from
-    `optimizer_info.yaml`. Anything YAML cannot represent (functions, classes,
-    objects) is replaced by its import path, which, unlike its `repr`, is stable
-    across runs.
-    """
     value = serializable_format(value)
     match value:
         case None | bool() | int() | float() | str():
@@ -55,11 +48,6 @@ def _make_info(
 
 
 def _resolve_kwargs(optimizer: Callable, space: Any) -> dict[str, Any]:
-    """Get every argument `optimizer(space)` is called with, defaults included.
-
-    Arguments bound by (nested) `functools.partial`s are resolved against the
-    signature of the wrapped function, so they are recorded under their names.
-    """
     func = optimizer
     args: tuple[Any, ...] = ()
     keywords: dict[str, Any] = {}
