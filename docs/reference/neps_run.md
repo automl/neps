@@ -86,6 +86,19 @@ neps.run(...)
 
 Please refer to Python's [logging documentation](https://docs.python.org/3/library/logging.html) for more information on how to customize the logging output.
 
+### Live plots
+Pass `live_plots=True` to have NePS redraw the plots in `root_directory/summary/` after
+every evaluated trial: the incumbent trajectory, or the Pareto front for two objectives,
+plus anything your optimizer provides.
+
+```python
+neps.run(..., live_plots=True)
+```
+
+It is off by default, since every refresh redraws the figures. You can always get the same
+plots later with
+`neps.analyze(root_directory)`. See [Analysing Runs](analyse.md#plots-and-reports-nepsanalyze).
+
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
 and specify a new stopping criterria(e.g. through `evaluations_to_spend=` and/or `cost_to_spend=`).
@@ -184,17 +197,19 @@ provided to [`neps.run()`][neps.api.run].
     │   │   └── metadata.json   # Metadata about this run, such as state and times
     │   └── ...
     ├── summary
-    │  ├── full.csv
-    │  └── short.csv
-    │  ├── best_config_trajectory.txt
-    │  └── best_config.txt
+    │   ├── full.csv
+    │   ├── short.csv
+    │   ├── best_config_trajectory.txt
+    │   ├── best_config.txt
+    │   └── ...                 # Plots, with live_plots=True or neps.analyze()
     ├── optimizer_info.yaml     # The optimizer's configuration
     ├── optimizer_state.pkl     # The optimizer's state, shared between workers
     └── ...                     # Other neps files
     ```
 
-To capture the results of the optimization process, you can use tensorbaord logging with various utilities to integrate
-closer to NePS. For more information, please refer to the [analyses page](../reference/analyse.md) page.
+To check on a run use `neps.status`, and to (re)generate its plots and reports at any time
+use `neps.analyze(root_directory)`. You can also log to TensorBoard from inside your
+training loop. For more information, please refer to the [analyses page](analyse.md).
 
 ## Parallelization
 
