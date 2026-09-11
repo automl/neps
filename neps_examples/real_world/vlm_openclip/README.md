@@ -96,7 +96,7 @@ in the shell you run `sbatch` from and Slurm passes them to the jobs, so
 training reads exactly the cache this script wrote:
 
 ```bash
-export NEPS_LAION_SHARDS=/work/dlclarge1/.../pre_training_dataset/laion400m/train_data
+export NEPS_LAION_SHARDS=/path/to/laion400m/train_data  # optional; unset = download from the Hub
 export NEPS_LAION_CACHE_DIR=/work/$USER/laion_cache
 python download_data.py
 ```

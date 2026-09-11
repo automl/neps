@@ -3,6 +3,9 @@ import subprocess
 import neps
 import os
 
+# #CHANGE_ME: a Slurm partition of your cluster (or export SBATCH_PARTITION).
+SLURM_PARTITION = os.environ.get("SBATCH_PARTITION", "CHANGE_ME__PARTITION_NAME")
+
 def _submit_job(pipeline_directory: Path, script: str) -> None:
     script_path = pipeline_directory / "submit.sh"
     print(f"Submitting the script {script_path} (see below): \n\n{script}")
@@ -16,9 +19,15 @@ def evaluate_pipeline_via_slurm(pipeline_id, pipeline_directory, previous_pipeli
     out_dir = Path('output_dir')
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    if "CHANGE_ME" in SLURM_PARTITION:
+        raise ValueError(
+            "Set SLURM_PARTITION in this file (or export SBATCH_PARTITION) to a "
+            "Slurm partition of your cluster."
+        )
+
     script = f"""#!/bin/bash
 #SBATCH --job-name=mnist_toy
-#SBATCH --partition=bosch_cpu-cascadelake
+#SBATCH --partition={SLURM_PARTITION}
 #SBATCH --output={out_dir}/%j.out
 #SBATCH --error={out_dir}/%j.err
 

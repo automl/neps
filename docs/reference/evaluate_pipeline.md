@@ -67,11 +67,11 @@ def evaluate_pipeline(
     learning_rate: float,
     optimizer: str,
 ):
-    # 1) write a Slurm script
+    # 1) write a Slurm script (replace CHANGE_ME__PARTITION_NAME with your cluster's partition)
     script = f"""#!/bin/bash
 #SBATCH --time=0-00:10
 #SBATCH --job-name=trial_{pipeline_id}
-#SBATCH --partition=bosch_cpu-cascadelake
+#SBATCH --partition=CHANGE_ME__PARTITION_NAME
 #SBATCH --output={pipeline_directory}/%j.out
 #SBATCH --error={pipeline_directory}/%j.err
 

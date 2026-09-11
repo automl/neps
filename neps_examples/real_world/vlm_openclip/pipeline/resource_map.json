@@ -2,21 +2,21 @@
   {
     "name": "small",
     "max_batch_size": 64,
-    "partition": "testdlc2_gpu-l40s",
+    "partition": "CHANGE_ME__SMALL_PARTITION",
     "gres": "gpu:1",
     "mem": "16G"
   },
   {
     "name": "medium",
     "max_batch_size": 256,
-    "partition": "testdlc2_gpu-l40s",
+    "partition": "CHANGE_ME__MEDIUM_PARTITION",
     "gres": "gpu:1",
     "mem": "32G"
   },
   {
     "name": "large",
     "max_batch_size": null,
-    "partition": "testdlc2_gpu-l40s",
+    "partition": "CHANGE_ME__LARGE_PARTITION",
     "gres": "gpu:1",
     "mem": "64G"
   }

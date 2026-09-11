@@ -5,7 +5,8 @@ Usage:
     python -m neps.clean [-h] [--root-dir ROOT_DIR] [--dry-run] [--delete]
 
     # Reset specific trial IDs
-    python -m neps.clean [-h] [--root-dir ROOT_DIR] [--dry-run] [--delete] --trial-ids TRIAL_ID
+    python -m neps.clean [-h] [--root-dir ROOT_DIR] [--dry-run] [--delete]
+                         --trial-ids TRIAL_ID
 
 Optional arguments:
     -h, --help           show this help message and exit
@@ -31,7 +32,7 @@ from pathlib import Path
 
 from neps.clean.clean import clean_failed_trials
 from neps.state.trial import Trial
-from neps.status.status import post_run_csv
+from neps.status.summary import SummaryWriter
 
 parser = argparse.ArgumentParser(
     prog="python -m neps.clean",
@@ -115,4 +116,4 @@ else:
         logger.info(f"Total trials {action_verb}: {stats['total_removed']}")
         logger.info(f"Error entries cleaned: {stats['errors_cleaned']}")
         logger.info("=" * 70)
-        post_run_csv(args.root_directory)
+        SummaryWriter.from_directory(args.root_directory).update()

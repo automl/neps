@@ -7,19 +7,18 @@ integration with distributed setups (e.g., PyTorch DDP).
 
 from __future__ import annotations
 
-import inspect
 import logging
 import os
 import shutil
 import time
 import traceback
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from filelock import BaseFileLock, FileLock
 from portalocker import portalocker
 
 from neps.env import (
@@ -36,8 +35,7 @@ from neps.exceptions import (
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
-from neps.plot.generic_plots import plot_incumbent_trajectory, plot_pareto_front
-from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
+from neps.optimizers.optimizer import OptimizerInfo
 from neps.state import (
     BudgetInfo,
     DefaultReportValues,
@@ -51,19 +49,18 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.status.status import (
-    _build_incumbent_content,
-    _build_optimal_set_content,
-    _initiate_summary_csv,
-    status,
+from neps.status.summary import (
+    ResourceUsage,
+    SummaryWriter,
+    calculate_total_resource_usage,
+    resolve_fidelity_name,
 )
 from neps.utils.common import gc_disabled
-from neps.utils.files import get_file_writer
 
 if TYPE_CHECKING:
     from neps import SearchSpace
-    from neps.optimizers import OptimizerInfo
     from neps.optimizers.optimizer import AskFunction
+    from neps.space.neps_spaces.neps_space import PipelineSpace
 
 logger = logging.getLogger(__name__)
 
@@ -165,33 +162,6 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
     yield
 
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
-
-
-@dataclass
-class ResourceUsage:
-    """Container for tracking cumulative resource usage."""
-
-    evaluations: int = 0
-    cost: float = 0.0
-    fidelities: float = 0.0
-    time: float = 0.0
-
-    def __iadd__(self, other: ResourceUsage) -> ResourceUsage:
-        """Allows syntax: usage += other_usage."""
-        self.evaluations += other.evaluations
-        self.cost += other.cost
-        self.fidelities += other.fidelities
-        self.time += other.time
-        return self
-
-    def to_trajectory_dict(self) -> dict[str, float | int]:
-        """Converts usage to the dictionary keys expected by the trajectory file."""
-        return {
-            "cumulative_evaluations": self.evaluations,
-            "cumulative_cost": self.cost,
-            "cumulative_fidelities": self.fidelities,
-            "cumulative_time": self.time,
-        }
 
 
 # NOTE: This class is quite stateful and has been split up quite a bit to make testing
@@ -319,7 +289,20 @@ class DefaultWorker:
 
         return False
 
-    def _calculate_total_resource_usage(  # noqa: C901
+    @cached_property
+    def _fidelity_name(self) -> str | None:
+        return self.state.fidelity_name or resolve_fidelity_name(self.optimizer)
+
+    @cached_property
+    def _summary_writer(self) -> SummaryWriter:
+        return SummaryWriter(
+            root_directory=Path(self.state.path),
+            fidelity_name=self._fidelity_name,
+            live_plots=self.settings.live_plots,
+            optimizer=self.optimizer,
+        )
+
+    def _calculate_total_resource_usage(
         self,
         trials: Mapping[str, Trial],
         subset_worker_id: str | None = None,
@@ -334,74 +317,12 @@ class DefaultWorker:
                 trials evaluated by this worker ID.
             include_in_progress: Whether to include incomplete trials.
         """
-        relevant_trials = list(trials.values())
-        if subset_worker_id is not None:
-            relevant_trials = [
-                t
-                for t in relevant_trials
-                if t.metadata.evaluating_worker_id == subset_worker_id
-            ]
-
-        fidelity_name = None
-        optimizer_space = (
-            getattr(self.optimizer, "space", None)
-            or getattr(self.optimizer, "pipeline_space", None)
-            or getattr(self.optimizer, "_pipeline", None)
+        return calculate_total_resource_usage(
+            trials,
+            self._fidelity_name,
+            subset_worker_id,
+            include_in_progress=include_in_progress,
         )
-        if optimizer_space is not None:
-            if (
-                hasattr(optimizer_space, "fidelity_attrs")
-                and optimizer_space.fidelity_attrs
-            ):
-                fidelity_name = next(iter(optimizer_space.fidelity_attrs.keys()))
-                fidelity_name = (
-                    f"{NepsCompatConverter._ENVIRONMENT_PREFIX}{fidelity_name}"
-                )
-            elif hasattr(optimizer_space, "fidelities") and optimizer_space.fidelities:
-                fidelity_name = next(iter(optimizer_space.fidelities.keys()))
-
-        usage = ResourceUsage()
-
-        for trial in relevant_trials:
-            if not (
-                trial.report is not None
-                or (
-                    include_in_progress and trial.metadata.state == Trial.State.EVALUATING
-                )
-            ):
-                continue
-            usage.evaluations += 1
-            if trial.report and trial.report.cost is not None:
-                usage.cost += trial.report.cost
-
-            # Handle time: either from report or calculate from metadata
-            if trial.report and trial.report.evaluation_duration is not None:
-                usage.time += trial.report.evaluation_duration
-            elif (
-                trial.metadata.time_started is not None
-                and trial.metadata.time_end is not None
-            ):
-                usage.time += trial.metadata.time_end - trial.metadata.time_started
-
-            if (
-                fidelity_name
-                and fidelity_name in trial.config
-                and trial.config[fidelity_name] is not None
-            ):
-                usage.fidelities += trial.config[fidelity_name]
-
-        return usage
-
-    def _cumulative_resource_usage(self, trials: Sequence[Trial]) -> list[ResourceUsage]:
-        """Calculates the running resource usage over `trials`, in the given order:
-        entry `i` is the usage of `trials[: i + 1]`.
-        """
-        running = ResourceUsage()
-        cumulative = []
-        for trial in trials:
-            running += self._calculate_total_resource_usage({trial.id: trial})
-            cumulative.append(ResourceUsage(**asdict(running)))
-        return cumulative
 
     def _check_global_stopping_criterion(  # noqa: C901
         self,
@@ -542,107 +463,6 @@ class DefaultWorker:
             or self.settings.max_evaluation_time_total_seconds is not None
         )
 
-    def _write_trajectory_files(
-        self,
-        incumbent_configs: list,
-        optimal_configs: list,
-        trace_lock: FileLock,
-        improvement_trace_path: Path,
-        best_config_path: Path,
-        final_stopping_criteria: ResourceUsage | None = None,
-    ) -> None:
-        """Writes the trajectory and best config files safely using generic file
-        writer.
-        """
-        trace_text = _build_incumbent_content(incumbent_configs)
-
-        best_config_text = _build_optimal_set_content(optimal_configs)
-
-        if final_stopping_criteria:
-            best_config_text += "\n" + "-" * 80
-            best_config_text += "\nFinal cumulative metrics (Assuming completed run):"
-            for metric, value in final_stopping_criteria.to_trajectory_dict().items():
-                best_config_text += f"\n{metric}: {value}"
-
-        with trace_lock:
-            text_writer = get_file_writer("text")
-            if incumbent_configs:
-                try:
-                    text_writer.write(trace_text, improvement_trace_path)
-                except Exception as e:  # noqa: BLE001
-                    logger.error(f"Failed to write improvement trace: {e}")
-            if optimal_configs:
-                try:
-                    text_writer.write(best_config_text, best_config_path)
-                except Exception as e:  # noqa: BLE001
-                    logger.error(f"Failed to write best config: {e}")
-
-    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
-        """Save optimizer artifacts to summary directory.
-
-        Args:
-            artifacts: List of Artifact objects to persist.
-            summary_dir: Summary directory where artifacts will be saved.
-        """
-        logger.debug("saving artifacts...")
-
-        for artifact in artifacts:
-            try:
-                # Map ArtifactType enum to string for writer lookup
-                content_type = artifact.artifact_type.value
-                writer = get_file_writer(content_type)
-                file_path = summary_dir / artifact.name
-
-                accepted = set(inspect.signature(writer.write).parameters)
-                unknown = set(artifact.metadata) - accepted
-                if unknown:
-                    raise TypeError(
-                        f"metadata key(s) {sorted(unknown)} are not accepted by "
-                        f"{type(writer).__name__}.write(); valid keys: {sorted(accepted)}"
-                    )
-
-                writer.write(artifact.content, file_path, **artifact.metadata)
-            except Exception as e:  # noqa: BLE001
-                logger.error(
-                    f"Failed to save artifact '{artifact.name}' "
-                    f"(type={artifact.artifact_type.value}): {e}"
-                )
-                # Allow optimization to continue even if artifact save fails
-                continue
-
-    def _save_generic_artifacts(
-        self,
-        trials: Sequence[Trial],
-        cumulative_usage: Sequence[ResourceUsage],
-        incumbent_ids: set[str],
-        pareto_ids: set[str],
-        summary_dir: Path,
-    ) -> None:
-        """Save the plots every run gets, whatever the optimizer, each along with a
-        CSV of the plotted points.
-
-        With one objective, the incumbent is plotted over the cumulative cost (or
-        evaluations, if no cost is reported). With two, the objectives are plotted
-        against each other, highlighting the Pareto front.
-        """
-        assert trials[0].report is not None  # for mypy
-        n_objectives = len(_to_sequence(trials[0].report.objective_to_minimize))  # type: ignore[arg-type]
-        try:
-            if n_objectives == 1:
-                artifacts = plot_incumbent_trajectory(
-                    trials, cumulative_usage, incumbent_ids
-                )
-            elif n_objectives == 2:
-                artifacts = plot_pareto_front(trials, pareto_ids)
-            else:
-                logger.debug("No summary plot for %d objectives.", n_objectives)
-                return
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to create the summary plot: {e}")
-            return
-
-        self._save_optimizer_artifacts(artifacts, summary_dir)
-
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
         with self.state._optimizer_lock.lock(worker_id=self.worker_id):
@@ -762,28 +582,13 @@ class DefaultWorker:
         """
         _set_workers_neps_state(self.state)
 
-        main_dir = Path(self.state.path)
-        summary_dir = main_dir / "summary"
-        summary_dir.mkdir(parents=True, exist_ok=True)
-        improvement_trace_path = summary_dir / "best_config_trajectory.txt"
-        improvement_trace_path.touch(exist_ok=True)
-        best_config_path = summary_dir / "best_config.txt"
-        best_config_path.touch(exist_ok=True)
-        _trace_lock = FileLock(str(main_dir / ".trace.lock"))
-        _trace_lock_path = Path(str(_trace_lock.lock_file))
-        _trace_lock_path.touch(exist_ok=True)
-        full_df_path, short_path, summary_locker = _initiate_summary_csv(main_dir)
-
-        # Create empty CSV files
-        with summary_locker.lock():
-            full_df_path.parent.mkdir(parents=True, exist_ok=True)
-            full_df_path.touch(exist_ok=True)
-            short_path.touch(exist_ok=True)
+        summary = self._summary_writer
+        summary.touch()
 
         logger.info(
             "Summary files can be found in the “summary” folder inside"
             " the root directory: %s",
-            summary_dir,
+            summary.summary_dir,
         )
 
         optimizer_name = self.state._optimizer_info["name"]
@@ -795,13 +600,7 @@ class DefaultWorker:
         _repeated_fail_get_next_trial_count = 0
         n_repeated_failed_check_should_stop = 0
 
-        evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-        self._update_summary(
-            evaluated_trials,
-            _trace_lock,
-            improvement_trace_path,
-            best_config_path,
-        )
+        summary.update(self.state._trial_repo.get_valid_evaluated_trials())
 
         while True:
             try:
@@ -929,32 +728,7 @@ class DefaultWorker:
             if report.objective_to_minimize is not None and report.err is None:
                 with self.state._trial_lock.lock():
                     evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-                    self._update_summary(
-                        evaluated_trials,
-                        _trace_lock,
-                        improvement_trace_path,
-                        best_config_path,
-                    )
-                # Persist optimizer artifacts if available and asked for
-                if self.settings.live_plots and hasattr(
-                    self.optimizer, "get_trial_artifacts"
-                ):
-                    try:
-                        artifacts = self.optimizer.get_trial_artifacts(
-                            trials=evaluated_trials
-                        )
-                        if artifacts is not None:
-                            with _trace_lock:
-                                self._save_optimizer_artifacts(artifacts, summary_dir)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to persist optimizer artifacts: {e}", exc_info=True
-                        )
-
-                full_df, short = status(main_dir)
-                with summary_locker.lock():
-                    full_df.to_csv(full_df_path)
-                    short.to_frame().to_csv(short_path)
+                summary.update(evaluated_trials)
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
@@ -962,87 +736,6 @@ class DefaultWorker:
             logger.debug(
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
-
-    def _update_summary(
-        self,
-        trials: dict[str, Trial],
-        _trace_lock: BaseFileLock,
-        improvement_trace_path: Path,
-        best_config_path: Path,
-    ) -> None:
-        """Load the incumbent trace from previous trials and update the state.
-        This function also computes cumulative resource usage and updates the best
-        configurations.
-
-        Args:
-            trials (dict): A dictionary of the evaluated trials which have a valid report.
-            _trace_lock (BaseFileLock): A file lock to ensure thread-safe writing.
-            improvement_trace_path (Path): Path to the improvement trace file.
-            best_config_path (Path): Path to the best configuration file.
-        """
-        if not trials:
-            return
-
-        # Clear any existing entries to prevent duplicates and rebuild a
-        # non-dominated frontier from previous trials in chronological order.
-        incumbent = []
-
-        sorted_trials: list[Trial] = sorted(
-            trials.values(),
-            key=lambda t: (
-                t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
-            ),
-        )
-        is_mo = any(
-            isinstance(trial.report.objective_to_minimize, list)  # type: ignore[union-attr]
-            for trial in sorted_trials
-        )
-
-        frontier: list[Trial] = []
-        trajectory_confs: dict[str, dict[str, float | int]] = {}
-        cumulative_usage = self._cumulative_resource_usage(sorted_trials)
-
-        for evaluated_trial, usage in zip(sorted_trials, cumulative_usage, strict=True):
-            assert evaluated_trial.report is not None  # for mypy
-            new_trial_obj = evaluated_trial.report.objective_to_minimize
-
-            if not _is_dominated(new_trial_obj, frontier):
-                frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
-                if not is_mo:
-                    incumbent.append(evaluated_trial)
-                config_dict = {
-                    "score": new_trial_obj,
-                    "trial_id": evaluated_trial.id,
-                    "config": evaluated_trial.config,
-                }
-                if evaluated_trial.report.cost is not None:
-                    config_dict["cost"] = evaluated_trial.report.cost
-
-                config_dict.update(usage.to_trajectory_dict())
-                trajectory_confs[evaluated_trial.id] = config_dict
-
-        optimal_configs: list[dict] = [trajectory_confs[trial.id] for trial in frontier]
-        incumbent_configs: list[dict] = [
-            trajectory_confs[trial.id] for trial in incumbent
-        ]
-
-        self._write_trajectory_files(
-            incumbent_configs=incumbent_configs,
-            optimal_configs=optimal_configs,
-            trace_lock=_trace_lock,
-            improvement_trace_path=improvement_trace_path,
-            best_config_path=best_config_path,
-        )
-
-        if self.settings.live_plots:
-            with _trace_lock:
-                self._save_generic_artifacts(
-                    sorted_trials,
-                    cumulative_usage,
-                    incumbent_ids={trial.id for trial in incumbent},
-                    pareto_ids={trial.id for trial in frontier},
-                    summary_dir=best_config_path.parent,
-                )
 
 
 def _save_results(
@@ -1201,6 +894,15 @@ def _launch_runtime(  # noqa: PLR0913
         )
         return
 
+    # Resolved once, here, and persisted with the optimizer info: everything that
+    # summarizes the run later (including `neps.save_pipeline_results`, which has
+    # no optimizer at hand) reads it back off disk instead of re-deriving it.
+    optimizer_info = OptimizerInfo(
+        name=optimizer_info["name"],
+        info=optimizer_info["info"],
+        fidelity_name=resolve_fidelity_name(optimizer, pipeline_space),
+    )
+
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(
             f"Overwriting optimization directory '{optimization_dir}' as"
@@ -1318,46 +1020,3 @@ def _make_default_report_values(
         learning_curve_on_error=None,
         learning_curve_if_not_provided="objective_to_minimize",
     )
-
-
-def _to_sequence(score: float | Sequence[float]) -> list[float]:
-    if isinstance(score, Sequence):
-        return [float(x) for x in score]
-    return [float(score)]
-
-
-def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
-    cand_seq = _to_sequence(candidate)
-
-    for t in frontier:
-        if t.report is None:
-            continue
-        f_seq = _to_sequence(t.report.objective_to_minimize)
-        if len(f_seq) != len(cand_seq):
-            continue
-        if all(fi <= ci for fi, ci in zip(f_seq, cand_seq, strict=False)) and any(
-            fi < ci for fi, ci in zip(f_seq, cand_seq, strict=False)
-        ):
-            return True
-    return False
-
-
-def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
-    if candidate.report is None:
-        return frontier
-
-    cand_seq = _to_sequence(candidate.report.objective_to_minimize)
-    new_frontier: list[Trial] = []
-    for t in frontier:
-        if t.report is None:
-            continue
-        f_seq = _to_sequence(t.report.objective_to_minimize)
-        if (
-            len(f_seq) == len(cand_seq)
-            and all(ci <= fi for ci, fi in zip(cand_seq, f_seq, strict=False))
-            and any(ci < fi for ci, fi in zip(cand_seq, f_seq, strict=False))
-        ):
-            continue
-        new_frontier.append(t)
-    new_frontier.append(candidate)
-    return new_frontier

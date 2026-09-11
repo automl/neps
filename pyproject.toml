@@ -249,6 +249,9 @@ ignore = [
 "tests/test_neps_space/*.py" = [
     "E501", # Line length for architecture strings
 ]
+"tests/worker_scaling_study/*.py" = [
+    "INP001", # Standalone scripts that import each other, not a package
+]
 
 "__init__.py" = ["I002"]
 "neps_examples/*" = [

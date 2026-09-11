@@ -17,7 +17,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, overload
 
 import numpy as np
 
@@ -607,6 +607,11 @@ class NePSState:
         with self._optimizer_lock.lock():
             return _deserialize_optimizer_info(self._optimizer_info_path)
 
+    @property
+    def fidelity_name(self) -> str | None:
+        """The key a fidelity takes in a trial's config, if the space has one."""
+        return self._optimizer_info.get("fidelity_name")
+
     def lock_and_get_search_space(self) -> SearchSpace | PipelineSpace | None:
         """Get the pipeline space, with the lock acquired.
 
@@ -842,13 +847,30 @@ class NePSState:
         # to first lock before we do this check
         if not is_new:
             existing_info = _deserialize_optimizer_info(optimizer_info_path)
-            if not load_only and existing_info != optimizer_info:
+            # `fidelity_name` is derived from the space rather than chosen by the
+            # user, so it does not take part in the check that a resumed run uses
+            # the same optimizer. Runs created before it was stored lack it, and
+            # get it backfilled here.
+            if not load_only and _optimizer_identity(
+                existing_info
+            ) != _optimizer_identity(optimizer_info):
                 raise NePSError(
                     "The optimizer info on disk does not match the one provided."
                     f"\nOn disk: {existing_info}"
                     f"\n   Loaded from {path}."
                     f"\nProvided: {optimizer_info}"
                 )
+            if (
+                not load_only
+                and optimizer_info is not None
+                and existing_info.get("fidelity_name") is None
+                and optimizer_info.get("fidelity_name") is not None
+            ):
+                existing_info["fidelity_name"] = optimizer_info["fidelity_name"]
+                try:
+                    serialize(existing_info, path=optimizer_info_path)
+                except Exception as e:  # noqa: BLE001
+                    logger.debug(f"Could not backfill the fidelity name: {e}")
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
 
@@ -975,6 +997,13 @@ class NePSState:
         )
 
 
+def _optimizer_identity(info: OptimizerInfo | None) -> dict[str, Any]:
+    """The part of an optimizer info that identifies which optimizer is in use."""
+    if info is None:
+        return {}
+    return {k: v for k, v in info.items() if k != "fidelity_name"}
+
+
 def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
     from neps.optimizers import OptimizerInfo  # Fighting circular import
 
@@ -997,7 +1026,10 @@ def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
             f"Invalid optimizer info '{info}' deserialized from"
             f" {path}. Expected a `dict` or `None`."
         )
-    return OptimizerInfo(name=name, info=info or {})
+    optimizer_info = OptimizerInfo(name=name, info=info or {})
+    if "fidelity_name" in deserialized:
+        optimizer_info["fidelity_name"] = deserialized["fidelity_name"]
+    return optimizer_info
 
 
 def _get_worker_name(idx: int) -> str:

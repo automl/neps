@@ -8,6 +8,7 @@ and algorithms.
 import logging
 
 from neps.api import (
+    analyze,
     create_config,
     import_trials,
     load_config,
@@ -67,6 +68,7 @@ __all__ = [
     "Trial",
     "UserResultDict",
     "algorithms",
+    "analyze",
     "convert_operation_to_callable",
     "create_config",
     "import_trials",
