@@ -803,13 +803,15 @@ class NePSState:
         # to first lock before we do this check
         if not is_new:
             existing_info = _deserialize_optimizer_info(optimizer_info_path)
-            if not load_only and existing_info != optimizer_info:
-                raise NePSError(
-                    "The optimizer info on disk does not match the one provided."
-                    f"\nOn disk: {existing_info}"
-                    f"\n   Loaded from {path}."
-                    f"\nProvided: {optimizer_info}"
-                )
+            if not load_only:
+                assert optimizer_info is not None
+                if not _optimizer_info_matches(existing_info, optimizer_info):
+                    raise NePSError(
+                        "The optimizer info on disk does not match the one provided."
+                        f"\nOn disk: {existing_info}"
+                        f"\n   Loaded from {path}."
+                        f"\nProvided: {optimizer_info}"
+                    )
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
 
@@ -958,7 +960,27 @@ def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
             f"Invalid optimizer info '{info}' deserialized from"
             f" {path}. Expected a `dict` or `None`."
         )
-    return OptimizerInfo(name=name, info=info or {})
+    optimizer_info = OptimizerInfo(name=name, info=info or {})
+    if isinstance(derived := deserialized.get("derived"), dict):
+        optimizer_info["derived"] = derived
+    return optimizer_info
+
+
+def _optimizer_info_matches(on_disk: OptimizerInfo, provided: OptimizerInfo) -> bool:
+    if on_disk["name"] != provided["name"]:
+        return False
+
+    disk_info, provided_info = on_disk["info"], provided["info"]
+    if any(k not in provided_info or provided_info[k] != v for k, v in disk_info.items()):
+        return False
+
+    if unrecorded := sorted(set(provided_info) - set(disk_info)):
+        logger.info(
+            "Optimizer settings %s are not recorded in the existing run, accepting"
+            " the provided values.",
+            unrecorded,
+        )
+    return True
 
 
 def _get_worker_name(idx: int) -> str:

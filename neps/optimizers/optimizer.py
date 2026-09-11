@@ -29,6 +29,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Protocol, TypedDict
+from typing_extensions import NotRequired
 
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
@@ -46,6 +47,11 @@ class OptimizerInfo(TypedDict):
     """Additional information about the optimizer.
 
     Usually this will be the keyword arguments used to initialize the optimizer.
+    """
+
+    derived: NotRequired[Mapping[str, Any]]
+    """Values the optimizer computed from its settings, e.g. the rung layout of
+    multi-fidelity optimizers. Informational only, not compared when resuming a run.
     """
 
 

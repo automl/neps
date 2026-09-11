@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import logging
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -259,6 +259,9 @@ class BracketOptimizer:
 
     fid_name: str
     """The name of the fidelity in the space."""
+
+    derived_info: Mapping[str, Any] = field(default_factory=dict)
+    """The rung layout, recorded under `derived` in `optimizer_info.yaml`."""
 
     def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
