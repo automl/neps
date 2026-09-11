@@ -19,9 +19,6 @@ from generate_configs import ROOT_DIRECTORY
 # sync with that constant), so image decoding never starves the GPU.
 CPUS_PER_TASK = 4 + 1
 
-# #CHANGE_ME: nodes Slurm must not schedule on, e.g. ones with faulty GPUs
-# (dlc2gpu07 raised "uncorrectable ECC error" on one of its GPUs).
-EXCLUDE_NODES = ["dlc2gpu07"]
 
 SOURCE_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = Path(ROOT_DIRECTORY).resolve()
