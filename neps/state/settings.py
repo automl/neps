@@ -159,3 +159,18 @@ class WorkerSettings:
     """Whether to refresh the summary plots and optimizer artifacts after every
     evaluated trial.
     """
+
+    # --------- Global Stopping Criterion ---------
+    total_evaluations_to_spend: int | None = None
+    """The maximum number of evaluations across all workers.
+
+    Once this total is reached, no worker will start evaluating new configurations.
+    """
+
+    total_cost_to_spend: float | None = None
+    """The maximum accumulated cost across all workers.
+
+    This cost is the sum of ``cost`` values reported by evaluations across all
+    workers. Once this total is reached, no worker will start evaluating new
+    configurations.
+    """

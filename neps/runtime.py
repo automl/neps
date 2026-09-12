@@ -531,6 +531,29 @@ class DefaultWorker:
                 " a different stopping criterion."
             )
 
+        if (
+            self.settings.total_evaluations_to_spend is not None
+            and global_resource_usage.evaluations
+            >= self.settings.total_evaluations_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum number of evaluations"
+                " allowed as given by"
+                f" `{self.settings.total_evaluations_to_spend=}`."
+                f" The total number of evaluations is"
+                f" '{global_resource_usage.evaluations}'."
+            )
+
+        if (
+            self.settings.total_cost_to_spend is not None
+            and global_resource_usage.cost >= self.settings.total_cost_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum cost allowed as given by"
+                f" `{self.settings.total_cost_to_spend=}`."
+                f" The total cost spent is '{global_resource_usage.cost}'."
+            )
+
         return (return_string, global_resource_usage)
 
     @property
@@ -540,6 +563,8 @@ class DefaultWorker:
             or self.settings.cost_to_spend is not None
             or self.settings.fidelities_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
+            or self.settings.total_evaluations_to_spend is not None
+            or self.settings.total_cost_to_spend is not None
         )
 
     def _write_trajectory_files(
@@ -1176,6 +1201,8 @@ def _launch_runtime(  # noqa: PLR0913
     optimization_dir: Path,
     pipeline_space: SearchSpace | PipelineSpace,
     cost_to_spend: float | None,
+    total_evaluations_to_spend: int | None,
+    total_cost_to_spend: float | None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None,
     cost_value_on_error: float | None,
@@ -1257,6 +1284,8 @@ def _launch_runtime(  # noqa: PLR0913
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
         evaluations_to_spend=evaluations_to_spend,
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
         fidelities_to_spend=fidelities_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
