@@ -109,6 +109,148 @@ def test_evaluations_to_spend_stopping_criterion(
     assert len(neps_state.lock_and_get_errors()) == 0
 
 
+def test_total_evaluations_to_spend_stopping_criterion(
+    neps_state: NePSState,
+) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(pipeline_space=TestSpace())
+    settings = WorkerSettings(
+        on_error=OnErrorPossibilities.IGNORE,
+        default_report_values=DefaultReportValues(),
+        evaluations_to_spend=3,
+        include_in_progress_evaluations_towards_maximum=False,
+        cost_to_spend=None,
+        fidelities_to_spend=None,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
+        total_evaluations_to_spend=5,
+    )
+
+    def eval_function(*args, **kwargs) -> dict:
+        return {"objective_to_minimize": 1.0, "cost": 1.0}
+
+    worker = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=eval_function,
+        settings=settings,
+    )
+    worker.run()
+
+    trials = list(neps_state.lock_and_read_trials().values())
+
+    assert (
+        sum(
+            1
+            for trial in trials
+            if trial.metadata.evaluating_worker_id == worker.worker_id
+        )
+        == 3
+    )
+
+    # Disabling the local limit so only the global limit stops the second worker.
+    settings.evaluations_to_spend = None
+
+    new_worker = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=eval_function,
+        settings=settings,
+    )
+    new_worker.run()
+
+    trials = list(neps_state.lock_and_read_trials().values())
+
+    assert len(trials) == 5
+    assert (
+        sum(
+            1
+            for trial in trials
+            if trial.metadata.evaluating_worker_id == new_worker.worker_id
+        )
+        == 2
+    )
+    assert len(neps_state.lock_and_get_errors()) == 0
+
+
+def test_total_cost_to_spend_stopping_criterion(
+    neps_state: NePSState,
+) -> None:
+    class TestSpace(PipelineSpace):
+        a = Float(0, 1)
+
+    optimizer = random_search(pipeline_space=TestSpace())
+    settings = WorkerSettings(
+        on_error=OnErrorPossibilities.IGNORE,
+        default_report_values=DefaultReportValues(),
+        evaluations_to_spend=2,
+        include_in_progress_evaluations_towards_maximum=False,
+        cost_to_spend=None,
+        fidelities_to_spend=None,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
+        total_cost_to_spend=6,
+    )
+
+    def eval_function(*args, **kwargs) -> dict:
+        return {"objective_to_minimize": 1.0, "cost": 2.0}
+
+    worker = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=eval_function,
+        settings=settings,
+    )
+    worker.run()
+
+    trials = list(neps_state.lock_and_read_trials().values())
+
+    assert len(trials) == 2
+    assert (
+        sum(
+            trial.report.cost
+            for trial in trials
+            if trial.report is not None and trial.report.cost is not None
+        )
+        == 4
+    )
+
+    settings.evaluations_to_spend = None
+
+    new_worker = DefaultWorker.new(
+        state=neps_state,
+        optimizer=optimizer,
+        evaluation_fn=eval_function,
+        settings=settings,
+    )
+    new_worker.run()
+
+    trials = list(neps_state.lock_and_read_trials().values())
+
+    assert len(trials) == 3
+    assert (
+        sum(
+            trial.report.cost
+            for trial in trials
+            if trial.report is not None and trial.report.cost is not None
+        )
+        == 6
+    )
+    assert (
+        sum(
+            1
+            for trial in trials
+            if trial.metadata.evaluating_worker_id == new_worker.worker_id
+        )
+        == 1
+    )
+    assert len(neps_state.lock_and_get_errors()) == 0
+
+
 def test_multiple_criteria_set(
     neps_state: NePSState,
 ) -> None:

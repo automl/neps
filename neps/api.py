@@ -50,6 +50,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     max_evaluations_per_run: int | None = None,  # deprecated
     continue_until_max_evaluation_completed: bool = False,
     cost_to_spend: int | float | None = None,
+    total_evaluations_to_spend: int | None = None,
+    total_cost_to_spend: int | float | None = None,
     fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
@@ -208,6 +210,14 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
+
+        total_evaluations_to_spend: Maximum number of evaluations across all workers
+            sharing the same NePS run. Once this total is reached, no worker will start
+            a new evaluation.
+
+        total_cost_to_spend: Maximum accumulated cost across all workers sharing the
+            same NePS run. Once this total is reached, no worker will start a new
+            evaluation.
 
         fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
 
@@ -377,6 +387,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     controling_params = {
         "evaluations_to_spend": evaluations_to_spend,
         "cost_to_spend": cost_to_spend,
+        "total_evaluations_to_spend": total_evaluations_to_spend,
+        "total_cost_to_spend": total_cost_to_spend,
         "fidelities_to_spend": fidelities_to_spend,
     }
     if all(x is None for x in controling_params.values()):
@@ -472,6 +484,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
         cost_to_spend=cost_to_spend,
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
         fidelities_to_spend=fidelities_to_spend,
         optimization_dir=Path(root_directory),
         evaluations_to_spend=evaluations_to_spend,
