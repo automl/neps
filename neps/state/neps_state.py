@@ -264,7 +264,7 @@ class TrialRepo:
 
 
 @dataclass
-class NePSState:  # noqa: PLW1641
+class NePSState:
     """The main state object that holds all the shared state objects."""
 
     path: Path
@@ -833,7 +833,7 @@ class NePSState:  # noqa: PLW1641
                     if not load_only and pipeline_space is not None:
                         # Compare semantic attributes instead of raw pickle bytes
                         # This allows trivial changes like renaming the space class
-                        from neps.space.neps_spaces.parameters import (  # noqa: PLC0415
+                        from neps.space.neps_spaces.parameters import (
                             PipelineSpace as PS,
                         )
 
@@ -943,7 +943,7 @@ class NePSState:  # noqa: PLW1641
 
 
 def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
-    from neps.optimizers import OptimizerInfo  # noqa: PLC0415 -- Fighting circular import
+    from neps.optimizers import OptimizerInfo
 
     deserialized = deserialize(path)
     if "name" not in deserialized or "info" not in deserialized:
