@@ -9,7 +9,7 @@ Welcome to NePS, a powerful and flexible Python library for hyperparameter optim
 
 NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups and, in general, NePS is tailored to the needs of deep learning experts.
 
-To learn about NePS, check-out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or a [colab tutorial](https://colab.research.google.com/drive/11IOhkmMKsIUhWbHyMYzT0v786O9TPWlH?usp=sharing).
+To learn about NePS, check-out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or a [colab tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb).
 
 ## Key Features
 
@@ -23,8 +23,8 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
     NePS provides capabilities for optimizing DL architectures in an expressive and natural fashion.
      - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
 1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
-     NePS simplifies the process of parallelizing optimization tasks both on individual computers and in distributed
-     computing environments. As NePS is made for deep learners, all technical choices are made with DL in mind and common
+     NePS simplifies the process of parallelizing optimization tasks both on individual computers, where multiple workers coordinate
+     through the shared results directory, and in distributed computing environments, naturally supporting PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html). As NePS is made for deep learners, all technical choices are made with DL in mind and common
      DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
 
 ## Installation
@@ -68,6 +68,7 @@ class ExampleSpace(neps.PipelineSpace):
         lower=1e-5,
         upper=1e-1,
         log=True,   # Log spaces
+        log_base=10, # Logarithm base, by default it's natural log
         prior=1e-3, # Incorporate your knowledge to help optimization
     )
     alpha = neps.Integer(lower=1, upper=42)
@@ -86,9 +87,11 @@ neps.run(
 
 Discover how NePS works through these examples:
 
-- **[Hyperparameter Optimization](neps_examples/basic_usage/hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
+- **[Hyperparameter Optimization](neps_examples/basic_usage/1_hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
 
 - **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
+
+- **[Multi-Objective Optimization](neps_examples/efficiency/multi_objective.py)**: Learn how to optimize multiple competing objectives simultaneously using PriMO with expert priors and multi-fidelity.
 
 - **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 

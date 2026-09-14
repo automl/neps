@@ -5,16 +5,18 @@ and plotting utilities, making it easy to experiment with different configuratio
 and algorithms.
 """
 
+import logging
+
 from neps.api import (
     create_config,
+    extrapolate,
     import_trials,
     load_config,
     load_optimizer_info,
     load_pipeline_space,
+    plot_study_artifacts,
     run,
     save_pipeline_results,
-    extrapolate,
-    plot_study_artifacts,
 )
 from neps.optimizers import algorithms
 from neps.optimizers.ask_and_tell import AskAndTell
@@ -41,6 +43,9 @@ from neps.status.status import status
 from neps.utils import convert_operation_to_callable
 from neps.utils.files import load_and_merge_yamls
 
+# As a library, NePS does not configure logging: no handlers, no levels, no format.
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
 __all__ = [
     "AskAndTell",
     "BudgetInfo",
@@ -66,16 +71,16 @@ __all__ = [
     "algorithms",
     "convert_operation_to_callable",
     "create_config",
+    "extrapolate",
     "import_trials",
     "load_and_merge_yamls",
     "load_config",
     "load_optimizer_info",
     "load_pipeline_space",
     "plot",
+    "plot_study_artifacts",
     "run",
     "save_pipeline_results",
     "status",
     "tblogger",
-    "extrapolate",
-    "plot_study_artifacts",
 ]

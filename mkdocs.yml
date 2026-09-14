@@ -152,6 +152,7 @@ nav:
     - Multi-Fidelity Optimizers: 'reference/search_algorithms/multifidelity.md'
     - Prior Optimizers: 'reference/search_algorithms/prior.md'
     - Multi-Fidelity & Prior Optimizers: 'reference/search_algorithms/multifidelity_prior.md'
+    - Multi-Objective Optimizer: 'reference/search_algorithms/multi_objective.md'
     - Bayesian Optimization: 'reference/search_algorithms/bayesian_optimization.md'
   - API: 'api/' # auto-generated
   - Contributing: 'dev_docs/contributing.md'

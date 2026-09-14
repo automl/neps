@@ -461,6 +461,7 @@ def determine_optimizer_automatically(  # noqa: PLR0911
 
     raise ValueError("Could not determine optimizer automatically.")
 
+
 def scaling_law_guided_primo(
     space: SearchSpace,
     *,
@@ -474,7 +475,7 @@ def scaling_law_guided_primo(
     bo_scalar_weights: dict[str, float] | None = None,
 ):
     from neps.optimizers.sl_primo import SL_PriMO
-    from neps.optimizers.utils.grid import make_grid
+
     """PriMO optimizer guided by scaling laws.
 
     Args:
@@ -524,6 +525,7 @@ def scaling_law_guided_primo(
         # )
     )
 
+
 def kaplan_guided_scaling(
     space: SearchSpace,
     *,
@@ -534,7 +536,7 @@ def kaplan_guided_scaling(
     max_target_flop: int,
 ):
     from neps.optimizers.kaplan_guided_scaling import Kaplan_Guided_Scaling
-    
+
     return Kaplan_Guided_Scaling(
         space=convert_neps_to_classic_search_space(space=space),
         flops_estimator=flops_estimator,
@@ -544,16 +546,18 @@ def kaplan_guided_scaling(
         max_target_flop=max_target_flop,
     )
 
+
 def chinchilla_guided_scaling(
     space: SearchSpace,
     *,
-    params_estimator: Callable[[SearchSpace], int] = None,
-    seen_datapoints_estimator: Callable[[SearchSpace], int] = None,
-    flops_estimator: Callable[[SearchSpace], int] = None,
-    base_optimizer: Callable[..., Any] = None,
+    params_estimator: Callable[[SearchSpace], int] | None = None,
+    seen_datapoints_estimator: Callable[[SearchSpace], int] | None = None,
+    flops_estimator: Callable[[SearchSpace], int] | None = None,
+    base_optimizer: Callable[..., Any] | None = None,
     max_evaluation_flops: int | None = None,
 ):
     from neps.optimizers.chinchilla_guided_scaling import Chinchilla_Guided_Scaling
+
     if base_optimizer is None:
         base_optimizer = grid_search(
             space,
@@ -569,6 +573,7 @@ def chinchilla_guided_scaling(
         max_evaluation_flops=max_evaluation_flops,
     )
 
+
 def bo_guided_scaling(
     space: SearchSpace,
     *,
@@ -581,13 +586,14 @@ def bo_guided_scaling(
     reference_point: tuple[float, ...] | None = None,
     cost_aware: bool | Literal["log"] = False,
     sampling_strategy: Literal[
-                     "space_expansion", 
-                     "const_cost", 
-                     "left_budget_contraction",
-                    ] = "space_expansion",
+        "space_expansion",
+        "const_cost",
+        "left_budget_contraction",
+    ] = "space_expansion",
 ):
     from neps.optimizers.bo_guided_scaling import BO_Guided_Scaling
-    bayesian_optimizer = _bo(  # noqa: C901, PLR0912
+
+    bayesian_optimizer = _bo(
         pipeline_space=space,
         initial_design_size="ndim",
         use_priors=True,
@@ -606,7 +612,7 @@ def bo_guided_scaling(
         seen_datapoints_estimator=seen_datapoints_estimator,
         max_evaluation_flops=max_evaluation_flops,
         max_target_flops=max_target_flops,
-        sampling_strategy=sampling_strategy
+        sampling_strategy=sampling_strategy,
     )
 
 
@@ -1827,9 +1833,9 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
             rung_fidelity_str = "\n".join(
                 f"{k}: {v}" for k, v in rung_to_fidelity.items()
             )
-            logging.info(f"Successive Halving Rung to Fidelity:\n{rung_fidelity_str}")
+            logger.info(f"Successive Halving Rung to Fidelity:\n{rung_fidelity_str}")
             rung_sizes_str = "\n".join(f"{k}: {v}" for k, v in rung_sizes.items())
-            logging.info(f"Successive Halving Rung Sizes:\n{rung_sizes_str}")
+            logger.info(f"Successive Halving Rung Sizes:\n{rung_sizes_str}")
 
         case "hyperband":
             assert early_stopping_rate is None
@@ -1844,13 +1850,13 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
             rung_fidelity_str = "\n".join(
                 f"Rung {k}: Fidelity >= {v}" for k, v in rung_to_fidelity.items()
             )
-            logging.info(f"Hyperband Rung to Fidelity:\n{rung_fidelity_str}")
+            logger.info(f"Hyperband Rung to Fidelity:\n{rung_fidelity_str}")
             bracket_layouts_str = "\n\n".join(
                 f"Bracket {i}\n"
                 + "\n".join([f"At Rung {k}: {v} configs" for k, v in bracket.items()])
                 for i, bracket in enumerate(bracket_layouts)
             )
-            logging.info(f"Hyperband Bracket Layouts:\n{bracket_layouts_str}")
+            logger.info(f"Hyperband Bracket Layouts:\n{bracket_layouts_str}")
 
         case "asha":
             assert early_stopping_rate is not None
@@ -1867,9 +1873,9 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
             rung_fidelity_str = "\n".join(
                 f"{k}: {v}" for k, v in rung_to_fidelity.items()
             )
-            logging.info(f"ASHA Rung to Fidelity:\n{rung_fidelity_str}")
+            logger.info(f"ASHA Rung to Fidelity:\n{rung_fidelity_str}")
             rung_sizes_str = "\n".join(f"{k}: {v}" for k, v in _rung_sizes.items())
-            logging.info(f"ASHA Rung Sizes:\n{rung_sizes_str}")
+            logger.info(f"ASHA Rung Sizes:\n{rung_sizes_str}")
 
         case "async_hb":
             assert early_stopping_rate is None
@@ -1887,12 +1893,12 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
             rung_fidelity_str = "\n".join(
                 f"Rung {k}: Fidelity >= {v}" for k, v in rung_to_fidelity.items()
             )
-            logging.info(f"Async HB Rung to Fidelity:\n{rung_fidelity_str}")
+            logger.info(f"Async HB Rung to Fidelity:\n{rung_fidelity_str}")
             bracket_rungs_str = "\n\n".join(
                 f"Bracket {i}\n" + "\n".join([f"At Rung {k}" for k in bracket])
                 for i, bracket in enumerate(bracket_rungs)
             )
-            logging.info(f"Async Hyperband Bracket Rungs:\n{bracket_rungs_str}")
+            logger.info(f"Async Hyperband Bracket Rungs:\n{bracket_rungs_str}")
         case _:
             raise ValueError(f"Unknown bracket type: {bracket_type}")
 

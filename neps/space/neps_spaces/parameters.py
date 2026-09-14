@@ -394,6 +394,7 @@ class PipelineSpace(Resolvable):
             for k, v in self.get_attrs().items()
             if isinstance(v, Integer) and getattr(v, "is_scaling", False)
         }
+
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the pipeline as a mapping.
         This method collects all attributes of the pipeline class and instance,
@@ -414,7 +415,7 @@ class PipelineSpace(Resolvable):
                 continue
             attrs[attr_name] = attr_value
 
-        properties_to_ignore = ("fidelity_attrs","get_scaling_params")
+        properties_to_ignore = ("fidelity_attrs", "get_scaling_params")
         for property_to_ignore in properties_to_ignore:
             attrs.pop(property_to_ignore, None)
 
@@ -1133,7 +1134,8 @@ class Float(Domain[float]):
             lower: The minimum value of the domain.
             upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
-            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
+            log_base: The base for logarithmic scaling. If None, uses natural log.
+              Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
@@ -1369,7 +1371,8 @@ class Integer(Domain[int]):
             lower: The minimum value of the domain.
             upper: The maximum value of the domain.
             log: Whether to sample values on a logarithmic scale.
-            log_base: The base for logarithmic scaling. If None, uses natural log. Ignored if log is False.
+            log_base: The base for logarithmic scaling. If None, uses natural log.
+              Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted

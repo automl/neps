@@ -154,11 +154,6 @@ def load_and_merge_yamls(*paths: str | Path | IO[str]) -> dict[str, Any]:
     return config
 
 
-# ============================================================================
-# Generic File Persistence System
-# ============================================================================
-
-
 class FileWriter(Protocol):
     """Protocol for writing content to disk."""
 
@@ -205,7 +200,7 @@ class JsonWriter:
         file_path = Path(file_path).with_suffix(".json")
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "w") as f:
+            with file_path.open("w") as f:
                 json.dump(content, f, indent=2, default=str)
             logger.debug(f"Wrote JSON to {file_path}")
         except Exception as e:
@@ -263,7 +258,7 @@ class PickleWriter:
         file_path = Path(file_path).with_suffix(".pkl")
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "wb") as f:
+            with file_path.open("wb") as f:
                 pickle.dump(content, f)
             logger.debug(f"Wrote pickle to {file_path}")
         except Exception as e:
@@ -292,41 +287,36 @@ class BytesWriter:
 
 
 class CsvWriter:
-    """Write CSV content to disk."""
+    """Write tabular content to disk as CSV."""
 
-    def write(self, content: str, file_path: Path | str) -> None:
-        """Write CSV to file.
+    def write(self, content: Any, file_path: Path | str) -> None:
+        """Write a table to a CSV file.
 
         Args:
-            content: CSV content to save (as string).
+            content: A pandas DataFrame, or a list of dicts with one dict per row.
             file_path: Path to save to (will use .csv extension).
         """
+        import pandas as pd
+
         file_path = Path(file_path).with_suffix(".csv")
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
-            file_path.write_text(content)
+            table = (
+                content if isinstance(content, pd.DataFrame) else pd.DataFrame(content)
+            )
+            table.to_csv(file_path, index=False)
             logger.debug(f"Wrote CSV to {file_path}")
         except Exception as e:
             logger.error(f"Failed to write CSV to {file_path}: {e}")
             raise
 
 
-# Writer registry - maps content type to writer instance
-FILE_WRITERS = {
-    "text": TextWriter(),
-    "json": JsonWriter(),
-    "figure": FigureWriter(),
-    "pickle": PickleWriter(),
-    "bytes": BytesWriter(),
-    "csv": CsvWriter(),
-}
-
-
 def get_file_writer(content_type: str) -> FileWriter:
     """Get the appropriate writer for a content type.
 
     Args:
-        content_type: Type of content ('text', 'json', 'figure', 'pickle', 'bytes').
+        content_type: Type of content ('text', 'json', 'csv', 'figure', 'pickle',
+            'bytes').
 
     Returns:
         Writer instance for the given type.
@@ -334,9 +324,18 @@ def get_file_writer(content_type: str) -> FileWriter:
     Raises:
         ValueError: If content type is not supported.
     """
-    if content_type not in FILE_WRITERS:
+    # Writer registry - maps content type to writer instance
+    _file_writers: dict[str, FileWriter] = {
+        "text": TextWriter(),
+        "json": JsonWriter(),
+        "csv": CsvWriter(),
+        "figure": FigureWriter(),
+        "pickle": PickleWriter(),
+        "bytes": BytesWriter(),
+    }
+    if content_type not in _file_writers:
         raise ValueError(
             f"Unsupported content type: {content_type}. "
-            f"Supported types: {list(FILE_WRITERS.keys())}"
+            f"Supported types: {list(_file_writers.keys())}"
         )
-    return FILE_WRITERS[content_type]
+    return _file_writers[content_type]

@@ -14,7 +14,7 @@ import yaml
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
 from neps.optimizers.optimizer import Artifact, ArtifactType
-from neps.runtime import _launch_runtime, _save_results, _save_optimizer_artifacts
+from neps.runtime import _launch_runtime, _save_optimizer_artifacts, _save_results
 from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
     check_neps_space_compatibility,
@@ -56,6 +56,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     cost_value_on_error: float | None = None,
     sample_batch_size: int | None = None,
     worker_id: str | None = None,
+    live_plots: bool = False,
     optimizer: (
         OptimizerChoice
         | Mapping[str, Any]
@@ -245,6 +246,10 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
                 be able to take into account the results of any new
                 evaluations, even if they were to come in relatively
                 quickly.
+
+        live_plots: If `True`, refresh the plots in the `summary` folder after every
+            evaluated trial: the general plots like pareto frontier/incumbent trajectory, plus any artifacts the optimizer
+            provides. Off by default, as plotting adds overhead to every evaluation.
 
         worker_id: An optional string to identify the worker (run instance).
             If not provided, a `worker_id` will be automatically generated using the pattern:
@@ -479,6 +484,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         sample_batch_size=sample_batch_size,
         worker_id=worker_id,
         pipeline_space=pipeline_space,
+        live_plots=live_plots,
     )
 
     post_run_csv(root_directory)
@@ -1161,9 +1167,10 @@ def extrapolate(
         return None
 
     try:
-        best_config = optimizer_ask.extrapolate(trials=trials, max_target_flops=max_target_flops)
-        print(f"Best configuration at {max_target_flops} FLOPs: {best_config}")
-        if hasattr(optimizer_ask, 'get_trial_artifacts'):
+        best_config = optimizer_ask.extrapolate(
+            trials=trials, max_target_flops=max_target_flops
+        )
+        if hasattr(optimizer_ask, "get_trial_artifacts"):
             try:
                 artifacts = optimizer_ask.get_trial_artifacts(trials)
                 if artifacts is not None:
@@ -1191,18 +1198,18 @@ def plot_study_artifacts(
     ) = "auto",
 ) -> dict[str, Artifact | list[Artifact]] | None:
     """Combine artifacts from multiple studies onto overlaid plots with different colors.
-    
+
     For each artifact key, if all artifacts are figures, overlays them on a single plot
     with different colors for each study. Non-figure artifacts or mixed types are kept as lists.
-    
+
     Args:
         study_dirs: List of root directories for neps studies.
         output_dir: Directory to save the combined artifacts.
         optimizer: The optimizer to use (defaults to "auto" which loads from each study).
-    
+
     Returns:
         None. Saves artifacts to output_dir.
-    
+
     Example:
         >>> import neps
         >>> neps.plot_study_artifacts(
@@ -1213,33 +1220,34 @@ def plot_study_artifacts(
         # Creates plots with all studies overlaid, each with a different color
     """
     from collections import defaultdict
+
     try:
         import matplotlib.pyplot as plt
     except ImportError:
         logger.error("matplotlib is required for plot_study_artifacts")
         return None
-    
+
     # Group artifacts by key
     artifacts_by_key = defaultdict(list)
     study_names = []
-    
+
     for study_dir in study_dirs:
         study_path = Path(study_dir)
         study_names.append(study_path.name)
-        
+
         try:
             # Load the state
             state = NePSState.create_or_load(path=study_path, load_only=True)
-            
+
             # Load space and trials
             with state._trial_lock.lock():
                 space = state.lock_and_get_search_space()
                 trials = state._trial_repo.latest(refresh_cache=True)
-            
+
             if space is None:
                 logger.warning(f"Could not load search space from {study_path}")
                 continue
-            
+
             # Determine optimizer
             opt = optimizer
             if opt == "auto":
@@ -1249,43 +1257,44 @@ def plot_study_artifacts(
                 except FileNotFoundError:
                     logger.warning(f"Could not load optimizer info from {study_path}")
                     continue
-            
+
             # Load the optimizer
             optimizer_ask, _ = load_optimizer(optimizer=opt, space=space)
-            
+
             # Get artifacts from this study
             if hasattr(optimizer_ask, "get_trial_artifacts"):
                 artifacts = optimizer_ask.get_trial_artifacts(trials)
                 if artifacts is not None:
                     for artifact in artifacts:
-                        artifacts_by_key[artifact.name].append((artifact, study_names[-1]))
+                        artifacts_by_key[artifact.name].append(
+                            (artifact, study_names[-1])
+                        )
         except Exception as e:
             logger.warning(f"Failed to process study {study_path}: {e}")
             continue
-    
+
     if not artifacts_by_key:
         logger.warning("No artifacts found in any of the provided studies.")
         return None
-    
+
     # Combine artifacts by key
     combined_artifacts = {}
     for key, artifact_list in artifacts_by_key.items():
         artifacts = [a[0] for a in artifact_list]
         study_labels = [a[1] for a in artifact_list]
-        
+
         all_figures = all(
-            artifact.artifact_type == ArtifactType.FIGURE
-            for artifact in artifacts
+            artifact.artifact_type == ArtifactType.FIGURE for artifact in artifacts
         )
-        
+
         if all_figures and len(artifacts) > 1:
             try:
                 n_studies = len(artifacts)
-                
+
                 # Create a single figure with colormap for different studies
                 fig, ax = plt.subplots(figsize=(10, 6))
-                cmap = plt.cm.get_cmap('tab10')
-                
+                cmap = plt.cm.get_cmap("tab10")
+
                 # Track axis properties from first study
                 x_scale = None
                 y_scale = None
@@ -1293,15 +1302,17 @@ def plot_study_artifacts(
                 ylabel = None
                 title = None
                 has_grid = False
-                
+
                 # Overlay all studies on the same axes
-                for study_idx, (artifact, label) in enumerate(zip(artifacts, study_labels)):
+                for study_idx, (artifact, label) in enumerate(
+                    zip(artifacts, study_labels, strict=False)
+                ):
                     source_fig = artifact.content
                     color = cmap(study_idx % 10)
-                    
-                    if hasattr(source_fig, 'get_axes') and len(source_fig.get_axes()) > 0:
+
+                    if hasattr(source_fig, "get_axes") and len(source_fig.get_axes()) > 0:
                         source_ax = source_fig.get_axes()[0]
-                        
+
                         # Copy axis properties from first study
                         if study_idx == 0:
                             x_scale = source_ax.get_xscale()
@@ -1309,8 +1320,12 @@ def plot_study_artifacts(
                             xlabel = source_ax.get_xlabel()
                             ylabel = source_ax.get_ylabel()
                             title = source_ax.get_title()
-                            has_grid = source_ax.get_xgridlines()[0].get_visible() if source_ax.get_xgridlines() else False
-                        
+                            has_grid = (
+                                source_ax.get_xgridlines()[0].get_visible()
+                                if source_ax.get_xgridlines()
+                                else False
+                            )
+
                         # Copy lines with the study's color
                         for line in source_ax.get_lines():
                             ax.plot(
@@ -1322,10 +1337,10 @@ def plot_study_artifacts(
                                 label=label,  # Use study name as label
                                 alpha=0.8,
                             )
-                        
+
                         # Copy scatter points with the study's color
                         for collection in source_ax.collections:
-                            if hasattr(collection, 'get_offsets'):
+                            if hasattr(collection, "get_offsets"):
                                 offsets = collection.get_offsets()
                                 ax.scatter(
                                     offsets[:, 0],
@@ -1334,36 +1349,37 @@ def plot_study_artifacts(
                                     alpha=0.6,
                                     s=50,
                                     label=label,
-                                    edgecolors='black',
+                                    edgecolors="black",
                                     linewidth=0.5,
                                 )
-                
+
                 # Set axis properties
-                ax.set_xscale(x_scale or 'linear')
-                ax.set_yscale(y_scale or 'linear')
+                ax.set_xscale(x_scale or "linear")
+                ax.set_yscale(y_scale or "linear")
                 if xlabel:
                     ax.set_xlabel(xlabel, fontsize=12)
                 if ylabel:
                     ax.set_ylabel(ylabel, fontsize=12)
                 if title:
                     ax.set_title(title + f" (across {n_studies} studies)", fontsize=13)
-                
-                ax.grid(has_grid, linestyle='--', alpha=0.3)
-                ax.legend(loc='best', fontsize=10)
-                
+
+                ax.grid(has_grid, linestyle="--", alpha=0.3)
+                ax.legend(loc="best", fontsize=10)
+
                 plt.tight_layout()
-                
+
                 combined_artifacts[key] = Artifact(key, fig, ArtifactType.FIGURE)
             except Exception as e:
                 logger.warning(f"Failed to combine figures for key {key}: {e}")
                 # combined_artifacts[key] = artifacts
+        elif len(artifacts) == 1:
+            combined_artifacts[key] = artifacts[0]
         else:
-            if len(artifacts) == 1:
-                combined_artifacts[key] = artifacts[0]
-            else:
-                logger.warning(f"Multiple artifacts found for key {key} but they are not all figures. Keeping as list without combining.")
-                # combined_artifacts[key] = artifacts
-     # write it in the output_dir
+            logger.warning(
+                f"Multiple artifacts found for key {key} but they are not all figures. Keeping as list without combining."
+            )
+            # combined_artifacts[key] = artifacts
+    # write it in the output_dir
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     _save_optimizer_artifacts(combined_artifacts.values(), output_dir)

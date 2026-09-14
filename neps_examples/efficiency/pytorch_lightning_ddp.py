@@ -1,4 +1,5 @@
 import logging
+import platform
 
 import lightning as L
 import torch
@@ -7,7 +8,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 import neps
 
-NUM_GPU = 8  # Number of GPUs to use for DDP
+NUM_GPU = 4  # Number of GPUs to use for DDP
 
 
 class ToyModel(nn.Module):
@@ -55,6 +56,14 @@ class LightningModel(L.LightningModule):
 
 
 def evaluate_pipeline(lr=0.1, epoch=20):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses torch.distributed via Lightning's DDP "
+            f"strategy, which is only supported on Linux here. Detected "
+            f"platform: {platform.system()}. Run it on a Linux machine with "
+            "GPUs (e.g. a Linux GPU cluster)."
+        )
+
     L.seed_everything(42)
     # Model
     model = LightningModel(lr=lr)
@@ -86,7 +95,7 @@ def evaluate_pipeline(lr=0.1, epoch=20):
 
 
 class HPOSpace(neps.PipelineSpace):
-    lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01)
+    lr = neps.Float(lower=0.001, upper=0.1, log=True, prior=0.01, prior_confidence="high")
     epoch = neps.IntegerFidelity(lower=1, upper=3)
 
 

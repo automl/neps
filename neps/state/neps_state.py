@@ -13,6 +13,7 @@ from __future__ import annotations
 import io
 import logging
 import pickle
+import shutil
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -144,7 +145,9 @@ class TrialRepo:
 
         return trials
 
-    def get_valid_evaluated_trials(self, refresh_cache: bool = False) -> dict[str, Trial]:
+    def get_valid_evaluated_trials(
+        self, *, refresh_cache: bool = False
+    ) -> dict[str, Trial]:
         """Get all trials that have a valid evaluation report."""
         trials = self.latest(refresh_cache=refresh_cache)
         return {
@@ -152,11 +155,20 @@ class TrialRepo:
             for trial_id, trial in trials.items()
             if trial.report is not None
             and trial.report.err is None
-            and trial.report.objective_to_minimize is not None
-            and not np.isnan(trial.report.objective_to_minimize)
+            and self._is_valid_objective(trial.report.objective_to_minimize)
         }
 
-    def latest(self, *, create_cache_if_missing: bool = True, refresh_cache: bool = False) -> dict[str, Trial]:
+    def _is_valid_objective(self, objective: float | list[float] | None) -> bool:
+        """Check if an objective value is valid (not NaN)."""
+        if objective is None:
+            return False
+        if isinstance(objective, list | tuple):
+            return all(obj is not None and not np.isnan(obj) for obj in objective)
+        return not np.isnan(objective)
+
+    def latest(
+        self, *, create_cache_if_missing: bool = True, refresh_cache: bool = False
+    ) -> dict[str, Trial]:
         """Get the latest trials from the cache."""
         if not self.cache_path.exists() or refresh_cache:
             if not create_cache_if_missing:
@@ -252,7 +264,7 @@ class TrialRepo:
 
 
 @dataclass
-class NePSState:
+class NePSState:  # noqa: PLW1641
     """The main state object that holds all the shared state objects."""
 
     path: Path
@@ -705,8 +717,6 @@ class NePSState:
         Raises:
             NePSError: If an error occurs during removal
         """
-        import shutil
-
         with self._trial_lock.lock(), self._err_lock.lock():
             config_path = self._trial_repo.directory / f"config_{trial_id}"
             if not config_path.exists():
@@ -823,7 +833,9 @@ class NePSState:
                     if not load_only and pipeline_space is not None:
                         # Compare semantic attributes instead of raw pickle bytes
                         # This allows trivial changes like renaming the space class
-                        from neps.space.neps_spaces.parameters import PipelineSpace as PS
+                        from neps.space.neps_spaces.parameters import (  # noqa: PLC0415
+                            PipelineSpace as PS,
+                        )
 
                         if isinstance(existing_space, PS) and isinstance(
                             pipeline_space, PS
@@ -931,7 +943,7 @@ class NePSState:
 
 
 def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
-    from neps.optimizers import OptimizerInfo  # Fighting circular import
+    from neps.optimizers import OptimizerInfo  # noqa: PLC0415 -- Fighting circular import
 
     deserialized = deserialize(path)
     if "name" not in deserialized or "info" not in deserialized:

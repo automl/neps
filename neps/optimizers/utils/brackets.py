@@ -215,12 +215,13 @@ class Rung(Sized):
         """
         from neps.optimizers.utils.multiobjective.epsnet import nondominated_sort
 
-        mo_costs = np.vstack(contenders["perf"].values)
+        valid = contenders.dropna(subset=["perf"])
+        mo_costs = np.vstack(valid["perf"].values)
         indices = nondominated_sort(
             X=mo_costs,
             max_items=k,
         )
-        return contenders.iloc[indices]
+        return valid.iloc[indices]
 
 
 @dataclass

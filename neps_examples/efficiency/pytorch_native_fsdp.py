@@ -5,6 +5,7 @@ Mind that this example does not run on Windows at the moment."""
 import math
 import os
 import functools
+import platform
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -189,6 +190,13 @@ def fsdp_main(rank, world_size, test_loss_tensor, lr, epochs, save_model=False):
 
 
 def evaluate_pipeline(lr=0.1, epoch=20):
+    if platform.system() != "Linux":
+        raise RuntimeError(
+            "This example uses FSDP with the NCCL backend, which only runs on "
+            f"Linux. Detected platform: {platform.system()}. Run it on a Linux "
+            "machine with GPUs (e.g. a Linux GPU cluster)."
+        )
+
     torch.manual_seed(42)
 
     test_loss_tensor = torch.zeros(1)
@@ -209,7 +217,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     class HPOSpace(neps.PipelineSpace):
-        lr = neps.Float(lower=0.0001, upper=0.1, log=True, prior=0.01)
+        lr = neps.Float(lower=0.0001, upper=0.1, log=True, prior=0.01, prior_confidence="high")
         epoch = neps.IntegerFidelity(lower=1, upper=3)
 
     neps.run(

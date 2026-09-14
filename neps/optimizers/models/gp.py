@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping, Sequence, Callable
 import warnings
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
@@ -27,19 +27,19 @@ from botorch.optim import (
 )
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
-from gpytorch.utils.warnings import NumericalWarning
 from gpytorch.means import Mean as GpMean
-from neps.optimizers.acquisition import cost_cooled_acq, pibo_acquisition
+from gpytorch.utils.warnings import NumericalWarning
 
+from neps.exceptions import ConstraintViolationError
 from neps.optimizers.acquisition import (
     WrappedAcquisition,
     cost_cooled_acq,
     pibo_acquisition,
 )
+from neps.sampling.samplers import Sobol
 from neps.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 from neps.utils.common import disable_warnings
-from neps.exceptions import ConstraintViolationError
-from neps.sampling.samplers import Sobol
+
 if TYPE_CHECKING:
     from botorch.acquisition import AcquisitionFunction
 
@@ -82,34 +82,37 @@ class PowerLawMean(GpMean):
         super().__init__()
         self.encoder = encoder
         self.flop_estimator = flop_estimator
-        
+
         # Store them as standard tensors, NOT learnable parameters
-        self.register_buffer("fixed_slope", torch.tensor(fixed_slope, dtype=torch.float64))
+        self.register_buffer(
+            "fixed_slope", torch.tensor(fixed_slope, dtype=torch.float64)
+        )
         self.register_buffer("fixed_bias", torch.tensor(fixed_bias, dtype=torch.float64))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: (Batch, N_Dims)
         batch_shape = x.shape[:-1]
         x_flat = x.view(-1, x.shape[-1])
-        
+
         flops_list = []
-        
+
         # 1. The Bridge: N-Dims -> 1D FLOPs
         with torch.no_grad():
             x_physical = self.encoder.decode(x_flat)
             for conf in x_physical:
                 val = self.flop_estimator(**conf)
                 flops_list.append(val)
-                
+
         flops = torch.tensor(flops_list, dtype=x.dtype, device=x.device)
-        
+
         # 2. Convert to Log Space
         log_flops = torch.log(flops.clamp(min=1.0))
-        
+
         # 3. Apply the Hardcoded Linear Scaling Law
         # log(Loss) = slope * log(FLOPs) + bias
         mean_flat = self.fixed_slope * log_flops + self.fixed_bias
         return mean_flat.view(batch_shape)
+
 
 def make_default_single_obj_gp(
     x: torch.Tensor,
@@ -122,7 +125,7 @@ def make_default_single_obj_gp(
     mean_bias: float = 5.0,
 ) -> SingleTaskGP:
     """Default GP for single objective optimization.
-    
+
     Args:
         x: Training input features
         y: Training targets
@@ -148,7 +151,7 @@ def make_default_single_obj_gp(
             numerics.append(encoder.index_of[hp_name])
             if getattr(transformer.original_domain, "is_scaling", False):
                 scaling_dims.append(encoder.index_of[hp_name])
-    
+
     mean_module = None
     # if flop_estimator is not None:
     mean_module = PowerLawMean(
@@ -160,7 +163,9 @@ def make_default_single_obj_gp(
 
     # Purely vectorial
     if len(categoricals) == 0:
-        return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module) # filter just numericals and scaling
+        return SingleTaskGP(
+            train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module
+        )  # filter just numericals and scaling
 
     # Purely categorical
     if len(numerics) == 0:
@@ -169,7 +174,7 @@ def make_default_single_obj_gp(
             train_Y=y,
             covar_module=default_categorical_kernel(len(categoricals)),
             outcome_transform=y_transform,
-            mean_module=None # TODO: add support for categorical
+            mean_module=None,  # TODO: add support for categorical
         )
 
     # Mixed
@@ -195,7 +200,11 @@ def make_default_single_obj_gp(
     kernel = numeric_kernel + cat_kernel
 
     return SingleTaskGP(
-        train_X=x, train_Y=y, covar_module=kernel, outcome_transform=y_transform, mean_module=mean_module,
+        train_X=x,
+        train_Y=y,
+        covar_module=kernel,
+        outcome_transform=y_transform,
+        mean_module=mean_module,
     )
 
 
@@ -252,7 +261,8 @@ def optimize_acq(  # noqa: PLR0915
 
     lower = [domain.lower for domain in encoder.domains]
     upper = [domain.upper for domain in encoder.domains]
-    bounds = torch.tensor([lower, upper], dtype=torch.float64)
+    _acq_device = next(acq_fn.parameters(), torch.tensor(0.0)).device
+    bounds = torch.tensor([lower, upper], dtype=torch.float64, device=_acq_device)
 
     cat_transformers = {
         name: t
@@ -278,7 +288,7 @@ def optimize_acq(  # noqa: PLR0915
         constraints = acq_options.get("nonlinear_inequality_constraints")
         if constraints is not None:
             acq_options["ic_generator"] = make_ic_generator(constraints[0][0], encoder)
-        
+
         with warning_context:
             return optimize_acqf(  # type: ignore
                 acq_function=acq_fn,
@@ -300,7 +310,9 @@ def optimize_acq(  # noqa: PLR0915
         for name, transformer in cat_transformers.items()
     }
     cat_keys = list(cats.keys())
-    choices = [torch.tensor(cats[k], dtype=torch.float) for k in cat_keys]
+    choices = [
+        torch.tensor(cats[k], dtype=torch.float, device=_acq_device) for k in cat_keys
+    ]
     fixed_cat: dict[int, float] = {}
 
     n_combos = reduce(
@@ -640,8 +652,6 @@ def fit_and_acquire_from_gp(
     return candidates
 
 
-import torch
-
 class BlackBoxConstraintFn(torch.autograd.Function):
     @staticmethod
     def forward(ctx, x, constraint_func, encoder):
@@ -649,114 +659,124 @@ class BlackBoxConstraintFn(torch.autograd.Function):
         ctx.constraint_func = constraint_func
         ctx.encoder = encoder
         ctx.save_for_backward(x)
-        
+
         # 2. Run your original non-differentiable logic
         # We assume standard BoTorch shape: (batch_shape) or (batch, q, d)
         with torch.no_grad():
             # Flatten to handle arbitrary batch shapes safely
             original_shape = x.shape
             x_flat = x.reshape(-1, original_shape[-1])
-            
+
             # Decode using your existing logic
             # Move to CPU for decoding
             conf_list = encoder.decode(x_flat.detach().cpu())
-            
+
             vals = []
             for c in conf_list:
                 try:
                     # Get the value (assuming func returns tuple/list)
                     # Ensure this is a FLOAT representing "distance to feasibility"
                     val = constraint_func(c)
-                    
+
                     # ROBUST NaN HANDLING: Check for NaN or inf values
                     if not torch.isfinite(torch.tensor(val, dtype=torch.float64)):
-                        logger.warning(f"Non-finite constraint value: {val}, using fallback value 0.0")
+                        logger.warning(
+                            f"Non-finite constraint value: {val}, using fallback value 0.0"
+                        )
                         val = 0.0  # Default to feasible (constraint satisfied)
-                    
+
                     # IMPORTANT: BoTorch expects Positive = Feasible.
                     # If your func returns Negative = Feasible, flip it: val = -val
                     vals.append(val)
                 except Exception as e:
-                    logger.warning(f"Exception in constraint function evaluation: {e}. Using fallback value 0.0")
+                    logger.warning(
+                        f"Exception in constraint function evaluation: {e}. Using fallback value 0.0"
+                    )
                     vals.append(0.0)  # Fallback to feasible
-                
+
             # Restore shape
             res = torch.tensor(vals, dtype=x.dtype, device=x.device)
-            
+
             # If input was (N, D), output is (N,). If (N, Q, D), output (N, Q)
             if len(original_shape) > 1:
                 res = res.view(original_shape[:-1])
-                
+
         return res
 
     @staticmethod
     def backward(ctx, grad_output):
         # 3. "Fake" the gradient using Finite Differences with NaN Robustness
-        x, = ctx.saved_tensors
+        (x,) = ctx.saved_tensors
         func = ctx.constraint_func
         encoder = ctx.encoder
-        
+
         # A small step size
         epsilon = 1e-3
-        
+
         grad_input = torch.zeros_like(x)
-        
+
         # We must iterate to compute derivatives for every dimension
         # (This can be slow, but it's the only way for black-box funcs)
         x_flat = x.detach().reshape(-1, x.shape[-1])
         grad_out_flat = grad_output.reshape(-1)
         grad_in_flat = grad_input.reshape(-1, x.shape[-1])
-        
+
         for i in range(len(x_flat)):
             # Optimization: If this point doesn't matter for the loss, skip it
             if grad_out_flat[i] == 0:
                 continue
 
-            current_val_base = None # Cache if needed
-            
             for d in range(x_flat.shape[1]):
                 # Create a perturbed point: x + epsilon
                 x_p = x_flat[i].clone()
                 x_p[d] += epsilon
-                
+
                 # Evaluate x + epsilon
                 try:
                     c_p = encoder.decode(x_p.unsqueeze(0).cpu())[0]
                     val_p = func(c_p)
                 except Exception as e:
                     logger.warning(f"Exception in constraint evaluation (forward): {e}")
-                    val_p = float('nan')
-                
+                    val_p = float("nan")
+
                 # Evaluate x (Center)
                 try:
                     c_base = encoder.decode(x_flat[i].unsqueeze(0).cpu())[0]
                     val_base = func(c_base)
                 except Exception as e:
                     logger.warning(f"Exception in constraint evaluation (base): {e}")
-                    val_base = float('nan')
-                
+                    val_base = float("nan")
+
                 # Calculate Slope (Gradient) = (Rise / Run) with NaN handling
-                if torch.isnan(torch.tensor(val_p)) or torch.isnan(torch.tensor(val_base)):
+                if torch.isnan(torch.tensor(val_p)) or torch.isnan(
+                    torch.tensor(val_base)
+                ):
                     # If either value is NaN, use zero gradient (conservative choice)
                     slope = 0.0
-                    logger.warning(f"NaN in constraint gradient computation at dim {d}, point {i}")
-                elif torch.isinf(torch.tensor(val_p)) or torch.isinf(torch.tensor(val_base)):
+                    logger.warning(
+                        f"NaN in constraint gradient computation at dim {d}, point {i}"
+                    )
+                elif torch.isinf(torch.tensor(val_p)) or torch.isinf(
+                    torch.tensor(val_base)
+                ):
                     # If either value is inf, use zero gradient
                     slope = 0.0
-                    logger.warning(f"Inf in constraint gradient computation at dim {d}, point {i}")
+                    logger.warning(
+                        f"Inf in constraint gradient computation at dim {d}, point {i}"
+                    )
                 else:
                     slope = (val_p - val_base) / epsilon
                     # Clamp slope to prevent extreme gradients
                     slope = torch.clamp(torch.tensor(slope), min=-1e6, max=1e6).item()
-                
+
                 # Chain Rule: Gradient = Slope * Incoming_Gradient
                 grad_in_flat[i, d] = slope * grad_out_flat[i]
-                
+
         # Final NaN check on gradients before returning
         if torch.isnan(grad_input).any():
-            logger.warning(f"NaN detected in constraint gradients. Replacing with zeros.")
+            logger.warning("NaN detected in constraint gradients. Replacing with zeros.")
             grad_input = torch.nan_to_num(grad_input, nan=0.0, posinf=0.0, neginf=0.0)
-                
+
         return grad_input.view_as(x), None, None
 
 
@@ -769,6 +789,7 @@ def encode_constraints_func(
     def inner(x):
         # Use .apply() to call the autograd function
         return BlackBoxConstraintFn.apply(x, constraints_func, encoder)
+
     return inner
 
 
@@ -777,44 +798,43 @@ def make_ic_generator(constraint_func, encoder):
     Creates an initial condition generator that respects non-linear constraints.
     Uses the custom Sobol sampler from NePS.
     """
-    def ic_generator(acq_function, bounds, q, num_restarts, raw_samples, fixed_features=None, **kwargs):
+
+    def ic_generator(
+        acq_function, bounds, q, num_restarts, raw_samples, fixed_features=None, **kwargs
+    ):
         # 1. Initialize the custom Sobol sampler
         ndim = bounds.shape[1]
         sampler = Sobol(ndim=ndim, scramble=True)
-        
+
         # 2. Sample raw candidates
         # We need 'raw_samples' starting points.
         # If q > 1, each starting point is actually a batch of q candidates.
         # Shape needed: (raw_samples, q, ndim)
         sample_shape = torch.Size([raw_samples, q])
-        
-        # Note: We pass 'encoder' as the target domain ('to'). 
+
+        # Note: We pass 'encoder' as the target domain ('to').
         # Ensure your Domain.translate supports ConfigEncoder as 'to'.
         X_cand = sampler.sample(
-            n=sample_shape, 
-            to=encoder, 
-            device=bounds.device,
-            dtype=bounds.dtype
+            n=sample_shape, to=encoder, device=bounds.device, dtype=bounds.dtype
         )
 
         # 3. Filter using the constraint function
         with torch.no_grad():
             # constraint_func returns >= 0 for valid
             # X_cand shape: (raw_samples, q, d)
-            # We flatten to (raw_samples * q, d) if the constraint func expects 2D, 
-            # or pass 3D if it handles it. 
+            # We flatten to (raw_samples * q, d) if the constraint func expects 2D,
+            # or pass 3D if it handles it.
             # Your encode_constraints_func wrapper handles dimensions, so we pass as is.
-            print("ic_generator: get constraint vals")
             constraint_vals = constraint_func(X_cand)
-            
+
             # Constraint satisfied if >= 0
-            valid_mask = (constraint_vals >= 0)
-            
+            valid_mask = constraint_vals >= 0
+
             # If q > 1, the constraint returns shape (raw_samples, q).
             # A starting point is only valid if ALL q candidates in it are valid.
             if valid_mask.ndim > 1:
                 valid_mask = valid_mask.all(dim=-1)
-                
+
             X_valid = X_cand[valid_mask]
 
         # 4. Handle Insufficient Valid Points (Fallback)
@@ -825,13 +845,14 @@ def make_ic_generator(constraint_func, encoder):
                 f"Constraint is too strict: found {len(X_valid)} valid points out of {raw_samples}. "
                 "Optimization performance may degrade."
             )
-            
+
             if len(X_valid) == 0:
-                # Emergency: Return the raw candidates even if invalid, 
+                # Emergency: Return the raw candidates even if invalid,
                 # effectively falling back to standard behavior.
                 raise ConstraintViolationError(
-                    "No valid initial conditions found under the given constraints.")
-                
+                    "No valid initial conditions found under the given constraints."
+                )
+
             # Recycle valid points to fill the quota
             needed = num_restarts - len(X_valid)
             repeats = (needed // len(X_valid)) + 2
@@ -841,31 +862,31 @@ def make_ic_generator(constraint_func, encoder):
         # Evaluate the acquisition function on the valid points to pick the best starters.
         with torch.no_grad():
             acq_vals = acq_function(X_valid)
-        
+
         # ROBUST NaN HANDLING: Replace NaN acquisition values with minimum valid value
         nan_mask = torch.isnan(acq_vals)
         if nan_mask.any():
             # Get valid (non-NaN) values
             valid_acq_vals = acq_vals[~nan_mask]
-            
+
             if len(valid_acq_vals) > 0:
                 # Use minimum valid value for NaNs (conservative choice)
                 fill_value = valid_acq_vals.min().item()
             else:
                 # All values are NaN - use 0 as fallback
                 fill_value = 0.0
-            
+
             acq_vals[nan_mask] = fill_value
             logger.warning(
                 f"NaN detected in acquisition function evaluation during IC generation: "
                 f"{nan_mask.sum().item()} NaN values replaced with {fill_value:.6f}"
             )
-        
+
         # We want the indices of the highest acquisition values
         _, best_idxs = torch.topk(acq_vals, min(num_restarts, len(X_valid)))
-        
+
         best_ics = X_valid[best_idxs]
-        
+
         # ROBUST NaN HANDLING: Check if initial conditions themselves have NaN values
         if torch.isnan(best_ics).any():
             nan_positions = torch.isnan(best_ics)
@@ -878,7 +899,7 @@ def make_ic_generator(constraint_func, encoder):
             for dim in range(best_ics.shape[-1]):
                 if nan_positions[:, dim].any():
                     best_ics[nan_positions[:, dim], dim] = bounds_mid[dim]
-        
+
         return best_ics
 
     return ic_generator

@@ -8,19 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added 3 tutorials and embended existing colab tutorial in it.
+- Support artifacts for each optimizer based on evaluated trials.
+- Add a generic structure for the filesystem writers.
+- Add live_plots flag for run() API to print the generic and optimizer-specific plots
+
+### Fixed
+- fix device mismatch in the tensors created in gp acqisition process
+- fix epsnet_selector for MO branckets to filter out pending trials
+
+## [0.16.0] - 2026-03-25
+
+### Added
 - Add changelog workflow
 - Add Clean command line for pruning trials
+- support logarithm base for parameters
+- Support individual discretization factors per hyperparameter in grid search
+- Documentation and Example on PriMO
 
 ### Changed
 - Improve Acquisition Function optimization in discrete and mixed search spaces
 - Update ifbo
 - Clean command
 - Update usage patterns and examples in documentation
+- Update link to the tutorial
 
 ### Fixed
 - Fixes to fidelity resource calculation
 - Trial id generation
 - Docs for stopping criteria
+- Fix link to examples in readme
 
 ## [0.15.0] - 2025-12-15
 

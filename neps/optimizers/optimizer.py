@@ -51,24 +51,26 @@ class OptimizerInfo(TypedDict):
 
 class ArtifactType(Enum):
     """Supported artifact types for optimizer results."""
+
     TEXT = "text"
     FIGURE = "figure"
     JSON = "json"
+    CSV = "csv"
     PICKLE = "pickle"
     BYTES = "bytes"
-    CSV = "csv"
 
 
 @dataclass
 class Artifact:
     """Single artifact produced by optimizer.
-    
+
     Attributes:
         name: Unique identifier for this artifact.
         content: The actual artifact content (string, Figure, dict, bytes, etc).
         artifact_type: Type of artifact, determines how it will be persisted.
         metadata: Optional metadata about the artifact (e.g., format, dimensions).
     """
+
     name: str
     content: Any
     artifact_type: ArtifactType
@@ -138,35 +140,36 @@ class AskFunction(Protocol):
 
         This is an optional method that optimizers can implement to return artifacts
         (figures, logs, metadata, etc) that the neps runtime will handle for persistence.
-        The runtime takes responsibility for all I/O operations, enabling:
 
-        - Clean separation between optimizer logic and I/O concerns
-        - Uniform handling of different artifact types (figures, text, JSON, etc)
-        - Future extensibility without optimizer changes
-        - Easy testing and mocking
+        The runtime takes responsibility for all I/O operations.
 
         Args:
             trials: All evaluated trials, passed by runtime for context.
                 Optional - optimizers can ignore if not needed.
 
         Returns:
-            List of Artifact objects to persist, or None if no artifacts should be persisted.
+
+            List of Artifact objects to persist, or None if no artifacts should be
+            persisted.
 
         Note:
             This method is optional. Optimizers that don't need to persist artifacts
-            should return None (the default behavior).
+            should return None (the default behavior). The runtime only calls it,
+            after every evaluated trial, when running `neps.run(..., live_plots=True)`.
 
         Example:
             >>> from neps.optimizers.optimizer import Artifact, ArtifactType
             >>> def get_trial_artifacts(self, trials=None) -> list[Artifact] | None:
             ...     import matplotlib.pyplot as plt
             ...     fig, ax = plt.subplots()
-            ...     
+            ...
             ...     # Can use trials to generate more meaningful artifacts
             ...     if trials:
-            ...         results = [t.report.objective_to_minimize for t in trials.values()]
+            ...         results = [
+            ...             t.report.objective_to_minimize for t in trials.values()
+            ...         ]
             ...         ax.plot(results)
-            ...     
+            ...
             ...     return [
             ...         Artifact("loss_curve", fig, ArtifactType.FIGURE),
             ...         Artifact("best_config", self.best_config, ArtifactType.JSON),

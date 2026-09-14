@@ -25,7 +25,7 @@ class HPOSpace(neps.PipelineSpace):
     float2 = neps.Float(lower=-10, upper=10)
     categorical = neps.Categorical(choices=(0, 1))
     integer1 = neps.Integer(lower=0, upper=1)
-    integer2 = neps.Integer(lower=1, upper=1000, log=True)
+    integer2 = neps.Integer(lower=2, upper=1024, log=True, log_base=2)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -34,4 +34,5 @@ neps.run(
     pipeline_space=HPOSpace(),
     root_directory="results/hyperparameters_example",
     evaluations_to_spend=5,
+    overwrite_root_directory=True,
 )

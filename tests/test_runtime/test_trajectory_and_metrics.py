@@ -791,7 +791,7 @@ def test_best_config_multiobjective_frontier():
         )
 
         # Call the function that writes best_config for the given trials
-        worker.load_incumbent_trace(
+        worker._update_summary(
             trials, trace_lock, improvement_trace_path, best_config_path
         )
 

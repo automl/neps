@@ -27,7 +27,6 @@ from neps.space.neps_spaces.parameters import (
     Repeated,
     Resample,
     Resolvable,
-    resolvable_is_fully_resolved,
 )
 from neps.space.neps_spaces.sampling import (
     DomainSampler,
@@ -1103,7 +1102,7 @@ def adjust_evaluation_pipeline_for_neps_space(
             )
 
             config = dict(**resolved_pipeline.get_attrs())
-        
+
         for name, value in config.items():
             if isinstance(value, Operation):
                 # If the operator is a not a string, we convert it to a callable.
@@ -1214,6 +1213,11 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                                 if hasattr(value.domain, "_log")
                                 else False
                             ),
+                            log_base=(
+                                value.domain._log_base
+                                if hasattr(value.domain, "_log_base")
+                                else None
+                            ),
                             is_fidelity=True,
                         )
                 else:
@@ -1264,7 +1268,7 @@ def convert_classic_to_neps_search_space(
                 lower=parameter.lower,
                 upper=parameter.upper,
                 log=parameter.log,
-                log_base=parameter.log_base if hasattr(parameter, "log_base") else None,
+                log_base=parameter.log_base,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
@@ -1281,7 +1285,7 @@ def convert_classic_to_neps_search_space(
                 lower=parameter.lower,
                 upper=parameter.upper,
                 log=parameter.log,
-                log_base=parameter.log_base if hasattr(parameter, "log_base") else None,
+                log_base=parameter.log_base,
                 prior=parameter.prior if parameter.prior else _UNSET,
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
@@ -1306,7 +1310,7 @@ ONLY_CLASSIC_ALGORITHMS_NAMES = [
     "successive_halving",
     "moasha",
     "pibo",
-    "scaling_law_guided_grid_search"
+    "scaling_law_guided_grid_search",
 ]
 CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
     "random_search",

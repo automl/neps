@@ -43,7 +43,8 @@ class HPOFloat:
     """Whether the hyperparameter is in log space."""
 
     log_base: float | None = None
-    """The base for logarithmic scaling. If None, uses natural log. Ignored if log is False."""
+    """The base for logarithmic scaling. If None, uses natural log.
+      Ignored if log is False."""
 
     prior: float | None = None
     """Prior value for the hyperparameter."""
@@ -68,7 +69,6 @@ class HPOFloat:
                 "Float parameter: bounds error (log scale cant have bounds <= 0). "
                 f"Actual values: lower={self.lower}, upper={self.upper}"
             )
-
         if self.log_base is not None and self.log_base <= 0:
             raise ValueError(
                 "Float parameter: log_base must be positive. "
@@ -109,7 +109,9 @@ class HPOFloat:
         if np.isnan(self.upper):
             raise ValueError("Can not have upper bound that is nan")
 
-        self.domain = Domain.floating(self.lower, self.upper, log=self.log, log_base=self.log_base)
+        self.domain = Domain.floating(
+            self.lower, self.upper, log=self.log, log_base=self.log_base
+        )
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 
@@ -145,7 +147,8 @@ class HPOInteger:
     """Whether the hyperparameter is in log space."""
 
     log_base: float | None = None
-    """The base for logarithmic scaling. If None, uses natural log. Ignored if log is False."""
+    """The base for logarithmic scaling. If None, uses natural log.
+    Ignored if log is False."""
 
     prior: int | None = None
     """Prior value for the hyperparameter."""
@@ -218,7 +221,10 @@ class HPOInteger:
                 "Integer parameter: Fidelity parameters "
                 f"cannot have a prior value. Got prior={self.prior}."
             )
-        self.domain = Domain.integer(self.lower, self.upper, log=self.log, log_base=self.log_base, is_scaling=self.is_scaling)
+
+        self.domain = Domain.integer(
+            self.lower, self.upper, log=self.log, log_base=self.log_base
+        )
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 

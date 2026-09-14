@@ -31,7 +31,11 @@ In addition to the features offered by traditional HPO and NAS libraries, NePS s
 
     * [Reference documentation](./reference/neps_run.md) for a quick overview.
     * [API](api/neps/api.md) for a more detailed reference.
-    * [Colab Tutorial](https://colab.research.google.com/drive/11IOhkmMKsIUhWbHyMYzT0v786O9TPWlH?usp=sharing) walking through NePS's main features.
+
+    * **Interactive Tutorials** (click to run in Google Colab):
+      - [Getting Started with Basic HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) - Learn HPO fundamentals
+      - [Defining Search Spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) - Master parameter types
+      - [Efficiency Techniques](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) - Multi-fidelity & advanced methods
     * [Examples](examples/index.md) for basic code snippets to get started.
 
 ## Installation
@@ -94,6 +98,8 @@ Discover how NePS works through these examples:
 - **[Hyperparameter Optimization](examples/basic_usage/1_hyperparameters.md)**: Learn the essentials of hyperparameter optimization with NePS.
 
 - **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
+
+- **[Multi-Objective Optimization](examples/efficiency/multi_objective.md)**: Learn how to optimize multiple competing objectives simultaneously using PriMO with expert priors and multi-fidelity.
 
 - **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
 

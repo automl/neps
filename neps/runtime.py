@@ -7,6 +7,7 @@ integration with distributed setups (e.g., PyTorch DDP).
 
 from __future__ import annotations
 
+import inspect
 import logging
 import os
 import shutil
@@ -18,7 +19,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal
 
-from filelock import FileLock
+from filelock import BaseFileLock, FileLock
 from portalocker import portalocker
 
 from neps.env import (
@@ -35,6 +36,7 @@ from neps.exceptions import (
     WorkerFailedToGetPendingTrialsError,
     WorkerRaiseError,
 )
+from neps.plot.generic_plots import plot_incumbent_trajectory, plot_pareto_front
 from neps.space.neps_spaces.neps_space import NepsCompatConverter, PipelineSpace
 from neps.state import (
     BudgetInfo,
@@ -49,7 +51,6 @@ from neps.state import (
     WorkerSettings,
     evaluate_trial,
 )
-from neps.utils.files import get_file_writer
 from neps.status.status import (
     _build_incumbent_content,
     _build_optimal_set_content,
@@ -57,6 +58,7 @@ from neps.status.status import (
     status,
 )
 from neps.utils.common import gc_disabled
+from neps.utils.files import get_file_writer
 
 if TYPE_CHECKING:
     from neps import SearchSpace
@@ -390,6 +392,17 @@ class DefaultWorker:
 
         return usage
 
+    def _cumulative_resource_usage(self, trials: Sequence[Trial]) -> list[ResourceUsage]:
+        """Calculates the running resource usage over `trials`, in the given order:
+        entry `i` is the usage of `trials[: i + 1]`.
+        """
+        running = ResourceUsage()
+        cumulative = []
+        for trial in trials:
+            running += self._calculate_total_resource_usage({trial.id: trial})
+            cumulative.append(ResourceUsage(**asdict(running)))
+        return cumulative
+
     def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
@@ -536,36 +549,36 @@ class DefaultWorker:
         trace_lock: FileLock,
     ) -> None:
         """Writes the budget stats file with accumulated budget usage.
-        
+
         Args:
             budget_stats_path: Path to write the budget stats file.
             global_resource_usage: Global resource usage object with accumulated metrics.
             trace_lock: File lock for thread-safe writing.
         """
         budget_lines = ["ACCUMULATED BUDGET USAGE", "=" * 80]
-        
+
         # Evaluations used
         if global_resource_usage.evaluations > 0:
             budget_lines.append("\nEvaluations:")
             budget_lines.append(f"  Total spent: {global_resource_usage.evaluations}")
-        
+
         # Cost used
         if global_resource_usage.cost > 0:
             budget_lines.append("\nCost:")
             budget_lines.append(f"  Total spent: {global_resource_usage.cost:.4f}")
-        
+
         # Fidelities used
         if global_resource_usage.fidelities > 0:
             budget_lines.append("\nFidelities:")
             budget_lines.append(f"  Total spent: {global_resource_usage.fidelities:.4f}")
-        
+
         # Time used
         if global_resource_usage.time > 0:
             budget_lines.append("\nEvaluation Time:")
             budget_lines.append(f"  Total spent: {global_resource_usage.time:.2f}s")
-        
+
         budget_text = "\n".join(budget_lines)
-        
+
         with trace_lock:
             text_writer = get_file_writer("text")
             try:
@@ -583,7 +596,9 @@ class DefaultWorker:
         final_stopping_criteria: ResourceUsage | None = None,
         used_resources_list: list | None = None,
     ) -> None:
-        """Writes the trajectory and best config files safely using generic file writer."""
+        """Writes the trajectory and best config files safely using generic file
+        writer.
+        """
         trace_text = _build_incumbent_content(incumbent_configs)
 
         best_config_text = _build_optimal_set_content(optimal_configs)
@@ -599,14 +614,79 @@ class DefaultWorker:
             if incumbent_configs:
                 try:
                     text_writer.write(trace_text, improvement_trace_path)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     logger.error(f"Failed to write improvement trace: {e}")
             if optimal_configs:
                 try:
                     text_writer.write(best_config_text, best_config_path)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     logger.error(f"Failed to write best config: {e}")
 
+    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
+        """Save optimizer artifacts to summary directory.
+
+        Args:
+            artifacts: List of Artifact objects to persist.
+            summary_dir: Summary directory where artifacts will be saved.
+        """
+        logger.debug("saving artifacts...")
+
+        for artifact in artifacts:
+            try:
+                # Map ArtifactType enum to string for writer lookup
+                content_type = artifact.artifact_type.value
+                writer = get_file_writer(content_type)
+                file_path = summary_dir / artifact.name
+
+                accepted = set(inspect.signature(writer.write).parameters)
+                unknown = set(artifact.metadata) - accepted
+                if unknown:
+                    raise TypeError(
+                        f"metadata key(s) {sorted(unknown)} are not accepted by "
+                        f"{type(writer).__name__}.write(); valid keys: {sorted(accepted)}"
+                    )
+
+                writer.write(artifact.content, file_path, **artifact.metadata)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    f"Failed to save artifact '{artifact.name}' "
+                    f"(type={artifact.artifact_type.value}): {e}"
+                )
+                # Allow optimization to continue even if artifact save fails
+                continue
+
+    def _save_generic_artifacts(
+        self,
+        trials: Sequence[Trial],
+        cumulative_usage: Sequence[ResourceUsage],
+        incumbent_ids: set[str],
+        pareto_ids: set[str],
+        summary_dir: Path,
+    ) -> None:
+        """Save the plots every run gets, whatever the optimizer, each along with a
+        CSV of the plotted points.
+
+        With one objective, the incumbent is plotted over the cumulative cost (or
+        evaluations, if no cost is reported). With two, the objectives are plotted
+        against each other, highlighting the Pareto front.
+        """
+        assert trials[0].report is not None  # for mypy
+        n_objectives = len(_to_sequence(trials[0].report.objective_to_minimize))  # type: ignore[arg-type]
+        try:
+            if n_objectives == 1:
+                artifacts = plot_incumbent_trajectory(
+                    trials, cumulative_usage, incumbent_ids
+                )
+            elif n_objectives == 2:
+                artifacts = plot_pareto_front(trials, pareto_ids)
+            else:
+                logger.debug("No summary plot for %d objectives.", n_objectives)
+                return
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"Failed to create the summary plot: {e}")
+            return
+
+        self._save_optimizer_artifacts(artifacts, summary_dir)
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -734,13 +814,13 @@ class DefaultWorker:
         improvement_trace_path.touch(exist_ok=True)
         best_config_path = summary_dir / "best_config.txt"
         best_config_path.touch(exist_ok=True)
-        _trace_lock = FileLock(".trace.lock")
+        _trace_lock = FileLock(str(main_dir / ".trace.lock"))
         _trace_lock_path = Path(str(_trace_lock.lock_file))
         _trace_lock_path.touch(exist_ok=True)
-        full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
+        full_df_path, short_path, summary_locker = _initiate_summary_csv(main_dir)
 
         # Create empty CSV files
-        with csv_locker.lock():
+        with summary_locker.lock():
             full_df_path.parent.mkdir(parents=True, exist_ok=True)
             full_df_path.touch(exist_ok=True)
             short_path.touch(exist_ok=True)
@@ -761,19 +841,12 @@ class DefaultWorker:
         n_repeated_failed_check_should_stop = 0
 
         evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-        self.load_incumbent_trace(
+        self._update_summary(
             evaluated_trials,
             _trace_lock,
             improvement_trace_path,
             best_config_path,
         )
-        if hasattr(self.optimizer, 'get_trial_artifacts'):
-            try:
-                artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
-                if artifacts is not None:
-                    _save_optimizer_artifacts(artifacts, summary_dir)
-            except Exception as e:
-                logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
 
         while True:
             try:
@@ -865,14 +938,18 @@ class DefaultWorker:
             with csv_locker.lock():
                 full_df.to_csv(full_df_path)
                 short.to_frame().to_csv(short_path)
-            if hasattr(self.optimizer, 'get_trial_artifacts'):
+            if hasattr(self.optimizer, "get_trial_artifacts"):
                 try:
-                    artifacts = self.optimizer.get_trial_artifacts(trials=evaluated_trials)
+                    artifacts = self.optimizer.get_trial_artifacts(
+                        trials=evaluated_trials
+                    )
                     if artifacts is not None:
                         _save_optimizer_artifacts(artifacts, summary_dir)
                 except Exception as e:
-                    logger.error(f"Failed to persist optimizer artifacts: {e}", exc_info=True)
-            
+                    logger.error(
+                        f"Failed to persist optimizer artifacts: {e}", exc_info=True
+                    )
+
             if report is None:
                 logger.info(
                     "Worker '%s' evaluated trial: %s async task detected.",
@@ -912,14 +989,32 @@ class DefaultWorker:
             if report.objective_to_minimize is not None and report.err is None:
                 with self.state._trial_lock.lock():
                     evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
-                    self.load_incumbent_trace(
+                    self._update_summary(
                         evaluated_trials,
                         _trace_lock,
                         improvement_trace_path,
                         best_config_path,
                     )
-                            # Persist optimizer artifacts if available
-                
+                # Persist optimizer artifacts if available and asked for
+                if self.settings.live_plots and hasattr(
+                    self.optimizer, "get_trial_artifacts"
+                ):
+                    try:
+                        artifacts = self.optimizer.get_trial_artifacts(
+                            trials=evaluated_trials
+                        )
+                        if artifacts is not None:
+                            with _trace_lock:
+                                self._save_optimizer_artifacts(artifacts, summary_dir)
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to persist optimizer artifacts: {e}", exc_info=True
+                        )
+
+                full_df, short = status(main_dir)
+                with summary_locker.lock():
+                    full_df.to_csv(full_df_path)
+                    short.to_frame().to_csv(short_path)
 
             logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
             logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
@@ -928,10 +1023,10 @@ class DefaultWorker:
                 "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
             )
 
-    def load_incumbent_trace(
+    def _update_summary(
         self,
         trials: dict[str, Trial],
-        _trace_lock: FileLock,
+        _trace_lock: BaseFileLock,
         improvement_trace_path: Path,
         best_config_path: Path,
     ) -> None:
@@ -941,7 +1036,7 @@ class DefaultWorker:
 
         Args:
             trials (dict): A dictionary of the evaluated trials which have a valid report.
-            _trace_lock (FileLock): A file lock to ensure thread-safe writing.
+            _trace_lock (BaseFileLock): A file lock to ensure thread-safe writing.
             improvement_trace_path (Path): Path to the improvement trace file.
             best_config_path (Path): Path to the best configuration file.
         """
@@ -951,8 +1046,6 @@ class DefaultWorker:
         # Clear any existing entries to prevent duplicates and rebuild a
         # non-dominated frontier from previous trials in chronological order.
         incumbent = []
-
-        running_usage = ResourceUsage()
 
         sorted_trials: list[Trial] = sorted(
             trials.values(),
@@ -967,13 +1060,9 @@ class DefaultWorker:
 
         frontier: list[Trial] = []
         trajectory_confs: dict[str, dict[str, float | int]] = {}
+        cumulative_usage = self._cumulative_resource_usage(sorted_trials)
 
-        for evaluated_trial in sorted_trials:
-            single_trial_usage = self._calculate_total_resource_usage(
-                {evaluated_trial.id: evaluated_trial}
-            )
-            running_usage += single_trial_usage
-
+        for evaluated_trial, usage in zip(sorted_trials, cumulative_usage, strict=True):
             assert evaluated_trial.report is not None  # for mypy
             new_trial_obj = evaluated_trial.report.objective_to_minimize
 
@@ -981,7 +1070,6 @@ class DefaultWorker:
                 frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
                 if not is_mo:
                     incumbent.append(evaluated_trial)
-                current_snapshot = ResourceUsage(**asdict(running_usage))
                 config_dict = {
                     "score": new_trial_obj,
                     "trial_id": evaluated_trial.id,
@@ -990,7 +1078,7 @@ class DefaultWorker:
                 if evaluated_trial.report.cost is not None:
                     config_dict["cost"] = evaluated_trial.report.cost
 
-                config_dict.update(current_snapshot.to_trajectory_dict())
+                config_dict.update(usage.to_trajectory_dict())
                 trajectory_confs[evaluated_trial.id] = config_dict
 
         optimal_configs: list[dict] = [trajectory_confs[trial.id] for trial in frontier]
@@ -1006,32 +1094,16 @@ class DefaultWorker:
             best_config_path=best_config_path,
         )
 
-def _save_optimizer_artifacts(artifacts: list, summary_dir: Path) -> None:
-    """Save optimizer artifacts to summary directory.
-    
-    Args:
-        artifacts: List of Artifact objects to persist.
-        summary_dir: Summary directory where artifacts will be saved.
-    """
-    logger.info("saving artifacts...")
-    if artifacts is None:
-        logger.warning("No artifacts found to save.")
-        return
+        if self.settings.live_plots:
+            with _trace_lock:
+                self._save_generic_artifacts(
+                    sorted_trials,
+                    cumulative_usage,
+                    incumbent_ids={trial.id for trial in incumbent},
+                    pareto_ids={trial.id for trial in frontier},
+                    summary_dir=best_config_path.parent,
+                )
 
-    for artifact in artifacts:
-        try:
-            # Map ArtifactType enum to string for writer lookup
-            content_type = artifact.artifact_type.value
-            writer = get_file_writer(content_type)
-            file_path = summary_dir / artifact.name
-            writer.write(artifact.content, file_path)
-        except Exception as e:
-            logger.error(
-                f"Failed to save artifact '{artifact.name}' "
-                f"(type={artifact.artifact_type.value}): {e}"
-            )
-            # Don't raise - allow optimization to continue even if artifact save fails
-            continue
 
 def _save_results(
     user_result: dict,
@@ -1173,6 +1245,7 @@ def _launch_runtime(  # noqa: PLR0913
     fidelities_to_spend: int | float | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
+    live_plots: bool = False,
 ) -> None:
     default_report_values = _make_default_report_values(
         objective_value_on_error=objective_value_on_error,
@@ -1251,6 +1324,7 @@ def _launch_runtime(  # noqa: PLR0913
         cost_to_spend=cost_to_spend,
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
         max_wallclock_time_seconds=None,  # TODO: User can't specify yet
+        live_plots=live_plots,
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.
@@ -1299,20 +1373,12 @@ def _make_default_report_values(
 
 
 def _to_sequence(score: float | Sequence[float]) -> list[float]:
-    """Normalize score to a list of floats for pareto comparisons.
-
-    Scalars become single-element lists. Sequences are converted to lists.
-    """
     if isinstance(score, Sequence):
         return [float(x) for x in score]
     return [float(score)]
 
 
 def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
-    """Return True if `candidate` is dominated by any point in `frontier`.
-
-    `frontier` is a list of score sequences (as lists).
-    """
     cand_seq = _to_sequence(candidate)
 
     for t in frontier:
@@ -1329,11 +1395,6 @@ def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> 
 
 
 def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
-    """Add candidate Trial to frontier and remove frontier Trials dominated by it.
-
-    Frontier is a list of Trial objects (with reports). Returns the new frontier
-    as a list of Trials.
-    """
     if candidate.report is None:
         return frontier
 
