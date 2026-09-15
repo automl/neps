@@ -142,7 +142,7 @@ To design entirely new optimizers, you can define them as class with a `__call__
 ```python
 @dataclass
 class MyOptimizer:
-    space: SearchSpace
+    space: P
     sampler: Sampler
     encoder: ConfigEncoder
 

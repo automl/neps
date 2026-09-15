@@ -173,7 +173,7 @@ class Prior(Sampler):
     def from_domains_and_centers(
         cls,
         domains: Iterable[Domain] | ConfigEncoder,
-        centers: Iterable[None | tuple[int | float, float]],
+        centers: Iterable[tuple[int | float, float] | None],
         *,
         device: torch.device | None = None,
     ) -> CenteredPrior:

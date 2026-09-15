@@ -63,7 +63,7 @@ def clean_trials_by_state(  # noqa: C901, PLR0912
     if not root_directory.exists():
         raise FileNotFoundError(f"Working directory not found: {root_directory}")
 
-    stats: dict[State | str, int] = {state: 0 for state in desired_states}
+    stats: dict[State | str, int] = dict.fromkeys(desired_states, 0)
     stats["errors_cleaned"] = 0
     stats["total_removed"] = 0
 

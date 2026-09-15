@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from neps.state.neps_state import TrialRepo
-from neps.state.pipeline_eval import UserResultDict
 
 if TYPE_CHECKING:
+    from neps.state.pipeline_eval import UserResultDict
     from neps.state.trial import Trial
 
 
@@ -38,7 +38,7 @@ def load_trials_from_pickle(
     )
 
     return [
-        (trial.config, cast(UserResultDict, asdict(trial.report)))
+        (trial.config, cast("UserResultDict", asdict(trial.report)))
         for trial in trials
         if trial.report is not None
     ]
