@@ -62,27 +62,34 @@ import json, sys
 
 from neps.optimizers.ask_and_tell import AskAndTell
 
+# #CHANGE_ME: a Slurm partition of your cluster (or export SBATCH_PARTITION).
+SLURM_PARTITION = os.environ.get("SBATCH_PARTITION", "CHANGE_ME__PARTITION_NAME")
+
 
 def submit_job(pipeline_directory: Path, script: str) -> int:
     script_path = pipeline_directory / "submit.sh"
     print(f"Submitting the script {script_path} (see below): \n\n{script}")
 
-    # You may want to remove the below check and not ask before submitting every time
     script_path.write_text(script)
-    os.system(f"sbatch {script_path}")
     output = subprocess.check_output(["sbatch", str(script_path)]).decode().strip()
     job_id = int(output.split()[-1])
     return job_id
 
 
 def get_job_script(pipeline_directory, trial_file):
+    if "CHANGE_ME" in SLURM_PARTITION:
+        raise ValueError(
+            "Set SLURM_PARTITION in this file (or export SBATCH_PARTITION) to a "
+            "Slurm partition of your cluster."
+        )
+
     script = f"""#!/bin/bash
-    #SBATCH --job-name=mnist_toy
-    #SBATCH --partition=bosch_cpu-cascadelake
-    #SBATCH --output={pipeline_directory}/%j.out
-    #SBATCH --error={pipeline_directory}/%j.err
-    python -c "import neps.neask_andtell_example; ask_andtell_example.train_worker('{trial_file}')"
-    """
+#SBATCH --job-name=mnist_toy
+#SBATCH --partition={SLURM_PARTITION}
+#SBATCH --output={pipeline_directory}/%j.out
+#SBATCH --error={pipeline_directory}/%j.err
+python -c "import sys; sys.path.insert(0, '{Path(__file__).resolve().parent}'); import ask_and_tell_example; ask_and_tell_example.train_worker('{trial_file}')"
+"""
     return script
 
 

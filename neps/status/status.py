@@ -410,22 +410,3 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileL
     summary_locker = FileLocker(summary_path / ".summary.lock", poll=0.1, timeout=10)
 
     return (full_path, short_path, summary_locker)
-
-
-def post_run_csv(root_directory: str | Path) -> tuple[Path, Path]:
-    """Create CSV files summarizing the run data.
-
-    Args:
-        root_directory: The root directory of the NePS run.
-
-    Returns:
-        The paths to the configuration data CSV and the run data CSV.
-    """
-    full_df, short = status(root_directory, print_summary=False)
-    full_df_path, short_path, summary_locker = _initiate_summary_csv(root_directory)
-
-    with summary_locker.lock():
-        full_df.to_csv(full_df_path)
-        short.to_frame().to_csv(short_path)
-
-    return full_df_path, short_path

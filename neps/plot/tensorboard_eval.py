@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import time
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -189,7 +188,7 @@ class tblogger:  # noqa: N801
 
             cls.summary_writer.flush()
             cls.summary_writer.close()
-            time.sleep(0.5)
+            cls.summary_writer = None
 
         except Exception as e:  # noqa: BLE001
             logger.warning(

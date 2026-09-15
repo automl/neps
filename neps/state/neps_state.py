@@ -607,6 +607,13 @@ class NePSState:  # noqa: PLW1641
         with self._optimizer_lock.lock():
             return _deserialize_optimizer_info(self._optimizer_info_path)
 
+    @property
+    def fidelity_name(self) -> str | None:
+        """The key a fidelity takes in a trial's config, if the space has one."""
+        derived = self._optimizer_info.get("derived") or {}
+        fidelity = derived.get("fidelity") or {}
+        return fidelity.get("name")
+
     def lock_and_get_search_space(self) -> SearchSpace | PipelineSpace | None:
         """Get the pipeline space, with the lock acquired.
 
@@ -732,6 +739,45 @@ class NePSState:  # noqa: PLW1641
             except Exception as e:
                 raise NePSError(f"Failed to remove trial '{trial_id}': {e}") from e
 
+    def lock_and_reset_trial_by_id(self, trial_id: str) -> None:
+        """Reset a trial to a pending state, keeping its config on disk.
+
+        Clears the trial's report and resets its metadata so it will be
+        picked up and re-evaluated as if it were newly sampled.
+
+        Args:
+            trial_id: The trial id to reset
+
+        Raises:
+            NePSError: If an error occurs during reset
+        """
+        with self._trial_lock.lock(), self._err_lock.lock():
+            config_path = self._trial_repo.directory / f"config_{trial_id}"
+            if not config_path.exists():
+                raise NePSError(
+                    f"Trial '{trial_id}' not found at expected path '{config_path}'."
+                )
+
+            try:
+                trial = self._trial_repo.load_trial_from_disk(trial_id)
+                trial.reset()
+                trial.report = None
+
+                report_path = config_path / ReaderWriterTrial.REPORT_FILENAME
+                if report_path.exists():
+                    report_path.unlink()
+
+                ReaderWriterTrial.write(trial, config_path, hints="metadata")
+
+                if self._trial_repo.cache_path.exists():
+                    self._trial_repo.cache_path.unlink()
+
+                if self._shared_errors_path.exists():
+                    self._shared_errors_path.unlink()
+
+            except Exception as e:
+                raise NePSError(f"Failed to reset trial '{trial_id}': {e}") from e
+
     @classmethod
     def create_or_load(  # noqa: C901, PLR0912, PLR0915
         cls,
@@ -812,6 +858,18 @@ class NePSState:  # noqa: PLW1641
                         f"\n   Loaded from {path}."
                         f"\nProvided: {optimizer_info}"
                     )
+
+                if (
+                    optimizer_info is not None
+                    and existing_info.get("derived", {}).get("fidelity") is None
+                    and optimizer_info.get("derived", {}).get("fidelity") is not None
+                ):
+                    fidelity = optimizer_info["derived"]["fidelity"]  # type: ignore
+                    existing_info.setdefault("derived", {})["fidelity"] = fidelity  # type: ignore
+                    try:
+                        serialize(existing_info, path=optimizer_info_path)
+                    except Exception as e:  # noqa: BLE001
+                        logger.debug(f"Could not backfill the fidelity name: {e}")
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
 

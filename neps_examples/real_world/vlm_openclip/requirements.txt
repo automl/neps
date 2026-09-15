@@ -1,0 +1,4 @@
+open_clip_torch
+pandas
+pyarrow
+matplotlib

@@ -34,5 +34,6 @@ jobs:
           prune-cache: true
           cache-dependency-glob: "**/pyproject.toml"
       - name: run tests
-        run: uv run --all-extras pytest -m ""  # Run all markers
+        # See tests/conftest.py for why torch is pinned to 1 thread.
+        run: uv run --all-extras pytest -m "" -n auto  # Run all markers
 
