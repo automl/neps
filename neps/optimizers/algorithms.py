@@ -182,6 +182,7 @@ def _describe_rungs(
     layout: dict[str, Any] = {
         "bracket_type": bracket_type,
         "fidelity": {
+            "name": fidelity_name,
             "lower": fidelity_bounds[0],
             "upper": fidelity_bounds[1],
         },
