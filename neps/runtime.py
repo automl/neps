@@ -403,7 +403,7 @@ class DefaultWorker:
             cumulative.append(ResourceUsage(**asdict(running)))
         return cumulative
 
-    def _check_global_stopping_criterion(  # noqa: C901
+    def _check_global_stopping_criterion(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         log_status: bool = False,  # noqa: FBT001, FBT002
@@ -417,6 +417,24 @@ class DefaultWorker:
         Returns:
             A tuple of (stopping message or False, global resource usage).
         """
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
+        total_evaluations_to_spend = (
+            getattr(budget_info, "total_evaluations_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_cost_to_spend = (
+            getattr(budget_info, "total_cost_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_fidelities_to_spend = (
+            getattr(budget_info, "total_fidelities_to_spend", None)
+            if budget_info is not None
+            else None
+        )
         worker_resource_usage = self._calculate_total_resource_usage(
             trials,
             subset_worker_id=self.worker_id,
@@ -532,39 +550,72 @@ class DefaultWorker:
             )
 
         if (
-            self.settings.total_evaluations_to_spend is not None
-            and global_resource_usage.evaluations
-            >= self.settings.total_evaluations_to_spend
+            total_evaluations_to_spend is not None
+            and global_resource_usage.evaluations >= total_evaluations_to_spend
         ):
             return_string = (
                 "All workers together have reached the maximum number of evaluations"
                 " allowed as given by"
-                f" `{self.settings.total_evaluations_to_spend=}`."
+                f" `total_evaluations_to_spend={total_evaluations_to_spend}`."
                 f" The total number of evaluations is"
                 f" '{global_resource_usage.evaluations}'."
             )
 
         if (
-            self.settings.total_cost_to_spend is not None
-            and global_resource_usage.cost >= self.settings.total_cost_to_spend
+            total_cost_to_spend is not None
+            and global_resource_usage.cost >= total_cost_to_spend
         ):
             return_string = (
                 "All workers together have reached the maximum cost allowed as given by"
-                f" `{self.settings.total_cost_to_spend=}`."
+                f" `total_cost_to_spend={total_cost_to_spend}`."
                 f" The total cost spent is '{global_resource_usage.cost}'."
+            )
+
+        if (
+            total_fidelities_to_spend is not None
+            and global_resource_usage.fidelities >= total_fidelities_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum fidelity allowed as"
+                f" given by `total_fidelities_to_spend={total_fidelities_to_spend}`."
+                f" The total fidelity spent is '{global_resource_usage.fidelities}'."
             )
 
         return (return_string, global_resource_usage)
 
     @property
     def _requires_global_stopping_criterion(self) -> bool:
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
         return (
             self.settings.evaluations_to_spend is not None
             or self.settings.cost_to_spend is not None
             or self.settings.fidelities_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
-            or self.settings.total_evaluations_to_spend is not None
-            or self.settings.total_cost_to_spend is not None
+            or (
+                budget_info is not None
+                and (
+                    getattr(
+                        budget_info,
+                        "total_evaluations_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_cost_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_fidelities_to_spend",
+                        None,
+                    )
+                    is not None
+                )
+            )
         )
 
     def _write_trajectory_files(
@@ -1210,6 +1261,7 @@ def _launch_runtime(  # noqa: PLR0913
     overwrite_optimization_dir: bool,
     evaluations_to_spend: int | None,
     fidelities_to_spend: int | float | None,
+    total_fidelities_to_spend: int | float | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
     live_plots: bool = False,
@@ -1250,6 +1302,9 @@ def _launch_runtime(  # noqa: PLR0913
                             max_evaluations=evaluations_to_spend,
                             fidelities_to_spend=fidelities_to_spend,
                             used_evaluations=0,
+                            total_evaluations_to_spend=total_evaluations_to_spend,
+                            total_cost_to_spend=total_cost_to_spend,
+                            total_fidelities_to_spend=total_fidelities_to_spend,
                         )
                     ),
                     shared_state=None,  # TODO: Unused for the time being...
@@ -1275,6 +1330,12 @@ def _launch_runtime(  # noqa: PLR0913
             " Please enable debug logging to see the errors that occured."
         )
 
+    neps_state.lock_and_update_global_budgets(
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
+        total_fidelities_to_spend=total_fidelities_to_spend,
+    )
+
     settings = WorkerSettings(
         on_error=(
             OnErrorPossibilities.IGNORE
@@ -1284,8 +1345,6 @@ def _launch_runtime(  # noqa: PLR0913
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
         evaluations_to_spend=evaluations_to_spend,
-        total_evaluations_to_spend=total_evaluations_to_spend,
-        total_cost_to_spend=total_cost_to_spend,
         fidelities_to_spend=fidelities_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed

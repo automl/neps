@@ -53,6 +53,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     total_evaluations_to_spend: int | None = None,
     total_cost_to_spend: int | float | None = None,
     fidelities_to_spend: int | float | None = None,
+    total_fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -221,6 +222,10 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
 
         fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
 
+        total_fidelities_to_spend: Maximum accumulated fidelity across all workers
+            sharing the same NePS run. Once this total is reached, no worker will start
+            a new evaluation.
+
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards evaluations_to_spend.
         objective_value_on_error: Setting this and cost_value_on_error to any float will
@@ -384,16 +389,51 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
                 " existing run, the pipeline space will be loaded from disk. No existing"
                 f" pipeline space found at: {root_directory}"
             )
+
+    # Check if we're continuing an existing run and should load the optimizer from disk
+    root_path = Path(root_directory)
+    optimizer_info_path = root_path / "optimizer_info.yaml"
+    is_continuing_run = optimizer_info_path.exists() and not overwrite_root_directory
+
+    stored_total_evaluations_to_spend = None
+    stored_total_cost_to_spend = None
+    stored_total_fidelities_to_spend = None
+
+    if is_continuing_run:
+        state = NePSState.create_or_load(
+            path=root_path,
+            load_only=True,
+        )
+
+        (
+            stored_total_evaluations_to_spend,
+            stored_total_cost_to_spend,
+            stored_total_fidelities_to_spend,
+        ) = state.lock_and_get_global_budgets()
+
     controling_params = {
         "evaluations_to_spend": evaluations_to_spend,
         "cost_to_spend": cost_to_spend,
-        "total_evaluations_to_spend": total_evaluations_to_spend,
-        "total_cost_to_spend": total_cost_to_spend,
         "fidelities_to_spend": fidelities_to_spend,
+        "total_evaluations_to_spend": (
+            total_evaluations_to_spend
+            if total_evaluations_to_spend is not None
+            else stored_total_evaluations_to_spend
+        ),
+        "total_cost_to_spend": (
+            total_cost_to_spend
+            if total_cost_to_spend is not None
+            else stored_total_cost_to_spend
+        ),
+        "total_fidelities_to_spend": (
+            total_fidelities_to_spend
+            if total_fidelities_to_spend is not None
+            else stored_total_fidelities_to_spend
+        ),
     }
     if all(x is None for x in controling_params.values()):
         warnings.warn(
-            "None of the following were set, this will run idefinitely until the worker"
+            "None of the following were set, this will run indefinitely until the worker"
             " process is stopped."
             f"{', '.join(list(controling_params.keys()))}.",
             UserWarning,
@@ -401,11 +441,6 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         )
 
     logger.info(f"Starting neps.run using root directory {root_directory}")
-
-    # Check if we're continuing an existing run and should load the optimizer from disk
-    root_path = Path(root_directory)
-    optimizer_info_path = root_path / "optimizer_info.yaml"
-    is_continuing_run = optimizer_info_path.exists() and not overwrite_root_directory
 
     # If continuing a run and optimizer is "auto" (default), load existing optimizer
     # with its parameters
@@ -487,6 +522,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         total_evaluations_to_spend=total_evaluations_to_spend,
         total_cost_to_spend=total_cost_to_spend,
         fidelities_to_spend=fidelities_to_spend,
+        total_fidelities_to_spend=total_fidelities_to_spend,
         optimization_dir=Path(root_directory),
         evaluations_to_spend=evaluations_to_spend,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
