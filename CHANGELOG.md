@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support artifacts for each optimizer based on evaluated trials.
 - Add a generic structure for the filesystem writers.
 - Add live_plots flag for run() API to print the generic and optimizer-specific plots
+- derived_info to optimizer_info.yaml to dump useful optimizer related info
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process
