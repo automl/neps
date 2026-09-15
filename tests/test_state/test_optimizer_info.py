@@ -78,7 +78,7 @@ def test_callable_instance_is_named_after_its_class(space: SearchSpace) -> None:
 
 def test_lambda_warns(space: SearchSpace, caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING):
-        _, info = load_optimizer(lambda s: _fake_optimizer(s), space)  # type: ignore
+        _, info = load_optimizer(_fake_optimizer, space)  # type: ignore
     assert info["name"] == "<lambda>"
     assert "lambda" in caplog.text
 

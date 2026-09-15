@@ -15,7 +15,6 @@ from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
 from neps.optimizers.algorithms import PredefinedOptimizers
 from neps.runtime import _launch_runtime, _save_results
-from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
     adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
@@ -36,6 +35,7 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
+    from neps.space import SearchSpace
     from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResultDict
 
 logger = logging.getLogger(__name__)
@@ -817,7 +817,10 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
                 str_path_temp = str(config_path)
                 if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
                     root_dir = Path(
-                        str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                        str_path_temp.split(
+                            "/configs/",
+                            maxsplit=1,
+                        )[0].split("\\configs\\", maxsplit=1)[0]
                     )
                 # If no /configs/ in path, assume it's either:
                 # 1. The root directory itself

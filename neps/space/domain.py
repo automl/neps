@@ -124,7 +124,7 @@ class Domain(Generic[V]):
             cardinality = self.bins
         elif self.log_bounds is not None and self.round:
             log_lower, log_upper = self.log_bounds
-            cardinality = int(round(log_upper - log_lower)) + 1
+            cardinality = round(log_upper - log_lower) + 1
         elif self.round:
             cardinality = int(self.upper - self.lower + 1)
         else:

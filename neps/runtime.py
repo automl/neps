@@ -660,7 +660,7 @@ class DefaultWorker:
                 trials = self.state._trial_repo.latest()
 
                 if self._requires_global_stopping_criterion:
-                    should_stop, stop_criteria = self._check_global_stopping_criterion(
+                    should_stop, _stop_criteria = self._check_global_stopping_criterion(
                         trials,
                         log_status=True,
                     )
