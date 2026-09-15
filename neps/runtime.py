@@ -1235,7 +1235,7 @@ def _launch_runtime(  # noqa: PLR0913
             # Don't retry on NePSError - these are user errors
             # like pipeline space mismatch
             raise
-        except Exception:
+        except Exception: #noqa: BLE001
             time.sleep(0.5)
             logger.debug(
                 "Error while trying to create or load the NePS state. Retrying...",
