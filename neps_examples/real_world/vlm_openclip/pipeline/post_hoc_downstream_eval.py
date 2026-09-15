@@ -1,14 +1,10 @@
 """Post-hoc downstream evaluation for finished `train.py` configs.
 
 The HPO objective in `train.py` only ever sees the contrastive loss on held-out
-LAION pre-training data. Here we additionally score each checkpoint zero-shot
+LAION pre-training data. Here we additionally evaluate each checkpoint
 on CIFAR-100 which was never trained on and was never tuned against.
 The result is written only to `report_down.yaml`, leaving NePS's own
 `report.yaml` untouched.
-
-Run once training has produced some finished configs:
-
-    python post_hoc_downstream_eval.py --root_dir results/hpo_vlm_openclip
 """
 
 import argparse

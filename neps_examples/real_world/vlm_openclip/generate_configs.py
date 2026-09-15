@@ -1,15 +1,7 @@
 """Samples configs for the OpenCLIP search space but never trains anything.
 
 `evaluate_pipeline` returning `None` tells NePS "this trial is being handled
-asynchronously" -- it writes the sampled config to
-`root_directory/configs/config_<id>/config.yaml` and moves on to sampling the
-next one, without blocking on training. The actual training happens
-out-of-band in `train.py`, dispatched by `array_job.py` across Slurm job
-arrays sized to each config's `batch_size`, and reports results back via
-`neps.save_pipeline_results`.
-
-`evaluations_to_spend` bounds how many pending configs this process samples
-ahead of the eval workers -- see NePS's "Async mode" note on `neps.run`.
+asynchronously"
 """
 
 import logging

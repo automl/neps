@@ -157,12 +157,6 @@ def prepare_laion(
     n_samples: int, first_shard: int = 0, cache_dir: Path | None = None, shards_dir: Path | None = None,
 ) -> Path:
     """Ensure the parquet cache holds at least `n_samples` image/caption pairs.
-
-    Returns immediately if the cache is already big enough -- that is the whole
-    point of the cache, and it is why re-running this is free. Otherwise it
-    tops the cache up from local shards when they exist, and only downloads
-    when they do not. One parquet part is written per source shard, so an
-    interrupted run resumes at the next missing part instead of starting over.
     """
     cache_dir = LAION_CACHE_DIR if cache_dir is None else Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)

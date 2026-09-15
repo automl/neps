@@ -19,14 +19,10 @@ STATE_POLL_SEC = 2
 
 
 class HPOSpace(neps.PipelineSpace):
-    # #CHANGE_ME: the searched hyperparameters. A grid of exactly
-    # `run_scaling_study.TOTAL_EVALUATIONS` points, so every setting evaluates
-    # the same configs and the throughputs stay comparable.
     lr = neps.Categorical(choices=(3e-4, 1e-3))
     wd = neps.Categorical(choices=(1e-5, 1e-4))
     batch_size = neps.Categorical(choices=(256, 512))
 
-    # #CHANGE_ME: fixed for the whole study.
     vision_width = 256
     vision_layers = 6
     text_width = 256

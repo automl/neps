@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from portalocker import portalocker
 
@@ -859,6 +859,26 @@ def _launch_ddp_runtime(
             prev_trial = current_trial
 
 
+def _derived_info_with_fidelity_name(
+    optimizer_info: OptimizerInfo,
+    *,
+    optimizer: AskFunction,
+    pipeline_space: SearchSpace | PipelineSpace,
+) -> dict[str, Any]:
+    """The `derived` info to persist, backfilling a resolved fidelity name.
+
+    Bracket-based optimizers already compute a richer `derived["fidelity"]` (with
+    bounds) via their `derived_info`; for any other optimizer we fall back to
+    resolving just the fidelity's config key from the space.
+    """
+    derived = dict(optimizer_info.get("derived") or {})
+    if "fidelity" not in derived:
+        resolved_fidelity_name = resolve_fidelity_name(optimizer, pipeline_space)
+        if resolved_fidelity_name is not None:
+            derived["fidelity"] = {"name": resolved_fidelity_name}
+    return derived
+
+
 # TODO: This should be done directly in `api.run` at some point to make it clearer at an
 # entryy point how the worker is set up to run if someone reads the entry point code.
 def _launch_runtime(  # noqa: PLR0913
@@ -897,11 +917,15 @@ def _launch_runtime(  # noqa: PLR0913
     # Resolved once, here, and persisted with the optimizer info: everything that
     # summarizes the run later (including `neps.save_pipeline_results`, which has
     # no optimizer at hand) reads it back off disk instead of re-deriving it.
+    derived = _derived_info_with_fidelity_name(
+        optimizer_info, optimizer=optimizer, pipeline_space=pipeline_space
+    )
     optimizer_info = OptimizerInfo(
         name=optimizer_info["name"],
         info=optimizer_info["info"],
-        fidelity_name=resolve_fidelity_name(optimizer, pipeline_space),
     )
+    if derived:
+        optimizer_info["derived"] = derived
 
     if overwrite_optimization_dir and optimization_dir.exists():
         logger.info(

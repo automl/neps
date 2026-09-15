@@ -78,7 +78,7 @@ def main():
     )
     args = parser.parse_args()
 
-    tiers = json.loads((SOURCE_DIR / "resource_map.json").read_text())
+    tiers = json.loads((SOURCE_DIR / "pipeline" / "resource_map.json").read_text())
 
     unset = [tier["name"] for tier in tiers if "CHANGE_ME" in tier["partition"]]
     if unset:

@@ -11,21 +11,21 @@ right-sized Slurm job instead of blocking one worker on training:
 
 - `generate_configs.py` — samples configs, writes each to `configs/config_<id>/config.yaml`.
 - `array_job.py` — groups pending configs by `batch_size` into the tiers in
-  `resource_map.json`, writes one Slurm array job per tier.
-- `download_data.py` — one-time LAION image/caption cache (see *Pre-training data* below).
+  `pipeline/resource_map.json`, writes one Slurm array job per tier.
+- `pipeline/download_data.py` — one-time LAION image/caption cache (see *Pre-training data* below).
 - `train.py` — trains + evaluates one config on LAION (upstream objective: the
   contrastive loss on held-out pre-training data), saves `checkpoint.pt` next to
   its `config.yaml`, reports back via `neps.save_pipeline_results`.
-- `post_hoc_downstream_eval.py` — after training, zero-shot-scores each checkpoint
+- `pipeline/post_hoc_downstream_eval.py` — after training, zero-shot-scores each checkpoint
   on CIFAR-100 (downstream, held out of the HPO objective), writes `report_down.yaml`.
 
 ```bash
 python -m pip install -r requirements.txt
-python download_data.py            # one-time LAION cache, see below
+python pipeline/download_data.py            # one-time LAION cache, see below
 python generate_configs.py
 python array_job.py
 sbatch results/hpo_vlm_openclip/array_jobs/array_job_small.sh   # and/or medium, large
-python post_hoc_downstream_eval.py --root_dir results/hpo_vlm_openclip
+python pipeline/post_hoc_downstream_eval.py --root_dir results/hpo_vlm_openclip
 ```
 
 ## 2. Scaling study — resource planning
@@ -36,7 +36,7 @@ parallel NePS workers, to answer "how many GPUs/how long will the real run
 need" for a resource-grant proposal.
 
 ```bash
-python download_data.py --n_samples 102000
+python pipeline/download_data.py --n_samples 102000
 cd scaling_study
 python run_scaling_study.py
 python visualization.py
@@ -47,7 +47,7 @@ speedup, with each worker's own throughput unchanged. See
 [`scaling_study/README.md`](scaling_study/README.md) for the setup, the results
 and how to point it at your cluster.
 
-Edit the `#CHANGE_ME` values in `resource_map.json` for your cluster before
+Edit the `#CHANGE_ME` values in `pipeline/resource_map.json` for your cluster before
 running the search above.
 
 ## Pre-training data
@@ -73,10 +73,10 @@ Nothing is fetched that is already on disk. `download_data.py` tries, in order:
    streamed over HTTP -- only when there are no local shards.
 
 ```bash
-python download_data.py                       # 100k samples (the default)
-python download_data.py --n_samples 20000     # smaller cache to try things out
-python download_data.py --shards_dir /path/to/train_data
-python download_data.py --cache_dir /work/$USER/laion_cache
+python pipeline/download_data.py                       # 100k samples (the default)
+python pipeline/download_data.py --n_samples 20000     # smaller cache to try things out
+python pipeline/download_data.py --shards_dir /path/to/train_data
+python pipeline/download_data.py --cache_dir /work/$USER/laion_cache
 ```
 
 `--n_samples` is the only thing that decides how much data is read: shards are
@@ -89,16 +89,16 @@ Raising `N_TRAIN` in `train.py` / `scaling_study/train.py` and re-running
 `download_data.py` with a matching `--n_samples` is all it takes to scale up;
 100k works out to ~20 shards and ~430 MB of cache.
 
-Both locations are `#CHANGE_ME` constants in `common.py`
-(`LAION_CACHE_DIR`, `LAION_SHARDS_DIR`) and can be overridden per run without
-editing anything, via `NEPS_LAION_CACHE_DIR` and `NEPS_LAION_SHARDS`. Set those
+Both locations are `#CHANGE_ME` constants in `pipeline/common.py`
+(`LAION_CACHE_DIR`, `LAION_SHARDS_DIR`) and can be overridden 
+via `NEPS_LAION_CACHE_DIR` and `NEPS_LAION_SHARDS`. Set those
 in the shell you run `sbatch` from and Slurm passes them to the jobs, so
 training reads exactly the cache this script wrote:
 
 ```bash
 export NEPS_LAION_SHARDS=/path/to/laion400m/train_data  # optional; unset = download from the Hub
 export NEPS_LAION_CACHE_DIR=/work/$USER/laion_cache
-python download_data.py
+python pipeline/download_data.py
 ```
 
 Shard filenames are looked up by index (`00000000.tar` or `00000.tar`) rather

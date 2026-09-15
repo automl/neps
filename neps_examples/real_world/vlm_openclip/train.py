@@ -1,19 +1,4 @@
-"""Trains and evaluates one OpenCLIP config sampled by `generate_configs.py`.
-
-Run standalone (async, not through neps), once per config, by a Slurm array
-task launched from `array_job.py`. Given either a `configs/config_<id>/`
-directory directly, or a group file plus an index into it (how the generated
-array jobs call it), it reads that trial's `config.yaml`, trains on the LAION
-CC12M image/caption cache prepared by `download_data.py`, and reports the
-result directly back to NePS with `save_pipeline_results`.
-
-The objective is the contrastive (CLIP) loss on a held-out slice of the same
-pre-training distribution -- the quantity CLIP training actually optimizes.
-CIFAR never appears here: it is kept strictly for the *downstream* zero-shot
-evaluation in `post_hoc_downstream_eval.py`, which scores the checkpoint this
-script saves to `config_dir/checkpoint.pt` on a benchmark that played no part
-in the HPO objective.
-"""
+"""Trains and evaluates one OpenCLIP config sampled by `generate_configs.py`"""
 
 import argparse
 from pathlib import Path
@@ -24,7 +9,7 @@ from open_clip import ClipLoss, get_tokenizer
 from torch.utils.data import DataLoader
 
 import neps
-from common import (
+from pipeline.common import (
     DEVICE,
     build_model,
     count_params,

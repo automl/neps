@@ -249,7 +249,8 @@ class SummaryWriter:
         fidelity_name = None
         try:
             info = _deserialize_optimizer_info(root_directory / "optimizer_info.yaml")
-            fidelity_name = info.get("fidelity_name")
+            derived = info.get("derived") or {}
+            fidelity_name = (derived.get("fidelity") or {}).get("name")
         except Exception as e:  # noqa: BLE001
             logger.debug(f"Could not read the fidelity name from the run: {e}")
 

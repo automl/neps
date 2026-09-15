@@ -17,7 +17,7 @@ import time
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar, overload
 
 import numpy as np
 
@@ -610,7 +610,9 @@ class NePSState:  # noqa: PLW1641
     @property
     def fidelity_name(self) -> str | None:
         """The key a fidelity takes in a trial's config, if the space has one."""
-        return self._optimizer_info.get("fidelity_name")
+        derived = self._optimizer_info.get("derived") or {}
+        fidelity = derived.get("fidelity") or {}
+        return fidelity.get("name")
 
     def lock_and_get_search_space(self) -> SearchSpace | PipelineSpace | None:
         """Get the pipeline space, with the lock acquired.
@@ -992,13 +994,6 @@ class NePSState:  # noqa: PLW1641
             _shared_errors=error_dump,
             _pipeline_space=pipeline_space,
         )
-
-
-def _optimizer_identity(info: OptimizerInfo | None) -> dict[str, Any]:
-    """The part of an optimizer info that identifies which optimizer is in use."""
-    if info is None:
-        return {}
-    return {k: v for k, v in info.items() if k != "fidelity_name"}
 
 
 def _deserialize_optimizer_info(path: Path) -> OptimizerInfo:
