@@ -5,10 +5,9 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar, Literal
-from typing_extensions import Self
+from typing import Any, ClassVar, Literal, Self
 
 import numpy as np
 
@@ -21,7 +20,7 @@ class NotReportedYetError(NePSError):
     """Raised when trying to access a report that has not been reported yet."""
 
 
-class State(str, Enum):
+class State(StrEnum):
     """The state of a trial."""
 
     EXTERNAL = "external"
