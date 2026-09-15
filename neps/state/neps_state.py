@@ -258,7 +258,7 @@ class TrialRepo:
 
 
 @dataclass
-class NePSState:
+class NePSState:  # noqa: PLW1641
     """The main state object that holds all the shared state objects."""
 
     path: Path

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class SeedSnapshot:
+class SeedSnapshot:  # noqa: PLW1641
     """State of the global rng.
 
     Primarly enables storing of the rng state to disk using a binary format

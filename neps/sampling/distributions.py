@@ -47,7 +47,7 @@ class TruncatedStandardNormal(Distribution):
         self,
         a: torch.Tensor,
         b: torch.Tensor,
-        validate_args: bool | None = None,
+        validate_args: bool | None = None,  # noqa: FBT001
         device: torch.device | None = None,
     ):
         """Initialize a truncated standard normal distribution.
@@ -170,7 +170,7 @@ class TruncatedNormal(TruncatedStandardNormal):
         scale: float | torch.Tensor,
         a: float | torch.Tensor,
         b: float | torch.Tensor,
-        validate_args: bool | None = None,
+        validate_args: bool | None = None,  # noqa: FBT001
         device: torch.device | None = None,
     ):
         """Initialize a truncated standard normal distribution.
