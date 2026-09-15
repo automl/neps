@@ -336,6 +336,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
             "`evaluations_to_spend` for limiting the number of evaluations for this run.",
         )
 
+    valid_pipeline_space_types: tuple[type, ...]
     try:
         from ConfigSpace import ConfigurationSpace as _ConfigurationSpace
 
@@ -343,8 +344,8 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     except ImportError:
         valid_pipeline_space_types = (PipelineSpace,)
 
-    if pipeline_space is not None and not isinstance(
-        pipeline_space, valid_pipeline_space_types
+    if pipeline_space is not None and not any(
+        isinstance(pipeline_space, t) for t in valid_pipeline_space_types
     ):
         raise ValueError(
             "`pipeline_space` must be a `PipelineSpace` (or a `ConfigurationSpace`"

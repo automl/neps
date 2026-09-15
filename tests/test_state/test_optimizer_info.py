@@ -16,6 +16,7 @@ from neps import algorithms
 from neps.exceptions import NePSError
 from neps.optimizers import OptimizerInfo, load_optimizer
 from neps.space import HPOFloat, HPOInteger, SearchSpace
+from neps.space.neps_spaces.parameters import Float, IntegerFidelity, PipelineSpace
 from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
 
 
@@ -78,7 +79,10 @@ def test_callable_instance_is_named_after_its_class(space: SearchSpace) -> None:
 
 def test_lambda_warns(space: SearchSpace, caplog: pytest.LogCaptureFixture) -> None:
     with caplog.at_level(logging.WARNING):
-        _, info = load_optimizer(_fake_optimizer, space)  # type: ignore
+        _, info = load_optimizer(  # type: ignore
+            lambda s: _fake_optimizer(s),  # noqa: PLW0108
+            space,
+        )
     assert info["name"] == "<lambda>"
     assert "lambda" in caplog.text
 
@@ -106,16 +110,18 @@ def test_resume_accepts_settings_not_recorded_on_disk(
         _create_or_load(root, different)
 
 
-def test_auto_resume_of_custom_optimizer_raises_clear_error(
-    tmp_path: Path, space: SearchSpace
-) -> None:
+def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> None:
+    class _PipelineSpace(PipelineSpace):
+        x = Float(0, 1)
+        epochs = IntegerFidelity(1, 27)
+
     root = tmp_path / "run"
     _create_or_load(root, OptimizerInfo(name="<lambda>", info={}))
 
     with pytest.raises(ValueError, match="custom optimizer '<lambda>'"):
         neps.run(
             evaluate_pipeline=lambda x, epochs: x + epochs,
-            pipeline_space=space,
+            pipeline_space=_PipelineSpace(),
             root_directory=root,
             evaluations_to_spend=1,
         )
