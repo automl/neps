@@ -95,7 +95,6 @@ def test_non_yaml_values_do_not_break_resume(tmp_path: Path, space: SearchSpace)
 def test_resume_accepts_settings_not_recorded_on_disk(
     tmp_path: Path, space: SearchSpace
 ) -> None:
-    # Older versions only recorded the keywords of a `partial`
     root = tmp_path / "run"
     _create_or_load(root, OptimizerInfo(name="hyperband", info={"eta": 4}))
 

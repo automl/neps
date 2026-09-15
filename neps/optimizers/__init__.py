@@ -41,7 +41,6 @@ def _make_info(
     name: str, info: Mapping[str, Any], optimizer: Any = None
 ) -> OptimizerInfo:
     optimizer_info = OptimizerInfo(name=name, info=_yaml_safe(dict(info)))
-    # Values the optimizer computed itself, e.g. the rungs of multi-fidelity ones
     if derived := getattr(optimizer, "derived_info", None):
         optimizer_info["derived"] = _yaml_safe(dict(derived))
     return optimizer_info

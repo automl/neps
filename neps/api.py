@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: ConfigurationSpace | PipelineSpace | SearchSpace | dict | None = None,
+    pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
@@ -336,22 +336,23 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
             "`evaluations_to_spend` for limiting the number of evaluations for this run.",
         )
 
-    # If the pipeline_space is a SearchSpace, convert it to a PipelineSpace and throw a
-    # deprecation warning
-    if isinstance(pipeline_space, SearchSpace | dict):
-        if isinstance(pipeline_space, dict):
-            pipeline_space = SearchSpace(pipeline_space)
-        pipeline_space = convert_classic_to_neps_search_space(pipeline_space)
-        space_lines = str(pipeline_space).split("\n")
-        space_def = space_lines[1] if len(space_lines) > 1 else str(pipeline_space)
-        warnings.warn(
-            "Passing a SearchSpace or dictionary to neps.run is deprecated and will be"
-            " removed in a future version. Please pass a PipelineSpace instead, as"
-            " described in the NePS-Spaces documentation."
-            " This specific space should be given as:\n\n```python\nclass"
-            f" MySpace(PipelineSpace):\n{space_def}\n```\n",
-            DeprecationWarning,
-            stacklevel=2,
+    try:
+        from ConfigSpace import ConfigurationSpace as _ConfigurationSpace
+
+        valid_pipeline_space_types = (PipelineSpace, _ConfigurationSpace)
+    except ImportError:
+        valid_pipeline_space_types = (PipelineSpace,)
+
+    if pipeline_space is not None and not isinstance(
+        pipeline_space, valid_pipeline_space_types
+    ):
+        raise ValueError(
+            "`pipeline_space` must be a `PipelineSpace` (or a `ConfigurationSpace`"
+            " from the `ConfigSpace` package), got"
+            f" {type(pipeline_space).__name__!r}. Passing a classic `SearchSpace` or"
+            " `dict` is no longer supported; please define your pipeline_space as a"
+            " `PipelineSpace` subclass instead, e.g.:\n\n```python\nclass"
+            " MySpace(PipelineSpace):\n    ...\n```\n"
         )
 
     # Try to load pipeline_space from disk if not provided

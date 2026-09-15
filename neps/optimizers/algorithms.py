@@ -166,14 +166,6 @@ def _bo(  # noqa: C901, PLR0912
     )
 
 
-_BRACKET_TYPE_NAMES = {
-    "successive_halving": "Successive Halving",
-    "hyperband": "Hyperband",
-    "asha": "ASHA",
-    "async_hb": "Async HB",
-}
-
-
 def _describe_rungs(
     bracket_type: str,
     rung_to_fidelity: Mapping[int, int | float],
@@ -187,11 +179,9 @@ def _describe_rungs(
     """Log the rung layout of a bracket optimizer and describe it for
     `optimizer_info.yaml`.
     """
-    name = _BRACKET_TYPE_NAMES[bracket_type]
     layout: dict[str, Any] = {
         "bracket_type": bracket_type,
         "fidelity": {
-            "name": fidelity_name,
             "lower": fidelity_bounds[0],
             "upper": fidelity_bounds[1],
         },
@@ -200,14 +190,14 @@ def _describe_rungs(
     rung_fidelity_str = "\n".join(
         f"Rung {k}: Fidelity >= {v}" for k, v in rung_to_fidelity.items()
     )
-    logger.info(f"{name} Rung to Fidelity:\n{rung_fidelity_str}")
+    logger.info(f"{bracket_type} Rung to Fidelity:\n{rung_fidelity_str}")
 
     if rung_sizes is not None:
         layout["rung_sizes"] = dict(rung_sizes)
         rung_sizes_str = "\n".join(
             f"Rung {k}: {v} configs" for k, v in rung_sizes.items()
         )
-        logger.info(f"{name} Rung Sizes:\n{rung_sizes_str}")
+        logger.info(f"{bracket_type} Rung Sizes:\n{rung_sizes_str}")
 
     if bracket_layouts is not None:
         layout["bracket_layouts"] = [dict(bracket) for bracket in bracket_layouts]
@@ -216,7 +206,7 @@ def _describe_rungs(
             + "\n".join(f"At Rung {k}: {v} configs" for k, v in bracket.items())
             for i, bracket in enumerate(bracket_layouts)
         )
-        logger.info(f"{name} Bracket Layouts:\n{bracket_layouts_str}")
+        logger.info(f"{bracket_type} Bracket Layouts:\n{bracket_layouts_str}")
 
     if bracket_rungs is not None:
         layout["bracket_rungs"] = [list(bracket) for bracket in bracket_rungs]
@@ -224,7 +214,7 @@ def _describe_rungs(
             f"Bracket {i}\n" + "\n".join(f"At Rung {k}" for k in bracket)
             for i, bracket in enumerate(bracket_rungs)
         )
-        logger.info(f"{name} Bracket Rungs:\n{bracket_rungs_str}")
+        logger.info(f"{bracket_type} Bracket Rungs:\n{bracket_rungs_str}")
 
     return layout
 
