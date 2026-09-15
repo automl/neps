@@ -549,7 +549,7 @@ class SamplingResolver:
         resolved_categorical_obj = categorical_obj
         if needed_resolving:
             resolved_categorical_obj = cast(
-                Categorical, categorical_obj.from_attrs(final_attrs)
+                "Categorical", categorical_obj.from_attrs(final_attrs)
             )
 
         try:
@@ -558,7 +558,7 @@ class SamplingResolver:
             raise ValueError(
                 f"Failed to sample from {resolved_categorical_obj!r}."
             ) from e
-        sampled_value = cast(tuple, resolved_categorical_obj.choices)[sampled_index]
+        sampled_value = cast("tuple", resolved_categorical_obj.choices)[sampled_index]
         result = self._resolve(sampled_value, "sampled_value", context)
 
         context.add_resolved(categorical_obj, result)
@@ -618,7 +618,7 @@ class SamplingResolver:
             # We are dealing with a resampling by name (ByName reference),
             # We will first need to look up the source object referenced by name.
             # That will then be the object to resample.
-            by_name_ref = cast(ByName, resampled_obj.source)
+            by_name_ref = cast("ByName", resampled_obj.source)
             referenced_obj_name = by_name_ref.name
             referenced_obj = getattr(context.resolution_root, referenced_obj_name)
             resampled_obj = referenced_obj.resample()
@@ -890,7 +890,7 @@ def resolve(
         domain_sampler=domain_sampler,
         environment_values=environment_values,
     )
-    return cast(P, resolved_pipeline), context
+    return cast("P", resolved_pipeline), context
 
 
 # -------------------------------------------------
@@ -908,7 +908,7 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
     Raises:
         ValueError: If the operation is not a valid Operation object.
     """
-    operator = cast(Callable, operation.operator)
+    operator = cast("Callable", operation.operator)
 
     operation_args: list[Any] = []
     for arg in operation.args:
@@ -948,7 +948,7 @@ def convert_operation_to_callable(operation: Operation) -> Callable:
                 else kwarg_value
             )
 
-    return cast(Callable, operator(*operation_args, **operation_kwargs))
+    return cast("Callable", operator(*operation_args, **operation_kwargs))
 
 
 # -------------------------------------------------

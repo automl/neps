@@ -82,7 +82,7 @@ def plot(  # noqa: C901, PLR0913
             _base_path = None
 
         for algorithm in algorithms:
-            seeds = [None]
+            seeds = []
             if _base_path is not None:
                 assert scientific_mode
                 _path = _base_path / f"algorithm={algorithm}"
@@ -91,7 +91,7 @@ def plot(  # noqa: C901, PLR0913
                         errno.ENOENT, os.strerror(errno.ENOENT), _path
                     )
 
-                seeds = sorted(os.listdir(_path))  # type: ignore
+                seeds = sorted(os.listdir(_path))  # noqa: PTH208, type: ignore
             else:
                 _path = None
 

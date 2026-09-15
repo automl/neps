@@ -56,7 +56,7 @@ class MetaData:
 
 
 @dataclass
-class Report:
+class Report:  # noqa: PLW1641
     """A failed report of the evaluation of a configuration."""
 
     objective_to_minimize: float | list[float] | None

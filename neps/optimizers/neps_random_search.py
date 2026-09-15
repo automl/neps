@@ -47,7 +47,7 @@ class NePSRandomSearch:
         self,
         pipeline: PipelineSpace,
         use_priors: bool = False,  # noqa: FBT001, FBT002
-        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT001, FBT002
     ):
         """Initialize the RandomSearch optimizer with a pipeline.
 
@@ -192,7 +192,7 @@ class NePSComplexRandomSearch:
     def __init__(
         self,
         pipeline: PipelineSpace,
-        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT001, FBT002
     ):
         """Initialize the ComplexRandomSearch optimizer with a pipeline.
 

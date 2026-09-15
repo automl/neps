@@ -13,8 +13,8 @@ import pandas as pd
 import seaborn as sns
 from scipy import stats
 
-_map_axs = (
-    lambda axs, idx, length, ncols: axs
+_map_axs = lambda axs, idx, length, ncols: (
+    axs
     if length == 1
     else (axs[idx] if length == ncols else axs[idx // ncols][idx % ncols])
 )

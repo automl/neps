@@ -66,7 +66,7 @@ class NePSRegularizedEvolution:
         mutation_type: float | Literal["mutate_best", "crossover_top_2"] = 0.5,
         n_mutations: int | Literal["random", "half"] | None = "random",
         n_forgets: int | Literal["random", "half"] | None = None,
-        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT002
+        ignore_fidelity: bool | Literal["highest_fidelity"] = False,  # noqa: FBT001, FBT002
     ):
         """Initialize the RegularizedEvolution optimizer with a pipeline.
 
