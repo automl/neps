@@ -194,6 +194,40 @@ class ResourceUsage:
         }
 
 
+def _save_optimizer_artifacts(artifacts: list, summary_dir: Path) -> None:
+    """Save optimizer artifacts to summary directory.
+
+    Args:
+        artifacts: List of Artifact objects to persist.
+        summary_dir: Summary directory where artifacts will be saved.
+    """
+    logger.debug("saving artifacts...")
+
+    for artifact in artifacts:
+        try:
+            # Map ArtifactType enum to string for writer lookup
+            content_type = artifact.artifact_type.value
+            writer = get_file_writer(content_type)
+            file_path = summary_dir / artifact.name
+
+            accepted = set(inspect.signature(writer.write).parameters)
+            unknown = set(artifact.metadata) - accepted
+            if unknown:
+                raise TypeError(
+                    f"metadata key(s) {sorted(unknown)} are not accepted by "
+                    f"{type(writer).__name__}.write(); valid keys: {sorted(accepted)}"
+                )
+
+            writer.write(artifact.content, file_path, **artifact.metadata)
+        except Exception as e:  # noqa: BLE001
+            logger.error(
+                f"Failed to save artifact '{artifact.name}' "
+                f"(type={artifact.artifact_type.value}): {e}"
+            )
+            # Allow optimization to continue even if artifact save fails
+            continue
+
+
 # NOTE: This class is quite stateful and has been split up quite a bit to make testing
 # interleaving of workers easier. This comes at the cost of more fragmented code.
 @dataclass
@@ -622,39 +656,6 @@ class DefaultWorker:
                 except Exception as e:  # noqa: BLE001
                     logger.error(f"Failed to write best config: {e}")
 
-    def _save_optimizer_artifacts(self, artifacts: list, summary_dir: Path) -> None:
-        """Save optimizer artifacts to summary directory.
-
-        Args:
-            artifacts: List of Artifact objects to persist.
-            summary_dir: Summary directory where artifacts will be saved.
-        """
-        logger.debug("saving artifacts...")
-
-        for artifact in artifacts:
-            try:
-                # Map ArtifactType enum to string for writer lookup
-                content_type = artifact.artifact_type.value
-                writer = get_file_writer(content_type)
-                file_path = summary_dir / artifact.name
-
-                accepted = set(inspect.signature(writer.write).parameters)
-                unknown = set(artifact.metadata) - accepted
-                if unknown:
-                    raise TypeError(
-                        f"metadata key(s) {sorted(unknown)} are not accepted by "
-                        f"{type(writer).__name__}.write(); valid keys: {sorted(accepted)}"
-                    )
-
-                writer.write(artifact.content, file_path, **artifact.metadata)
-            except Exception as e:  # noqa: BLE001
-                logger.error(
-                    f"Failed to save artifact '{artifact.name}' "
-                    f"(type={artifact.artifact_type.value}): {e}"
-                )
-                # Allow optimization to continue even if artifact save fails
-                continue
-
     def _save_generic_artifacts(
         self,
         trials: Sequence[Trial],
@@ -686,7 +687,7 @@ class DefaultWorker:
             logger.error(f"Failed to create the summary plot: {e}")
             return
 
-        self._save_optimizer_artifacts(artifacts, summary_dir)
+        _save_optimizer_artifacts(artifacts, summary_dir)
 
     def _get_next_trial(self) -> Trial | Literal["break"]:
         # If there are no global stopping criterion, we can no just return early.
@@ -1005,7 +1006,7 @@ class DefaultWorker:
                         )
                         if artifacts is not None:
                             with _trace_lock:
-                                self._save_optimizer_artifacts(artifacts, summary_dir)
+                                _save_optimizer_artifacts(artifacts, summary_dir)
                     except Exception as e:
                         logger.error(
                             f"Failed to persist optimizer artifacts: {e}", exc_info=True
