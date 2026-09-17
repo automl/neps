@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add live_plots flag for run() API to print the generic and optimizer-specific plots
 - derived_info to optimizer_info.yaml to dump useful optimizer related info
 
+### Changed
+- end support of python3.10 and add support of 3.14
+
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process
 - fix epsnet_selector for MO branckets to filter out pending trials

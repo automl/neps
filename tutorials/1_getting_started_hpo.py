@@ -16,7 +16,7 @@
 # This tutorial introduces **Hyperparameter Optimization (HPO)** with NePS, starting with synthetic functions and progressing to real deep learning tasks.
 
 # ## Installation
-# Requires Python 3.10+. Install NePS via:
+# Requires Python 3.11+. Install NePS via:
 
 # !git clone --depth 1 https://github.com/automl/neps.git /content/neps
 # %cd /content/neps
