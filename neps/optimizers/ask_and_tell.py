@@ -15,7 +15,10 @@ evaluate both configurations in parallel, and then
 import neps
 
 # Wrap an optimizer
-space = neps.SearchSpace({"a": neps.Float(0, 1), "b": neps.Integer(1, 10)})
+class ExampleSpace(neps.PipelineSpace):
+    a = neps.Float(lower=0,upper=1)
+    b = neps.Integer(lower=1,upper=10)
+space = ExampleSpace()
 my_optimizer = neps.AskAndTell(optimizer=neps.algorithms.random_search(space))
 
 # Ask for a new configuration

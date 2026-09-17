@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add a generic structure for the filesystem writers.
 - Add live_plots flag for run() API to print the generic and optimizer-specific plots
 - Add stopping criteria shared by all workers of a run, for evaluations, cost and fidelities
+- derived_info to optimizer_info.yaml to dump useful optimizer related info
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process

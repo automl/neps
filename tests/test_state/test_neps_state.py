@@ -309,7 +309,7 @@ def test_optimizers_work_roughly(
         AskFunction, str, PipelineSpace | SearchSpace
     ],
 ) -> None:
-    opt, key, search_space = optimizer_and_key_and_search_space
+    opt, key, _search_space = optimizer_and_key_and_search_space
     ask_and_tell = AskAndTell(opt)
 
     for _ in range(20):

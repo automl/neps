@@ -52,6 +52,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+
 # 1. Define a function that accepts hyperparameters and computes the validation error
 def evaluate_pipeline(lr: float, alpha: int, optimizer: str):
     # Create your model
@@ -67,12 +68,13 @@ class ExampleSpace(neps.PipelineSpace):
     lr = neps.Float(
         lower=1e-5,
         upper=1e-1,
-        log=True,   # Log spaces
-        log_base=10, # Logarithm base, by default it's natural log
-        prior=1e-3, # Incorporate your knowledge to help optimization
+        log=True,  # Log spaces
+        log_base=10,  # Logarithm base, by default it's natural log
+        prior=1e-3,  # Incorporate your knowledge to help optimization
     )
     alpha = neps.Integer(lower=1, upper=42)
     optimizer = neps.Categorical(choices=["sgd", "adam"])
+
 
 # 3. Run the NePS optimization
 neps.run(

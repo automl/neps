@@ -13,8 +13,8 @@ import yaml
 
 from neps.normalization import _normalize_imported_config
 from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_optimizer
+from neps.optimizers.algorithms import PredefinedOptimizers
 from neps.runtime import _launch_runtime, _save_results
-from neps.space import SearchSpace
 from neps.space.neps_spaces.neps_space import (
     adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from ConfigSpace import ConfigurationSpace
 
     from neps.optimizers.algorithms import CustomOptimizer
+    from neps.space import SearchSpace
     from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResultDict
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
-    pipeline_space: ConfigurationSpace | PipelineSpace | SearchSpace | dict | None = None,
+    pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
@@ -343,22 +344,24 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 runtime to run your optimizer.
 
     """  # noqa: E501
-    # If the pipeline_space is a SearchSpace, convert it to a PipelineSpace and throw a
-    # deprecation warning
-    if isinstance(pipeline_space, SearchSpace | dict):
-        if isinstance(pipeline_space, dict):
-            pipeline_space = SearchSpace(pipeline_space)
-        pipeline_space = convert_classic_to_neps_search_space(pipeline_space)
-        space_lines = str(pipeline_space).split("\n")
-        space_def = space_lines[1] if len(space_lines) > 1 else str(pipeline_space)
-        warnings.warn(
-            "Passing a SearchSpace or dictionary to neps.run is deprecated and will be"
-            " removed in a future version. Please pass a PipelineSpace instead, as"
-            " described in the NePS-Spaces documentation."
-            " This specific space should be given as:\n\n```python\nclass"
-            f" MySpace(PipelineSpace):\n{space_def}\n```\n",
-            DeprecationWarning,
-            stacklevel=2,
+    valid_pipeline_space_types: tuple[type, ...]
+    try:
+        from ConfigSpace import ConfigurationSpace as _ConfigurationSpace
+
+        valid_pipeline_space_types = (PipelineSpace, _ConfigurationSpace)
+    except ImportError:
+        valid_pipeline_space_types = (PipelineSpace,)
+
+    if pipeline_space is not None and not any(
+        isinstance(pipeline_space, t) for t in valid_pipeline_space_types
+    ):
+        raise ValueError(
+            "`pipeline_space` must be a `PipelineSpace` (or a `ConfigurationSpace`"
+            " from the `ConfigSpace` package), got"
+            f" {type(pipeline_space).__name__!r}. Passing a classic `SearchSpace` or"
+            " `dict` is no longer supported; please define your pipeline_space as a"
+            " `PipelineSpace` subclass instead, e.g.:\n\n```python\nclass"
+            " MySpace(PipelineSpace):\n    ...\n```\n"
         )
 
     # Try to load pipeline_space from disk if not provided
@@ -440,6 +443,13 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
     if is_continuing_run and optimizer == "auto":
         try:
             existing_optimizer_info = load_optimizer_info(root_path)
+            if existing_optimizer_info["name"] not in PredefinedOptimizers:
+                raise ValueError(
+                    f"The run in '{root_path}' was started with the custom optimizer"
+                    f" '{existing_optimizer_info['name']}', which cannot be rebuilt"
+                    " from optimizer_info.yaml. Pass the same `optimizer` to"
+                    " `neps.run` to continue it."
+                )
             logger.info(
                 "Continuing optimization with existing optimizer: "
                 f"{existing_optimizer_info['name']}"
@@ -851,7 +861,10 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
                 str_path_temp = str(config_path)
                 if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
                     root_dir = Path(
-                        str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                        str_path_temp.split(
+                            "/configs/",
+                            maxsplit=1,
+                        )[0].split("\\configs\\", maxsplit=1)[0]
                     )
                 # If no /configs/ in path, assume it's either:
                 # 1. The root directory itself
