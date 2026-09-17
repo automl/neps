@@ -39,7 +39,7 @@ def test_basic_neps_run():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 
@@ -69,7 +69,7 @@ def test_neps_optimization_with_dict_return():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 
@@ -94,7 +94,7 @@ def test_different_neps_optimizers():
                 pipeline_space=SimpleSpace(),
                 optimizer=optimizer,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -113,7 +113,7 @@ def test_neps_status_functionality():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=5,
+            worker_evaluations_to_spend=5,
             overwrite_root_directory=True,
         )
 
@@ -143,7 +143,7 @@ def test_evaluation_results_are_recorded():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 

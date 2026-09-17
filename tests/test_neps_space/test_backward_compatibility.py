@@ -46,7 +46,7 @@ def test_searchspace_with_hpo_parameters():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -82,7 +82,7 @@ def test_searchspace_with_new_parameters():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -116,7 +116,7 @@ def test_dict_with_hpo_parameters():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -150,7 +150,7 @@ def test_dict_with_new_parameters():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -197,7 +197,7 @@ def test_searchspace_with_is_fidelity():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_hyperband,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -242,7 +242,7 @@ def test_dict_with_is_fidelity():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_hyperband,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -276,7 +276,7 @@ def test_proper_pipelinespace_no_warnings():
                 pipeline_space=TestSpace(),
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 

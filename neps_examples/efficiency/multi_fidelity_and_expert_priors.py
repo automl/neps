@@ -40,5 +40,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=HPOSpace(),
     root_directory="results/multifidelity_priors",
-    fidelities_to_spend=25,  # For an alternate stopping method see multi_fidelity.py
+    worker_fidelities_to_spend=25,  # For an alternate stopping method see multi_fidelity.py
 )

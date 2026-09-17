@@ -159,7 +159,7 @@ if __name__ == "__main__":
         pipeline_space=ModelSpace(),
         evaluate_pipeline=training_pipeline,
         optimizer="ifbo",
-        fidelities_to_spend=50,
+        worker_fidelities_to_spend=50,
         root_directory="./results/ifbo-mnist/",
         overwrite_root_directory=False,  # set to False for a multi-worker run
     )

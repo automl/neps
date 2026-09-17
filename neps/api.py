@@ -40,19 +40,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
+def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
     evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str,
     pipeline_space: ConfigurationSpace | PipelineSpace | SearchSpace | dict | None = None,
     *,
     root_directory: str | Path = "neps_results",
     overwrite_root_directory: bool = False,
-    evaluations_to_spend: int | None = None,
-    max_evaluations_per_run: int | None = None,  # deprecated
+    worker_evaluations_to_spend: int | None = None,
     continue_until_max_evaluation_completed: bool = False,
-    cost_to_spend: int | float | None = None,
+    worker_cost_to_spend: int | float | None = None,
     total_evaluations_to_spend: int | None = None,
     total_cost_to_spend: int | float | None = None,
-    fidelities_to_spend: int | float | None = None,
+    worker_fidelities_to_spend: int | float | None = None,
     total_fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
@@ -113,7 +112,7 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=MySpace(),
         root_directory="usage_example",
-        evaluations_to_spend=5,
+        worker_evaluations_to_spend=5,
     )
     ```
 
@@ -198,17 +197,17 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
-        evaluations_to_spend: Number of evaluations this specific call/worker should do.
+        worker_evaluations_to_spend: Number of evaluations this specific call/worker should do.
             ??? note "Limitation on Async mode"
                 Currently, there is no specific number to control number of parallel evaluations running with
                 the same worker, so in case you want to limit the number of parallel evaluations,
-                it's crucial to limit the `evaluations_to_spend` accordingly.
+                it's crucial to limit the `worker_evaluations_to_spend` accordingly.
 
         continue_until_max_evaluation_completed:
-            If true, stop only after evaluations_to_spend have fully completed. In other words,
+            If true, stop only after worker_evaluations_to_spend have fully completed. In other words,
             pipelines that are still running do not count toward the stopping criterion.
 
-        cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
+        worker_cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
             returning a cost in the evaluate_pipeline function, e.g.,
             `return dict(loss=loss, cost=cost)`.
 
@@ -220,14 +219,14 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
             same NePS run. Once this total is reached, no worker will start a new
             evaluation.
 
-        fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
+        worker_fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
 
         total_fidelities_to_spend: Maximum accumulated fidelity across all workers
             sharing the same NePS run. Once this total is reached, no worker will start
             a new evaluation.
 
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
-            an error. Error configs still count towards evaluations_to_spend.
+            an error. Error configs still count towards worker and global evaluation budgets, when set.
         objective_value_on_error: Setting this and cost_value_on_error to any float will
             supress any error and will use given objective_to_minimize value instead. default: None
         cost_value_on_error: Setting this and objective_value_on_error to any float will
@@ -344,12 +343,6 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
                 runtime to run your optimizer.
 
     """  # noqa: E501
-    if max_evaluations_per_run is not None:
-        raise ValueError(
-            "`max_evaluations_per_run` is deprecated, please use "
-            "`evaluations_to_spend` for limiting the number of evaluations for this run.",
-        )
-
     # If the pipeline_space is a SearchSpace, convert it to a PipelineSpace and throw a
     # deprecation warning
     if isinstance(pipeline_space, SearchSpace | dict):
@@ -412,9 +405,9 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         ) = state.lock_and_get_global_budgets()
 
     controling_params = {
-        "evaluations_to_spend": evaluations_to_spend,
-        "cost_to_spend": cost_to_spend,
-        "fidelities_to_spend": fidelities_to_spend,
+        "worker_evaluations_to_spend": worker_evaluations_to_spend,
+        "worker_cost_to_spend": worker_cost_to_spend,
+        "worker_fidelities_to_spend": worker_fidelities_to_spend,
         "total_evaluations_to_spend": (
             total_evaluations_to_spend
             if total_evaluations_to_spend is not None
@@ -518,13 +511,13 @@ def run(  # noqa: C901, D417, PLR0912, PLR0913, PLR0915
         evaluation_fn=_eval,  # type: ignore
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
-        cost_to_spend=cost_to_spend,
+        worker_cost_to_spend=worker_cost_to_spend,
         total_evaluations_to_spend=total_evaluations_to_spend,
         total_cost_to_spend=total_cost_to_spend,
-        fidelities_to_spend=fidelities_to_spend,
+        worker_fidelities_to_spend=worker_fidelities_to_spend,
         total_fidelities_to_spend=total_fidelities_to_spend,
         optimization_dir=Path(root_directory),
-        evaluations_to_spend=evaluations_to_spend,
+        worker_evaluations_to_spend=worker_evaluations_to_spend,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
         objective_value_on_error=objective_value_on_error,
         cost_value_on_error=cost_value_on_error,

@@ -48,10 +48,10 @@ def test_evaluations_to_spend_stopping_criterion(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=3,  # <- Highlight
+        worker_evaluations_to_spend=3,  # <- Highlight
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,  # <- cost to spend will not be checked
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,  # <- cost to spend will not be checked
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -124,10 +124,10 @@ def test_total_evaluations_to_spend_stopping_criterion(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=3,
+        worker_evaluations_to_spend=3,
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -156,7 +156,7 @@ def test_total_evaluations_to_spend_stopping_criterion(
     )
 
     # Raise the local limit as a safety net so the global limit stops this worker first.
-    settings.evaluations_to_spend = 10
+    settings.worker_evaluations_to_spend = 10
 
     new_worker = DefaultWorker.new(
         state=neps_state,
@@ -195,10 +195,10 @@ def test_total_cost_to_spend_stopping_criterion(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=2,
+        worker_evaluations_to_spend=2,
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -227,7 +227,7 @@ def test_total_cost_to_spend_stopping_criterion(
         == 4
     )
 
-    settings.evaluations_to_spend = 10
+    settings.worker_evaluations_to_spend = 10
     new_worker = DefaultWorker.new(
         state=neps_state,
         optimizer=optimizer,
@@ -273,10 +273,10 @@ def test_total_fidelities_to_spend_stopping_criterion(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -312,7 +312,7 @@ def test_total_fidelities_to_spend_stopping_criterion(
 
     # Safety limit: if global fidelity stopping breaks,
     # this prevents the test from running forever.
-    settings.evaluations_to_spend = 10
+    settings.worker_evaluations_to_spend = 10
 
     new_worker = DefaultWorker.new(
         state=neps_state,
@@ -385,10 +385,10 @@ def test_worker_uses_updated_global_budget(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=10,
+        worker_evaluations_to_spend=10,
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -438,10 +438,10 @@ def test_multiple_criteria_set(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=5,  # <- Highlight
+        worker_evaluations_to_spend=5,  # <- Highlight
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=3,  # <- Highlight
-        fidelities_to_spend=None,
+        worker_cost_to_spend=3,  # <- Highlight
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -458,7 +458,7 @@ def test_multiple_criteria_set(
     )
     worker.run()
 
-    # The cost_to_spend criterion should stop the worker first after 3 evaluations
+    # The worker_cost_to_spend criterion should stop the worker first after 3 evaluations
     trials = list(neps_state.lock_and_read_trials().values())
     assert (
         sum(
@@ -467,7 +467,7 @@ def test_multiple_criteria_set(
             if trial.metadata.evaluating_worker_id == worker.worker_id
         )
         == 2
-    )  # til the cost_to_spend is reached
+    )  # til the worker_cost_to_spend is reached
     assert neps_state.lock_and_get_next_pending_trial() is None
     assert len(neps_state.lock_and_get_errors()) == 0
 
@@ -478,7 +478,7 @@ def test_multiple_criteria_set(
         assert trial.report.objective_to_minimize == 1.0
         assert trial.report.cost == 2.0
 
-    settings.cost_to_spend = 100  # now only evaluations_to_spend matters
+    settings.worker_cost_to_spend = 100  # now only worker_evaluations_to_spend matters
     new_worker = DefaultWorker.new(
         state=neps_state,
         optimizer=optimizer,
@@ -509,10 +509,10 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=2,  # <- Highlight, only 2 maximum evaluations allowed
+        worker_evaluations_to_spend=2,  # <- Highlight, only 2 maximum evaluations allowed
         include_in_progress_evaluations_towards_maximum=True,  # <- inprogress trial
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -575,10 +575,10 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=1000,  # Incase it doesn't work that we eventually stop
+        worker_evaluations_to_spend=1000,  # Safety limit
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=1,  # <- highlight, 1 second
         batch_size=None,
@@ -616,10 +616,10 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=100,  # Safety incase it doesn't work that we eventually stop
+        worker_evaluations_to_spend=100,  # Safety limit
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=0.5,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -672,10 +672,10 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
-        evaluations_to_spend=10,  # Safety incase it doesn't work that we eventually stop
+        worker_evaluations_to_spend=10,  # Safety limit
         include_in_progress_evaluations_towards_maximum=False,
-        cost_to_spend=None,
-        fidelities_to_spend=2,  # this is the min fidelity used in an evaluation
+        worker_cost_to_spend=None,
+        worker_fidelities_to_spend=2,  # this is the min fidelity used in an evaluation
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -720,7 +720,7 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
     assert len(neps_state.lock_and_get_errors()) == 0
 
     # New worker should also run some trials more trials
-    settings.fidelities_to_spend = 4  # now only 2 fidelity matters
+    settings.worker_fidelities_to_spend = 4  # now only 2 fidelity matters
     new_worker = DefaultWorker.new(
         state=neps_state,
         optimizer=optimizer,
