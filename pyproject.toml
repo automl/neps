@@ -39,14 +39,14 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: MacOS",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: System :: Distributed Computing",
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.15"
 
 dependencies = [
     "numpy>=2.0",
@@ -110,7 +110,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py311"
 output-format = "full"
 line-length = 90
 src = ["neps"]
@@ -301,7 +301,7 @@ markers = [
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
-python_version = "3.10"  # Match minimum supported version
+python_version = "3.11"  # Match minimum supported version
 packages = ["neps"]
 show_error_codes = true
 

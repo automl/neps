@@ -86,7 +86,7 @@ if TYPE_CHECKING:
 
 
 def _default_worker_name() -> str:
-    isoformat = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    isoformat = datetime.datetime.now(datetime.UTC).isoformat()
     return f"{os.getpid()}-{isoformat}"
 
 

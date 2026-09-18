@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
-from typing_extensions import assert_never
+from typing import TYPE_CHECKING, Any, assert_never
 
 from neps.exceptions import TrialValidationError
 from neps.space import SearchSpace

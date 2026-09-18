@@ -4,7 +4,7 @@ Getting started with NePS involves a straightforward yet powerful process, cente
 This approach ensures flexibility and efficiency in evaluating different architecture and hyperparameter configurations
 for your problem.
 
-NePS requires Python 3.10 or higher.
+NePS requires Python 3.11 or higher.
 You can install it via `pip` or from [source](https://github.com/automl/neps/).
 
 ```bash

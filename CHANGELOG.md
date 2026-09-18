@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Renamed per worker budget parameters to `worker_evaluations_to_spend`, `worker_cost_to_spend`, and `worker_fidelities_to_spend` throughout NePS, including the public API and internal budget structures.
+- end support of python3.10 and add support of 3.14
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process
