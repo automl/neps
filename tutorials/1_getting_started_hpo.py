@@ -56,7 +56,7 @@ set_seeds(1)
 neps.run(
     pipeline_space=BraninSpace(),
     root_directory="branin_demo/",
-    evaluations_to_spend=25,
+    worker_evaluations_to_spend=25,
     evaluate_pipeline=branin,
     optimizer="random_search",
     live_plots=True,
@@ -134,7 +134,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_hpo_demo",
     pipeline_space=pipeline_space,
-    evaluations_to_spend=10,  # HPO budget
+    worker_evaluations_to_spend=10,  # HPO budget
     live_plots=True,  # Optional: visualize optimization progress
 )
 
@@ -190,7 +190,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_hpo",
     pipeline_space=pipeline_space,
-    evaluations_to_spend=8,
+    worker_evaluations_to_spend=8,
 )
 
 !python -m neps.status results_hpo/

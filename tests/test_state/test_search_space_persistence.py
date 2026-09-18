@@ -54,7 +54,7 @@ def test_search_space_saved_and_loaded_pipeline_space(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -93,7 +93,7 @@ def test_search_space_saved_and_loaded_search_space(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -123,7 +123,7 @@ def test_search_space_not_provided_backward_compatible(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -151,7 +151,7 @@ def test_load_pipeline_space_function_pipeline_space(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -185,7 +185,7 @@ def test_load_pipeline_space_function_search_space(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -224,7 +224,7 @@ def test_load_pipeline_space_function_no_space_saved(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -250,7 +250,7 @@ def test_load_optimizer_info_function(tmp_path: Path) -> None:
         path=root_dir,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),

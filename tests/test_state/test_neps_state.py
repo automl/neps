@@ -199,11 +199,14 @@ def optimizer_and_key_and_search_space(
 
 
 @parametrize("optimizer_info", [OptimizerInfo(name="blah", info={"a": "b"})])
-@parametrize("cost_to_spend", [BudgetInfo(cost_to_spend=10, used_cost_budget=0), None])
+@parametrize(
+    "worker_cost_to_spend",
+    [BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0), None],
+)
 @parametrize("shared_state", [{"a": "b"}, {}])
 def case_neps_state_filebased(
     tmp_path: Path,
-    cost_to_spend: BudgetInfo | None,
+    worker_cost_to_spend: BudgetInfo | None,
     optimizer_info: OptimizerInfo,
     shared_state: dict[str, Any],
 ) -> NePSState:
@@ -215,7 +218,7 @@ def case_neps_state_filebased(
         path=new_path,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
-            budget=cost_to_spend,
+            budget=worker_cost_to_spend,
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state=shared_state,
         ),

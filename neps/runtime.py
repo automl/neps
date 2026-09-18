@@ -1303,10 +1303,10 @@ def _launch_runtime(  # noqa: PLR0913
                     seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(
                         BudgetInfo(
-                            cost_to_spend=worker_cost_to_spend,
+                            worker_cost_to_spend=worker_cost_to_spend,
                             used_cost_budget=0,
-                            max_evaluations=worker_evaluations_to_spend,
-                            fidelities_to_spend=worker_fidelities_to_spend,
+                            worker_evaluations_to_spend=worker_evaluations_to_spend,
+                            worker_fidelities_to_spend=worker_fidelities_to_spend,
                             used_evaluations=0,
                             total_evaluations_to_spend=total_evaluations_to_spend,
                             total_cost_to_spend=total_cost_to_spend,

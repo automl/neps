@@ -21,7 +21,10 @@ from neps.state.seed_snapshot import SeedSnapshot
 
 
 @fixture
-@parametrize("budget_info", [BudgetInfo(cost_to_spend=10, used_cost_budget=0), None])
+@parametrize(
+    "budget_info",
+    [BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0), None],
+)
 @parametrize("shared_state", [{"a": "b"}, {}])
 def optimizer_state(
     budget_info: BudgetInfo | None,
@@ -90,7 +93,7 @@ def test_create_or_load_with_load_filebased_neps_state(
     # that we prioritize what's in the existing data over what
     # was passed in.
     different_state = OptimizationState(
-        budget=BudgetInfo(cost_to_spend=20, used_cost_budget=10),
+        budget=BudgetInfo(worker_cost_to_spend=20, used_cost_budget=10),
         seed_snapshot=SeedSnapshot.new_capture(),
         shared_state=None,
     )
@@ -129,7 +132,7 @@ def test_pipeline_space_written_and_reloaded(tmp_path: Path) -> None:
 
     optimizer_info = OptimizerInfo(name="test", info={"a": "b"})
     optimizer_state = OptimizationState(
-        budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+        budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
         seed_snapshot=SeedSnapshot.new_capture(),
         shared_state={},
     )

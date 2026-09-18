@@ -32,7 +32,7 @@ def _create_or_load(path: Path, info: OptimizerInfo) -> NePSState:
         path=path,
         optimizer_info=info,
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
