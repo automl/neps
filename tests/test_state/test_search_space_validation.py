@@ -58,7 +58,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Try to continue with TestSpace2 - should raise NePSError
@@ -67,7 +67,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
             evaluate_pipeline=eval_fn2,
             pipeline_space=Space2(),
             root_directory=str(root_dir),
-            evaluations_to_spend=2,
+            worker_evaluations_to_spend=2,
         )
 
 
@@ -80,7 +80,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Continue WITHOUT providing pipeline_space - should load from disk
@@ -88,7 +88,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         # pipeline_space not provided!
         root_directory=str(root_dir),
-        evaluations_to_spend=3,  # Total evaluations wanted
+        worker_evaluations_to_spend=3,  # Total evaluations wanted
     )
 
     # Verify we have at least 2 evaluations (continuation worked)
@@ -106,7 +106,7 @@ def test_error_when_no_space_provided_and_none_on_disk(tmp_path: Path):
             evaluate_pipeline=eval_fn1,
             # pipeline_space not provided and root_dir doesn't exist!
             root_directory=str(root_dir),
-            evaluations_to_spend=1,
+            worker_evaluations_to_spend=1,
         )
 
 
@@ -119,7 +119,7 @@ def test_load_only_does_not_validate(tmp_path: Path, caplog):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Load with load_only - should not error or warn about validation
@@ -148,7 +148,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Find a config file
@@ -174,7 +174,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Find a config file
@@ -201,7 +201,7 @@ def test_ddp_runtime_loads_search_space(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Simulate DDP path - just load_only (DDP doesn't create state)
@@ -222,7 +222,7 @@ def test_status_without_space_works(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Status without pipeline_space - should work
@@ -239,7 +239,7 @@ def test_status_handles_missing_search_space_gracefully(tmp_path: Path):
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         root_directory=str(root_dir),
-        evaluations_to_spend=1,
+        worker_evaluations_to_spend=1,
     )
 
     # Delete the search space file

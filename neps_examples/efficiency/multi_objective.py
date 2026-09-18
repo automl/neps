@@ -123,5 +123,5 @@ neps.run(
     pipeline_space=PriMOSpace(),
     root_directory="results/primo_multi_objective",
     optimizer="primo",  # Specify PriMO as the optimizer
-    fidelities_to_spend=20,  # Budget in terms of fidelity units
+    worker_fidelities_to_spend=20,  # Budget in terms of fidelity units
 )

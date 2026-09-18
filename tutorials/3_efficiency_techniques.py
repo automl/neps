@@ -118,7 +118,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_multi_fidelity/",
     pipeline_space=MultiFidelitySpace(),
-    fidelities_to_spend=60,
+    worker_fidelities_to_spend=60,
     overwrite_root_directory=True,
     optimizer="asha",  # Use ASHA, designed for multi-fidelity workloads
 )
@@ -167,7 +167,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_with_priors/",
     pipeline_space=ExpertPriorSpace(),
-    fidelities_to_spend=60,
+    worker_fidelities_to_spend=60,
     optimizer="priorband",
     overwrite_root_directory=True,
 )
@@ -200,7 +200,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_custom_optimizer/",
     pipeline_space=MultiFidelitySpace(),
-    fidelities_to_spend=60,
+    worker_fidelities_to_spend=60,
     optimizer="async_hb",
     overwrite_root_directory=True,
 )
@@ -217,7 +217,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_sequential/",
     pipeline_space=ExpertPriorSpace(),
-    evaluations_to_spend=6,
+    worker_evaluations_to_spend=6,
     overwrite_root_directory=True,
 )
 
@@ -235,7 +235,7 @@ def run_worker():
         evaluate_pipeline=evaluate_pipeline,
         root_directory="results_parallel/",
         pipeline_space=ExpertPriorSpace(),
-        evaluations_to_spend=6, # each worker's budget
+        worker_evaluations_to_spend=6, # each worker's budget
         overwrite_root_directory=False,  # workers attach, don't reset
     )
 # Launch 3 workers in parallel
@@ -286,7 +286,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_combined/",
     pipeline_space=CombinedSearchSpace(),
-    fidelities_to_spend=80,
+    worker_fidelities_to_spend=80,
     optimizer="priorband",
     overwrite_root_directory=True,
 )

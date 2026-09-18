@@ -99,7 +99,7 @@ atomic writes. This is the core design constraint for anything touching `neps/st
   holds `OptimizationState`/`BudgetInfo`; `neps/state/err_dump.py` tracks worker errors.
 - `neps/runtime.py` is the worker loop: it repeatedly asks the optimizer for the next
   trial(s), locks/claims one, evaluates `evaluate_pipeline`, writes the report, and checks
-  stopping criteria (`evaluations_to_spend`, `cost_to_spend`, `fidelities_to_spend`,
+  stopping criteria (`worker_evaluations_to_spend`, `worker_cost_to_spend`, `worker_fidelities_to_spend`,
   `continue_until_max_evaluation_completed`). It also special-cases PyTorch DDP so only
   rank-zero drives the NePS loop (`_is_ddp_and_not_rank_zero`).
 - Timeouts/poll intervals/retry counts for all the above are tunable via `NEPS_*` env vars

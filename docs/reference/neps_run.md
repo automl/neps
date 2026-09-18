@@ -45,10 +45,10 @@ See the following for more:
 * What goes in and what goes out of [`evaluate_pipeline()`](../reference/neps_run.md)?
 
 ## Budget, how long to run?
-To define a budget, provide `evaluations_to_spend=` to [`neps.run()`][neps.api.run],
+To define a budget, provide `worker_evaluations_to_spend=` to [`neps.run()`][neps.api.run],
 to specify the the total number of evaluations a worker is allowed to perform before halting the optimization process,
-and/or `cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
-and/or `fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
+and/or `worker_cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
+and/or `worker_fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
 
 
 ```python
@@ -61,8 +61,8 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     return {"objective_function_to_minimize": loss, "cost": duration}
 
 neps.run(
-    evaluations_to_spend=10, # (1)!
-    cost_to_spend=1000, # (2)!
+    worker_evaluations_to_spend=10, # (1)!
+    worker_cost_to_spend=1000, # (2)!
 )
 ```
 
@@ -88,7 +88,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-and specify a new stopping criterria(e.g. through `evaluations_to_spend=` and/or `cost_to_spend=`).
+and specify a new stopping criterria(e.g. through `worker_evaluations_to_spend=` and/or `worker_cost_to_spend=`).
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -101,7 +101,7 @@ def run(learning_rate: float, epochs: int) -> float:
 
 neps.run(
     # enable stoping criteria by specifying new number of evaluation desired.
-    evaluations_to_spend=50,
+    worker_evaluations_to_spend=50,
 )
 ```
 
@@ -133,7 +133,7 @@ print(f"Original search space: {pipeline_space}")
 neps.run(
     evaluate_pipeline=my_function,
     root_directory=root_dir,
-    evaluations_to_spend=10,  # adjusted new budget
+    worker_evaluations_to_spend=10,  # adjusted new budget
 )
 
 # Option 2: Start a new run with the same settings
@@ -142,7 +142,7 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="path/to/new_run",
     optimizer=optimizer_info['name'],
-    evaluations_to_spend=50,
+    worker_evaluations_to_spend=50,
 )
 ```
 
@@ -211,15 +211,15 @@ Any new workers that come online will automatically pick up work and work togeth
         evaluate_pipeline=...,
         pipeline_space=...,
         root_directory="some/path",
-        evaluations_to_spend=100, # (1)!
+        worker_evaluations_to_spend=100, # (1)!
         continue_until_max_evaluation_completed=True, # (2)!
         overwrite_root_directory=False, #!!!
     )
     ```
 
     1.  Limits the number of evaluations for this specific call of [`neps.run()`][neps.api.run].
-    2.  Evaluations in-progress count towards evaluations_to_spend, halting new ones when this limit is reached.
-        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets evaluations_to_spend, optimizing resource use in time-sensitive scenarios.
+    2.  Evaluations in-progress count towards worker_evaluations_to_spend, halting new ones when this limit is reached.
+        Setting this to `True` enables continuous sampling of new evaluations until the total of completed ones meets worker_evaluations_to_spend, optimizing resource use in time-sensitive scenarios.
 
     !!! warning
 
@@ -257,7 +257,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `evaluations_to_spend`.
+    Any runs that error will still count towards the total `worker_evaluations_to_spend`.
 
 ### Re-running Failed Configurations
 

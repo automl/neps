@@ -102,7 +102,7 @@ def test_basic_trajectory_functionality():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 
@@ -141,7 +141,7 @@ def test_best_config_with_multiple_metrics():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=5,
+            worker_evaluations_to_spend=5,
             overwrite_root_directory=True,
         )
 
@@ -177,7 +177,7 @@ def test_trajectory_with_fidelity():
             pipeline_space=SpaceWithFidelity(),
             optimizer=("neps_random_search", {"ignore_fidelity": True}),
             root_directory=str(root_directory),
-            evaluations_to_spend=10,
+            worker_evaluations_to_spend=10,
             overwrite_root_directory=True,
         )
 
@@ -209,7 +209,7 @@ def test_cumulative_metrics_tracking():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=5,
+            worker_evaluations_to_spend=5,
             overwrite_root_directory=True,
         )
 
@@ -247,7 +247,7 @@ def test_trajectory_with_failed_evaluations():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=15,  # More evaluations to ensure some failures
+            worker_evaluations_to_spend=15,  # More evaluations to ensure some failures
             overwrite_root_directory=True,
             ignore_errors=True,  # Allow continuing after errors
         )
@@ -282,7 +282,7 @@ def test_neps_hyperband_metrics():
             pipeline_space=SpaceWithFidelity(),
             optimizer=algorithms.neps_hyperband,
             root_directory=str(root_directory),
-            fidelities_to_spend=20,  # Use fidelities_to_spend for mf optimizers
+            worker_fidelities_to_spend=20,  # Budget for multi-fidelity optimization
             overwrite_root_directory=True,
         )
 
@@ -326,7 +326,7 @@ def test_metrics_with_different_optimizers(optimizer):
             pipeline_space=SimpleSpace(),
             optimizer=optimizer,
             root_directory=str(root_directory),
-            evaluations_to_spend=5,
+            worker_evaluations_to_spend=5,
             overwrite_root_directory=True,
         )
 
@@ -368,7 +368,7 @@ def test_metric_values_are_reasonable():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=5,
+            worker_evaluations_to_spend=5,
             overwrite_root_directory=True,
         )
 
@@ -407,7 +407,7 @@ def test_trajectory_file_format():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 
@@ -442,7 +442,7 @@ def test_results_directory_structure():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 
@@ -474,7 +474,7 @@ def test_neps_revisit_run_with_trajectory():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,  # Start fresh
         )
 
@@ -497,7 +497,7 @@ def test_neps_revisit_run_with_trajectory():
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=2,  # Add 2 more evaluations
+            worker_evaluations_to_spend=2,  # Add 2 more evaluations
             overwrite_root_directory=False,  # Don't overwrite, continue from previous
         )
 
@@ -551,7 +551,7 @@ def test_continue_finished_run_with_higher_budget(run_number):
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=initial_budget,
+            worker_evaluations_to_spend=initial_budget,
             overwrite_root_directory=True,
         )  # Verify first run completed
         summary_dir = root_directory / "summary"
@@ -590,7 +590,7 @@ def test_continue_finished_run_with_higher_budget(run_number):
             pipeline_space=SimpleSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=additional_budget,
+            worker_evaluations_to_spend=additional_budget,
             overwrite_root_directory=False,  # Continue from previous run
         )
 
@@ -774,10 +774,10 @@ def test_best_config_multiobjective_frontier():
             on_error=OnErrorPossibilities.IGNORE,
             default_report_values=DefaultReportValues(),
             batch_size=None,
-            evaluations_to_spend=None,
+            worker_evaluations_to_spend=None,
             include_in_progress_evaluations_towards_maximum=False,
-            cost_to_spend=None,
-            fidelities_to_spend=None,
+            worker_cost_to_spend=None,
+            worker_fidelities_to_spend=None,
             max_evaluation_time_total_seconds=None,
             max_wallclock_time_seconds=None,
         )

@@ -96,7 +96,7 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=pipeline_space,
         root_directory="results/architecture_search_example",
-        evaluations_to_spend=5,
+        worker_evaluations_to_spend=5,
     )
     neps.status(
         "results/architecture_search_example",

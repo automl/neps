@@ -32,7 +32,7 @@ def _create_or_load(path: Path, info: OptimizerInfo) -> NePSState:
         path=path,
         optimizer_info=info,
         optimizer_state=OptimizationState(
-            budget=BudgetInfo(cost_to_spend=10, used_cost_budget=0),
+            budget=BudgetInfo(worker_cost_to_spend=10, used_cost_budget=0),
             seed_snapshot=SeedSnapshot.new_capture(),
             shared_state={},
         ),
@@ -123,7 +123,7 @@ def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> N
             evaluate_pipeline=lambda x, epochs: x + epochs,
             pipeline_space=_PipelineSpace(),
             root_directory=root,
-            evaluations_to_spend=1,
+            worker_evaluations_to_spend=1,
         )
 
 

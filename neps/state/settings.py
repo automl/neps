@@ -78,8 +78,8 @@ class WorkerSettings:
     """The number of configurations to sample in a single batch."""
 
     # --------- Stopping Criterion ---------
-    evaluations_to_spend: int | None
-    """The maximum number of evaluations to run in total.
+    worker_evaluations_to_spend: int | None
+    """The maximum number of evaluations this worker can run.
 
     Once this evaluation total is reached, worker will stop evaluating
     new configurations.
@@ -95,11 +95,11 @@ class WorkerSettings:
     include_in_progress_evaluations_towards_maximum: bool
     """Whether to include currently evaluating configurations towards the
     stopping criterion
-    [`evaluations_to_spend`][neps.state.settings.WorkerSettings.evaluations_to_spend]
+    [`worker_evaluations_to_spend`][neps.state.settings.WorkerSettings.worker_evaluations_to_spend]
     """
 
-    cost_to_spend: float | None
-    """The maximum cost to run in total.
+    worker_cost_to_spend: float | None
+    """The maximum cumulative cost this worker can spend.
 
     Once this cost total is reached, worker will stop evaluating new
     configurations.
@@ -111,10 +111,10 @@ class WorkerSettings:
     indefinitely or until another stopping criterion is met.
     """
 
-    fidelities_to_spend: int | float | None
-    """The maximum number of evaluations to run in case of multi-fidelity.
+    worker_fidelities_to_spend: int | float | None
+    """The maximum cumulative fidelity this worker can spend.
 
-    Once this evaluation total is reached, worker will stop evaluating
+    Once this fidelity total is reached, the worker will stop evaluating
     new configurations.
 
     To control whether currently evaluating configurations are included in this

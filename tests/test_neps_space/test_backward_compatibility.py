@@ -42,7 +42,7 @@ def test_searchspace_is_rejected():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -64,7 +64,7 @@ def test_dict_is_rejected():
                 pipeline_space=pipeline_space,
                 optimizer=algorithms.neps_random_search,
                 root_directory=str(root_directory),
-                evaluations_to_spend=3,
+                worker_evaluations_to_spend=3,
                 overwrite_root_directory=True,
             )
 
@@ -85,7 +85,7 @@ def test_proper_pipelinespace_still_works():
             pipeline_space=TestSpace(),
             optimizer=algorithms.neps_random_search,
             root_directory=str(root_directory),
-            evaluations_to_spend=3,
+            worker_evaluations_to_spend=3,
             overwrite_root_directory=True,
         )
 

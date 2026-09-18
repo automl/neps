@@ -87,8 +87,8 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        fidelities_to_spend=50 if "priorband" in optimizer.__name__ else None,
-        evaluations_to_spend=50 if "priorband" not in optimizer.__name__ else None,
+        worker_fidelities_to_spend=50 if "priorband" in optimizer.__name__ else None,
+        worker_evaluations_to_spend=50 if "priorband" not in optimizer.__name__ else None,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -125,7 +125,7 @@ def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        fidelities_to_spend=50,
+        worker_fidelities_to_spend=50,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
