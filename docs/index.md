@@ -84,7 +84,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=ExampleSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
-    worker_evaluations_to_spend=100,
+    total_evaluations_to_spend=100,
 )
 
 # 4. status information about a neural pipeline search run, using:

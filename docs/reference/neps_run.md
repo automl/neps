@@ -45,10 +45,12 @@ See the following for more:
 * What goes in and what goes out of [`evaluate_pipeline()`](../reference/neps_run.md)?
 
 ## Budget, how long to run?
-To define a budget, provide `worker_evaluations_to_spend=` to [`neps.run()`][neps.api.run],
-to specify the the total number of evaluations a worker is allowed to perform before halting the optimization process,
-and/or `worker_cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
-and/or `worker_fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
+To define a budget, provide `total_evaluations_to_spend=` to [`neps.run()`][neps.api.run],
+to specify the number of evaluations after which the whole study (across all workers) stops,
+and/or `total_cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
+and/or `total_fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
+
+Each of these also has a `worker_` variant (e.g. `worker_evaluations_to_spend=`) that limits only what a single `neps.run()` call/worker does.
 
 
 ```python
@@ -61,8 +63,8 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> float:
     return {"objective_function_to_minimize": loss, "cost": duration}
 
 neps.run(
-    worker_evaluations_to_spend=10, # (1)!
-    worker_cost_to_spend=1000, # (2)!
+    total_evaluations_to_spend=10, # (1)!
+    total_cost_to_spend=1000, # (2)!
 )
 ```
 
@@ -88,7 +90,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ## Continuing Runs
 To continue a run, all you need to do is provide the same `root_directory=` to [`neps.run()`][neps.api.run] as before,
-and specify a new stopping criterria(e.g. through `worker_evaluations_to_spend=` and/or `worker_cost_to_spend=`).
+and specify a new stopping criterria(e.g. through `total_evaluations_to_spend=` and/or `total_cost_to_spend=`).
 
 ```python
 def run(learning_rate: float, epochs: int) -> float:
@@ -101,7 +103,7 @@ def run(learning_rate: float, epochs: int) -> float:
 
 neps.run(
     # enable stoping criteria by specifying new number of evaluation desired.
-    worker_evaluations_to_spend=50,
+    total_evaluations_to_spend=50,
 )
 ```
 
@@ -133,7 +135,7 @@ print(f"Original search space: {pipeline_space}")
 neps.run(
     evaluate_pipeline=my_function,
     root_directory=root_dir,
-    worker_evaluations_to_spend=10,  # adjusted new budget
+    total_evaluations_to_spend=10,  # adjusted new budget
 )
 
 # Option 2: Start a new run with the same settings
@@ -142,7 +144,7 @@ neps.run(
     pipeline_space=pipeline_space,
     root_directory="path/to/new_run",
     optimizer=optimizer_info['name'],
-    worker_evaluations_to_spend=50,
+    total_evaluations_to_spend=50,
 )
 ```
 
@@ -257,7 +259,7 @@ neps.run(
 
 !!! note
 
-    Any runs that error will still count towards the total `worker_evaluations_to_spend`.
+    Any runs that error will still count towards `total_evaluations_to_spend`.
 
 ### Re-running Failed Configurations
 
