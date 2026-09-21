@@ -42,10 +42,10 @@ def test_async_happy_path_changes_state(neps_state: NePSState) -> None:
         default_report_values=DefaultReportValues(
             cost_if_not_provided=10
         ),  # <- it is ignored
-        evaluations_to_spend=2,
+        worker_evaluations_to_spend=2,
         include_in_progress_evaluations_towards_maximum=True,
-        cost_to_spend=1,
-        fidelities_to_spend=None,
+        worker_cost_to_spend=1,
+        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,

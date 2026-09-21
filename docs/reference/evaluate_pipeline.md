@@ -21,7 +21,7 @@ All other values raise a `TypeError` inside NePS.
 | key                     | purpose                                                                      | required?                     |
 | ----------------------- | ---------------------------------------------------------------------------- | ----------------------------- |
 | `objective_to_minimize` | scalar NePS will minimise                                                    | **yes**                       |
-| `cost`                  | wall‑clock, GPU‑hours, … — only if you passed `cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
+| `cost`                  | wall‑clock, GPU‑hours, … —  Stopping criterion when passed `total_cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
 | `learning_curve`        | list/np.array of intermediate objectives                                     | optional                      |
 | `extra`                 | any JSON‑serialisable blob                                                   | optional                      |
 | `exception`                 | any Exception illustrating the error in evaluation                                                   | optional                      |
@@ -130,7 +130,7 @@ neps.save_pipeline_results(
 
 ### 3.4 Common pitfalls
 
-* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `evaluations_to_spend` and/or `cost_to_spend`) when calling `neps.run`.
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `total_evaluations_to_spend` and/or `total_cost_to_spend`) when calling `neps.run`.
 
 ## 4 Extra injected arguments
 

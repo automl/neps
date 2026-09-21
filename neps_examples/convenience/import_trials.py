@@ -150,7 +150,7 @@ def run_import_trials(optimizer):
         pipeline_space=ExampleSpace(),
         root_directory=f"results/trial_import/initial_results_{optimizer}",
         overwrite_root_directory=True,
-        fidelities_to_spend=5,
+        worker_fidelities_to_spend=5,
         worker_id=f"worker_{optimizer}-{socket.gethostname()}-{os.getpid()}",
         optimizer=optimizer,
     )
@@ -191,7 +191,7 @@ def run_import_trials(optimizer):
         evaluate_pipeline=get_evaluate_pipeline_func(optimizer=optimizer),
         pipeline_space=ExampleSpace(),
         root_directory=f"results/trial_import/results_{optimizer}",
-        fidelities_to_spend=10,
+        worker_fidelities_to_spend=10,
         worker_id=f"worker_{optimizer}_resume-{socket.gethostname()}-{os.getpid()}",
         optimizer=optimizer,
     )

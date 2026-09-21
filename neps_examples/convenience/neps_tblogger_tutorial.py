@@ -335,7 +335,7 @@ if __name__ == "__main__":
 
     neps.run(
         **run_args,
-        evaluations_to_spend=3,
+        worker_evaluations_to_spend=3,
     )
 
     """

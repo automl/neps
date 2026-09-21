@@ -28,7 +28,7 @@ def _run(root: Path, evaluate_pipeline: object, *, live_plots: bool) -> None:
         pipeline_space=_Space(),
         root_directory=root,
         optimizer="random_search",
-        evaluations_to_spend=3,
+        worker_evaluations_to_spend=3,
         live_plots=live_plots,
     )
 

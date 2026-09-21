@@ -32,7 +32,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline, # need to define evaluate pipeline
     pipeline_space=my_pipeline_space, # need to define pipeline space
     root_directory="bayesian_study",
-    evaluations_to_spend=5,  # 5 more evaluations
+    total_evaluations_to_spend=5,  # 5 more evaluations
 )
 ```
 

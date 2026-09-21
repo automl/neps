@@ -170,7 +170,7 @@ def test_hyperparameter_demo(optimizer):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        evaluations_to_spend=10,
+        worker_evaluations_to_spend=10,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -192,7 +192,7 @@ def test_hyperparameter_with_fidelity_demo(optimizer):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        evaluations_to_spend=10,
+        worker_evaluations_to_spend=10,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -215,7 +215,7 @@ def test_hyperparameter_complex_demo(optimizer):
         optimizer=optimizer,
         root_directory=root_directory,
         overwrite_root_directory=True,
-        evaluations_to_spend=10,
+        worker_evaluations_to_spend=10,
     )
     neps.status(root_directory, print_summary=True)
 
@@ -340,7 +340,7 @@ def test_operation_demo(optimizer):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        evaluations_to_spend=10,
+        worker_evaluations_to_spend=10,
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -366,7 +366,7 @@ def test_neps_hyperband_with_fidelity_demo(optimizer):
         pipeline_space=pipeline_space,
         optimizer=optimizer,
         root_directory=root_directory,
-        fidelities_to_spend=15,  # Use fidelities_to_spend for multi-fidelity optimizers
+        worker_fidelities_to_spend=15,  # Use worker_fidelities_to_spend for multi-fidelity optimizers
         overwrite_root_directory=True,
     )
     neps.status(root_directory, print_summary=True)
@@ -551,7 +551,7 @@ def test_trajectory_and_metrics(tmp_path):
         pipeline_space=space,
         optimizer=algorithms.neps_random_search,
         root_directory=str(root_directory),
-        evaluations_to_spend=5,
+        worker_evaluations_to_spend=5,
         overwrite_root_directory=True,
     )
 

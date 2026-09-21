@@ -60,5 +60,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=HPOSpace(),
     root_directory="results/slurm_script_example",
-    evaluations_to_spend=5,
+    worker_evaluations_to_spend=5,
 )

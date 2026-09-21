@@ -34,5 +34,5 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=HPOSpace(),
     root_directory="results/logging_additional_info",
-    evaluations_to_spend=5,
+    worker_evaluations_to_spend=5,
 )

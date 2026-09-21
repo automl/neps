@@ -38,7 +38,7 @@ from neps.state.filebased import (
     ReaderWriterTrial,
     TrialWriteHint,
 )
-from neps.state.optimizer import OptimizationState
+from neps.state.optimizer import BudgetInfo, OptimizationState
 from neps.state.trial import Report, Trial
 from neps.utils.files import atomic_write, deserialize, serialize
 
@@ -626,6 +626,84 @@ class NePSState:  # noqa: PLW1641
                 obj = pickle.load(f)  # noqa: S301
                 assert isinstance(obj, OptimizationState)
                 return obj
+
+    def _get_optimizer_state(self) -> OptimizationState:
+        """Get optimizer state without acquiring the optimizer lock.
+
+        The caller is responsible for holding the optimizer lock.
+        """
+        with self._optimizer_state_path.open("rb") as f:
+            obj = pickle.load(f)  # noqa: S301
+            assert isinstance(obj, OptimizationState)
+            return obj
+
+    def lock_and_update_global_budgets(
+        self,
+        *,
+        total_evaluations_to_spend: int | None,
+        total_cost_to_spend: float | None,
+        total_fidelities_to_spend: int | float | None,
+    ) -> None:
+        """Update the global budgets stored for this run."""
+        if (
+            total_evaluations_to_spend is None
+            and total_cost_to_spend is None
+            and total_fidelities_to_spend is None
+        ):
+            return
+
+        with self._optimizer_lock.lock():
+            optimizer_state = self._get_optimizer_state()
+
+            if optimizer_state.budget is None:
+                optimizer_state.budget = BudgetInfo()
+
+            if total_evaluations_to_spend is not None:
+                optimizer_state.budget.total_evaluations_to_spend = (
+                    total_evaluations_to_spend
+                )
+
+            if total_cost_to_spend is not None:
+                optimizer_state.budget.total_cost_to_spend = total_cost_to_spend
+
+            if total_fidelities_to_spend is not None:
+                optimizer_state.budget.total_fidelities_to_spend = (
+                    total_fidelities_to_spend
+                )
+
+            with atomic_write(self._optimizer_state_path, "wb") as f:
+                pickle.dump(
+                    optimizer_state,
+                    f,
+                    protocol=pickle.HIGHEST_PROTOCOL,
+                )
+
+    def lock_and_get_global_budgets(
+        self,
+    ) -> tuple[int | None, float | None, int | float | None]:
+        """Get the global budgets stored for this run."""
+        optimizer_state = self.lock_and_get_optimizer_state()
+
+        if optimizer_state.budget is None:
+            return None, None, None
+
+        return (
+            getattr(
+                optimizer_state.budget,
+                "total_evaluations_to_spend",
+                None,
+            ),
+            getattr(
+                optimizer_state.budget,
+                "total_cost_to_spend",
+                None,
+            ),
+            getattr(
+                optimizer_state.budget,
+                "total_fidelities_to_spend",
+                None,
+            ),
+        )
 
     def lock_and_get_trial_by_id(self, trial_id: str) -> Trial:
         """Get a trial by its id."""

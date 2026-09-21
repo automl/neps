@@ -403,7 +403,7 @@ class DefaultWorker:
             cumulative.append(ResourceUsage(**asdict(running)))
         return cumulative
 
-    def _check_global_stopping_criterion(  # noqa: C901
+    def _check_global_stopping_criterion(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         log_status: bool = False,  # noqa: FBT001, FBT002
@@ -417,6 +417,24 @@ class DefaultWorker:
         Returns:
             A tuple of (stopping message or False, global resource usage).
         """
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
+        total_evaluations_to_spend = (
+            getattr(budget_info, "total_evaluations_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_cost_to_spend = (
+            getattr(budget_info, "total_cost_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_fidelities_to_spend = (
+            getattr(budget_info, "total_fidelities_to_spend", None)
+            if budget_info is not None
+            else None
+        )
         worker_resource_usage = self._calculate_total_resource_usage(
             trials,
             subset_worker_id=self.worker_id,
@@ -432,39 +450,43 @@ class DefaultWorker:
         if log_status:
             # Log current budget status
             budget_info_parts = []
-            if self.settings.evaluations_to_spend is not None:
+            if self.settings.worker_evaluations_to_spend is not None:
                 eval_percentage = int(
                     (
                         worker_resource_usage.evaluations
-                        / self.settings.evaluations_to_spend
+                        / self.settings.worker_evaluations_to_spend
                     )
                     * 100
                 )
                 budget_info_parts.append(
                     "Evaluations:"
                     f" {worker_resource_usage.evaluations}/"
-                    f"{self.settings.evaluations_to_spend}"
+                    f"{self.settings.worker_evaluations_to_spend}"
                     f" ({eval_percentage}%)"
                 )
-            if self.settings.fidelities_to_spend is not None:
+            if self.settings.worker_fidelities_to_spend is not None:
                 fidelity_percentage = int(
-                    (worker_resource_usage.fidelities / self.settings.fidelities_to_spend)
+                    (
+                        worker_resource_usage.fidelities
+                        / self.settings.worker_fidelities_to_spend
+                    )
                     * 100
                 )
                 budget_info_parts.append(
                     "Fidelities:"
                     f" {worker_resource_usage.fidelities}/"
-                    f"{self.settings.fidelities_to_spend}"
+                    f"{self.settings.worker_fidelities_to_spend}"
                     f" ({fidelity_percentage}%)"
                 )
-            if self.settings.cost_to_spend is not None:
+            if self.settings.worker_cost_to_spend is not None:
                 cost_percentage = int(
-                    (worker_resource_usage.cost / self.settings.cost_to_spend) * 100
+                    (worker_resource_usage.cost / self.settings.worker_cost_to_spend)
+                    * 100
                 )
                 budget_info_parts.append(
                     "Cost:"
                     f" {worker_resource_usage.cost}/"
-                    f"{self.settings.cost_to_spend} ({cost_percentage}%)"
+                    f"{self.settings.worker_cost_to_spend} ({cost_percentage}%)"
                 )
             if self.settings.max_evaluation_time_total_seconds is not None:
                 time_percentage = int(
@@ -486,34 +508,36 @@ class DefaultWorker:
         return_string: str | Literal[False] = False
 
         if (
-            self.settings.evaluations_to_spend is not None
-            and worker_resource_usage.evaluations >= self.settings.evaluations_to_spend
+            self.settings.worker_evaluations_to_spend is not None
+            and worker_resource_usage.evaluations
+            >= self.settings.worker_evaluations_to_spend
         ):
             return_string = (
                 "Worker has reached the maximum number of evaluations it is allowed"
-                f" to do as given by `{self.settings.evaluations_to_spend=}`."
+                f" to do as given by `{self.settings.worker_evaluations_to_spend=}`."
                 "\nTo allow more evaluations, increase this value or use a different"
                 " stopping criterion."
             )
 
         if (
-            self.settings.fidelities_to_spend is not None
-            and worker_resource_usage.fidelities >= self.settings.fidelities_to_spend
+            self.settings.worker_fidelities_to_spend is not None
+            and worker_resource_usage.fidelities
+            >= self.settings.worker_fidelities_to_spend
         ):
             return_string = (
                 "The total number of fidelity evaluations has reached the maximum"
-                f" allowed of `{self.settings.fidelities_to_spend=}`."
+                f" allowed of `{self.settings.worker_fidelities_to_spend=}`."
                 " To allow more evaluations, increase this value or use a different"
                 " stopping criterion."
             )
 
         if (
-            self.settings.cost_to_spend is not None
-            and worker_resource_usage.cost >= self.settings.cost_to_spend
+            self.settings.worker_cost_to_spend is not None
+            and worker_resource_usage.cost >= self.settings.worker_cost_to_spend
         ):
             return_string = (
                 "Worker has reached the maximum cost it is allowed to spend"
-                f" which is given by `{self.settings.cost_to_spend=}`."
+                f" which is given by `{self.settings.worker_cost_to_spend=}`."
                 f" This worker has spend '{worker_resource_usage.cost}'."
                 "\n To allow more evaluations, increase this value or use a different"
                 " stopping criterion."
@@ -531,15 +555,73 @@ class DefaultWorker:
                 " a different stopping criterion."
             )
 
+        if (
+            total_evaluations_to_spend is not None
+            and global_resource_usage.evaluations >= total_evaluations_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum number of evaluations"
+                " allowed as given by"
+                f" `total_evaluations_to_spend={total_evaluations_to_spend}`."
+                f" The total number of evaluations is"
+                f" '{global_resource_usage.evaluations}'."
+            )
+
+        if (
+            total_cost_to_spend is not None
+            and global_resource_usage.cost >= total_cost_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum cost allowed as given by"
+                f" `total_cost_to_spend={total_cost_to_spend}`."
+                f" The total cost spent is '{global_resource_usage.cost}'."
+            )
+
+        if (
+            total_fidelities_to_spend is not None
+            and global_resource_usage.fidelities >= total_fidelities_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum fidelity allowed as"
+                f" given by `total_fidelities_to_spend={total_fidelities_to_spend}`."
+                f" The total fidelity spent is '{global_resource_usage.fidelities}'."
+            )
+
         return (return_string, global_resource_usage)
 
     @property
     def _requires_global_stopping_criterion(self) -> bool:
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
         return (
-            self.settings.evaluations_to_spend is not None
-            or self.settings.cost_to_spend is not None
-            or self.settings.fidelities_to_spend is not None
+            self.settings.worker_evaluations_to_spend is not None
+            or self.settings.worker_cost_to_spend is not None
+            or self.settings.worker_fidelities_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
+            or (
+                budget_info is not None
+                and (
+                    getattr(
+                        budget_info,
+                        "total_evaluations_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_cost_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_fidelities_to_spend",
+                        None,
+                    )
+                    is not None
+                )
+            )
         )
 
     def _write_trajectory_files(
@@ -1175,14 +1257,17 @@ def _launch_runtime(  # noqa: PLR0913
     optimizer_info: OptimizerInfo,
     optimization_dir: Path,
     pipeline_space: SearchSpace | PipelineSpace,
-    cost_to_spend: float | None,
+    worker_cost_to_spend: float | None,
+    total_evaluations_to_spend: int | None,
+    total_cost_to_spend: float | None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None,
     cost_value_on_error: float | None,
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
-    evaluations_to_spend: int | None,
-    fidelities_to_spend: int | float | None,
+    worker_evaluations_to_spend: int | None,
+    worker_fidelities_to_spend: int | float | None,
+    total_fidelities_to_spend: int | float | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
     live_plots: bool = False,
@@ -1218,11 +1303,14 @@ def _launch_runtime(  # noqa: PLR0913
                     seed_snapshot=SeedSnapshot.new_capture(),
                     budget=(
                         BudgetInfo(
-                            cost_to_spend=cost_to_spend,
+                            worker_cost_to_spend=worker_cost_to_spend,
                             used_cost_budget=0,
-                            max_evaluations=evaluations_to_spend,
-                            fidelities_to_spend=fidelities_to_spend,
+                            worker_evaluations_to_spend=worker_evaluations_to_spend,
+                            worker_fidelities_to_spend=worker_fidelities_to_spend,
                             used_evaluations=0,
+                            total_evaluations_to_spend=total_evaluations_to_spend,
+                            total_cost_to_spend=total_cost_to_spend,
+                            total_fidelities_to_spend=total_fidelities_to_spend,
                         )
                     ),
                     shared_state=None,  # TODO: Unused for the time being...
@@ -1248,6 +1336,12 @@ def _launch_runtime(  # noqa: PLR0913
             " Please enable debug logging to see the errors that occured."
         )
 
+    neps_state.lock_and_update_global_budgets(
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
+        total_fidelities_to_spend=total_fidelities_to_spend,
+    )
+
     settings = WorkerSettings(
         on_error=(
             OnErrorPossibilities.IGNORE
@@ -1256,12 +1350,12 @@ def _launch_runtime(  # noqa: PLR0913
         ),
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
-        evaluations_to_spend=evaluations_to_spend,
-        fidelities_to_spend=fidelities_to_spend,
+        worker_evaluations_to_spend=worker_evaluations_to_spend,
+        worker_fidelities_to_spend=worker_fidelities_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
         ),
-        cost_to_spend=cost_to_spend,
+        worker_cost_to_spend=worker_cost_to_spend,
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
         max_wallclock_time_seconds=None,  # TODO: User can't specify yet
         live_plots=live_plots,
