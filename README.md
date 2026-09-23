@@ -9,7 +9,7 @@ Welcome to NePS, a powerful and flexible Python library for hyperparameter optim
 
 NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups and, in general, NePS is tailored to the needs of deep learning experts.
 
-To learn about NePS, check-out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or a [colab tutorial](neps/tutorials/).
+To learn about NePS, check-out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials) on [getting started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb), [defining search spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb), and [efficiency techniques](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb).
 
 ## Key Features
 
@@ -100,6 +100,18 @@ Discover how NePS works through these examples:
 - **[Benefiting NePS State and Optimizers with custom runtime](neps_examples/experimental/ask_and_tell_example.py)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
 
 - **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
+
+## Tutorials
+
+Interactive notebooks that run in Google Colab:
+
+| Tutorial | What it covers | Run |
+|----------|----------------|-----|
+| **1. Getting Started with HPO** | Basic HPO workflow, synthetic functions, and deep learning tasks | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) |
+| **2. Defining Search Spaces** | Parameter types, fidelity parameters, and `PipelineSpace` classes | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) |
+| **3. Efficient Optimization** | Multi-fidelity optimization, expert priors, optimizer selection, and parallelization | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) |
+
+To run them locally instead, see the [tutorials folder](tutorials/).
 
 ## Contributing
 
