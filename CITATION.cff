@@ -1,40 +1,46 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Stoll
-    given-names: Danny
+  - family-names: Alipour
+    given-names: Nastaran
   - family-names: Mallik
     given-names: Neeratyoy
   - family-names: Bergman
     given-names: Eddie
+  - family-names: Geburek
+    given-names: Anton Merlin
   - family-names: Schrodi
     given-names: Simon
   - family-names: Basu
     given-names: Soham
-  - family-names: Geburek
-    given-names: Anton Merlin
+  - family-names: Birinxhiku
+    given-names: Lum
   - family-names: Abou Chakra
     given-names: Tarek
   - family-names: Garibov
     given-names: Samir
   - family-names: Gaur
     given-names: Gopalji
-  - family-names: Alipour
-    given-names: Nastaran
   - family-names: Janowski
     given-names: Maciej
-  - family-names: Hvarfner
-    given-names: Carl
-  - family-names: Carstensen
-    given-names: Timur
   - family-names: Mekic
     given-names: Ema
+  - family-names: Ambattu
+    given-names: Philip Alex
   - family-names: Rogalla
     given-names: Daniel
+  - family-names: Hvarfner
+    given-names: Carl
   - family-names: Binxin
     given-names: Ru
+  - family-names: Carstensen
+    given-names: Timur
+  - family-names: Hog
+    given-names: Johannes
   - family-names: Hutter
     given-names: Frank
+  - family-names: Stoll
+    given-names: Danny
 title: "Neural Pipeline Search (NePS)"
 version: 0.16.0
 date-released: 2025-04-11

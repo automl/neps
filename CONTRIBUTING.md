@@ -14,7 +14,7 @@ Automatic checks are run on every pull request and on every commit to `master`.
 
 ## Installation
 
-There are four steps: 
+There are four steps:
 
 1. Install uv
 1. Clone the neps repository
@@ -211,6 +211,10 @@ To publish the documentation run
 mike deploy 0.5.1 latest -p
 ```
 
+## Tutorials
+
+See [tutorials README](./tutorials/README.md).
+
 ## Releasing a New Version
 
 There are four steps to releasing a new version of neps:
@@ -250,7 +254,7 @@ mike serve
 
 and then looking at it.
 
-Update the citations page.
+Update the citation.cff page and citations.md page in the `docs` directory and in `pyproject.toml`.
 
 Afterwards, publish it via
 

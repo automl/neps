@@ -56,28 +56,18 @@ hidden_units = neps.Integer(lower=32, upper=2048, log=True)
 optimizer = neps.Categorical(choices=["sgd", "adam", "adamw"])
 # With prior value
 activation = neps.Categorical(
-    choices=["relu", "tanh", "sigmoid"], 
+    choices=["relu", "tanh", "sigmoid"],
     prior=0,  # Index of default choice (relu)
     prior_confidence="high"
 )
 
 # ## Building Complex Search Spaces
 
-# ### Using a Dictionary
-
-# Simple dictionary-based search space
-simple_space = dict(
-    learning_rate=neps.Float(1e-6, 1e-1, log=True),
-    batch_size=neps.Integer(16, 256),
-    optimizer=neps.Categorical(["sgd", "adam"]),
-)
-
-# ### Using a PipelineSpace Class
-# For complex search spaces, use the `PipelineSpace` class for conditioning one hyperparmater over other and better organization.
+# ### The PipelineSpace Class
 
 class MyOptimizationSpace(neps.PipelineSpace):
     """Define a structured search space for neural architecture search."""
-    
+
     # Architecture parameters
     num_layers = neps.Integer(lower=2, upper=6, prior=3, prior_confidence="medium")
     num_neurons = neps.Integer(lower=64, upper=512, log=True, prior=256, prior_confidence="medium")
@@ -86,7 +76,7 @@ class MyOptimizationSpace(neps.PipelineSpace):
         prior=0,
         prior_confidence="medium"
     )
-    
+
     # Training hyperparameters
     learning_rate = neps.Float(lower=1e-6, upper=1e-1, log=True, prior=1e-3, prior_confidence="medium")
     optimizer = neps.Categorical(
@@ -94,7 +84,7 @@ class MyOptimizationSpace(neps.PipelineSpace):
         prior=1,
         prior_confidence="high"
     )
-    
+
     # Regularization
     dropout_rate = neps.Float(lower=0.0, upper=0.9, prior=0.1, prior_confidence="medium")
     weight_decay = neps.Float(lower=0.0, upper=1e-2, log=True, prior=1e-4, prior_confidence="medium")
@@ -104,12 +94,11 @@ class MyOptimizationSpace(neps.PipelineSpace):
 # Use fidelity parameters for multi-fidelity optimization (train with different epochs, dataset sizes, etc.).
 
 # Define a search space with a fidelity parameter
-pipeline_space = dict(
-    learning_rate=neps.Float(1e-6, 1e-1, log=True),
-    optimizer=neps.Categorical(["sgd", "adam"]),
-    # Fidelity: wrap the Integer or Float object in neps.Fidelity()
-    epochs=neps.Fidelity(neps.Integer(1, 10)),
-)
+class FidelitySpace(neps.PipelineSpace):
+    learning_rate=neps.Float(1e-6, 1e-1, log=True)
+    optimizer=neps.Categorical(["sgd", "adam"])
+    # Fidelity: Use IntegerFidelity or FloatFidelity for multi-fidelity optimization
+    epochs=neps.IntegerFidelity(1, 10)
 
 # ## Important: Constraint-Free Search Spaces
 #
@@ -184,22 +173,22 @@ class ConditionalPipelineSpace(neps.PipelineSpace):
     _dense_layer = neps.Operation(
         operator=dense_layer,
         kwargs={
-            "num_neurons": neps.Integer(64, 512, log=True),
-            "activation": neps.Categorical(["relu", "gelu", "elu"]),
+            "num_neurons": neps.Integer(64, 512, log=True).resample(),
+            "activation": neps.Categorical(["relu", "gelu", "elu"]).resample(),
         },
     )
     _conv_layer = neps.Operation(
         operator=conv_layer,
         kwargs={
-            "num_filters": neps.Integer(16, 128, log=True),
-            "kernel_size": neps.Categorical([3, 5, 7]),
+            "num_filters": neps.Integer(16, 128, log=True).resample(),
+            "kernel_size": neps.Categorical([3, 5, 7]).resample(),
         },
     )
 
     _block = neps.Categorical(
         choices=(
-            _dense_layer,
-            _conv_layer,
+            _dense_layer.resample(),
+            _conv_layer.resample(),
         ),
     )
     _learning_rate = neps.Float(1e-5, 1e-2, log=True)
@@ -255,7 +244,7 @@ neps.run(
 # - **Float**: For continuous parameters, use `log=True` for log-scaled distributions
 # - **Integer**: For discrete counts, also supports `log=True` for exponential spacing
 # - **Categorical**: For discrete choices between multiple options
-# - **Fidelity**: Wrap parameters with `neps.Fidelity()` for multi-fidelity optimization
+# - **Fidelity**: Use `neps.IntegerFidelity()` and `neps.FloatFidelity()` for multi-fidelity optimization
 # - **PipelineSpace**: Use class-based spaces for better organization in large search spaces
 # - **Priors**: Use `prior` and `prior_confidence` to incorporate domain knowledge
 #
