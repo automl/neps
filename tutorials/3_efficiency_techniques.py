@@ -42,20 +42,20 @@ def evaluate_pipeline(
     **kwargs
 ) -> float:
     """Simulated training function.
-    
+
     In practice, this trains a real neural network and returns validation loss.
     """
     np.random.seed(42)
-    
+
     # Simulate training: loss decreases with epochs
     base_loss = 0.8
-    
+
     # Optimizer impact
     optimizer_bonus = {"sgd": 0.0, "adamw": -0.05, "adam": -0.03}.get(optimizer, 0)
-    
+
     # Learning rate impact
     lr_penalty = -0.1 * np.log10(learning_rate / 0.01)
-    
+
     # Network size impact
     neurons_impact = -0.02 * np.log2(num_neurons / 256)
 
@@ -64,16 +64,16 @@ def evaluate_pipeline(
     activation_impact = -0.01 if kwargs.get("activation", "relu") == "relu" else 0.0
     dropout_penalty = 0.03 * kwargs.get("dropout_rate", 0.0)
     weight_decay_penalty = 0.01 * np.log10(kwargs.get("weight_decay", 1e-4) / 1e-4)
-    
+
     # Epoch impact (gets smaller as epochs increase)
     epoch_impact = -0.05 * np.sqrt(epochs / 10)
-    
+
     # Simulated noisy loss
     loss = (
-        base_loss 
-        + optimizer_bonus 
-        + lr_penalty 
-        + neurons_impact 
+        base_loss
+        + optimizer_bonus
+        + lr_penalty
+        + neurons_impact
         + layers_impact
         + activation_impact
         + dropout_penalty
@@ -81,11 +81,11 @@ def evaluate_pipeline(
         + epoch_impact
         + np.random.normal(0, 0.02)
     )
-    
+
     return max(0.1, loss)
 
 # ## Technique 1: Multi-Fidelity Optimization
-# Train configurations at different fidelities (e.g., different epoch counts) 
+# Train configurations at different fidelities (e.g., different epoch counts)
 # to efficiently explore the search space.
 #
 # Multi-fidelity optimizers available in NePS include:
@@ -108,8 +108,8 @@ class MultiFidelitySpace(neps.PipelineSpace):
     learning_rate = neps.Float(1e-6, 1e-1, log=True)
     optimizer = neps.Categorical(["sgd", "adamw"])
     num_neurons = neps.Integer(64, 1024)
-    # Fidelity parameter: wrap Integer in neps.Fidelity()
-    epochs = neps.Fidelity(neps.Integer(1, 10))
+    # Fidelity parameter: Use IntegerFidelity
+    epochs = neps.IntegerFidelity(1, 10)
 
 
 # ### Run Multi-Fidelity Optimization
@@ -123,7 +123,7 @@ neps.run(
     optimizer="asha",  # Use ASHA, designed for multi-fidelity workloads
 )
 
-# The optimizer intelligently samples configurations at low epochs (cheaper) 
+# The optimizer intelligently samples configurations at low epochs (cheaper)
 # and high epochs (more accurate) to find good configurations efficiently.
 # In real training code, include `pipeline_directory` and
 # `previous_pipeline_directory` in `evaluate_pipeline` so promoted configurations can
@@ -138,28 +138,28 @@ neps.run(
 
 class ExpertPriorSpace(neps.PipelineSpace):
     """Search space with expert priors incorporated."""
-    
+
     # We believe adamw with these settings is good (high confidence)
     learning_rate = neps.Float(
-        1e-6, 1e-1, 
-        log=True, 
+        1e-6, 1e-1,
+        log=True,
         prior=0.001,  # Common prior
         prior_confidence="high"
     )
-    
+
     optimizer = neps.Categorical(
         ["sgd", "adamw"],
         prior=1,  # adamw
         prior_confidence="high"
     )
-    
+
     num_neurons = neps.Integer(
         64, 1024,
         prior=256,
         prior_confidence="low"  # Less confident about exact size
     )
-    
-    epochs = neps.Fidelity(neps.Integer(1, 10))
+
+    epochs = neps.IntegerFidelity(1, 10)
 
 # ### Run Optimization with Priors
 
@@ -207,7 +207,7 @@ neps.run(
 
 # ## Technique 4: Parallelization
 
-# NePS makes parallelization effortless. Multiple processes can work on the same 
+# NePS makes parallelization effortless. Multiple processes can work on the same
 # `root_directory` simultaneously.
 
 # ### Single Process Example (Sequential)
@@ -254,7 +254,7 @@ for p in processes:
 # Combine multiple techniques for maximum efficiency.
 class CombinedSearchSpace(neps.PipelineSpace):
     """Combines multi-fidelity, priors, and complex search space."""
-    
+
     # Architecture with priors
     num_layers = neps.Integer(2, 6, prior=3, prior_confidence="medium")
     num_neurons = neps.Integer(64, 512, log=True, prior=256, prior_confidence="low")
@@ -270,13 +270,13 @@ class CombinedSearchSpace(neps.PipelineSpace):
         prior=1,  # adamw
         prior_confidence="high"
     )
-    
+
     # Regularization with priors
     dropout_rate = neps.Float(0.0, 0.5, prior=0.1, prior_confidence="medium")
     weight_decay = neps.Float(1e-6, 1e-2, log=True, prior=1e-4, prior_confidence="medium")
-    
+
     # Multi-fidelity (epochs)
-    epochs = neps.Fidelity(neps.Integer(2, 20))
+    epochs = neps.IntegerFidelity(2, 20)
 
 # Run optimization with combined strategies:
 
@@ -312,12 +312,12 @@ strategies = [
 ]
 for idx, (name, path) in enumerate(strategies):
     ax = axes[idx // 2, idx % 2]
-    
+
     try:
         df = pd.read_csv(path)
         # Calculate incumbent trajectory
         df['best_loss'] = df['objective_to_minimize'].cummin()
-        
+
         ax.plot(df.index, df['best_loss'], 'o-', linewidth=2, markersize=5)
         ax.set_xlabel("Evaluation")
         ax.set_ylabel("Best Loss")

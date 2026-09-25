@@ -7,19 +7,19 @@ For citing NePS, please refer to the following:
 ### APA Style
 
 ```apa
-Stoll, D., Mallik, N., Bergman, E., Schrodi, S., Basu, S., Geburek, A. M., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., & Hutter, F. (2023). Neural Pipeline Search (NePS) (Version 0.12.2) [Computer software]. https://github.com/automl/neps
+Nastaran A., Mallik, N., Bergman, E., Geburek, A. M., Schrodi, S., Basu, S., Birinxhiku, L., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., Hutter, F. & Stoll, D. (2026). Neural Pipeline Search (NePS) (Version 0.16.0) [Computer software]. https://github.com/automl/neps
 ```
 
 ### BibTex Style
 
 ```bibtex
-@software{Stoll_Neural_Pipeline_Search_2023,
-author = {Stoll, Danny and Mallik, Neeratyoy and Schrodi, Simon and Bergmann, Eddie and Janowski, Maciej and Garibov, Samir and Abou Chakra, Tarek and Rogalla, Daniel and Bergman, Eddie and Hvarfner, Carl and Binxin, Ru and Hutter, Frank},
-month = oct,
+@software{Stoll_Neural_Pipeline_Search_2026,
+author = {Nastaran Alipour, Neeratyoy Mallik, Eddie Bergman, Anton Merlin Geburek, Simon Schrodi, Soham Basu, Lum Birinxhiku, Tarek Abou Chakra, Samir Garibov, Gopalji Gaur, Maciej Janowski, Ema Mekic, Philip Alex Ambattu, Daniel Rogalla, Carl Hvarfner, Binxin Ru, Timur Carstensen, Johannes Hog, Frank Hutter and Danny Stoll},
+month = sep,
 title = {{Neural Pipeline Search (NePS)}},
 url = {https://github.com/automl/neps},
-version = {0.12.2},
-year = {2024}
+version = {0.16.0},
+year = {2026}
 }
 ```
 

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added 3 tutorials and embended existing colab tutorial in it.
+- Added 3 tutorials and embedded existing colab tutorial in it.
 - Support artifacts for each optimizer based on evaluated trials.
 - Add a generic structure for the filesystem writers.
 - Add live_plots flag for run() API to print the generic and optimizer-specific plots
