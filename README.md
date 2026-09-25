@@ -5,31 +5,40 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-Welcome to NePS, a powerful and flexible Python library for hyperparameter optimization (HPO) and neural architecture search (NAS) that **makes HPO and NAS practical for deep learners**.
+NePS is a tool for optimizing the design choices of deep learning pipelines efficiently and across scales, based on principled, peer-reviewed methodology.
+Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a cluster.
 
-NePS houses recently published and also well-established algorithms that can all be run massively parallel on distributed setups and, in general, NePS is tailored to the needs of deep learning experts.
+NePS brings together years of algorithmic advances published for example at NeurIPS, and ICLR, and we keep using and extending it in our own research.
+See [our publications](https://automl.github.io/neps/latest/citations/) on hyperparameter optimization, neural architecture search, and scaling laws.
+NePS is actively maintained, and we are open to collaborations.
 
-To learn about NePS, check-out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials) on [getting started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb), [defining search spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb), and [efficiency techniques](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb).
+To learn about NePS, check out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials) on [getting started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb), [defining search spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb), and [efficient optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb).
 
-## Key Features
+## Why NePS
 
-In addition to the features offered by traditional HPO and NAS libraries, NePS stands out with:
+### Technically easy
 
-1. **Hyperparameter Optimization (HPO) Efficient Enough for Deep Learning:** <br />
-    NePS excels in efficiently tuning hyperparameters using algorithms that enable users to make use of their prior knowledge, while also using many other efficiency boosters.
-     - [PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning (NeurIPS 2023)](https://arxiv.org/abs/2306.12370)
-     - [πBO: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization (ICLR 2022)](https://arxiv.org/abs/2204.11051) <br /> <br />
-1. **Neural Architecture Search (NAS) with Expressive Search Spaces:** <br />
-    NePS provides capabilities for optimizing DL architectures in an expressive and natural fashion.
-     - [Construction of Hierarchical Neural Architecture Search Spaces based on Context-free Grammars (NeurIPS 2023)](https://arxiv.org/abs/2211.01842) <br /> <br />
-1. **Zero-effort Parallelization and an Experience Tailored to DL:** <br />
-     NePS simplifies the process of parallelizing optimization tasks both on individual computers, where multiple workers coordinate
-     through the shared results directory, and in distributed computing environments, naturally supporting PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html). As NePS is made for deep learners, all technical choices are made with DL in mind and common
-     DL tools such as Tensorboard are [embraced](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
+- **Parallel evaluations:** a single evaluation can train with PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) or [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), and NePS works with it out of the box ([examples](neps_examples/efficiency/)).
+- **Zero-effort parallel search:** start more workers on the same machine or on other machines. As long as they share the results directory, they coordinate on their own, with no server to set up.
+- **Live monitoring and interventions:** follow a run with `neps.status`, live plots, or [TensorBoard](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import results from elsewhere.
+
+### Efficient
+
+- **Low-fidelity evaluations:** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
+- **Expert knowledge and prior studies:** use your intuition as priors, and results from earlier studies, when you have them.
+- **Model-based search:** strategies such as Bayesian optimization choose promising configurations instead of sampling blindly.
+- **Parallelization:** all of the above runs across as many workers as you have.
+
+### General
+
+- **Any design space:** hyperparameters, architectures, resource allocation, or any component of the pipeline.
+- **Any scaling dimension:** use epochs, dataset size, model size, or any other quantity as the fidelity.
+- **Any objective:** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
+- **Any optimizer:** use the built-in optimizers, plug in your own, or drive them from your own evaluation loop with `AskAndTell`.
 
 ## Installation
 
-To install the latest release from PyPI run
+NePS supports Python 3.11 to 3.14. Install the latest release from PyPI:
 
 ```bash
 pip install neural-pipeline-search
@@ -39,10 +48,9 @@ pip install neural-pipeline-search
 
 Using `neps` always follows the same pattern:
 
-1. Define a `evaluate_pipeline` function capable of evaluating different architectural and/or hyperparameter configurations
-   for your problem.
-1. Define a `pipeline_space` of those Parameters
-1. Call `neps.run(evaluate_pipeline, pipeline_space)`
+1. Define an `evaluate_pipeline` function that evaluates a configuration of your pipeline.
+1. Define a `pipeline_space` of the parameters to optimize.
+1. Call `neps.run(evaluate_pipeline, pipeline_space)`.
 
 In code, the usage pattern can look like this:
 
@@ -85,25 +93,11 @@ neps.run(
 )
 ```
 
-## Examples
+## Resources to Get Started
 
-Discover how NePS works through these examples:
+### Tutorials
 
-- **[Hyperparameter Optimization](neps_examples/basic_usage/1_hyperparameters.py)**: Learn the essentials of hyperparameter optimization with NePS.
-
-- **[Multi-Fidelity Optimization](neps_examples/efficiency/multi_fidelity.py)**: Understand how to leverage multi-fidelity optimization for efficient model tuning.
-
-- **[Multi-Objective Optimization](neps_examples/efficiency/multi_objective.py)**: Learn how to optimize multiple competing objectives simultaneously using PriMO with expert priors and multi-fidelity.
-
-- **[Utilizing Expert Priors for Hyperparameters](neps_examples/efficiency/expert_priors_for_hyperparameters.py)**: Learn how to incorporate expert priors for more efficient hyperparameter selection.
-
-- **[Benefiting NePS State and Optimizers with custom runtime](neps_examples/experimental/ask_and_tell_example.py)**: Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.
-
-- **[Additional NePS Examples](neps_examples/)**: Explore more examples, including various use cases and advanced configurations in NePS.
-
-## Tutorials
-
-Interactive notebooks that run in Google Colab:
+Interactive notebooks that run in Google Colab with no local setup:
 
 | Tutorial | What it covers | Run |
 |----------|----------------|-----|
@@ -113,10 +107,26 @@ Interactive notebooks that run in Google Colab:
 
 To run them locally instead, see the [tutorials folder](tutorials/).
 
+### Examples
+
+- **[Hyperparameter optimization](neps_examples/basic_usage/1_hyperparameters.py):** the essentials of HPO with NePS.
+- **[Multi-fidelity optimization](neps_examples/efficiency/multi_fidelity.py):** speed up tuning with cheap, low-fidelity evaluations.
+- **[Multi-objective optimization](neps_examples/efficiency/multi_objective.py):** optimize competing objectives with PriMO, using expert priors and multi-fidelity.
+- **[Expert priors](neps_examples/efficiency/expert_priors_for_hyperparameters.py):** use what you already know to focus the search.
+- **[Custom runtime with AskAndTell](neps_examples/experimental/ask_and_tell_example.py):** use NePS optimizers and state with your own evaluation loop.
+- **[All examples](neps_examples/):** more use cases and advanced configurations.
+
+### Documentation
+
+- [Getting started](https://automl.github.io/neps/latest/getting_started/)
+- [Reference](https://automl.github.io/neps/latest/reference/neps_run/): running NePS, search spaces, optimizers, and analysing runs
+- [Algorithms](https://automl.github.io/neps/latest/reference/search_algorithms/landing_page_algo/)
+- [API](https://automl.github.io/neps/latest/api/neps/api/)
+
 ## Contributing
 
 Please see the [documentation for contributors](https://automl.github.io/neps/latest/dev_docs/contributing/).
 
-## Citations
+## Citing NePS
 
-For pointers on citing the NePS package and papers refer to our [documentation on citations](https://automl.github.io/neps/latest/citations/).
+To cite NePS or the papers behind its algorithms, see our [citation guide](https://automl.github.io/neps/latest/citations/).
