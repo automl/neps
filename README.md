@@ -5,38 +5,32 @@
 [![License](https://img.shields.io/pypi/l/neural-pipeline-search?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/neps/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/neps/actions)
 
-NePS is a tool for optimizing the design choices of deep learning pipelines efficiently and across scales, based on principled, peer-reviewed methodology.
-Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a cluster.
+NePS is a tool for tuning the design choices of deep learning pipelines efficiently and across scales.
+Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a multi-node cluster or even multiple clusters.
 
-NePS brings together years of algorithmic advances published at venues such as NeurIPS and ICLR, and we keep using and extending it in our own research.
-See [our publications](https://automl.github.io/neps/latest/citations/) on hyperparameter optimization, neural architecture search, and scaling laws.
-NePS is actively maintained, and we are open to collaborations.
+NePS brings together [years of our algorithmic advances](https://automl.github.io/neps/latest/citations/) (e.g., in NeurIPS, ICML, or ICLR) with a runtime tailored to large scale models. NePS is actively maintained and used to run on many different clusters, tuning even billion-parameter scale models with many concurrent trials.
 
 To learn about NePS, check out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials).
 
 ## Why NePS
 
-### Technically easy and tailored to deep learning
+### Tailored to large scales models
 
-NePS is made for deep learners, so all technical choices are made with deep learning in mind.
+- **Tuning distributed models:** NePS works with [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, out of the box ([examples](neps_examples/efficiency/)).
+- **Zero-effort to run many concurrent models:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
+- **Live monitoring and interventions:** follow a run with `neps.status`, live plots, or [TensorBoard](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import tuning results from anywhere (even cross-cluster).
 
-- **Parallel evaluations:** a single evaluation can train with PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) or [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, and NePS works with it out of the box ([examples](neps_examples/efficiency/)).
-- **Zero-effort parallel search:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
-- **Live monitoring and interventions:** follow a run with `neps.status`, live plots, or [TensorBoard](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import results from elsewhere.
-
-### Efficient
+### Efficient tuning algorithms
 
 - **Low-fidelity evaluations:** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
 - **Expert knowledge and prior studies:** use your intuition as priors, and results from earlier studies, when you have them.
-- **Model-based search:** strategies such as Bayesian optimization choose promising configurations instead of sampling blindly.
-- **Parallelization:** all of the above runs across as many workers as you have.
+- **Model-based search:** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
 
-### General
+### Generally applicable
 
 - **Any design space:** hyperparameters, architectures, resource allocation, or any component of the pipeline.
 - **Any scaling dimension:** use epochs, dataset size, model size, or any other quantity as the fidelity.
-- **Any objective:** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
-- **Any optimizer:** use the built-in optimizers, plug in your own, or drive them from your own evaluation loop with `AskAndTell`.
+- **Any and multiple objective:** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
 
 ## Installation
 
@@ -48,7 +42,7 @@ pip install neural-pipeline-search
 
 ## Basic Usage
 
-Using `neps` always follows the same pattern:
+Using `neps` is based on the following pattern:
 
 1. Define an `evaluate_pipeline` function that evaluates a configuration of your pipeline.
 1. Define a `pipeline_space` of the parameters to optimize.
