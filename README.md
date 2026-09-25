@@ -8,18 +8,20 @@
 NePS is a tool for optimizing the design choices of deep learning pipelines efficiently and across scales, based on principled, peer-reviewed methodology.
 Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a cluster.
 
-NePS brings together years of algorithmic advances published for example at NeurIPS, and ICLR, and we keep using and extending it in our own research.
+NePS brings together years of algorithmic advances published at venues such as NeurIPS and ICLR, and we keep using and extending it in our own research.
 See [our publications](https://automl.github.io/neps/latest/citations/) on hyperparameter optimization, neural architecture search, and scaling laws.
 NePS is actively maintained, and we are open to collaborations.
 
-To learn about NePS, check out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials) on [getting started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb), [defining search spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb), and [efficient optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb).
+To learn about NePS, check out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials).
 
 ## Why NePS
 
-### Technically easy
+### Technically easy and tailored to deep learning
 
-- **Parallel evaluations:** a single evaluation can train with PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) or [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), and NePS works with it out of the box ([examples](neps_examples/efficiency/)).
-- **Zero-effort parallel search:** start more workers on the same machine or on other machines. As long as they share the results directory, they coordinate on their own, with no server to set up.
+NePS is made for deep learners, so all technical choices are made with deep learning in mind.
+
+- **Parallel evaluations:** a single evaluation can train with PyTorch [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) or [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, and NePS works with it out of the box ([examples](neps_examples/efficiency/)).
+- **Zero-effort parallel search:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
 - **Live monitoring and interventions:** follow a run with `neps.status`, live plots, or [TensorBoard](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import results from elsewhere.
 
 ### Efficient
@@ -97,7 +99,7 @@ neps.run(
 
 ### Tutorials
 
-Interactive notebooks that run in Google Colab with no local setup:
+Interactive notebooks that run in Google Colab:
 
 | Tutorial | What it covers | Run |
 |----------|----------------|-----|
