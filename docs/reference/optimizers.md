@@ -96,6 +96,10 @@ neps.run(
 
 For a list of available optimizers, please refer [here](./search_algorithms/landing_page_algo.md).
 
+!!! tip "Interactive tutorial"
+
+    The Optimizer Selection section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) lists all built-in optimizers with their default hyperparameters and runs several of them on the same task.
+
 ### 2.3 Hyperparameter Overrides
 
 For users who want more control over the optimizer's hyperparameters, you can input a dictionary with your parameter choices together with the optimizer name.

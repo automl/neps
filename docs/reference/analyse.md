@@ -6,6 +6,9 @@ and visualize the results using TensorBoard.
 
 To get a quick overview of the results, you can use the `#!bash python -m neps.plot ROOT_DIRECTORY` command.
 
+!!! tip "Interactive tutorial"
+
+    The [Getting Started with HPO tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) inspects a real run and visualizes using TensorBoard.
 ## Status
 
 To show status information about a neural pipeline search run, use

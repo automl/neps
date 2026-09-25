@@ -1,5 +1,7 @@
 # Overview
 
+Looking for a guided walkthrough instead? Our interactive tutorials run in Google Colab: [Getting Started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb), [Defining Search Spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb), and [Efficient Optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb).
+
 1. **Basic usage examples** demonstrate fundamental usage.
 Learn how to perform Hyperparameter Optimization (HPO) and analyze runs on a basic level.
 

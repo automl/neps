@@ -205,6 +205,10 @@ As a result, you can start multiple [`neps.run()`][neps.api.run] from different 
 and they will synchronize, **as long as they share the same `root_directory=`**.
 Any new workers that come online will automatically pick up work and work together to until the budget is exhausted.
 
+!!! tip "Interactive tutorial"
+
+    The Parallelization section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) runs a single worker and then three parallel workers sharing one `root_directory`.
+
 === "Worker script"
 
     ```python

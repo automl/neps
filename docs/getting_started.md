@@ -56,6 +56,14 @@ The [reference](reference/neps_run.md) section provides detailed information on 
 4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
 5. How to [analyze](reference/analyse.md) the optimization runs.
 
+!!! tip "Interactive tutorials"
+
+    Or try NePS hands-on with our tutorials:
+
+    1. [Getting Started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb): the basic NePS workflow, from a synthetic function to a deep learning task
+    2. [Defining Search Spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb): parameter types, fidelity parameters, priors, and `PipelineSpace` classes
+    3. [Efficient Optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb): multi-fidelity optimization, expert priors, optimizer selection, and parallelization
+
 Or discover the features of NePS through these practical examples:
 
 * **[Hyperparameter Optimization (HPO)](examples/basic_usage/1_hyperparameters.md)**:
