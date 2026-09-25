@@ -14,10 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add live_plots flag for run() API to print the generic and optimizer-specific plots
 - Add stopping criteria shared by all workers of a run, for evaluations, cost and fidelities
 - derived_info to optimizer_info.yaml to dump useful optimizer related info
+- Add links to the Colab tutorials in the README and relevant documentation pages
 
 ### Changed
 - Renamed per worker budget parameters to `worker_evaluations_to_spend`, `worker_cost_to_spend`, and `worker_fidelities_to_spend` throughout NePS, including the public API and internal budget structures.
 - end support of python3.10 and add support of 3.14
+- Restructure the main README
 
 ### Fixed
 - fix device mismatch in the tensors created in gp acqisition process

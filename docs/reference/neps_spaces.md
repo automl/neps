@@ -2,6 +2,10 @@
 
 **NePS Spaces** provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including [hyperparameters](#1-constructing-hyperparameter-spaces), [architecture search](#3-constructing-architecture-spaces) and [more](#4-constructing-complex-spaces).
 
+!!! tip "Interactive tutorial"
+
+    The [Defining Search Spaces tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) walks through parameter types, fidelity parameters, priors, `PipelineSpace` classes, and conditional spaces built with `.resample()`.
+
 ## 1. Constructing Hyperparameter Spaces
 
 **NePS spaces** include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:
