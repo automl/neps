@@ -23,7 +23,7 @@ To learn about NePS, check out [the documentation](https://automl.github.io/neps
 ### Efficient tuning algorithms
 
 - **[Low-fidelity evaluations](https://automl.github.io/neps/latest/reference/search_algorithms/landing_page_algo/#what-is-multi-fidelity-optimization):** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
-- **[Expert knowledge and prior studies](https://automl.github.io/neps/latest/reference/search_algorithms/prior/):** use your intuition as priors, and results from earlier studies, when you have them.
+- **[Expert knowledge and prior studies](https://automl.github.io/neps/latest/reference/search_algorithms/landing_page_algo/#what-are-priors):** use your intuition as priors, and [results from earlier studies](https://automl.github.io/neps/latest/reference/import_trials/), when you have them.
 - **[Model-based search](https://automl.github.io/neps/latest/reference/search_algorithms/bayesian_optimization/):** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
 
 ### Generally applicable
