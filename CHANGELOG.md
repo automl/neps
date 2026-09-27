@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - derived_info to optimizer_info.yaml to dump useful optimizer related info
 - Add links to the Colab tutorials in the README and relevant documentation pages
 - Add πBO, PriMO, ScAn-Bench and ifBO to the citations page
+- Add links to the documentation for the features in the README
 
 ### Changed
 - Renamed per worker budget parameters to `worker_evaluations_to_spend`, `worker_cost_to_spend`, and `worker_fidelities_to_spend` throughout NePS, including the public API and internal budget structures.
