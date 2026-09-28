@@ -104,7 +104,7 @@ If you have used [ScAn-Bench](https://openreview.net/forum?id=q6rnd1qRBN), pleas
 title = {{ScAn-Bench}: Evaluating Scaling Analysis Methodology},
 author = {Artin Sermaxhaj and Nastaran Alipour and Donat Sinani and Johannes Hog and Neeratyoy Mallik and Steven Adriaensen and Jenia Jitsev and Danny Stoll},
 year = {2026},
-booktitle = {Fortieth Conference on Neural Information Processing Systems Evaluations and Datasets Track (NeurIPS 2026)},
+booktitle = {Fortieth Conference on Neural Information Processing Systems (NeurIPS 2026)},
 keywords = {}
 }
 ```
