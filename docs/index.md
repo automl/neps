@@ -17,20 +17,20 @@ To learn about NePS, check out [the documentation](getting_started.md), [our exa
 ### Tailored to large scales models
 
 - **Tuning distributed models:** NePS works with [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, out of the box ([examples](examples/efficiency/index.md)).
-- **[Zero-effort to run many concurrent models](reference/neps_run.md#parallelization):** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
+- **Zero-effort to run many concurrent models:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
 - **Live monitoring and interventions:** follow a run with `neps.status`, live plots, or [TensorBoard](reference/analyse.md#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import tuning results from anywhere (even cross-cluster).
 
 ### Efficient tuning algorithms
 
-- **[Low-fidelity evaluations](reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization):** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
-- **[Expert knowledge and prior studies](reference/search_algorithms/landing_page_algo.md#what-are-priors):** use your intuition as priors, and [results from earlier studies](reference/import_trials.md), when you have them.
-- **[Model-based search](reference/search_algorithms/bayesian_optimization.md):** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
+- **Low-fidelity evaluations:** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
+- **Expert knowledge and prior studies:** use your intuition as priors, and results from earlier studies, when you have them.
+- **Model-based search:** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
 
 ### Generally applicable
 
-- **[Any design space](reference/neps_spaces.md):** hyperparameters, architectures, resource allocation, or any component of the pipeline.
-- **[Any scaling dimension](reference/neps_spaces.md#using-cheap-approximation-providing-a-fidelity-parameter):** use epochs, dataset size, model size, or any other quantity as the fidelity.
-- **[Any and multiple objective](reference/search_algorithms/multi_objective.md):** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
+- **Any design space:** hyperparameters, architectures, resource allocation, or any component of the pipeline.
+- **Any scaling dimension:** use epochs, dataset size, model size, or any other quantity as the fidelity.
+- **Any and multiple objective:** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
 
 ## Installation
 
