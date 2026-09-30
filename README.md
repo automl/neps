@@ -8,13 +8,13 @@
 NePS is a tool for tuning the design choices of deep learning pipelines efficiently and across scales.
 Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a multi-node cluster or even multiple clusters.
 
-NePS brings together [years of our algorithmic advances](https://automl.github.io/neps/latest/citations/) (e.g., in NeurIPS, ICML, or ICLR) with a runtime tailored to large scale models. NePS is actively maintained and used to run on many different clusters, tuning even billion-parameter scale models with many concurrent trials.
+NePS brings together [years of our algorithmic advances](https://github.com/automl/neps/blob/master/docs/citations.md) (e.g., in NeurIPS, ICML, or ICLR) with a runtime tailored to large scale models. NePS is actively maintained and used to run on many different clusters, tuning even billion-parameter scale models with many concurrent trials.
 
 To learn about NePS, check out [the documentation](https://automl.github.io/neps/latest/), [our examples](neps_examples/), or our [Colab tutorials](#tutorials).
 
 ## Why NePS
 
-### Tailored to large scales models
+### Tailored to large scale models
 
 - **Tuning distributed models:** NePS works with [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, out of the box ([examples](neps_examples/efficiency/)).
 - **Zero-effort to run many concurrent models:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
