@@ -2,6 +2,10 @@
 
 This section concerns optimizers that utilize Multi-Fidelity information to guide the search process. Multi-Fidelity is explained in detail [here](./landing_page_algo.md#what-is-multi-fidelity-optimization).
 
+!!! tip "Interactive tutorial"
+
+    The Multi-Fidelity Optimization section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) defines an `epochs` fidelity and runs `ASHA` on it.
+
 ## 1 `Successive Halfing`
 
 `Successive Halfing`/`SH` (see [paper](https://proceedings.mlr.press/v51/jamieson16.pdf)) is a simple but effective Multi-Fidelity algorithm.

@@ -3,6 +3,10 @@
 This section concerns optimizers that use both Multi-Fidelity and Priors. They combine the advantages and disadvantages of both methods to exploit all available information.
 For a detailed explanation of Multi-Fidelity and Priors, please refer [here](landing_page_algo.md).
 
+!!! tip "Interactive tutorial"
+
+    The Incorporating Expert Priors and Combining Strategies sections of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) run `PriorBand` on a search space with both priors and a fidelity.
+
 ## Optimizers using Multi-Fidelity and Priors
 
 ### 1 `PriorBand`
