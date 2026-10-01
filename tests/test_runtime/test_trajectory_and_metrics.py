@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 
 import pytest
-from filelock import FileLock
 
 import neps
 from neps.optimizers import algorithms
@@ -759,17 +758,10 @@ def test_best_config_multiobjective_frontier():
 
         trials = {t1.id: t1, t2.id: t2}
 
-        # Prepare summary paths and lock
         summary_dir = root_directory / "summary"
-        summary_dir.mkdir(parents=True, exist_ok=True)
-        improvement_trace_path = summary_dir / "best_config_trajectory.txt"
         best_config_path = summary_dir / "best_config.txt"
-        improvement_trace_path.touch()
-        best_config_path.touch()
 
-        trace_lock = FileLock(str(root_directory / ".trace.lock"))
-
-        # Create a minimal worker (optimizer/eval fn not used by load_incumbent_trace)
+        # Create a minimal worker (optimizer/eval fn not used by the summary)
         settings = WorkerSettings(
             on_error=OnErrorPossibilities.IGNORE,
             default_report_values=DefaultReportValues(),
@@ -791,9 +783,7 @@ def test_best_config_multiobjective_frontier():
         )
 
         # Call the function that writes best_config for the given trials
-        worker._update_summary(
-            trials, trace_lock, improvement_trace_path, best_config_path
-        )
+        worker._summary_writer.update(trials)
 
         content = best_config_path.read_text()
 
