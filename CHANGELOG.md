@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-10-02
+
 ### Added
 - Added 3 tutorials and embedded existing colab tutorial in it.
 - Support artifacts for each optimizer based on evaluated trials.
