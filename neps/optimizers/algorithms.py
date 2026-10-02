@@ -1744,13 +1744,13 @@ def _neps_bracket_optimizer(  # noqa: C901
         )
 
     fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
+    fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
     describe_rungs = partial(
         _describe_rungs,
         bracket_type,
         fidelity_name=fidelity_name,
         fidelity_bounds=(fidelity_obj.lower, fidelity_obj.upper),
     )
-    fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
         raise ValueError(
