@@ -104,7 +104,7 @@ def clean_trials_by_state(  # noqa: C901, PLR0912, PLR0915
     return stats
 
 
-def clean_trials_by_id( # noqa: C901
+def clean_trials_by_id(  # noqa: C901
     root_directory: Path,
     trial_ids: list[str],
     *,
