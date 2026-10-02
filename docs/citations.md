@@ -7,7 +7,7 @@ For citing NePS, please refer to the following:
 ### APA Style
 
 ```apa
-Nastaran A., Mallik, N., Bergman, E., Geburek, A. M., Schrodi, S., Basu, S., Birinxhiku, L., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., Hutter, F. & Stoll, D. (2026). Neural Pipeline Search (NePS) (Version 0.16.0) [Computer software]. https://github.com/automl/neps
+Nastaran A., Mallik, N., Bergman, E., Geburek, A. M., Schrodi, S., Basu, S., Birinxhiku, L., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., Hutter, F. & Stoll, D. (2026). Neural Pipeline Search (NePS) (Version 0.17.0) [Computer software]. https://github.com/automl/neps
 ```
 
 ### BibTex Style
@@ -18,7 +18,7 @@ author = {Nastaran Alipour, Neeratyoy Mallik, Eddie Bergman, Anton Merlin Gebure
 month = sep,
 title = {{Neural Pipeline Search (NePS)}},
 url = {https://github.com/automl/neps},
-version = {0.16.0},
+version = {0.17.0},
 year = {2026}
 }
 ```
