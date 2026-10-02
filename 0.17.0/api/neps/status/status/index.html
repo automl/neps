@@ -12,7 +12,7 @@
         <link rel="prev" href="../../state/trial/">
       
       
-        <link rel="next" href="../../utils/common/">
+        <link rel="next" href="../summary/">
       
       
         
@@ -4878,17 +4878,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#neps.status.status.post_run_csv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        <code class="doc-symbol doc-symbol-toc doc-symbol-function"></code>&nbsp;post_run_csv
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#neps.status.status.status" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4903,6 +4892,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -5911,117 +5928,6 @@ already have a <code>trials</code> mapping can reuse the logic without re-readin
 <div class="doc doc-object doc-function">
 
 
-<h2 id="neps.status.status.post_run_csv" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">post_run_csv</span>
-
-
-<a href="#neps.status.status.post_run_csv" class="headerlink" title="Permanent link">#</a></h2>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">post_run_csv</span><span class="p">(</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">root_directory</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span><span class="p">,</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple">tuple</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Create CSV files summarizing the run data.</p>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">PARAMETER</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <code>root_directory</code>
-            </td>
-            <td class="doc-param-details">
-              <div class="doc-md-description">
-                <p>The root directory of the NePS run.</p>
-              </div>
-              <p>
-                  <span class="doc-param-annotation">
-                    <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a> | <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></code>
-                  </span>
-              </p>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-<table>
-      <thead>
-        <tr>
-          <th><span class="doc-section-title">RETURNS</span></th>
-          <th><span>DESCRIPTION</span></th>
-        </tr>
-      </thead>
-      <tbody>
-          <tr class="doc-section-item">
-            <td>
-                <span class="doc-returns-annotation">
-                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a>, <a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a>]</code>
-                </span>
-            </td>
-            <td class="doc-returns-details">
-              <div class="doc-md-description">
-                <p>The paths to the configuration data CSV and the run data CSV.</p>
-              </div>
-            </td>
-          </tr>
-      </tbody>
-    </table>
-
-
-            <details class="mkdocstrings-source">
-              <summary>Source code in <code>neps/status/status.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-415">415</a></span>
-<span class="normal"><a href="#__codelineno-0-416">416</a></span>
-<span class="normal"><a href="#__codelineno-0-417">417</a></span>
-<span class="normal"><a href="#__codelineno-0-418">418</a></span>
-<span class="normal"><a href="#__codelineno-0-419">419</a></span>
-<span class="normal"><a href="#__codelineno-0-420">420</a></span>
-<span class="normal"><a href="#__codelineno-0-421">421</a></span>
-<span class="normal"><a href="#__codelineno-0-422">422</a></span>
-<span class="normal"><a href="#__codelineno-0-423">423</a></span>
-<span class="normal"><a href="#__codelineno-0-424">424</a></span>
-<span class="normal"><a href="#__codelineno-0-425">425</a></span>
-<span class="normal"><a href="#__codelineno-0-426">426</a></span>
-<span class="normal"><a href="#__codelineno-0-427">427</a></span>
-<span class="normal"><a href="#__codelineno-0-428">428</a></span>
-<span class="normal"><a href="#__codelineno-0-429">429</a></span>
-<span class="normal"><a href="#__codelineno-0-430">430</a></span>
-<span class="normal"><a href="#__codelineno-0-431">431</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-415" name="__codelineno-0-415"></a><span class="k">def</span><span class="w"> </span><span class="nf">post_run_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="n">Path</span><span class="p">]:</span>
-<a id="__codelineno-0-416" name="__codelineno-0-416"></a><span class="w">    </span><span class="sd">"""Create CSV files summarizing the run data.</span>
-<a id="__codelineno-0-417" name="__codelineno-0-417"></a>
-<a id="__codelineno-0-418" name="__codelineno-0-418"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-419" name="__codelineno-0-419"></a><span class="sd">        root_directory: The root directory of the NePS run.</span>
-<a id="__codelineno-0-420" name="__codelineno-0-420"></a>
-<a id="__codelineno-0-421" name="__codelineno-0-421"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-422" name="__codelineno-0-422"></a><span class="sd">        The paths to the configuration data CSV and the run data CSV.</span>
-<a id="__codelineno-0-423" name="__codelineno-0-423"></a><span class="sd">    """</span>
-<a id="__codelineno-0-424" name="__codelineno-0-424"></a>    <span class="n">full_df</span><span class="p">,</span> <span class="n">short</span> <span class="o">=</span> <span class="n">status</span><span class="p">(</span><span class="n">root_directory</span><span class="p">,</span> <span class="n">print_summary</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-0-425" name="__codelineno-0-425"></a>    <span class="n">full_df_path</span><span class="p">,</span> <span class="n">short_path</span><span class="p">,</span> <span class="n">summary_locker</span> <span class="o">=</span> <span class="n">_initiate_summary_csv</span><span class="p">(</span><span class="n">root_directory</span><span class="p">)</span>
-<a id="__codelineno-0-426" name="__codelineno-0-426"></a>
-<a id="__codelineno-0-427" name="__codelineno-0-427"></a>    <span class="k">with</span> <span class="n">summary_locker</span><span class="o">.</span><span class="n">lock</span><span class="p">():</span>
-<a id="__codelineno-0-428" name="__codelineno-0-428"></a>        <span class="n">full_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">full_df_path</span><span class="p">)</span>
-<a id="__codelineno-0-429" name="__codelineno-0-429"></a>        <span class="n">short</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">short_path</span><span class="p">)</span>
-<a id="__codelineno-0-430" name="__codelineno-0-430"></a>
-<a id="__codelineno-0-431" name="__codelineno-0-431"></a>    <span class="k">return</span> <span class="n">full_df_path</span><span class="p">,</span> <span class="n">short_path</span>
-</code></pre></div></td></tr></table></div>
-            </details>
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-function">
-
-
 <h2 id="neps.status.status.status" class="doc doc-heading">
 <code class="doc-symbol doc-symbol-heading doc-symbol-function"></code>            <span class="doc doc-object-name doc-function-name">status</span>
 
@@ -6301,13 +6207,13 @@ already have a <code>trials</code> mapping can reuse the logic without re-readin
         
         
           
-          <a href="../../utils/common/" class="md-footer__link md-footer__link--next" aria-label="Next: Common">
+          <a href="../summary/" class="md-footer__link md-footer__link--next" aria-label="Next: Summary">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Common
+                Summary
               </div>
             </div>
             <div class="md-footer__button md-icon">

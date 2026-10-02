@@ -4849,6 +4849,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5543,7 +5571,7 @@
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">seed</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="n">n_candidates_required</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>    <span class="n">num_restarts</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">n_initial_start_points</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="n">n_initial_start_points</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
 <a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">fixed_acq_features</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#dict">dict</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="n">acq_options</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="collections.abc.Mapping" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping">Mapping</a></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="n">hide_warnings</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span>
@@ -5858,12 +5886,13 @@ a list of candidates will be returned.</p>
             <td class="doc-param-details">
               <div class="doc-md-description">
                 <p>The number of initial start points to use during
-optimization.</p>
+optimization. If <code>None</code>, a dimension-dependent heuristic is used
+(see <a class="autorefs autorefs-internal" title="            optimize_acq" href="#neps.optimizers.models.gp.optimize_acq"><code>optimize_acq()</code></a>).</p>
               </div>
               <p>
                   <span class="doc-param-annotation">
                     <b>TYPE:</b>
-                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a></code>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#int">int</a> | None</code>
                   </span>
                   <span class="doc-param-default">
                     <b>DEFAULT:</b>
@@ -6084,7 +6113,8 @@ to decode the configuration.</p>
 <span class="normal"><a href="#__codelineno-0-570">570</a></span>
 <span class="normal"><a href="#__codelineno-0-571">571</a></span>
 <span class="normal"><a href="#__codelineno-0-572">572</a></span>
-<span class="normal"><a href="#__codelineno-0-573">573</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-432" name="__codelineno-0-432"></a><span class="k">def</span><span class="w"> </span><span class="nf">fit_and_acquire_from_gp</span><span class="p">(</span>
+<span class="normal"><a href="#__codelineno-0-573">573</a></span>
+<span class="normal"><a href="#__codelineno-0-574">574</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-432" name="__codelineno-0-432"></a><span class="k">def</span><span class="w"> </span><span class="nf">fit_and_acquire_from_gp</span><span class="p">(</span>
 <a id="__codelineno-0-433" name="__codelineno-0-433"></a>    <span class="o">*</span><span class="p">,</span>
 <a id="__codelineno-0-434" name="__codelineno-0-434"></a>    <span class="n">gp</span><span class="p">:</span> <span class="n">SingleTaskGP</span><span class="p">,</span>
 <a id="__codelineno-0-435" name="__codelineno-0-435"></a>    <span class="n">x_train</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
@@ -6099,7 +6129,7 @@ to decode the configuration.</p>
 <a id="__codelineno-0-444" name="__codelineno-0-444"></a>    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-445" name="__codelineno-0-445"></a>    <span class="n">n_candidates_required</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-446" name="__codelineno-0-446"></a>    <span class="n">num_restarts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
-<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">n_initial_start_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
+<a id="__codelineno-0-447" name="__codelineno-0-447"></a>    <span class="n">n_initial_start_points</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="mi">256</span><span class="p">,</span>
 <a id="__codelineno-0-448" name="__codelineno-0-448"></a>    <span class="n">fixed_acq_features</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-449" name="__codelineno-0-449"></a>    <span class="n">acq_options</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <a id="__codelineno-0-450" name="__codelineno-0-450"></a>    <span class="n">hide_warnings</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
@@ -6142,90 +6172,91 @@ to decode the configuration.</p>
 <a id="__codelineno-0-487" name="__codelineno-0-487"></a><span class="sd">            a list of candidates will be returned.</span>
 <a id="__codelineno-0-488" name="__codelineno-0-488"></a><span class="sd">        num_restarts: The number of restarts to use during optimization.</span>
 <a id="__codelineno-0-489" name="__codelineno-0-489"></a><span class="sd">        n_initial_start_points: The number of initial start points to use during</span>
-<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">            optimization.</span>
-<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">        acq_options: Additional options to pass to the botorch `optimizer_acqf` function.</span>
-<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">        hide_warnings: Whether to hide numerical warnings issued during GP routines.</span>
-<a id="__codelineno-0-493" name="__codelineno-0-493"></a>
-<a id="__codelineno-0-494" name="__codelineno-0-494"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">        The encoded next configuration(s) to evaluate. Use the encoder you provided</span>
-<a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">        to decode the configuration.</span>
-<a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">    """</span>
-<a id="__codelineno-0-498" name="__codelineno-0-498"></a>    <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-499" name="__codelineno-0-499"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Seed is not implemented yet for gps"</span><span class="p">)</span>
-<a id="__codelineno-0-500" name="__codelineno-0-500"></a>
-<a id="__codelineno-0-501" name="__codelineno-0-501"></a>    <span class="n">fit_gpytorch_mll</span><span class="p">(</span><span class="n">ExactMarginalLogLikelihood</span><span class="p">(</span><span class="n">likelihood</span><span class="o">=</span><span class="n">gp</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">gp</span><span class="p">))</span>
-<a id="__codelineno-0-502" name="__codelineno-0-502"></a>
-<a id="__codelineno-0-503" name="__codelineno-0-503"></a>    <span class="k">if</span> <span class="n">prior</span><span class="p">:</span>
-<a id="__codelineno-0-504" name="__codelineno-0-504"></a>        <span class="k">if</span> <span class="n">pibo_exp_term</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-505" name="__codelineno-0-505"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-506" name="__codelineno-0-506"></a>                <span class="s2">"If providing a prior, you must provide the `pibo_exp_term`."</span>
-<a id="__codelineno-0-507" name="__codelineno-0-507"></a>            <span class="p">)</span>
-<a id="__codelineno-0-508" name="__codelineno-0-508"></a>
-<a id="__codelineno-0-509" name="__codelineno-0-509"></a>        <span class="n">acquisition</span> <span class="o">=</span> <span class="n">pibo_acquisition</span><span class="p">(</span>
-<a id="__codelineno-0-510" name="__codelineno-0-510"></a>            <span class="n">acquisition</span><span class="p">,</span>
-<a id="__codelineno-0-511" name="__codelineno-0-511"></a>            <span class="n">prior</span><span class="o">=</span><span class="n">prior</span><span class="p">,</span>
-<a id="__codelineno-0-512" name="__codelineno-0-512"></a>            <span class="n">prior_exponent</span><span class="o">=</span><span class="n">pibo_exp_term</span><span class="p">,</span>
-<a id="__codelineno-0-513" name="__codelineno-0-513"></a>            <span class="n">x_domain</span><span class="o">=</span><span class="n">encoder</span><span class="o">.</span><span class="n">domains</span><span class="p">,</span>
-<a id="__codelineno-0-514" name="__codelineno-0-514"></a>        <span class="p">)</span>
-<a id="__codelineno-0-515" name="__codelineno-0-515"></a>
-<a id="__codelineno-0-516" name="__codelineno-0-516"></a>    <span class="k">if</span> <span class="n">costs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-517" name="__codelineno-0-517"></a>        <span class="k">if</span> <span class="n">cost_percentage_used</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-518" name="__codelineno-0-518"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-519" name="__codelineno-0-519"></a>                <span class="s2">"If providing costs, you must provide `cost_percentage_used`."</span>
-<a id="__codelineno-0-520" name="__codelineno-0-520"></a>            <span class="p">)</span>
-<a id="__codelineno-0-521" name="__codelineno-0-521"></a>
-<a id="__codelineno-0-522" name="__codelineno-0-522"></a>        <span class="c1"># We simply ignore missing costs when training the cost GP.</span>
-<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="n">missing_costs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">costs</span><span class="p">)</span>
-<a id="__codelineno-0-524" name="__codelineno-0-524"></a>        <span class="k">if</span> <span class="n">missing_costs</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-<a id="__codelineno-0-525" name="__codelineno-0-525"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-526" name="__codelineno-0-526"></a>                <span class="s2">"Must have at least some configurations reported with a cost"</span>
-<a id="__codelineno-0-527" name="__codelineno-0-527"></a>                <span class="s2">" if using costs with a GP."</span>
-<a id="__codelineno-0-528" name="__codelineno-0-528"></a>            <span class="p">)</span>
-<a id="__codelineno-0-529" name="__codelineno-0-529"></a>
-<a id="__codelineno-0-530" name="__codelineno-0-530"></a>        <span class="k">if</span> <span class="n">missing_costs</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-<a id="__codelineno-0-531" name="__codelineno-0-531"></a>            <span class="n">not_missing_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">missing_costs</span>
-<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="n">x_train_cost</span> <span class="o">=</span> <span class="n">costs</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">]</span>
-<a id="__codelineno-0-533" name="__codelineno-0-533"></a>            <span class="n">y_train_cost</span> <span class="o">=</span> <span class="n">x_train</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">]</span>
-<a id="__codelineno-0-534" name="__codelineno-0-534"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-535" name="__codelineno-0-535"></a>            <span class="n">x_train_cost</span> <span class="o">=</span> <span class="n">x_train</span>
-<a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="n">y_train_cost</span> <span class="o">=</span> <span class="n">costs</span>
-<a id="__codelineno-0-537" name="__codelineno-0-537"></a>
-<a id="__codelineno-0-538" name="__codelineno-0-538"></a>        <span class="k">if</span> <span class="n">costs_on_log_scale</span><span class="p">:</span>
-<a id="__codelineno-0-539" name="__codelineno-0-539"></a>            <span class="n">transform</span> <span class="o">=</span> <span class="n">ChainedOutcomeTransform</span><span class="p">(</span>
-<a id="__codelineno-0-540" name="__codelineno-0-540"></a>                <span class="n">log</span><span class="o">=</span><span class="n">Log</span><span class="p">(),</span>
-<a id="__codelineno-0-541" name="__codelineno-0-541"></a>                <span class="n">standardize</span><span class="o">=</span><span class="n">Standardize</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
-<a id="__codelineno-0-542" name="__codelineno-0-542"></a>            <span class="p">)</span>
-<a id="__codelineno-0-543" name="__codelineno-0-543"></a>        <span class="k">else</span><span class="p">:</span>
-<a id="__codelineno-0-544" name="__codelineno-0-544"></a>            <span class="n">transform</span> <span class="o">=</span> <span class="n">Standardize</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
-<a id="__codelineno-0-545" name="__codelineno-0-545"></a>
-<a id="__codelineno-0-546" name="__codelineno-0-546"></a>        <span class="n">cost_gp</span> <span class="o">=</span> <span class="n">make_default_single_obj_gp</span><span class="p">(</span>
-<a id="__codelineno-0-547" name="__codelineno-0-547"></a>            <span class="n">x_train_cost</span><span class="p">,</span>
-<a id="__codelineno-0-548" name="__codelineno-0-548"></a>            <span class="n">y_train_cost</span><span class="p">,</span>
-<a id="__codelineno-0-549" name="__codelineno-0-549"></a>            <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
-<a id="__codelineno-0-550" name="__codelineno-0-550"></a>            <span class="n">y_transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
-<a id="__codelineno-0-551" name="__codelineno-0-551"></a>        <span class="p">)</span>
-<a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="n">fit_gpytorch_mll</span><span class="p">(</span>
-<a id="__codelineno-0-553" name="__codelineno-0-553"></a>            <span class="n">ExactMarginalLogLikelihood</span><span class="p">(</span><span class="n">likelihood</span><span class="o">=</span><span class="n">cost_gp</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">cost_gp</span><span class="p">)</span>
-<a id="__codelineno-0-554" name="__codelineno-0-554"></a>        <span class="p">)</span>
-<a id="__codelineno-0-555" name="__codelineno-0-555"></a>        <span class="n">acquisition</span> <span class="o">=</span> <span class="n">cost_cooled_acq</span><span class="p">(</span>
-<a id="__codelineno-0-556" name="__codelineno-0-556"></a>            <span class="n">acq_fn</span><span class="o">=</span><span class="n">acquisition</span><span class="p">,</span>
-<a id="__codelineno-0-557" name="__codelineno-0-557"></a>            <span class="n">model</span><span class="o">=</span><span class="n">cost_gp</span><span class="p">,</span>
-<a id="__codelineno-0-558" name="__codelineno-0-558"></a>            <span class="n">used_max_cost_total_percentage</span><span class="o">=</span><span class="n">cost_percentage_used</span><span class="p">,</span>
-<a id="__codelineno-0-559" name="__codelineno-0-559"></a>        <span class="p">)</span>
-<a id="__codelineno-0-560" name="__codelineno-0-560"></a>
-<a id="__codelineno-0-561" name="__codelineno-0-561"></a>    <span class="n">_n</span> <span class="o">=</span> <span class="n">n_candidates_required</span> <span class="k">if</span> <span class="n">n_candidates_required</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span>
-<a id="__codelineno-0-562" name="__codelineno-0-562"></a>
-<a id="__codelineno-0-563" name="__codelineno-0-563"></a>    <span class="n">candidates</span><span class="p">,</span> <span class="n">_scores</span> <span class="o">=</span> <span class="n">optimize_acq</span><span class="p">(</span>
-<a id="__codelineno-0-564" name="__codelineno-0-564"></a>        <span class="n">acquisition</span><span class="p">,</span>
-<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="n">encoder</span><span class="p">,</span>
-<a id="__codelineno-0-566" name="__codelineno-0-566"></a>        <span class="n">n_candidates_required</span><span class="o">=</span><span class="n">_n</span><span class="p">,</span>
-<a id="__codelineno-0-567" name="__codelineno-0-567"></a>        <span class="n">num_restarts</span><span class="o">=</span><span class="n">num_restarts</span><span class="p">,</span>
-<a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="n">n_intial_start_points</span><span class="o">=</span><span class="n">n_initial_start_points</span><span class="p">,</span>
-<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="n">fixed_features</span><span class="o">=</span><span class="n">fixed_acq_features</span><span class="p">,</span>
-<a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="n">acq_options</span><span class="o">=</span><span class="n">acq_options</span><span class="p">,</span>
-<a id="__codelineno-0-571" name="__codelineno-0-571"></a>        <span class="n">hide_warnings</span><span class="o">=</span><span class="n">hide_warnings</span><span class="p">,</span>
-<a id="__codelineno-0-572" name="__codelineno-0-572"></a>    <span class="p">)</span>
-<a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="k">return</span> <span class="n">candidates</span>
+<a id="__codelineno-0-490" name="__codelineno-0-490"></a><span class="sd">            optimization. If `None`, a dimension-dependent heuristic is used</span>
+<a id="__codelineno-0-491" name="__codelineno-0-491"></a><span class="sd">            (see [`optimize_acq()`][neps.optimizers.models.gp.optimize_acq]).</span>
+<a id="__codelineno-0-492" name="__codelineno-0-492"></a><span class="sd">        acq_options: Additional options to pass to the botorch `optimizer_acqf` function.</span>
+<a id="__codelineno-0-493" name="__codelineno-0-493"></a><span class="sd">        hide_warnings: Whether to hide numerical warnings issued during GP routines.</span>
+<a id="__codelineno-0-494" name="__codelineno-0-494"></a>
+<a id="__codelineno-0-495" name="__codelineno-0-495"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-496" name="__codelineno-0-496"></a><span class="sd">        The encoded next configuration(s) to evaluate. Use the encoder you provided</span>
+<a id="__codelineno-0-497" name="__codelineno-0-497"></a><span class="sd">        to decode the configuration.</span>
+<a id="__codelineno-0-498" name="__codelineno-0-498"></a><span class="sd">    """</span>
+<a id="__codelineno-0-499" name="__codelineno-0-499"></a>    <span class="k">if</span> <span class="n">seed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-500" name="__codelineno-0-500"></a>        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">"Seed is not implemented yet for gps"</span><span class="p">)</span>
+<a id="__codelineno-0-501" name="__codelineno-0-501"></a>
+<a id="__codelineno-0-502" name="__codelineno-0-502"></a>    <span class="n">fit_gpytorch_mll</span><span class="p">(</span><span class="n">ExactMarginalLogLikelihood</span><span class="p">(</span><span class="n">likelihood</span><span class="o">=</span><span class="n">gp</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">gp</span><span class="p">))</span>
+<a id="__codelineno-0-503" name="__codelineno-0-503"></a>
+<a id="__codelineno-0-504" name="__codelineno-0-504"></a>    <span class="k">if</span> <span class="n">prior</span><span class="p">:</span>
+<a id="__codelineno-0-505" name="__codelineno-0-505"></a>        <span class="k">if</span> <span class="n">pibo_exp_term</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-506" name="__codelineno-0-506"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-507" name="__codelineno-0-507"></a>                <span class="s2">"If providing a prior, you must provide the `pibo_exp_term`."</span>
+<a id="__codelineno-0-508" name="__codelineno-0-508"></a>            <span class="p">)</span>
+<a id="__codelineno-0-509" name="__codelineno-0-509"></a>
+<a id="__codelineno-0-510" name="__codelineno-0-510"></a>        <span class="n">acquisition</span> <span class="o">=</span> <span class="n">pibo_acquisition</span><span class="p">(</span>
+<a id="__codelineno-0-511" name="__codelineno-0-511"></a>            <span class="n">acquisition</span><span class="p">,</span>
+<a id="__codelineno-0-512" name="__codelineno-0-512"></a>            <span class="n">prior</span><span class="o">=</span><span class="n">prior</span><span class="p">,</span>
+<a id="__codelineno-0-513" name="__codelineno-0-513"></a>            <span class="n">prior_exponent</span><span class="o">=</span><span class="n">pibo_exp_term</span><span class="p">,</span>
+<a id="__codelineno-0-514" name="__codelineno-0-514"></a>            <span class="n">x_domain</span><span class="o">=</span><span class="n">encoder</span><span class="o">.</span><span class="n">domains</span><span class="p">,</span>
+<a id="__codelineno-0-515" name="__codelineno-0-515"></a>        <span class="p">)</span>
+<a id="__codelineno-0-516" name="__codelineno-0-516"></a>
+<a id="__codelineno-0-517" name="__codelineno-0-517"></a>    <span class="k">if</span> <span class="n">costs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-518" name="__codelineno-0-518"></a>        <span class="k">if</span> <span class="n">cost_percentage_used</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-519" name="__codelineno-0-519"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-520" name="__codelineno-0-520"></a>                <span class="s2">"If providing costs, you must provide `cost_percentage_used`."</span>
+<a id="__codelineno-0-521" name="__codelineno-0-521"></a>            <span class="p">)</span>
+<a id="__codelineno-0-522" name="__codelineno-0-522"></a>
+<a id="__codelineno-0-523" name="__codelineno-0-523"></a>        <span class="c1"># We simply ignore missing costs when training the cost GP.</span>
+<a id="__codelineno-0-524" name="__codelineno-0-524"></a>        <span class="n">missing_costs</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">costs</span><span class="p">)</span>
+<a id="__codelineno-0-525" name="__codelineno-0-525"></a>        <span class="k">if</span> <span class="n">missing_costs</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+<a id="__codelineno-0-526" name="__codelineno-0-526"></a>            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-527" name="__codelineno-0-527"></a>                <span class="s2">"Must have at least some configurations reported with a cost"</span>
+<a id="__codelineno-0-528" name="__codelineno-0-528"></a>                <span class="s2">" if using costs with a GP."</span>
+<a id="__codelineno-0-529" name="__codelineno-0-529"></a>            <span class="p">)</span>
+<a id="__codelineno-0-530" name="__codelineno-0-530"></a>
+<a id="__codelineno-0-531" name="__codelineno-0-531"></a>        <span class="k">if</span> <span class="n">missing_costs</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+<a id="__codelineno-0-532" name="__codelineno-0-532"></a>            <span class="n">not_missing_mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">missing_costs</span>
+<a id="__codelineno-0-533" name="__codelineno-0-533"></a>            <span class="n">x_train_cost</span> <span class="o">=</span> <span class="n">costs</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">]</span>
+<a id="__codelineno-0-534" name="__codelineno-0-534"></a>            <span class="n">y_train_cost</span> <span class="o">=</span> <span class="n">x_train</span><span class="p">[</span><span class="n">not_missing_mask</span><span class="p">]</span>
+<a id="__codelineno-0-535" name="__codelineno-0-535"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-536" name="__codelineno-0-536"></a>            <span class="n">x_train_cost</span> <span class="o">=</span> <span class="n">x_train</span>
+<a id="__codelineno-0-537" name="__codelineno-0-537"></a>            <span class="n">y_train_cost</span> <span class="o">=</span> <span class="n">costs</span>
+<a id="__codelineno-0-538" name="__codelineno-0-538"></a>
+<a id="__codelineno-0-539" name="__codelineno-0-539"></a>        <span class="k">if</span> <span class="n">costs_on_log_scale</span><span class="p">:</span>
+<a id="__codelineno-0-540" name="__codelineno-0-540"></a>            <span class="n">transform</span> <span class="o">=</span> <span class="n">ChainedOutcomeTransform</span><span class="p">(</span>
+<a id="__codelineno-0-541" name="__codelineno-0-541"></a>                <span class="n">log</span><span class="o">=</span><span class="n">Log</span><span class="p">(),</span>
+<a id="__codelineno-0-542" name="__codelineno-0-542"></a>                <span class="n">standardize</span><span class="o">=</span><span class="n">Standardize</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+<a id="__codelineno-0-543" name="__codelineno-0-543"></a>            <span class="p">)</span>
+<a id="__codelineno-0-544" name="__codelineno-0-544"></a>        <span class="k">else</span><span class="p">:</span>
+<a id="__codelineno-0-545" name="__codelineno-0-545"></a>            <span class="n">transform</span> <span class="o">=</span> <span class="n">Standardize</span><span class="p">(</span><span class="n">m</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<a id="__codelineno-0-546" name="__codelineno-0-546"></a>
+<a id="__codelineno-0-547" name="__codelineno-0-547"></a>        <span class="n">cost_gp</span> <span class="o">=</span> <span class="n">make_default_single_obj_gp</span><span class="p">(</span>
+<a id="__codelineno-0-548" name="__codelineno-0-548"></a>            <span class="n">x_train_cost</span><span class="p">,</span>
+<a id="__codelineno-0-549" name="__codelineno-0-549"></a>            <span class="n">y_train_cost</span><span class="p">,</span>
+<a id="__codelineno-0-550" name="__codelineno-0-550"></a>            <span class="n">encoder</span><span class="o">=</span><span class="n">encoder</span><span class="p">,</span>
+<a id="__codelineno-0-551" name="__codelineno-0-551"></a>            <span class="n">y_transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+<a id="__codelineno-0-552" name="__codelineno-0-552"></a>        <span class="p">)</span>
+<a id="__codelineno-0-553" name="__codelineno-0-553"></a>        <span class="n">fit_gpytorch_mll</span><span class="p">(</span>
+<a id="__codelineno-0-554" name="__codelineno-0-554"></a>            <span class="n">ExactMarginalLogLikelihood</span><span class="p">(</span><span class="n">likelihood</span><span class="o">=</span><span class="n">cost_gp</span><span class="o">.</span><span class="n">likelihood</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">cost_gp</span><span class="p">)</span>
+<a id="__codelineno-0-555" name="__codelineno-0-555"></a>        <span class="p">)</span>
+<a id="__codelineno-0-556" name="__codelineno-0-556"></a>        <span class="n">acquisition</span> <span class="o">=</span> <span class="n">cost_cooled_acq</span><span class="p">(</span>
+<a id="__codelineno-0-557" name="__codelineno-0-557"></a>            <span class="n">acq_fn</span><span class="o">=</span><span class="n">acquisition</span><span class="p">,</span>
+<a id="__codelineno-0-558" name="__codelineno-0-558"></a>            <span class="n">model</span><span class="o">=</span><span class="n">cost_gp</span><span class="p">,</span>
+<a id="__codelineno-0-559" name="__codelineno-0-559"></a>            <span class="n">used_max_cost_total_percentage</span><span class="o">=</span><span class="n">cost_percentage_used</span><span class="p">,</span>
+<a id="__codelineno-0-560" name="__codelineno-0-560"></a>        <span class="p">)</span>
+<a id="__codelineno-0-561" name="__codelineno-0-561"></a>
+<a id="__codelineno-0-562" name="__codelineno-0-562"></a>    <span class="n">_n</span> <span class="o">=</span> <span class="n">n_candidates_required</span> <span class="k">if</span> <span class="n">n_candidates_required</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">1</span>
+<a id="__codelineno-0-563" name="__codelineno-0-563"></a>
+<a id="__codelineno-0-564" name="__codelineno-0-564"></a>    <span class="n">candidates</span><span class="p">,</span> <span class="n">_scores</span> <span class="o">=</span> <span class="n">optimize_acq</span><span class="p">(</span>
+<a id="__codelineno-0-565" name="__codelineno-0-565"></a>        <span class="n">acquisition</span><span class="p">,</span>
+<a id="__codelineno-0-566" name="__codelineno-0-566"></a>        <span class="n">encoder</span><span class="p">,</span>
+<a id="__codelineno-0-567" name="__codelineno-0-567"></a>        <span class="n">n_candidates_required</span><span class="o">=</span><span class="n">_n</span><span class="p">,</span>
+<a id="__codelineno-0-568" name="__codelineno-0-568"></a>        <span class="n">num_restarts</span><span class="o">=</span><span class="n">num_restarts</span><span class="p">,</span>
+<a id="__codelineno-0-569" name="__codelineno-0-569"></a>        <span class="n">n_intial_start_points</span><span class="o">=</span><span class="n">n_initial_start_points</span><span class="p">,</span>
+<a id="__codelineno-0-570" name="__codelineno-0-570"></a>        <span class="n">fixed_features</span><span class="o">=</span><span class="n">fixed_acq_features</span><span class="p">,</span>
+<a id="__codelineno-0-571" name="__codelineno-0-571"></a>        <span class="n">acq_options</span><span class="o">=</span><span class="n">acq_options</span><span class="p">,</span>
+<a id="__codelineno-0-572" name="__codelineno-0-572"></a>        <span class="n">hide_warnings</span><span class="o">=</span><span class="n">hide_warnings</span><span class="p">,</span>
+<a id="__codelineno-0-573" name="__codelineno-0-573"></a>    <span class="p">)</span>
+<a id="__codelineno-0-574" name="__codelineno-0-574"></a>    <span class="k">return</span> <span class="n">candidates</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

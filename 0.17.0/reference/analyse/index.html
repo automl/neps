@@ -697,10 +697,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#status" class="md-nav__link">
+  <a href="#trial-status-nepsstatus" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Status
+        Trial status: neps.status
       
     </span>
   </a>
@@ -708,10 +708,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#cli-commands" class="md-nav__link">
+  <a href="#plots-and-reports-nepsanalyze" class="md-nav__link">
     <span class="md-ellipsis">
       
-        CLI commands
+        Plots and reports: neps.analyze
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Plots and reports: neps.analyze">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#which-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Which plots?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Which plots?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#incumbent-trajectory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incumbent trajectory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pareto-front" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pareto front
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#live-plots-during-a-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Live plots during a run
       
     </span>
   </a>
@@ -4811,6 +4867,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5050,62 +5134,158 @@
 
 
 <h1 id="analysing-runs">Analysing Runs<a class="headerlink" href="#analysing-runs" title="Permanent link">#</a></h1>
-<p>NePS has some convenient utilities to help you to understand the results after you've run your runs.
-All of the results and state are stored and communicated on disk, which you can access using
-the <code class="highlight">python<span class="w"> </span>-m<span class="w"> </span>neps.status<span class="w"> </span>ROOT_DIRECTORY</code> command or integrate live logging directly into your training loop
-and visualize the results using TensorBoard.</p>
-<p>To get a quick overview of the results, you can use the <code class="highlight">python<span class="w"> </span>-m<span class="w"> </span>neps.plot<span class="w"> </span>ROOT_DIRECTORY</code> command.</p>
+<p>Everything NePS knows about a run lives on disk, in the <code>root_directory</code> you gave to
+<a class="autorefs autorefs-internal" title="            run" href="../../api/neps/api/#neps.api.run"><code>neps.run()</code></a>. There are a few ways to look at it:</p>
 <div class="admonition tip">
 <p class="admonition-title">Interactive tutorial</p>
 <p>The <a href="https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb">Getting Started with HPO tutorial</a> inspects a real run and visualizes using TensorBoard.</p>
 </div>
-<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">#</a></h2>
-<p>To show status information about a neural pipeline search run, use</p>
+<table>
+<thead>
+<tr>
+<th>You want to...</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>See how many trials are pending, running, done or crashed, and the best so far</td>
+<td><a href="#trial-status-nepsstatus"><code>neps.status</code></a></td>
+</tr>
+<tr>
+<td>Get plots and CSV/text reports of the whole run, at any time</td>
+<td><a href="#plots-and-reports-nepsanalyze"><code>neps.analyze</code></a></td>
+</tr>
+<tr>
+<td>Have those plots kept up to date while the run is going</td>
+<td><a href="#live-plots-during-a-run"><code>live_plots=True</code></a></td>
+</tr>
+<tr>
+<td>Follow per-epoch metrics from inside your training loop</td>
+<td><a href="#tensorboard-integration">TensorBoard</a></td>
+</tr>
+</tbody>
+</table>
+<h2 id="trial-status-nepsstatus">Trial status: <code>neps.status</code><a class="headerlink" href="#trial-status-nepsstatus" title="Permanent link">#</a></h2>
+<p><code>neps.status</code> tells you where a run stands: how many trials are in each state, and the
+best configuration found so far. It only reads the run; it does not write any files.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CLI</label><label for="__tabbed_1_2">Python</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.status<span class="w"> </span>ROOT_DIRECTORY
 </code></pre></div>
-<p>If you need more status information than is printed per default (e.g., the best config over time), please have a look at</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.status<span class="w"> </span>--help
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">full_df</span><span class="p">,</span> <span class="n">short</span> <span class="o">=</span> <span class="n">neps</span><span class="o">.</span><span class="n">status</span><span class="p">(</span><span class="s2">"ROOT_DIRECTORY"</span><span class="p">,</span> <span class="n">print_summary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
+<p><code>full_df</code> has one row per trial (its config, report and metadata) and <code>short</code>
+summarizes the run as a whole: the same content as <code>summary/full.csv</code> and
+<code>summary/short.csv</code>.</p>
+</div>
+</div>
+</div>
 <div class="admonition tip">
 <p class="admonition-title">Using <code>watch</code></p>
 <p>To show the status repeatedly, on unix systems you can use</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>watch<span class="w"> </span>--interval<span class="w"> </span><span class="m">30</span><span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>neps.status<span class="w"> </span>ROOT_DIRECTORY
 </code></pre></div>
 </div>
-<h2 id="cli-commands">CLI commands<a class="headerlink" href="#cli-commands" title="Permanent link">#</a></h2>
-<p>To generate plots to the root directory, run</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.plot<span class="w"> </span>ROOT_DIRECTORY
+<h2 id="plots-and-reports-nepsanalyze">Plots and reports: <code>neps.analyze</code><a class="headerlink" href="#plots-and-reports-nepsanalyze" title="Permanent link">#</a></h2>
+<p><a class="autorefs autorefs-internal" title="            analyze" href="../../api/neps/api/#neps.api.analyze"><code>neps.analyze()</code></a> rebuilds the <code>summary</code> folder of a run from what is
+on disk: the CSVs, the best-config text files and the plots. It does not evaluate
+anything, so you can call it</p>
+<ul>
+<li>after a run has finished, in particular one that ran without <code>live_plots=True</code>;</li>
+<li>while a run is still going, from another process or machine: it writes under the
+  same lock as the workers;</li>
+<li>after collecting results asynchronously, or after
+  <a href="../import_trials/">importing trials</a>.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">neps</span><span class="o">.</span><span class="n">analyze</span><span class="p">(</span><span class="s2">"ROOT_DIRECTORY"</span><span class="p">)</span>
 </code></pre></div>
-<p>Currently, this creates one plot that shows the best error value across the number of evaluations.</p>
+<h3 id="which-plots">Which plots?<a class="headerlink" href="#which-plots" title="Permanent link">#</a></h3>
+<p>What NePS draws depends on how many objectives your <code>evaluate_pipeline</code> returns. Every
+figure comes with a CSV of the exact points it shows, so you can re-plot them your own way.</p>
+<table>
+<thead>
+<tr>
+<th>Objectives</th>
+<th>Files in <code>summary/</code></th>
+<th>Plot</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>incumbent_trajectory.png</code>, <code>incumbent_trajectory.csv</code></td>
+<td><a href="#incumbent-trajectory">Incumbent trajectory</a></td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>pareto_front.png</code>, <code>pareto_front.csv</code></td>
+<td><a href="#pareto-front">Pareto front</a></td>
+</tr>
+<tr>
+<td>3 or more</td>
+<td>none</td>
+<td><code>best_config.txt</code> still lists the Pareto set</td>
+</tr>
+</tbody>
+</table>
+<h4 id="incumbent-trajectory">Incumbent trajectory<a class="headerlink" href="#incumbent-trajectory" title="Permanent link">#</a></h4>
+<p>Every evaluated objective (grey) and the best one found so far (blue), against the
+cumulative cost, or against the number of evaluations if <code>evaluate_pipeline</code> never
+reported a cost.</p>
+<p><img alt="Incumbent trajectory" src="../../doc_images/analyse/incumbent_trajectory.png" /></p>
+<h4 id="pareto-front">Pareto front<a class="headerlink" href="#pareto-front" title="Permanent link">#</a></h4>
+<p>Both objectives of every trial against each other (grey), with the non-dominated trials
+joined up (red).</p>
+<p><img alt="Pareto front" src="../../doc_images/analyse/pareto_front.png" /></p>
+<h2 id="live-plots-during-a-run">Live plots during a run<a class="headerlink" href="#live-plots-during-a-run" title="Permanent link">#</a></h2>
+<p>Pass <code>live_plots=True</code> to have the plots
+redrawn after every evaluated trial as well. Where to pass it depends on how your
+trials are evaluated: via <code>neps.run()</code> or <code>neps.save_pipeline_results()</code> (see <a href="../evaluate_pipeline/">the evaluate function</a>).</p>
+<div class="admonition warning">
+<p class="admonition-title">Overhead</p>
+<p>Each refresh reads every trial and redraws the figures, so it gets slower as the run
+grows. Next to a training job of a few minutes this is negligible, but for many cheap
+evaluations, leave <code>live_plots</code> off and call <code>neps.analyze()</code> when you want to look.</p>
+</div>
 <h2 id="whats-on-disk">What's on disk?<a class="headerlink" href="#whats-on-disk" title="Permanent link">#</a></h2>
-<p>NePS maintains several human-readable files in the <code>ROOT_DIRECTORY</code>. Additionally, it generates a summary folder (located at <code>ROOT_DIRECTORY/summary/</code>) which contains useful reports on the run.</p>
-<div class="highlight"><pre><span></span><code>```
-ROOT_DIRECTORY
-├── results
-│  └── config_1
-│      ├── config.yaml
-│      ├── metadata.yaml
-│      └── report.yaml
-├── summary
-│  ├── full.csv
-│  ├── short.csv
-│  ├── best_config_trajectory.txt
-│  └── best_config.txt
-├── optimizer_info.yaml
-└── optimizer_state.pkl
-```
+<p>NePS keeps several human-readable files in the <code>ROOT_DIRECTORY</code>, and a <code>summary</code> folder
+with reports on the run.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>ROOT_DIRECTORY
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>├── configs
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>│   ├── config_1                        # config_1_rung_0, ... for multi-fidelity
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>│   │   ├── config.yaml                 # The configuration
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>│   │   ├── metadata.json               # Its state, worker and timings
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>│   │   └── report.yaml                 # Its result, once evaluated
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>│   └── ...
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>├── summary
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a>│   ├── full.csv                        # One row per trial
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>│   ├── short.csv                       # The run as a whole
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a>│   ├── best_config.txt                 # The incumbent, or the Pareto set
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a>│   ├── best_config_trajectory.txt      # Every config that became the incumbent
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a>│   ├── incumbent_trajectory.{png,csv}  # 1 objective, with plots on
+<a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a>│   └── pareto_front.{png,csv}          # 2 objectives, with plots on
+<a id="__codelineno-4-15" name="__codelineno-4-15" href="#__codelineno-4-15"></a>├── optimizer_info.yaml                 # The optimizer's configuration
+<a id="__codelineno-4-16" name="__codelineno-4-16" href="#__codelineno-4-16"></a>├── optimizer_state.pkl                 # The optimizer's state, shared between workers
+<a id="__codelineno-4-17" name="__codelineno-4-17" href="#__codelineno-4-17"></a>└── pipeline_space.pkl                  # The search space
 </code></pre></div>
-<p>The <code>full.csv</code> contains all configuration details in CSV format.
-Details include configuration hyperparameters and any returned result and cost from the <code>evaluate_pipeline</code> function.</p>
-<p>The <code>best_config_trajectory.txt</code> contains logging of the incumbent trajectory.
-The <code>best_config.txt</code> records current incumbent.</p>
-<h1 id="tensorboard-integration">TensorBoard Integration<a class="headerlink" href="#tensorboard-integration" title="Permanent link">#</a></h1>
+<p><code>full.csv</code> has every trial's hyperparameters, together with whatever result and cost
+<code>evaluate_pipeline</code> returned. <code>best_config_trajectory.txt</code> logs the incumbent trajectory
+(single objective only) and <code>best_config.txt</code> records the current incumbent(s).</p>
+<h1 id="tensorboard-integration">TensorBoard integration<a class="headerlink" href="#tensorboard-integration" title="Permanent link">#</a></h1>
 <p>In NePS we replaced the traditional TensorBoard <code>SummaryWriter</code> with the <code>ConfigWriter</code> to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.</p>
-<h2 id="overview-of-configwriter">Overview of ConfigWriter<a class="headerlink" href="#overview-of-configwriter" title="Permanent link">#</a></h2>
+<h3 id="overview-of-configwriter">Overview of ConfigWriter<a class="headerlink" href="#overview-of-configwriter" title="Permanent link">#</a></h3>
 <p>The <code>ConfigWriter</code> serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the NePS, enabling better visualization and analysis of model performance during hyperparameter searches.</p>
 <p>To enable live logging of the incumbent trajectory, use the <code>write_summary_incumbent</code> argument when initializing <code>ConfigWriter</code>.</p>
 <p>If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the <code>neps.tblogger.WriteIncumbent()</code> function in their run pipeline</p>
-<h2 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h2>
+<h3 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h3>
 <p>Below is an example implementation of the <code>ConfigWriter</code> for logging metrics during the training process:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">neps</span>
 <a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="c1"># Substitute the TensorBoard SummaryWriter with ConfigWriter from NePS</span>

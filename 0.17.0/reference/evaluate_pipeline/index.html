@@ -725,6 +725,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#33-live-plots" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Live plots
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#34-common-pitfalls" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4872,6 +4883,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5114,7 +5153,8 @@
 <blockquote>
 <p><strong>TL;DR</strong>
 <em>Sync</em>: return a scalar or a dict ⟶ NePS records it automatically.
-<em>Async</em>: return <code>None</code>, launch a job, and call <code>neps.save_pipeline_results()</code> when the job finishes.</p>
+<em>Async</em>: return <code>None</code>, launch a job, and call <code>neps.save_pipeline_results()</code> when the job finishes.
+<em>Plots</em>: pass <code>live_plots=True</code> to <code>neps.run()</code> (sync) or to <code>neps.save_pipeline_results()</code> (async) to redraw them after every result.</p>
 </blockquote>
 <hr />
 <h2 id="1-return-types">1 Return types<a class="headerlink" href="#1-return-types" title="Permanent link">#</a></h2>
@@ -5184,6 +5224,11 @@
 </table>
 <blockquote>
 <p><strong>Tip</strong>  Return exactly what you need; extra keys are preserved in the trial’s <code>report.yaml</code>.</p>
+<p><strong>Live plots</strong>  When <code>evaluate_pipeline</code> returns its result (sync), the worker records it
+and refreshes <code>root_directory/summary/</code>. Pass <code>live_plots=True</code> to <code>neps.run()</code> to also
+redraw the plots every time: the incumbent trajectory, or the Pareto front for two
+objectives, plus anything the optimizer provides. See
+<a href="../analyse/#live-plots-during-a-run">Analysing Runs</a>.</p>
 </blockquote>
 <hr />
 <h2 id="3-asynchronous-evaluation-advanced">3 Asynchronous evaluation (advanced)<a class="headerlink" href="#3-asynchronous-evaluation-advanced" title="Permanent link">#</a></h2>
@@ -5219,11 +5264,11 @@
 <a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>    <span class="n">learning_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>    <span class="n">optimizer</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="p">):</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="c1"># 1) write a Slurm script</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="c1"># 1) write a Slurm script (replace CHANGE_ME__PARTITION_NAME with your cluster's partition)</span>
 <a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>    <span class="n">script</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"""#!/bin/bash</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="s2">#SBATCH --time=0-00:10</span>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="s2">#SBATCH --job-name=trial_</span><span class="si">{</span><span class="n">pipeline_id</span><span class="si">}</span>
-<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="s2">#SBATCH --partition=bosch_cpu-cascadelake</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="s2">#SBATCH --partition=CHANGE_ME__PARTITION_NAME</span>
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="s2">#SBATCH --output=</span><span class="si">{</span><span class="n">pipeline_directory</span><span class="si">}</span><span class="s2">/%j.out</span>
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="s2">#SBATCH --error=</span><span class="si">{</span><span class="n">pipeline_directory</span><span class="si">}</span><span class="s2">/%j.err</span>
 <a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>
@@ -5277,6 +5322,21 @@
 <li>Crashes inside the job still mark the trial <em>CRASHED</em> instead of hanging.</li>
 <li>Compatible with Successive‑Halving/ASHA — NePS just waits for <code>report.yaml</code>.</li>
 </ul>
+<h3 id="33-live-plots">3.3 Live plots<a class="headerlink" href="#33-live-plots" title="Permanent link">#</a></h3>
+<p>In async mode the result is recorded by <code>neps.save_pipeline_results()</code> in your job, not by
+the worker, so that is where you ask for the plots to be redrawn:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">neps</span><span class="o">.</span><span class="n">save_pipeline_results</span><span class="p">(</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">user_result</span><span class="o">=</span><span class="n">result</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">pipeline_id</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">pipeline_id</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">root_dir</span><span class="p">),</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">live_plots</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">)</span>
+</code></pre></div>
+<p>This refreshes the general plots (incumbent trajectory or Pareto front) in
+<code>root_directory/summary/</code>. Optimizer-specific artifacts need the optimizer object, so
+they are only drawn by <code>neps.run(..., live_plots=True)</code>. To redraw everything once all
+jobs are done, call <code>neps.analyze(root_directory)</code>; see
+<a href="../analyse/#plots-and-reports-nepsanalyze">Analysing Runs</a>.</p>
 <h3 id="34-common-pitfalls">3.4 Common pitfalls<a class="headerlink" href="#34-common-pitfalls" title="Permanent link">#</a></h3>
 <ul>
 <li>When using async approach, one worker, may create as many trials as possible, of course that in <code>Slurm</code> or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g <code>total_evaluations_to_spend</code> and/or <code>total_cost_to_spend</code>) when calling <code>neps.run</code>.</li>

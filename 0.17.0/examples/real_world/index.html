@@ -1917,6 +1917,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Real World Examples
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -1933,6 +1951,47 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#openclip-hyperparameter-and-architecture-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OpenCLIP Hyperparameter and Architecture Search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#image-segmentation-pipeline-hyperparameter-optimization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Image Segmentation Pipeline Hyperparameter Optimization
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -4761,6 +4820,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5000,12 +5087,17 @@
 
 
 <h1 id="real-world-examples">Real World Examples<a class="headerlink" href="#real-world-examples" title="Permanent link">#</a></h1>
-<ol>
-<li><strong>Image Segmentation Pipeline Hyperparameter Optimization</strong></li>
-</ol>
+<ul>
+<li><a href="#openclip-hyperparameter-and-architecture-search">OpenCLIP Hyperparameter and Architecture Search</a></li>
+<li><a href="#image-segmentation-pipeline-hyperparameter-optimization">Image Segmentation Pipeline Hyperparameter Optimization</a></li>
+</ul>
+<h2 id="openclip-hyperparameter-and-architecture-search"><strong>OpenCLIP Hyperparameter and Architecture Search</strong><a class="headerlink" href="#openclip-hyperparameter-and-architecture-search" title="Permanent link">#</a></h2>
+<p>A real-world HPO example: searching an <a href="https://github.com/mlfoundations/open_clip">OpenCLIP</a> model's optimization hyperparameters (learning rate, weight decay) together with its vision/text tower width and depth, pre-training contrastively on real LAION image/caption pairs. Sampling and training are decoupled so each sampled config -- which can need a very different amount of GPU memory -- is routed to a right-sized Slurm job instead of blocking one worker on training.</p>
+<p>See <a href="https://github.com/automl/neps/tree/master/neps_examples/real_world/vlm_openclip/README.md"><code>vlm_openclip/README.md</code></a> for the full workflow and setup.</p>
+<h2 id="image-segmentation-pipeline-hyperparameter-optimization"><strong>Image Segmentation Pipeline Hyperparameter Optimization</strong><a class="headerlink" href="#image-segmentation-pipeline-hyperparameter-optimization" title="Permanent link">#</a></h2>
 <p>This example demonstrates how to perform hyperparameter optimization (HPO) for an image segmentation pipeline using NePS. The pipeline consists of a ResNet-50 model to segment images model trained on PASCAL Visual Object Classes (VOC) Dataset (<a href="http://host.robots.ox.ac.uk/pascal/VOC/">host.robots.ox.ac.uk/pascal/VOC/</a>).</p>
 <p>We compare the performance of the optimized hyperparameters with the default hyperparameters. using the validation loss achieved on the dataset after training the model with the respective hyperparameters.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>image_segmentation_pipeline_hpo.py
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>image_segmentation_hpo.py
 </code></pre></div>
 <p>The search space has been set with the priors set to the hyperparameters found in this base example: <a href="https://lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning">lightning.ai/lightning-ai/studios/image-segmentation-with-pytorch-lightning</a></p>
 <p>We run the HPO process for 188 trials and obtain new set of hyperpamereters that outperform the default hyperparameters.</p>
@@ -5040,7 +5132,7 @@
 </tr>
 </tbody>
 </table>
-<p><img alt="Validation Loss Curves" src="../../doc_images/examples/val_loss_image_segmentation.jpg" /></p>
+<p><img alt="Validation Loss Curves" src="../../docs/doc_images/examples/val_loss_image_segmentation.jpg" /></p>
 <p>The validation loss achieved on the dataset after training the model with the newly sampled hyperparameters is shown in the figure above.</p>
 <p>We compare the validation loss values when the model is trained with the default hyperparameters and the optimized hyperparameters:</p>
 <p>Validation Loss with Default Hyperparameters: 0.114094577729702</p>

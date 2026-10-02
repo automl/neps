@@ -815,10 +815,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#removing-specific-trial-ids" class="md-nav__link">
+  <a href="#cleaning-specific-trial-ids" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Removing Specific Trial IDs
+        Cleaning Specific Trial IDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-instead-of-resetting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deleting Instead of Resetting
       
     </span>
   </a>
@@ -843,10 +854,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#clean-failedcrashedcorrupted-trials" class="md-nav__link">
+  <a href="#reset-failedcrashedcorrupted-trials" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Clean Failed/Crashed/Corrupted Trials
+        Reset Failed/Crashed/Corrupted Trials
       
     </span>
   </a>
@@ -854,10 +865,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#clean-specific-trial-ids" class="md-nav__link">
+  <a href="#reset-specific-trial-ids" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Clean Specific Trial IDs
+        Reset Specific Trial IDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deleting-trials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deleting Trials
       
     </span>
   </a>
@@ -4867,6 +4889,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5106,57 +5156,78 @@
 
 
 <h1 id="cleaning-up-failed-trials">Cleaning Up Failed Trials<a class="headerlink" href="#cleaning-up-failed-trials" title="Permanent link">#</a></h1>
-<p>The NePS <code>clean</code> command provides a utility to remove failed, crashed, or corrupted trials from your optimization working directory.
+<p>The NePS <code>clean</code> command provides a utility to clean up failed, crashed, or corrupted trials from your optimization working directory.
+By default it resets matched trials to <code>pending</code>, keeping their config so they get re-evaluated on the next run. Pass <code>--delete</code> to remove them entirely instead.
 This is useful for managing your optimization state and preventing problematic trials from interfering with future optimization runs.</p>
 <hr />
 <h2 id="command-line-usage">Command Line Usage<a class="headerlink" href="#command-line-usage" title="Permanent link">#</a></h2>
 <h3 id="basic-usage">Basic Usage<a class="headerlink" href="#basic-usage" title="Permanent link">#</a></h3>
-<p>To clean all non-success stated trials from your optimization directory:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>&lt;root_directory&gt;
+<p>To reset all non-success stated trials in your optimization directory back to pending:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>--root-dir<span class="w"> </span>&lt;root_directory&gt;
 </code></pre></div>
+<p>If <code>--root-dir</code> is omitted, it defaults to <code>neps_results</code>.</p>
 <h3 id="dry-run">Dry Run<a class="headerlink" href="#dry-run" title="Permanent link">#</a></h3>
-<p>Preview what will be deleted without making any changes:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--dry_run
+<p>Preview what would change without making any changes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>--root-dir<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--dry-run
 </code></pre></div>
-<h3 id="removing-specific-trial-ids">Removing Specific Trial IDs<a class="headerlink" href="#removing-specific-trial-ids" title="Permanent link">#</a></h3>
-<p>Remove only specific trials by their IDs (regardless of state):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--trial_ids<span class="w"> </span>&lt;trial_id_1&gt;<span class="w"> </span>&lt;trial_id_2&gt;<span class="w"> </span>&lt;trial_id_3&gt;
+<h3 id="cleaning-specific-trial-ids">Cleaning Specific Trial IDs<a class="headerlink" href="#cleaning-specific-trial-ids" title="Permanent link">#</a></h3>
+<p>Reset only specific trials by their IDs (regardless of state):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>--root-dir<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--trial-ids<span class="w"> </span>&lt;trial_id_1&gt;<span class="w"> </span>&lt;trial_id_2&gt;<span class="w"> </span>&lt;trial_id_3&gt;
 </code></pre></div>
 <p>Trial IDs are reported in <code>metadata.json</code> within each config directory.</p>
+<h3 id="deleting-instead-of-resetting">Deleting Instead of Resetting<a class="headerlink" href="#deleting-instead-of-resetting" title="Permanent link">#</a></h3>
+<p>By default, matched trials keep their config on disk and have their state reset to
+<code>pending</code> (clearing their report), so that a subsequent <code>neps.run</code> re-evaluates the
+same configuration rather than sampling a new one. Pass <code>--delete</code> to instead remove
+the trial directory entirely:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>--root-dir<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--delete
+</code></pre></div>
+<p>This can be combined with <code>--dry-run</code> and <code>--trial-ids</code> as usual, e.g.:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>python<span class="w"> </span>-m<span class="w"> </span>neps.clean<span class="w"> </span>--root-dir<span class="w"> </span>&lt;root_directory&gt;<span class="w"> </span>--trial-ids<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="m">2</span><span class="w"> </span>--delete
+</code></pre></div>
 <hr />
 <h2 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">#</a></h2>
 <p>You can also use the clean functionality programmatically in Python:</p>
-<h3 id="clean-failedcrashedcorrupted-trials">Clean Failed/Crashed/Corrupted Trials<a class="headerlink" href="#clean-failedcrashedcorrupted-trials" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.clean.clean</span><span class="w"> </span><span class="kn">import</span> <span class="n">clean_failed_trials</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.state.trial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trial</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">root_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"&lt;root_directory&gt;"</span><span class="p">)</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">clean_failed_trials</span><span class="p">(</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">desired_states</span><span class="o">=</span><span class="p">[</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">CRASHED</span><span class="p">,</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">CORRUPTED</span><span class="p">,</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="p">],</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="p">)</span>
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'total_removed'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
+<h3 id="reset-failedcrashedcorrupted-trials">Reset Failed/Crashed/Corrupted Trials<a class="headerlink" href="#reset-failedcrashedcorrupted-trials" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.clean.clean</span><span class="w"> </span><span class="kn">import</span> <span class="n">clean_failed_trials</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.state.trial</span><span class="w"> </span><span class="kn">import</span> <span class="n">Trial</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="n">root_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"&lt;root_directory&gt;"</span><span class="p">)</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">clean_failed_trials</span><span class="p">(</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">desired_states</span><span class="o">=</span><span class="p">[</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">CRASHED</span><span class="p">,</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">CORRUPTED</span><span class="p">,</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a>    <span class="p">],</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>    <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="p">)</span>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reset </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'total_removed'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
 </code></pre></div>
-<h3 id="clean-specific-trial-ids">Clean Specific Trial IDs<a class="headerlink" href="#clean-specific-trial-ids" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.clean.clean</span><span class="w"> </span><span class="kn">import</span> <span class="n">clean_failed_trials</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="n">root_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"&lt;root_directory&gt;"</span><span class="p">)</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">clean_failed_trials</span><span class="p">(</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a>    <span class="n">trial_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">"1"</span><span class="p">,</span> <span class="s2">"2"</span><span class="p">],</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a>    <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="p">)</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Removed </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'removed'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Not found: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'not_found'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
+<h3 id="reset-specific-trial-ids">Reset Specific Trial IDs<a class="headerlink" href="#reset-specific-trial-ids" title="Permanent link">#</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">neps.clean.clean</span><span class="w"> </span><span class="kn">import</span> <span class="n">clean_failed_trials</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">root_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">"&lt;root_directory&gt;"</span><span class="p">)</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">clean_failed_trials</span><span class="p">(</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a>    <span class="n">trial_ids</span><span class="o">=</span><span class="p">[</span><span class="s2">"1"</span><span class="p">,</span> <span class="s2">"2"</span><span class="p">],</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a>    <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="p">)</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Reset </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'removed'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Not found: </span><span class="si">{</span><span class="n">stats</span><span class="p">[</span><span class="s1">'not_found'</span><span class="p">]</span><span class="si">}</span><span class="s2"> trials"</span><span class="p">)</span>
+</code></pre></div>
+<h3 id="deleting-trials">Deleting Trials<a class="headerlink" href="#deleting-trials" title="Permanent link">#</a></h3>
+<p>Pass <code>delete=True</code> to remove trials entirely instead of resetting them to <code>pending</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">stats</span> <span class="o">=</span> <span class="n">clean_failed_trials</span><span class="p">(</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">root_directory</span><span class="o">=</span><span class="n">root_dir</span><span class="p">,</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">desired_states</span><span class="o">=</span><span class="p">[</span><span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">FAILED</span><span class="p">,</span> <span class="n">Trial</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">CRASHED</span><span class="p">],</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">delete</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>    <span class="n">dry_run</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="p">)</span>
 </code></pre></div>
 
 

@@ -4736,6 +4736,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5500,7 +5528,9 @@
 
 
 <a href="#neps.utils.files.CsvWriter.write" class="headerlink" title="Permanent link">#</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write</span><span class="p">(</span><span class="n">content</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<div class="doc-signature highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nf">write</span><span class="p">(</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">content</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a></span> <span class="o">|</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/stdtypes.html#str">str</a></span><span class="p">,</span> <span class="n">index</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></span> <span class="o">=</span> <span class="kc">False</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -5548,6 +5578,27 @@
               </p>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>index</code>
+            </td>
+            <td class="doc-param-details">
+              <div class="doc-md-description">
+                <p>Whether to write the frame's index as a column. Needed for
+tables whose index carries information, such as the trial id.</p>
+              </div>
+              <p>
+                  <span class="doc-param-annotation">
+                    <b>TYPE:</b>
+                      <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/builtins/functions.html#bool">bool</a></code>
+                  </span>
+                  <span class="doc-param-default">
+                    <b>DEFAULT:</b>
+                      <code>False</code>
+                  </span>
+              </p>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -5573,26 +5624,40 @@
 <span class="normal"><a href="#__codelineno-0-308">308</a></span>
 <span class="normal"><a href="#__codelineno-0-309">309</a></span>
 <span class="normal"><a href="#__codelineno-0-310">310</a></span>
-<span class="normal"><a href="#__codelineno-0-311">311</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">file_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<a id="__codelineno-0-293" name="__codelineno-0-293"></a><span class="w">    </span><span class="sd">"""Write a table to a CSV file.</span>
-<a id="__codelineno-0-294" name="__codelineno-0-294"></a>
-<a id="__codelineno-0-295" name="__codelineno-0-295"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-296" name="__codelineno-0-296"></a><span class="sd">        content: A pandas DataFrame, or a list of dicts with one dict per row.</span>
-<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="sd">        file_path: Path to save to (will use .csv extension).</span>
-<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="sd">    """</span>
-<a id="__codelineno-0-299" name="__codelineno-0-299"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<a id="__codelineno-0-300" name="__codelineno-0-300"></a>
-<a id="__codelineno-0-301" name="__codelineno-0-301"></a>    <span class="n">file_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".csv"</span><span class="p">)</span>
-<a id="__codelineno-0-302" name="__codelineno-0-302"></a>    <span class="k">try</span><span class="p">:</span>
-<a id="__codelineno-0-303" name="__codelineno-0-303"></a>        <span class="n">file_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<a id="__codelineno-0-304" name="__codelineno-0-304"></a>        <span class="n">table</span> <span class="o">=</span> <span class="p">(</span>
-<a id="__codelineno-0-305" name="__codelineno-0-305"></a>            <span class="n">content</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-<a id="__codelineno-0-306" name="__codelineno-0-306"></a>        <span class="p">)</span>
-<a id="__codelineno-0-307" name="__codelineno-0-307"></a>        <span class="n">table</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<a id="__codelineno-0-308" name="__codelineno-0-308"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Wrote CSV to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-<a id="__codelineno-0-310" name="__codelineno-0-310"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Failed to write CSV to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<a id="__codelineno-0-311" name="__codelineno-0-311"></a>        <span class="k">raise</span>
+<span class="normal"><a href="#__codelineno-0-311">311</a></span>
+<span class="normal"><a href="#__codelineno-0-312">312</a></span>
+<span class="normal"><a href="#__codelineno-0-313">313</a></span>
+<span class="normal"><a href="#__codelineno-0-314">314</a></span>
+<span class="normal"><a href="#__codelineno-0-315">315</a></span>
+<span class="normal"><a href="#__codelineno-0-316">316</a></span>
+<span class="normal"><a href="#__codelineno-0-317">317</a></span>
+<span class="normal"><a href="#__codelineno-0-318">318</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-292" name="__codelineno-0-292"></a><span class="k">def</span><span class="w"> </span><span class="nf">write</span><span class="p">(</span>
+<a id="__codelineno-0-293" name="__codelineno-0-293"></a>    <span class="bp">self</span><span class="p">,</span>
+<a id="__codelineno-0-294" name="__codelineno-0-294"></a>    <span class="n">content</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+<a id="__codelineno-0-295" name="__codelineno-0-295"></a>    <span class="n">file_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="nb">str</span><span class="p">,</span>
+<a id="__codelineno-0-296" name="__codelineno-0-296"></a>    <span class="n">index</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>  <span class="c1"># noqa: FBT001, FBT002</span>
+<a id="__codelineno-0-297" name="__codelineno-0-297"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<a id="__codelineno-0-298" name="__codelineno-0-298"></a><span class="w">    </span><span class="sd">"""Write a table to a CSV file.</span>
+<a id="__codelineno-0-299" name="__codelineno-0-299"></a>
+<a id="__codelineno-0-300" name="__codelineno-0-300"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-301" name="__codelineno-0-301"></a><span class="sd">        content: A pandas DataFrame, or a list of dicts with one dict per row.</span>
+<a id="__codelineno-0-302" name="__codelineno-0-302"></a><span class="sd">        file_path: Path to save to (will use .csv extension).</span>
+<a id="__codelineno-0-303" name="__codelineno-0-303"></a><span class="sd">        index: Whether to write the frame's index as a column. Needed for</span>
+<a id="__codelineno-0-304" name="__codelineno-0-304"></a><span class="sd">            tables whose index carries information, such as the trial id.</span>
+<a id="__codelineno-0-305" name="__codelineno-0-305"></a><span class="sd">    """</span>
+<a id="__codelineno-0-306" name="__codelineno-0-306"></a>    <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<a id="__codelineno-0-307" name="__codelineno-0-307"></a>
+<a id="__codelineno-0-308" name="__codelineno-0-308"></a>    <span class="n">file_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">".csv"</span><span class="p">)</span>
+<a id="__codelineno-0-309" name="__codelineno-0-309"></a>    <span class="k">try</span><span class="p">:</span>
+<a id="__codelineno-0-310" name="__codelineno-0-310"></a>        <span class="n">file_path</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<a id="__codelineno-0-311" name="__codelineno-0-311"></a>        <span class="n">table</span> <span class="o">=</span> <span class="p">(</span>
+<a id="__codelineno-0-312" name="__codelineno-0-312"></a>            <span class="n">content</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">)</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+<a id="__codelineno-0-313" name="__codelineno-0-313"></a>        <span class="p">)</span>
+<a id="__codelineno-0-314" name="__codelineno-0-314"></a>        <span class="n">table</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">index</span><span class="p">)</span>
+<a id="__codelineno-0-315" name="__codelineno-0-315"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Wrote CSV to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-0-316" name="__codelineno-0-316"></a>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<a id="__codelineno-0-317" name="__codelineno-0-317"></a>        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Failed to write CSV to </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<a id="__codelineno-0-318" name="__codelineno-0-318"></a>        <span class="k">raise</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>
@@ -6616,14 +6681,7 @@ from this file should see the contents immediately.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>neps/utils/files.py</code></summary>
-              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-314">314</a></span>
-<span class="normal"><a href="#__codelineno-0-315">315</a></span>
-<span class="normal"><a href="#__codelineno-0-316">316</a></span>
-<span class="normal"><a href="#__codelineno-0-317">317</a></span>
-<span class="normal"><a href="#__codelineno-0-318">318</a></span>
-<span class="normal"><a href="#__codelineno-0-319">319</a></span>
-<span class="normal"><a href="#__codelineno-0-320">320</a></span>
-<span class="normal"><a href="#__codelineno-0-321">321</a></span>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"><a href="#__codelineno-0-321">321</a></span>
 <span class="normal"><a href="#__codelineno-0-322">322</a></span>
 <span class="normal"><a href="#__codelineno-0-323">323</a></span>
 <span class="normal"><a href="#__codelineno-0-324">324</a></span>
@@ -6643,34 +6701,41 @@ from this file should see the contents immediately.</p>
 <span class="normal"><a href="#__codelineno-0-338">338</a></span>
 <span class="normal"><a href="#__codelineno-0-339">339</a></span>
 <span class="normal"><a href="#__codelineno-0-340">340</a></span>
-<span class="normal"><a href="#__codelineno-0-341">341</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-314" name="__codelineno-0-314"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_file_writer</span><span class="p">(</span><span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FileWriter</span><span class="p">:</span>
-<a id="__codelineno-0-315" name="__codelineno-0-315"></a><span class="w">    </span><span class="sd">"""Get the appropriate writer for a content type.</span>
-<a id="__codelineno-0-316" name="__codelineno-0-316"></a>
-<a id="__codelineno-0-317" name="__codelineno-0-317"></a><span class="sd">    Args:</span>
-<a id="__codelineno-0-318" name="__codelineno-0-318"></a><span class="sd">        content_type: Type of content ('text', 'json', 'csv', 'figure', 'pickle',</span>
-<a id="__codelineno-0-319" name="__codelineno-0-319"></a><span class="sd">            'bytes').</span>
-<a id="__codelineno-0-320" name="__codelineno-0-320"></a>
-<a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="sd">    Returns:</span>
-<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="sd">        Writer instance for the given type.</span>
+<span class="normal"><a href="#__codelineno-0-341">341</a></span>
+<span class="normal"><a href="#__codelineno-0-342">342</a></span>
+<span class="normal"><a href="#__codelineno-0-343">343</a></span>
+<span class="normal"><a href="#__codelineno-0-344">344</a></span>
+<span class="normal"><a href="#__codelineno-0-345">345</a></span>
+<span class="normal"><a href="#__codelineno-0-346">346</a></span>
+<span class="normal"><a href="#__codelineno-0-347">347</a></span>
+<span class="normal"><a href="#__codelineno-0-348">348</a></span></pre></div></td><td class="code"><div><pre><span></span><code><a id="__codelineno-0-321" name="__codelineno-0-321"></a><span class="k">def</span><span class="w"> </span><span class="nf">get_file_writer</span><span class="p">(</span><span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FileWriter</span><span class="p">:</span>
+<a id="__codelineno-0-322" name="__codelineno-0-322"></a><span class="w">    </span><span class="sd">"""Get the appropriate writer for a content type.</span>
 <a id="__codelineno-0-323" name="__codelineno-0-323"></a>
-<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    Raises:</span>
-<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        ValueError: If content type is not supported.</span>
-<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">    """</span>
-<a id="__codelineno-0-327" name="__codelineno-0-327"></a>    <span class="c1"># Writer registry - maps content type to writer instance</span>
-<a id="__codelineno-0-328" name="__codelineno-0-328"></a>    <span class="n">_file_writers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FileWriter</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-<a id="__codelineno-0-329" name="__codelineno-0-329"></a>        <span class="s2">"text"</span><span class="p">:</span> <span class="n">TextWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-330" name="__codelineno-0-330"></a>        <span class="s2">"json"</span><span class="p">:</span> <span class="n">JsonWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-331" name="__codelineno-0-331"></a>        <span class="s2">"csv"</span><span class="p">:</span> <span class="n">CsvWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-332" name="__codelineno-0-332"></a>        <span class="s2">"figure"</span><span class="p">:</span> <span class="n">FigureWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-333" name="__codelineno-0-333"></a>        <span class="s2">"pickle"</span><span class="p">:</span> <span class="n">PickleWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-334" name="__codelineno-0-334"></a>        <span class="s2">"bytes"</span><span class="p">:</span> <span class="n">BytesWriter</span><span class="p">(),</span>
-<a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="p">}</span>
-<a id="__codelineno-0-336" name="__codelineno-0-336"></a>    <span class="k">if</span> <span class="n">content_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_file_writers</span><span class="p">:</span>
-<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
-<a id="__codelineno-0-338" name="__codelineno-0-338"></a>            <span class="sa">f</span><span class="s2">"Unsupported content type: </span><span class="si">{</span><span class="n">content_type</span><span class="si">}</span><span class="s2">. "</span>
-<a id="__codelineno-0-339" name="__codelineno-0-339"></a>            <span class="sa">f</span><span class="s2">"Supported types: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">_file_writers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">"</span>
-<a id="__codelineno-0-340" name="__codelineno-0-340"></a>        <span class="p">)</span>
-<a id="__codelineno-0-341" name="__codelineno-0-341"></a>    <span class="k">return</span> <span class="n">_file_writers</span><span class="p">[</span><span class="n">content_type</span><span class="p">]</span>
+<a id="__codelineno-0-324" name="__codelineno-0-324"></a><span class="sd">    Args:</span>
+<a id="__codelineno-0-325" name="__codelineno-0-325"></a><span class="sd">        content_type: Type of content ('text', 'json', 'csv', 'figure', 'pickle',</span>
+<a id="__codelineno-0-326" name="__codelineno-0-326"></a><span class="sd">            'bytes').</span>
+<a id="__codelineno-0-327" name="__codelineno-0-327"></a>
+<a id="__codelineno-0-328" name="__codelineno-0-328"></a><span class="sd">    Returns:</span>
+<a id="__codelineno-0-329" name="__codelineno-0-329"></a><span class="sd">        Writer instance for the given type.</span>
+<a id="__codelineno-0-330" name="__codelineno-0-330"></a>
+<a id="__codelineno-0-331" name="__codelineno-0-331"></a><span class="sd">    Raises:</span>
+<a id="__codelineno-0-332" name="__codelineno-0-332"></a><span class="sd">        ValueError: If content type is not supported.</span>
+<a id="__codelineno-0-333" name="__codelineno-0-333"></a><span class="sd">    """</span>
+<a id="__codelineno-0-334" name="__codelineno-0-334"></a>    <span class="c1"># Writer registry - maps content type to writer instance</span>
+<a id="__codelineno-0-335" name="__codelineno-0-335"></a>    <span class="n">_file_writers</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">FileWriter</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+<a id="__codelineno-0-336" name="__codelineno-0-336"></a>        <span class="s2">"text"</span><span class="p">:</span> <span class="n">TextWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-337" name="__codelineno-0-337"></a>        <span class="s2">"json"</span><span class="p">:</span> <span class="n">JsonWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-338" name="__codelineno-0-338"></a>        <span class="s2">"csv"</span><span class="p">:</span> <span class="n">CsvWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-339" name="__codelineno-0-339"></a>        <span class="s2">"figure"</span><span class="p">:</span> <span class="n">FigureWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-340" name="__codelineno-0-340"></a>        <span class="s2">"pickle"</span><span class="p">:</span> <span class="n">PickleWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-341" name="__codelineno-0-341"></a>        <span class="s2">"bytes"</span><span class="p">:</span> <span class="n">BytesWriter</span><span class="p">(),</span>
+<a id="__codelineno-0-342" name="__codelineno-0-342"></a>    <span class="p">}</span>
+<a id="__codelineno-0-343" name="__codelineno-0-343"></a>    <span class="k">if</span> <span class="n">content_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_file_writers</span><span class="p">:</span>
+<a id="__codelineno-0-344" name="__codelineno-0-344"></a>        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+<a id="__codelineno-0-345" name="__codelineno-0-345"></a>            <span class="sa">f</span><span class="s2">"Unsupported content type: </span><span class="si">{</span><span class="n">content_type</span><span class="si">}</span><span class="s2">. "</span>
+<a id="__codelineno-0-346" name="__codelineno-0-346"></a>            <span class="sa">f</span><span class="s2">"Supported types: </span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">_file_writers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">"</span>
+<a id="__codelineno-0-347" name="__codelineno-0-347"></a>        <span class="p">)</span>
+<a id="__codelineno-0-348" name="__codelineno-0-348"></a>    <span class="k">return</span> <span class="n">_file_writers</span><span class="p">[</span><span class="n">content_type</span><span class="p">]</span>
 </code></pre></div></td></tr></table></div>
             </details>
     </div>

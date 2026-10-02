@@ -4726,6 +4726,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5202,7 +5230,7 @@
   <a href="#1-run-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Run tests
+        1. Run Tests
       
     </span>
   </a>
@@ -5210,10 +5238,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-update-the-package-version-and-citationcff" class="md-nav__link">
+  <a href="#2-bump-the-version-on-a-release-branch" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Update the Package Version and CITATION.cff
+        2. Bump the Version on a Release Branch
       
     </span>
   </a>
@@ -5221,10 +5249,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-update-documentation" class="md-nav__link">
+  <a href="#3-merge-and-tag-on-master" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Update Documentation
+        3. Merge and Tag on Master
       
     </span>
   </a>
@@ -5232,10 +5260,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-publish-on-pypi" class="md-nav__link">
+  <a href="#4-update-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Publish on PyPI
+        4. Update Documentation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-publish-on-pypi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Publish on PyPI
       
     </span>
   </a>
@@ -5429,42 +5468,59 @@ To support documentation for multiple versions, we use the plugin <a href="https
 <h2 id="tutorials">Tutorials<a class="headerlink" href="#tutorials" title="Permanent link">#</a></h2>
 <p>See <a href="./tutorials/README.md">tutorials README</a>.</p>
 <h2 id="releasing-a-new-version">Releasing a New Version<a class="headerlink" href="#releasing-a-new-version" title="Permanent link">#</a></h2>
-<p>There are four steps to releasing a new version of neps:</p>
+<p>There are five steps to releasing a new version of neps:</p>
 <ol>
 <li>Understand Semantic Versioning</li>
-<li>Update the Package Version</li>
-<li>Commit and Push With a Version Tag</li>
+<li>Run Tests</li>
+<li>Bump the Version on a Release Branch</li>
+<li>Merge and Tag on Master</li>
 <li>Update Documentation</li>
 <li>Publish on PyPI</li>
 </ol>
 <h3 id="0-understand-semantic-versioning">0. Understand Semantic Versioning<a class="headerlink" href="#0-understand-semantic-versioning" title="Permanent link">#</a></h3>
 <p>We follow the <a href="https://semver.org">semantic versioning</a> scheme.</p>
-<h3 id="1-run-tests">1. Run tests<a class="headerlink" href="#1-run-tests" title="Permanent link">#</a></h3>
+<h3 id="1-run-tests">1. Run Tests<a class="headerlink" href="#1-run-tests" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>uv<span class="w"> </span>run<span class="w"> </span>pytest
 </code></pre></div>
-<h3 id="2-update-the-package-version-and-citationcff">2. Update the Package Version and CITATION.cff<a class="headerlink" href="#2-update-the-package-version-and-citationcff" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>bump-my-version<span class="w"> </span>bump<span class="w"> </span>&lt;major<span class="w"> </span><span class="p">|</span><span class="w"> </span>minor<span class="w"> </span><span class="p">|</span><span class="w"> </span>patch&gt;
+<h3 id="2-bump-the-version-on-a-release-branch">2. Bump the Version on a Release Branch<a class="headerlink" href="#2-bump-the-version-on-a-release-branch" title="Permanent link">#</a></h3>
+<p>The version is bumped on a release branch and merged through a PR:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>master<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>pull
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>git<span class="w"> </span>checkout<span class="w"> </span>-b<span class="w"> </span>release/v&lt;new_version&gt;
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>bump-my-version<span class="w"> </span>bump<span class="w"> </span>&lt;major<span class="w"> </span><span class="p">|</span><span class="w"> </span>minor<span class="w"> </span><span class="p">|</span><span class="w"> </span>patch&gt;
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a>git<span class="w"> </span>push<span class="w"> </span>-u<span class="w"> </span>origin<span class="w"> </span>release/v&lt;new_version&gt;
 </code></pre></div>
-<p>This will automatically update the version in <code>pyproject.toml</code> and <code>CITATION.cff</code>, tag the commit and push it to the remote repository.</p>
-<h3 id="3-update-documentation">3. Update Documentation<a class="headerlink" href="#3-update-documentation" title="Permanent link">#</a></h3>
+<p>This creates one release commit with the following changes. Preview them first with <code>--dry-run -vv</code> and check:</p>
+<ul>
+<li><code>CHANGELOG.md</code>: the current <code>## [Unreleased]</code> entries become <code>## [&lt;new_version&gt;] - &lt;today&gt;</code>, and a new empty <code>## [Unreleased]</code> heading is added above them. Make sure the Unreleased section is complete before bumping.</li>
+<li><code>CITATION.cff</code>: <code>version</code> is bumped. <code>date-released</code> is <strong>not</strong> updated automatically, so set and commit it before bumping (the bump needs a clean working tree).</li>
+<li><code>pyproject.toml</code>: <code>version</code> and <code>current_version</code> in <code>[tool.bumpversion]</code> are bumped.</li>
+</ul>
+<p>No tag is created at this step (<code>tag = false</code>): PRs are squash-merged, which gives the commit a new ID, so a tag made on the release branch would not point to a commit on <code>master</code>.</p>
+<h3 id="3-merge-and-tag-on-master">3. Merge and Tag on Master<a class="headerlink" href="#3-merge-and-tag-on-master" title="Permanent link">#</a></h3>
+<p>Open a PR from the release branch and merge it. Then tag the merged commit on <code>master</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>git<span class="w"> </span>checkout<span class="w"> </span>master<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>git<span class="w"> </span>pull
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>git<span class="w"> </span>tag<span class="w"> </span>v&lt;new_version&gt;
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a>git<span class="w"> </span>push<span class="w"> </span>origin<span class="w"> </span>v&lt;new_version&gt;
+</code></pre></div>
+<h3 id="4-update-documentation">4. Update Documentation<a class="headerlink" href="#4-update-documentation" title="Permanent link">#</a></h3>
 <p>First check if the documentation has any issues via</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>mike<span class="w"> </span>deploy<span class="w"> </span>&lt;current<span class="w"> </span>version&gt;<span class="w"> </span>latest<span class="w"> </span>-u
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>mike<span class="w"> </span>serve
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>mike<span class="w"> </span>deploy<span class="w"> </span>&lt;current<span class="w"> </span>version&gt;<span class="w"> </span>latest<span class="w"> </span>-u
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>mike<span class="w"> </span>serve
 </code></pre></div>
 <p>and then looking at it.</p>
 <p>Update the citation.cff page and citations.md page in the <code>docs</code> directory and in <code>pyproject.toml</code>.</p>
 <p>Afterwards, publish it via</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>mike<span class="w"> </span>deploy<span class="w"> </span>&lt;current<span class="w"> </span>version&gt;<span class="w"> </span>latest<span class="w"> </span>-up
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>mike<span class="w"> </span>deploy<span class="w"> </span>&lt;current<span class="w"> </span>version&gt;<span class="w"> </span>latest<span class="w"> </span>-up
 </code></pre></div>
-<h3 id="4-publish-on-pypi">4. Publish on PyPI<a class="headerlink" href="#4-publish-on-pypi" title="Permanent link">#</a></h3>
+<h3 id="5-publish-on-pypi">5. Publish on PyPI<a class="headerlink" href="#5-publish-on-pypi" title="Permanent link">#</a></h3>
 <p>To publish to PyPI:</p>
 <ol>
 <li>Get publishing rights, e.g., asking Danny or Neeratyoy.</li>
 <li>Be careful, once on PyPI we can not change things.</li>
 <li>Run</li>
 </ol>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>uv<span class="w"> </span>build
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>uv<span class="w"> </span>publish
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>uv<span class="w"> </span>build
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>uv<span class="w"> </span>publish
 </code></pre></div>
 <p>This will ask for your PyPI credentials.</p>
 

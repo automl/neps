@@ -4928,6 +4928,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/neps/status/summary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Summary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -5168,6 +5196,10 @@
 
 <h1 id="multi-objective-optimization">Multi-Objective Optimization<a class="headerlink" href="#multi-objective-optimization" title="Permanent link">#</a></h1>
 <p>Multi-Objective Optimization (MOO) addresses the challenge of optimizing multiple, often competing objectives simultaneously. Unlike single-objective optimization where there is one clear optimum, multi-objective problems have a set of trade-off solutions known as the <strong>Pareto Front</strong>. This is particularly relevant in deep learning, where practitioners often need to optimize for multiple goals such as validation accuracy, inference latency, training time, and fairness.</p>
+<div class="admonition tip">
+<p class="admonition-title">Interactive tutorial</p>
+<p>The <a href="https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb">Multi-Objective Optimization tutorial</a> runs PriMO on the ZDT1 benchmark with per-objective expert priors.</p>
+</div>
 <h2 id="what-is-multi-objective-optimization">What is Multi-Objective Optimization?<a class="headerlink" href="#what-is-multi-objective-optimization" title="Permanent link">#</a></h2>
 <p>In multi-objective optimization, we seek to minimize (or maximize) a vector-valued objective function:</p>
 <div class="arithmatex">\[\min_{\boldsymbol{\lambda} \in \mathcal{\Lambda}} \mathbf{f}(\boldsymbol{\lambda}) = \min_{\boldsymbol{\lambda} \in \mathcal{\Lambda}} \begin{pmatrix} f_1(\boldsymbol{\lambda}) \\ f_2(\boldsymbol{\lambda}) \\ \vdots \\ f_n(\boldsymbol{\lambda}) \end{pmatrix}\]</div>
