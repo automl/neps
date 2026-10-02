@@ -217,33 +217,55 @@ See [tutorials README](./tutorials/README.md).
 
 ## Releasing a New Version
 
-There are four steps to releasing a new version of neps:
+There are five steps to releasing a new version of neps:
 
 0. Understand Semantic Versioning
-1. Update the Package Version
-2. Commit and Push With a Version Tag
-3. Update Documentation
-4. Publish on PyPI
+1. Run Tests
+2. Bump the Version on a Release Branch
+3. Merge and Tag on Master
+4. Update Documentation
+5. Publish on PyPI
 
 ### 0. Understand Semantic Versioning
 
 We follow the [semantic versioning](https://semver.org) scheme.
 
-### 1. Run tests
+### 1. Run Tests
 
 ```bash
 uv run pytest
 ```
 
-### 2. Update the Package Version and CITATION.cff
+### 2. Bump the Version on a Release Branch
+
+The version is bumped on a release branch and merged through a PR:
 
 ```bash
+git checkout master && git pull
+git checkout -b release/v<new_version>
 bump-my-version bump <major | minor | patch>
+git push -u origin release/v<new_version>
 ```
 
-This will automatically update the version in `pyproject.toml` and `CITATION.cff`, tag the commit and push it to the remote repository.
+This creates one release commit with the following changes. Preview them first with `--dry-run -vv` and check:
 
-### 3. Update Documentation
+- `CHANGELOG.md`: the current `## [Unreleased]` entries become `## [<new_version>] - <today>`, and a new empty `## [Unreleased]` heading is added above them. Make sure the Unreleased section is complete before bumping.
+- `CITATION.cff`: `version` is bumped. `date-released` is **not** updated automatically, so set and commit it before bumping (the bump needs a clean working tree).
+- `pyproject.toml`: `version` and `current_version` in `[tool.bumpversion]` are bumped.
+
+No tag is created at this step (`tag = false`): PRs are squash-merged, which gives the commit a new ID, so a tag made on the release branch would not point to a commit on `master`.
+
+### 3. Merge and Tag on Master
+
+Open a PR from the release branch and merge it. Then tag the merged commit on `master`:
+
+```bash
+git checkout master && git pull
+git tag v<new_version>
+git push origin v<new_version>
+```
+
+### 4. Update Documentation
 
 First check if the documentation has any issues via
 
@@ -262,7 +284,7 @@ Afterwards, publish it via
 mike deploy <current version> latest -up
 ```
 
-### 4. Publish on PyPI
+### 5. Publish on PyPI
 
 To publish to PyPI:
 

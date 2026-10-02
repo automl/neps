@@ -100,6 +100,7 @@ Interactive notebooks that run in Google Colab:
 | **1. Getting Started with HPO** | Basic HPO workflow, synthetic functions, and deep learning tasks | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) |
 | **2. Defining Search Spaces** | Parameter types, fidelity parameters, and `PipelineSpace` classes | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) |
 | **3. Efficient Optimization** | Multi-fidelity optimization, expert priors, optimizer selection, and parallelization | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) |
+| **4. Multi-Objective Optimization** | Multi-objective optimization with PriMO, including per-objective expert priors | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb) |
 
 To run them locally instead, see the [tutorials folder](tutorials/).
 
