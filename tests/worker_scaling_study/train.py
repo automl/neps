@@ -12,7 +12,15 @@ import torch
 from open_clip import ClipLoss, get_tokenizer
 from torch.utils.data import DataLoader
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# The data and model helpers are shared with the VLM OpenCLIP real-world example.
+VLM_PIPELINE_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "neps_examples"
+    / "real_world"
+    / "vlm_openclip"
+    / "pipeline"
+)
+sys.path.insert(0, str(VLM_PIPELINE_DIR))
 
 from common import (
     build_model,
@@ -24,7 +32,8 @@ from common import (
 )
 
 # #CHANGE_ME: the fixed workload every trial trains on, whatever the worker
-# count. The cache must already cover it: `python ../download_data.py --n_samples 102000`.
+# count. The cache must already cover it:
+# `python ../../neps_examples/real_world/vlm_openclip/pipeline/download_data.py --n_samples 102000`.
 N_TRAIN = 100_000
 N_VAL = 2_000
 

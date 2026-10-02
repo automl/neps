@@ -74,7 +74,7 @@ def main():
         pipeline_space=HPOSpace(),
         root_directory=args.root_dir,
         optimizer=("grid_search", {}),
-        evaluations_to_spend=args.evaluations_to_spend,
+        worker_evaluations_to_spend=args.evaluations_to_spend,
         worker_id=args.worker_id,
     )
 

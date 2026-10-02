@@ -132,7 +132,7 @@ def _plot_scaling(table: pd.DataFrame) -> None:
     ax.grid(visible=True, which="both", alpha=0.3, linewidth=0.6)
 
     fig.tight_layout()
-    fig.savefig(SUMMARY_DIR / "scaling_study.png", dpi=150, bbox_inches="tight")
+    fig.savefig(SUMMARY_DIR / "scaling_workers.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 
 
