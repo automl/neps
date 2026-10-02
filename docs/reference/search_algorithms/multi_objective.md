@@ -2,6 +2,10 @@
 
 Multi-Objective Optimization (MOO) addresses the challenge of optimizing multiple, often competing objectives simultaneously. Unlike single-objective optimization where there is one clear optimum, multi-objective problems have a set of trade-off solutions known as the **Pareto Front**. This is particularly relevant in deep learning, where practitioners often need to optimize for multiple goals such as validation accuracy, inference latency, training time, and fairness.
 
+!!! tip "Interactive tutorial"
+
+    The [Multi-Objective Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb) runs PriMO on the ZDT1 benchmark with per-objective expert priors.
+
 ## What is Multi-Objective Optimization?
 
 In multi-objective optimization, we seek to minimize (or maximize) a vector-valued objective function:

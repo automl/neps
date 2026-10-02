@@ -63,6 +63,7 @@ The [reference](reference/neps_run.md) section provides detailed information on 
     1. [Getting Started with HPO](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb): the basic NePS workflow, from a synthetic function to a deep learning task
     2. [Defining Search Spaces](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb): parameter types, fidelity parameters, priors, and `PipelineSpace` classes
     3. [Efficient Optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb): multi-fidelity optimization, expert priors, optimizer selection, and parallelization
+    4. [Multi-Objective Optimization](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb): Multi-objective optimization with PriMO, including per-objective expert priors
 
 Or discover the features of NePS through these practical examples:
 

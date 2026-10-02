@@ -338,7 +338,7 @@ ignore_missing_imports = true
 [tool.bumpversion]
 current_version = "0.16.0"
 commit = true
-tag = true
+tag = false  # tag master after the release PR is merged, see CONTRIBUTING.md
 
 [[tool.bumpversion.files]]
 filename = "pyproject.toml"
@@ -349,3 +349,8 @@ replace = "version = \"v{new_version}\""
 filename = "CITATION.cff"
 search = "version: {current_version}"
 replace = "version: {new_version}"
+
+[[tool.bumpversion.files]]
+filename = "CHANGELOG.md"
+search = "## [Unreleased]"
+replace = "## [Unreleased]\n\n## [{new_version}] - {now:%Y-%m-%d}"

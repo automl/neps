@@ -140,7 +140,7 @@ neps.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_primo/",
     pipeline_space=ZDT1FidelitySpace(),
-    fidelities_to_spend=100,
+    worker_fidelities_to_spend=100,
     optimizer=build_primo_optimizer(prior_points),
     overwrite_root_directory=True,
 )
