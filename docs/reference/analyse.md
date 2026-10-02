@@ -7,7 +7,6 @@ Everything NePS knows about a run lives on disk, in the `root_directory` you gav
 
     The [Getting Started with HPO tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) inspects a real run and visualizes using TensorBoard.
 
-## Trial status: `neps.status`
 
 | You want to...                                                                  | Use                                                   |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -16,6 +15,7 @@ Everything NePS knows about a run lives on disk, in the `root_directory` you gav
 | Have those plots kept up to date while the run is going                         | [`live_plots=True`](#live-plots-during-a-run)         |
 | Follow per-epoch metrics from inside your training loop                         | [TensorBoard](#tensorboard-integration)               |
 
+## Trial status: `neps.status`
 
 `neps.status` tells you where a run stands: how many trials are in each state, and the
 best configuration found so far. It only reads the run; it does not write any files.

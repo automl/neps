@@ -2,10 +2,10 @@
 
 Uses the existing cache if full, else local `.tar` shards, else streams from the HF Hub.
 
-    python download_data.py                       # 100k samples, the default
-    python download_data.py --n_samples 20000     # smaller cache to try things out
-    python download_data.py --shards_dir /path/to/train_data
-    python download_data.py --cache_dir /work/$USER/laion_cache
+    python pipeline/download_data.py                       # 100k samples, the default
+    python pipeline/download_data.py --n_samples 22000     # smallest cache train.py accepts (N_TRAIN + N_VAL)
+    python pipeline/download_data.py --shards_dir /path/to/train_data
+    python pipeline/download_data.py --cache_dir /work/$USER/laion_cache
 
 Defaults can also be set via `NEPS_LAION_CACHE_DIR` / `NEPS_LAION_SHARDS`.
 """
@@ -15,9 +15,8 @@ from pathlib import Path
 
 from common import LAION_CACHE_DIR, LAION_REPO, LAION_SHARDS_DIR, local_shard_path, prepare_laion
 
-# #CHANGE_ME: how many image/caption pairs to cache. The scaling study wants
-# enough data that each worker has real work to do -- see N_TRAIN in
-# `scaling_study/train.py`, which this must cover.
+# #CHANGE_ME: how many image/caption pairs to cache. Must cover N_TRAIN + N_VAL
+# in `pipeline/train.py`.
 DEFAULT_N_SAMPLES = 100_000
 
 

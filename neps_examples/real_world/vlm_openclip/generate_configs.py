@@ -34,5 +34,5 @@ if __name__ == "__main__":
         pipeline_space=HPOSpace(),
         root_directory=ROOT_DIRECTORY,
         optimizer=("random_search", {"ignore_fidelity": "highest_fidelity", "use_priors": True}),
-        evaluations_to_spend=40,
+        worker_evaluations_to_spend=40,
     )

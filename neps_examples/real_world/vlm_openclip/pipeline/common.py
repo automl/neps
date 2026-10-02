@@ -240,7 +240,7 @@ def load_data(tokenizer, n_train=2000, n_val=500, cache_dir=None):
     if not parts:
         raise RuntimeError(
             f"No LAION cache found at {cache_dir}. Run\n"
-            f"    python download_data.py --n_samples {n_train + n_val}\n"
+            f"    python pipeline/download_data.py --n_samples {n_train + n_val}\n"
             "once before training (it reads local shards if you have them, and "
             "only downloads otherwise)."
         )
@@ -250,7 +250,7 @@ def load_data(tokenizer, n_train=2000, n_val=500, cache_dir=None):
         raise RuntimeError(
             f"LAION cache at {cache_dir} holds {len(df):,} samples but "
             f"{n_train + n_val:,} were requested. Run "
-            f"`python download_data.py --n_samples {n_train + n_val}` to extend it."
+            f"`python pipeline/download_data.py --n_samples {n_train + n_val}` to extend it."
         )
 
     transform = image_transform()

@@ -9,7 +9,7 @@ from open_clip import ClipLoss, get_tokenizer
 from torch.utils.data import DataLoader
 
 import neps
-from pipeline.common import (
+from common import (
     DEVICE,
     build_model,
     count_params,

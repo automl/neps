@@ -15,9 +15,12 @@ import yaml
 
 from generate_configs import ROOT_DIRECTORY
 
-# The training process plus its `train.NUM_WORKERS` dataloader workers (keep in
-# sync with that constant), so image decoding never starves the GPU.
+# The training process plus its `NUM_WORKERS` dataloader workers (keep in sync
+# with `pipeline/train.py`), so image decoding never starves the GPU.
 CPUS_PER_TASK = 4 + 1
+
+# #CHANGE_ME: nodes to keep jobs off (e.g. ones with a faulty GPU), or leave empty.
+EXCLUDE_NODES: list[str] = []
 
 
 SOURCE_DIR = Path(__file__).parent.resolve()
@@ -44,7 +47,9 @@ def resource_tier(batch_size, tiers):
 
 
 def write_array_job(tier, config_ids):
-    ARRAY_JOBS_DIR.mkdir(parents=True, exist_ok=True)
+    # Slurm opens the --output/--error files before the script runs, so the log
+    # directory has to exist at submit time.
+    (ARRAY_JOBS_DIR / "logs").mkdir(parents=True, exist_ok=True)
 
     group_file = ARRAY_JOBS_DIR / f"array_group_{tier['name']}.yaml"
     group_file.write_text(yaml.safe_dump(config_ids))
@@ -61,8 +66,7 @@ def write_array_job(tier, config_ids):
 #SBATCH --output={ARRAY_JOBS_DIR}/logs/%x-%A_%a.out
 #SBATCH --error={ARRAY_JOBS_DIR}/logs/%x-%A_%a.err
 
-mkdir -p {ARRAY_JOBS_DIR}/logs
-python train.py --group_file {group_file} --task_id $SLURM_ARRAY_TASK_ID --root_dir {ROOT_DIR}
+python pipeline/train.py --group_file {group_file} --task_id $SLURM_ARRAY_TASK_ID --root_dir {ROOT_DIR}
 """
     script_path = ARRAY_JOBS_DIR / f"array_job_{tier['name']}.sh"
     script_path.write_text(script)
@@ -78,7 +82,7 @@ def main():
     )
     args = parser.parse_args()
 
-    tiers = json.loads((SOURCE_DIR / "pipeline" / "resource_map.json").read_text())
+    tiers = json.loads((SOURCE_DIR / "resource_map.json").read_text())
 
     unset = [tier["name"] for tier in tiers if "CHANGE_ME" in tier["partition"]]
     if unset:
