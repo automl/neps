@@ -12,8 +12,8 @@ from matplotlib.figure import Figure
 from neps.optimizers.optimizer import Artifact, ArtifactType
 
 if TYPE_CHECKING:
-    from neps.runtime import ResourceUsage
     from neps.state.trial import Trial
+    from neps.status.summary import ResourceUsage
 
 
 def _objectives(trial: Trial) -> list[float]:

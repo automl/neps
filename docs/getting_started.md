@@ -41,7 +41,7 @@ pip install neural-pipeline-search
 1. **Execute with [`neps.run()`](reference/neps_run.md)**:
 
     ```python
-    neps.run(evaluate_pipeline, ExampleSpace())
+    neps.run(evaluate_pipeline, ExampleSpace(), live_plots=True)
     ```
 
 ---

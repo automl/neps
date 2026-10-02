@@ -245,7 +245,7 @@ for p in processes:
 for p in processes:
     p.join()
 
-# # They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
+# They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
 
 # !python -m neps.status results_parallel/
 
@@ -338,8 +338,7 @@ plt.show()
 #
 # These techniques can reduce optimization time by 10-50% compared to standard random search!
 
-# For more advanced examples:
-# - [Multi-Objective Optimization](https://github.com/automl/neps/tree/master/neps_examples/efficiency)
-# - [Ask-and-Tell Interface](https://github.com/automl/neps/tree/master/neps_examples/experimental)
-# - [Architecture Search](https://github.com/automl/neps/tree/master/neps_examples/basic_usage)
+# Next steps:
+# - Explore [**Multi-Objective Optimization**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb) like PriMO Algorithm.
+
 # If you want to contribute new techniques or optimizers, check out the contribution guide [here](https://automl.github.io/neps/latest/dev_docs/contributing/).

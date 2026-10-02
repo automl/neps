@@ -3,6 +3,7 @@
 > **TL;DR**
 > *Sync*: return a scalar or a dict ⟶ NePS records it automatically.
 > *Async*: return `None`, launch a job, and call `neps.save_pipeline_results()` when the job finishes.
+> *Plots*: pass `live_plots=True` to `neps.run()` (sync) or to `neps.save_pipeline_results()` (async) to redraw them after every result.
 
 ---
 
@@ -27,6 +28,12 @@ All other values raise a `TypeError` inside NePS.
 | `exception`                 | any Exception illustrating the error in evaluation                                                   | optional                      |
 
 > **Tip**  Return exactly what you need; extra keys are preserved in the trial’s `report.yaml`.
+
+> **Live plots**  When `evaluate_pipeline` returns its result (sync), the worker records it
+> and refreshes `root_directory/summary/`. Pass `live_plots=True` to `neps.run()` to also
+> redraw the plots every time: the incumbent trajectory, or the Pareto front for two
+> objectives, plus anything the optimizer provides. See
+> [Analysing Runs](analyse.md#live-plots-during-a-run).
 
 ---
 
@@ -67,11 +74,11 @@ def evaluate_pipeline(
     learning_rate: float,
     optimizer: str,
 ):
-    # 1) write a Slurm script
+    # 1) write a Slurm script (replace CHANGE_ME__PARTITION_NAME with your cluster's partition)
     script = f"""#!/bin/bash
 #SBATCH --time=0-00:10
 #SBATCH --job-name=trial_{pipeline_id}
-#SBATCH --partition=bosch_cpu-cascadelake
+#SBATCH --partition=CHANGE_ME__PARTITION_NAME
 #SBATCH --output={pipeline_directory}/%j.out
 #SBATCH --error={pipeline_directory}/%j.err
 
@@ -127,6 +134,26 @@ neps.save_pipeline_results(
 * No worker idles while your job is in the queue ➜ better throughput.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
 * Compatible with Successive‑Halving/ASHA — NePS just waits for `report.yaml`.
+
+### 3.3 Live plots
+
+In async mode the result is recorded by `neps.save_pipeline_results()` in your job, not by
+the worker, so that is where you ask for the plots to be redrawn:
+
+```python
+neps.save_pipeline_results(
+    user_result=result,
+    pipeline_id=args.pipeline_id,
+    root_directory=Path(args.root_dir),
+    live_plots=True,
+)
+```
+
+This refreshes the general plots (incumbent trajectory or Pareto front) in
+`root_directory/summary/`. Optimizer-specific artifacts need the optimizer object, so
+they are only drawn by `neps.run(..., live_plots=True)`. To redraw everything once all
+jobs are done, call `neps.analyze(root_directory)`; see
+[Analysing Runs](analyse.md#plots-and-reports-nepsanalyze).
 
 ### 3.4 Common pitfalls
 

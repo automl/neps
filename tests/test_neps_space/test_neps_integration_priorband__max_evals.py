@@ -75,12 +75,12 @@ class DemoHyperparameterWithFidelitySpace(PipelineSpace):
         ),
     ],
 )
-def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
+def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name, tmp_path):
     optimizer.__name__ = (
         "neps_priorband" if "priorband" in optimizer_name else optimizer_name
     )  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
+    root_directory = tmp_path / f"hyperparameter_with_fidelity__evals__{optimizer_name}"
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
@@ -115,10 +115,10 @@ def test_hyperparameter_with_fidelity_demo_new(optimizer, optimizer_name):
         ),
     ],
 )
-def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name):
+def test_hyperparameter_with_fidelity_demo_old(optimizer, optimizer_name, tmp_path):
     optimizer.__name__ = "priorband"  # Needed by NEPS later.
     pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = f"tests_tmpdir/test_neps_spaces/results/hyperparameter_with_fidelity__evals__{optimizer.__name__}"
+    root_directory = tmp_path / f"hyperparameter_with_fidelity__evals__{optimizer_name}"
 
     neps.run(
         evaluate_pipeline=evaluate_pipeline,
