@@ -15,13 +15,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def clean_trials_by_state(  # noqa: C901, PLR0912
+def clean_trials_by_state(  # noqa: C901, PLR0912, PLR0915
     root_directory: Path,
     *,
     desired_states: list[State] | None = None,
     dry_run: bool = False,
     delete: bool = False,
 ) -> dict[State | str, int]:
+    """Clean trials in a neps working directory based on their state."""
     if desired_states is None:
         desired_states = [
             Trial.State.FAILED,
@@ -103,13 +104,14 @@ def clean_trials_by_state(  # noqa: C901, PLR0912
     return stats
 
 
-def clean_trials_by_id(
+def clean_trials_by_id( # noqa: C901
     root_directory: Path,
     trial_ids: list[str],
     *,
     dry_run: bool = False,
     delete: bool = False,
 ) -> dict[str, int]:
+    """Clean trials in a neps working directory based on their IDs."""
     root_directory = Path(root_directory).resolve()
     if not root_directory.exists():
         raise FileNotFoundError(f"Working directory not found: {root_directory}")
@@ -186,6 +188,10 @@ def clean_failed_trials(
     dry_run: bool = False,
     delete: bool = False,
 ) -> dict[State | str, int]:
+    """Clean trials in a neps working directory based on their state or IDs.
+    If delete=True, the trials will be deleted
+    instead of changing to PENDING state.
+    """
     if trial_ids is not None and desired_states is None:
         # Use trial ID cleaning mode
         return clean_trials_by_id(

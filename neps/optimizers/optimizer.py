@@ -30,7 +30,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict
 
-
 if TYPE_CHECKING:
     from neps.state.optimizer import BudgetInfo
     from neps.state.pipeline_eval import UserResultDict

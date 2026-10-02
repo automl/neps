@@ -9,6 +9,14 @@ import time
 from pathlib import Path
 
 import torch
+from common import (
+    build_model,
+    count_params,
+    get_gpu_name,
+    get_model_flops,
+    get_peak_gpu_memory_mb,
+    load_data,
+)
 from open_clip import ClipLoss, get_tokenizer
 from torch.utils.data import DataLoader
 
@@ -22,18 +30,10 @@ VLM_PIPELINE_DIR = (
 )
 sys.path.insert(0, str(VLM_PIPELINE_DIR))
 
-from common import (
-    build_model,
-    count_params,
-    get_gpu_name,
-    get_model_flops,
-    get_peak_gpu_memory_mb,
-    load_data,
-)
-
 # #CHANGE_ME: the fixed workload every trial trains on, whatever the worker
 # count. The cache must already cover it:
-# `python ../../neps_examples/real_world/vlm_openclip/pipeline/download_data.py --n_samples 102000`.
+# `python ../../neps_examples/real_world/vlm_openclip/pipeline/download_data.py
+# --n_samples 102000`.
 N_TRAIN = 100_000
 N_VAL = 2_000
 
