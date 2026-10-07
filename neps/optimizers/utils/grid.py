@@ -46,7 +46,6 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
         A list of configurations from the search space.
     """
     param_ranges: dict[str, list[Any]] = {}
-
     # Normalize size_per_numerical_hp to a dictionary
     if isinstance(size_per_numerical_hp, int):
         size_mapping: dict[str, int] = {}
@@ -119,7 +118,8 @@ def make_grid(  # noqa: PLR0912, PLR0915, C901
                     raise NotImplementedError(f"Unknown Parameter type: {type(hp)}\n{hp}")
         keys = list(space.keys())
         values = product(*param_ranges.values())
-        return [dict(zip(keys, p, strict=False)) for p in values]
+        configs = [dict(zip(keys, p, strict=False)) for p in values]
+        return configs
     if isinstance(space, PipelineSpace):
         fid_ranges: dict[str, list[float]] = {}
         for name, hp in space.get_attrs().items():

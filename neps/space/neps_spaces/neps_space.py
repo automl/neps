@@ -1089,19 +1089,20 @@ def adjust_evaluation_pipeline_for_neps_space(
         # `kwargs` can contain other things not related to
         # the samplings to make or to environment values.
         # That is not an issue. Those items will be passed through.
-
         sampled_pipeline_data = NepsCompatConverter.from_neps_config(config=kwargs)
+        # if pipeline is resolved not do again:
+        config = dict(**pipeline_space.get_attrs())
+        if len(sampled_pipeline_data.predefined_samplings) > 0:
+            resolved_pipeline, _resolution_context = resolve(
+                pipeline=pipeline_space,
+                domain_sampler=OnlyPredefinedValuesSampler(
+                    predefined_samplings=sampled_pipeline_data.predefined_samplings,
+                ),
+                environment_values=sampled_pipeline_data.environment_values,
+            )
 
-        sampled_pipeline, _resolution_context = resolve(
-            pipeline=pipeline_space,
-            domain_sampler=OnlyPredefinedValuesSampler(
-                predefined_samplings=sampled_pipeline_data.predefined_samplings,
-            ),
-            environment_values=sampled_pipeline_data.environment_values,
-        )
-
-        config = dict(**sampled_pipeline.get_attrs())
-
+            config = dict(**resolved_pipeline.get_attrs())
+        
         for name, value in config.items():
             if isinstance(value, Operation):
                 # If the operator is a not a string, we convert it to a callable.
@@ -1173,6 +1174,7 @@ def convert_neps_to_classic_search_space(space: PipelineSpace) -> SearchSpace | 
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
                         ),
+                        is_scaling=value._is_scaling,
                     )
                 elif isinstance(value, Float):
                     classic_space[key] = neps.HPOFloat(
@@ -1271,6 +1273,7 @@ def convert_classic_to_neps_search_space(
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
                 ),
+                is_scaling=parameter.is_scaling,
             )
             setattr(
                 NEPSSpace,

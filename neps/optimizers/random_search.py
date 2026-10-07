@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
 from neps.optimizers.utils.util import _get_max_trial_id
@@ -23,6 +23,10 @@ class RandomSearch:
     space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None
+    raw_samples: int = 1024
+    constraint_cache: dict[str, bool] | None = None
+    
 
     def __call__(
         self,
@@ -40,10 +44,18 @@ class RandomSearch:
                     " space-compatible optimizer."
                 )
         max_trial_id = _get_max_trial_id(trials)
+        next_id = 0 if max_trial_id is None else max_trial_id + 1
         _n = 1 if n is None else n
-        configs = self.sampler.sample(_n, to=self.encoder.domains)
-
+        
+        # Initialize constraint cache if needed
+        if self.constraint_cache is None:
+            self.constraint_cache = {}
+        
+        # Generate fresh samples each time
+        configs = self.sampler.sample(_n * (self.raw_samples or 1), to=self.encoder.domains)
         config_dicts = self.encoder.decode(configs)
+        
+        valid_configs = []
         for config in config_dicts:
             config.update(self.space.constants)
             if self.space.fidelity is not None:
@@ -55,18 +67,46 @@ class RandomSearch:
                     }
                 )
 
-        if n is None:
-            config = config_dicts[0]
-            config_id = str(max_trial_id + 1)
+            # Check constraints on the exact config that may be returned.
+            config_key = str(sorted(config.items()))
+            if config_key not in self.constraint_cache:
+                if self.constraints_func is not None:
+                    result = self.constraints_func(config)
+                    self.constraint_cache[config_key] = result >= 0
+                else:
+                    self.constraint_cache[config_key] = True
+
+            if not self.constraint_cache[config_key]:
+                continue
+
+            valid_configs.append(config)
+            print(f"RandomSearch: sampled config {config} with constraint value {len(valid_configs)} / {_n} valid so far.")
+            if len(valid_configs) >= _n:
+                break
+        
+        if self.constraints_func is not None and len(valid_configs) < _n:
+            raise ValueError(
+                f"Could not sample enough valid configurations out of "
+                f"{_n * (self.raw_samples or 1)} samples, "
+                f"only got {len(valid_configs)} valid ones."
+            )
+
+        confs = valid_configs[: _n]
+        print(f"RandomSearch: returning {len(confs)} valid configurations out of {_n} requested.")
+        
+
+        if n is None or n == 1:
+            config = confs[0]
+            config_id = str(next_id)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
         return [
             SampledConfig(
                 config=config,
-                id=str(max_trial_id + i + 1),
+                id=str(next_id + i),
                 previous_config_id=None,
             )
-            for i, config in enumerate(config_dicts)
+            for i, config in enumerate(confs)
         ]
 
     def import_trials(
@@ -74,7 +114,7 @@ class RandomSearch:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        max_trial_id = _get_max_trial_id(trials)
+        max_trial_id = _get_max_trial_id(trials) or 0 # fix
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
             config_id = str(max_trial_id + i + 1)

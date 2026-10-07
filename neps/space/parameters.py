@@ -81,6 +81,18 @@ class HPOFloat:
                 f"Actual value: log_base={self.log_base}"
             )
 
+        if self.log_base is not None and self.log_base <= 0:
+            raise ValueError(
+                "Float parameter: log_base must be positive. "
+                f"Actual value: log_base={self.log_base}"
+            )
+
+        if self.log_base is not None and self.log_base == 1:
+            raise ValueError(
+                "Float parameter: log_base cannot be 1. "
+                f"Actual value: log_base={self.log_base}"
+            )
+
         if self.prior is not None and not self.lower <= self.prior <= self.upper:
             raise ValueError(
                 "Float parameter: prior bounds error. Expected lower <= prior <= upper, "
@@ -159,6 +171,8 @@ class HPOInteger:
     is_fidelity: bool = False
     """Whether the hyperparameter is fidelity."""
 
+    is_scaling: bool = False
+
     domain: Domain[int] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -221,8 +235,9 @@ class HPOInteger:
             )
 
         self.domain = Domain.integer(
-            self.lower, self.upper, log=self.log, log_base=self.log_base
+            self.lower, self.upper, log=self.log, log_base=self.log_base, is_scaling=self.is_scaling
         )
+
         self.center = self.domain.cast_one(0.5, frm=Domain.unit_float())
 
 

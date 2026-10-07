@@ -16,7 +16,6 @@ from neps.optimizers import AskFunction, OptimizerChoice, OptimizerInfo, load_op
 from neps.optimizers.algorithms import PredefinedOptimizers
 from neps.runtime import _launch_runtime, _save_results
 from neps.space.neps_spaces.neps_space import (
-    adjust_evaluation_pipeline_for_neps_space,
     check_neps_space_compatibility,
     convert_classic_to_neps_search_space,
     convert_neps_to_classic_search_space,
@@ -515,7 +514,8 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
             "'module:function'."
         )
     if isinstance(space, PipelineSpace):
-        _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
+        pass
+        # _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
 
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
@@ -1147,7 +1147,6 @@ def load_optimizer_info(
             f"No neps state found at: {root_directory}\n"
             "Please provide a valid neps results directory."
         ) from e
-
 
 __all__ = [
     "analyze",

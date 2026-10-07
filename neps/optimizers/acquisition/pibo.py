@@ -37,11 +37,65 @@ def apply_pibo_acquisition_weight(
     x_domain: Domain | list[Domain] | ConfigEncoder,
     prior_exponent: float,
 ) -> Tensor:
-    if acq._log:
-        weighted_log_probs = prior.log_pdf(X, frm=x_domain) + prior_exponent
+    """Apply piBO weighting to acquisition values.
+    
+    Note: X may have shape (batch, q, d) where q includes X_pending points
+    concatenated by the WeightedAcquisition decorator. The prior returns
+    per-candidate values (batch, q), but acq_values is (batch,) after the
+    base acquisition has already reduced over q. We only weight based on the
+    FIRST candidate (the new one being proposed), not the pending ones.
+    """
+    # Check if acquisition is log-scale (safe attribute access)
+    is_log_acq = getattr(acq, '_log', False)
+    
+    if is_log_acq:
+        # prior.log_pdf returns (batch, q) for X shape (batch, q, d)
+        log_probs = prior.log_pdf(X, frm=x_domain)
+        
+        # Only use the first candidate's prior (not pending points)
+        # log_probs shape: (batch, q) or (batch,)
+        # Keep as (batch, 1) to match acq_values shape from WeightedAcquisition
+        if log_probs.ndim > 1 and log_probs.shape[-1] > 1:
+            log_probs = log_probs[..., :1]  # (batch, 1) - keep dim!
+        elif log_probs.ndim == 1:
+            log_probs = log_probs.unsqueeze(-1)  # (batch,) -> (batch, 1)
+            
+        weighted_log_probs = log_probs * prior_exponent
         return acq_values + weighted_log_probs
 
-    weighted_probs = prior.pdf(X, frm=x_domain).pow(prior_exponent)
+    # Non-log case
+    probs = prior.pdf(X, frm=x_domain)
+
+    # Only use the first candidate's prior (not pending points)
+    # Keep as (batch, 1) to match acq_values shape from WeightedAcquisition
+    if probs.ndim > 1 and probs.shape[-1] > 1:
+        probs = probs[..., :1]  # (batch, 1) - keep dim!
+    elif probs.ndim == 1:
+        probs = probs.unsqueeze(-1)  # (batch,) -> (batch, 1)
+
+    # ---- DEBUG ----
+    import torch as _torch
+    _has_zero = (_torch.isnan(probs) | (probs == 0) | _torch.isinf(probs)).any().item()
+    print(f"[PIBO DEBUG] prior_exponent={prior_exponent:.4g}, "
+          f"probs: min={probs.min().item():.4g}, max={probs.max().item():.4g}, "
+          f"any_zero_or_nan={_has_zero}, "
+          f"acq_values: min={acq_values.min().item():.4g}, max={acq_values.max().item():.4g}")
+    # ---- DEBUG END ----
+
+    weighted_probs = probs.pow(prior_exponent)
+
+    # ---- DEBUG ----
+    _has_bad = (_torch.isnan(weighted_probs) | _torch.isinf(weighted_probs)).any().item()
+    print(f"[PIBO DEBUG] weighted_probs (probs^{prior_exponent:.4g}): "
+          f"min={weighted_probs[~_torch.isnan(weighted_probs)].min().item() if not _torch.isnan(weighted_probs).all() else 'ALL_NAN':.4g}, "
+          f"has_nan_or_inf={_has_bad}")
+    result = acq_values * weighted_probs
+    _result_bad = (_torch.isnan(result) | _torch.isinf(result)).any().item()
+    print(f"[PIBO DEBUG] result (acq*weighted_probs): "
+          f"min={result[~_torch.isnan(result)].min().item() if not _torch.isnan(result).all() else 'ALL_NAN':.4g}, "
+          f"has_nan_or_inf={_result_bad}")
+    # ---- DEBUG END ----
+
     return acq_values * weighted_probs
 
 

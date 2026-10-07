@@ -84,6 +84,7 @@ def _bo(  # noqa: C901, PLR0912
     reference_point: tuple[float, ...] | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int | None = 256,
+    acquisition_func_type: str = "EI",
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -170,6 +171,7 @@ def _bo(  # noqa: C901, PLR0912
         reference_point=reference_point,
         num_restarts=num_restarts,
         n_initial_start_points=n_initial_start_points,
+        acquisition_func_type=acquisition_func_type,
     )
 
 
@@ -540,6 +542,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
+    constraints_func,
 ) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -613,6 +616,7 @@ def random_search(
             if use_priors
             else Uniform(ndim=len(parameters))
         ),
+        constraints_func=constraints_func,
     )
 
 
