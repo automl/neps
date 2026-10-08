@@ -385,7 +385,7 @@ class DefaultWorker:
                     f"{self.settings.worker_evaluations_to_spend}"
                     f" ({eval_percentage}%)"
                 )
-            if self.settings.fidelities_to_spend:
+            if self.settings.worker_fidelities_to_spend:
                 fidelity_percentage = int(
                     (
                         worker_resource_usage.fidelities
@@ -399,7 +399,7 @@ class DefaultWorker:
                     f"{self.settings.worker_fidelities_to_spend}"
                     f" ({fidelity_percentage}%)"
                 )
-            if self.settings.cost_to_spend:
+            if self.settings.worker_cost_to_spend:
                 cost_percentage = int(
                     (worker_resource_usage.cost / self.settings.worker_cost_to_spend)
                     * 100
