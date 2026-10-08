@@ -371,7 +371,7 @@ class DefaultWorker:
         if log_status:
             # Log current budget status
             budget_info_parts = []
-            if self.settings.evaluations_to_spend:
+            if self.settings.worker_evaluations_to_spend:
                 eval_percentage = int(
                     (
                         worker_resource_usage.evaluations

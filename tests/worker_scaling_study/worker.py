@@ -52,7 +52,7 @@ def wait_for_state(root_dir: Path) -> None:
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root_dir", required=True, type=Path)
-    parser.add_argument("--evaluations_to_spend", required=True, type=int)
+    parser.add_argument("--worker-evaluations_to_spend", required=True, type=int)
     parser.add_argument("--n_workers", required=True, type=int)
     parser.add_argument("--worker_id", required=True)
     parser.add_argument("--wait_for_state", action="store_true")
@@ -74,7 +74,7 @@ def main():
         pipeline_space=HPOSpace(),
         root_directory=args.root_dir,
         optimizer=("grid_search", {}),
-        worker_evaluations_to_spend=args.evaluations_to_spend,
+        worker_evaluations_to_spend=args.worker_evaluations_to_spend,
         worker_id=args.worker_id,
     )
 

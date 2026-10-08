@@ -79,7 +79,7 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline_async,
         pipeline_space=ExampleSpace(),
         root_directory="results/mnist_scaling_study",
-        evaluations_to_spend=1,  # Total configs to try
+        total_evaluations_to_spend=1,  # Total configs to try
         overwrite_root_directory=True,
         optimizer="random_search"
     )
