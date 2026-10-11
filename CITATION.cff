@@ -50,4 +50,3 @@ references:
     title: "Automated Scaling Analysis (AutoScAn)"
     version: 0.1.0
     url: "https://github.com/automl/auto-scan"
-    notes: "AutoScAn is a fork of NePS."
