@@ -45,8 +45,3 @@ title: "Automated Scaling Analysis (AutoScAn)"
 version: 0.1.0
 date-released: 2026-10-10
 url: "https://github.com/automl/auto-scan"
-references:
-  - type: software
-    title: "Automated Scaling Analysis (AutoScAn)"
-    version: 0.1.0
-    url: "https://github.com/automl/auto-scan"

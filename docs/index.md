@@ -8,8 +8,6 @@
 AutoScAn (Automated Scaling Analysis) is a tool for finding the best architectural and hyperparameter choices of deep learning pipelines, and for analysing how those choices behave as you scale models, data, and compute.
 Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a multi-node cluster or even multiple clusters.
 
-> AutoScAn is a fork of [NePS (Neural Pipeline Search)](https://github.com/automl/neps), licensed under Apache-2.0. See the [citations](citations.md) for the original work.
-
 AutoScAn brings together [years of our algorithmic advances](citations.md) (e.g., in NeurIPS, ICML, or ICLR) with a runtime tailored to large scale models. AutoScAn is actively maintained and used to run on many different clusters, tuning even billion-parameter scale models with many concurrent trials.
 
 To learn about AutoScAn, check out [the documentation](getting_started.md), [our examples](examples/index.md), or our [Colab tutorials](#tutorials).

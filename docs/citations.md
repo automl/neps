@@ -2,27 +2,23 @@
 
 ## Citation of The Software
 
-AutoScAn (Automated Scaling Analysis) is a fork of NePS. Until AutoScAn has its own
-publication, please cite the original NePS software below, and mention the AutoScAn
-repository (https://github.com/automl/auto-scan) where relevant.
-
-For citing NePS, please refer to the following:
+For citing AutoScAn, please refer to the following:
 
 ### APA Style
 
 ```apa
-Nastaran A., Mallik, N., Bergman, E., Geburek, A. M., Schrodi, S., Basu, S., Birinxhiku, L., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., Hutter, F. & Stoll, D. (2026). Neural Pipeline Search (NePS) (Version 0.17.0) [Computer software]. https://github.com/automl/neps
+Nastaran A., Mallik, N., Bergman, E., Geburek, A. M., Schrodi, S., Basu, S., Birinxhiku, L., Abou Chakra, T., Garibov, S., Gaur, G., Alipour, N., Janowski, M., Hvarfner, C., Mekic, E., Carstensen, T., Rogalla, D., Ru, B., Hutter, F. & Stoll, D. (2026). Automated Scaling Analysis (AutoScAn) (Version 0.1.0) [Computer software]. https://github.com/automl/auto-scan
 ```
 
 ### BibTex Style
 
 ```bibtex
-@software{Stoll_Neural_Pipeline_Search_2026,
+@software{Alipour_Automated_Scaling_Analysis_2026,
 author = {Nastaran Alipour, Neeratyoy Mallik, Eddie Bergman, Anton Merlin Geburek, Simon Schrodi, Soham Basu, Lum Birinxhiku, Tarek Abou Chakra, Samir Garibov, Gopalji Gaur, Maciej Janowski, Ema Mekic, Philip Alex Ambattu, Daniel Rogalla, Carl Hvarfner, Binxin Ru, Timur Carstensen, Johannes Hog, Frank Hutter and Danny Stoll},
 month = sep,
-title = {{Neural Pipeline Search (NePS)}},
-url = {https://github.com/automl/neps},
-version = {0.17.0},
+title = {{Automated Scaling Analysis (AutoScAn)}},
+url = {https://github.com/automl/auto-scan},
+version = {0.1.0},
 year = {2026}
 }
 ```
@@ -59,7 +55,7 @@ keywords = {}
 
 ### Hierarchichal NAS with Context-free Grammars
 
-If you have used the context-free grammar search space and the graph kernels implemented in NePS for the paper [Hierarchical NAS](https://openreview.net/forum?id=Hpt1i5j6wh), please use the bibtex below:
+If you have used the context-free grammar search space and the graph kernels implemented in AutoScAn (formerly NePS) for the paper [Hierarchical NAS](https://openreview.net/forum?id=Hpt1i5j6wh), please use the bibtex below:
 
 ```bibtex
 @inproceedings{schrodi2023hierarchical,
@@ -101,7 +97,7 @@ keywords = {}
 
 ### ScAn-Bench
 
-If you have used [ScAn-Bench](https://openreview.net/forum?id=q6rnd1qRBN), please use the bibtex below:
+If you have used [ScAn-Bench](https://arxiv.org/abs/2609.35707), please use the bibtex below:
 
 ```bibtex
 @inproceedings{sermaxhaj2026scanbench,
@@ -109,6 +105,7 @@ title = {{ScAn-Bench}: Evaluating Scaling Analysis Methodology},
 author = {Artin Sermaxhaj and Nastaran Alipour and Donat Sinani and Johannes Hog and Neeratyoy Mallik and Steven Adriaensen and Jenia Jitsev and Danny Stoll},
 year = {2026},
 booktitle = {Fortieth Conference on Neural Information Processing Systems (NeurIPS 2026)},
+url = {https://arxiv.org/abs/2609.35707},
 keywords = {}
 }
 ```
