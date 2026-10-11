@@ -84,13 +84,13 @@ def prepare_mnist_dataloader(
     return train_loader, val_loader, (num_channels, image_height, image_width), num_classes
 
 
-def load_neps_checkpoint(
+def load_autoscan_checkpoint(
         previous_pipeline_directory: Path,
         model: nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
     ) -> Tuple[int, nn.Module, torch.optim.Optimizer, torch.optim.lr_scheduler.LRScheduler | None]:
-    """Load checkpoint state to be used by NePS.
+    """Load checkpoint state to be used by AutoScAn.
     
     Args:
         previous_pipeline_directory (Path): Directory where checkpoint is saved.
@@ -124,14 +124,14 @@ def load_neps_checkpoint(
     return steps, model, optimizer, scheduler
 
 
-def save_neps_checkpoint(
+def save_autoscan_checkpoint(
     pipeline_directory: Path,
     epoch: int,
     model: nn.Module,
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler | None = None,
 ) -> None:
-    """Save checkpoint state to be used by NePS.
+    """Save checkpoint state to be used by AutoScAn.
     
     Args:
         pipeline_directory (Path): Directory where checkpoint is saved.

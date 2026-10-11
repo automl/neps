@@ -1,37 +1,37 @@
 # Analysing Runs
 
-Everything NePS knows about a run lives on disk, in the `root_directory` you gave to
-[`neps.run()`][neps.api.run]. There are a few ways to look at it:
+Everything AutoScAn knows about a run lives on disk, in the `root_directory` you gave to
+[`autoscan.run()`][autoscan.api.run]. There are a few ways to look at it:
 
 !!! tip "Interactive tutorial"
 
-    The [Getting Started with HPO tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/1_getting_started_hpo.ipynb) inspects a real run and visualizes using TensorBoard.
+    The [Getting Started with HPO tutorial](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/1_getting_started_hpo.ipynb) inspects a real run and visualizes using TensorBoard.
 
 
 | You want to...                                                                  | Use                                                   |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| See how many trials are pending, running, done or crashed, and the best so far | [`neps.status`](#trial-status-nepsstatus)            |
-| Get plots and CSV/text reports of the whole run, at any time                    | [`neps.analyze`](#plots-and-reports-nepsanalyze)     |
+| See how many trials are pending, running, done or crashed, and the best so far | [`autoscan.status`](#trial-status-autoscanstatus)            |
+| Get plots and CSV/text reports of the whole run, at any time                    | [`autoscan.analyze`](#plots-and-reports-autoscananalyze)     |
 | Have those plots kept up to date while the run is going                         | [`live_plots=True`](#live-plots-during-a-run)         |
 | Follow per-epoch metrics from inside your training loop                         | [TensorBoard](#tensorboard-integration)               |
 
-## Trial status: `neps.status`
+## Trial status: `autoscan.status`
 
-`neps.status` tells you where a run stands: how many trials are in each state, and the
+`autoscan.status` tells you where a run stands: how many trials are in each state, and the
 best configuration found so far. It only reads the run; it does not write any files.
 
 === "CLI"
 
     ```bash
-    python -m neps.status ROOT_DIRECTORY
+    python -m autoscan.status ROOT_DIRECTORY
     ```
 
 === "Python"
 
     ```python
-    import neps
+    import autoscan
 
-    full_df, short = neps.status("ROOT_DIRECTORY", print_summary=True)
+    full_df, short = autoscan.status("ROOT_DIRECTORY", print_summary=True)
     ```
 
     `full_df` has one row per trial (its config, report and metadata) and `short`
@@ -43,12 +43,12 @@ best configuration found so far. It only reads the run; it does not write any fi
     To show the status repeatedly, on unix systems you can use
 
     ```bash
-    watch --interval 30 python -m neps.status ROOT_DIRECTORY
+    watch --interval 30 python -m autoscan.status ROOT_DIRECTORY
     ```
 
-## Plots and reports: `neps.analyze`
+## Plots and reports: `autoscan.analyze`
 
-[`neps.analyze()`][neps.api.analyze] rebuilds the `summary` folder of a run from what is
+[`autoscan.analyze()`][autoscan.api.analyze] rebuilds the `summary` folder of a run from what is
 on disk: the CSVs, the best-config text files and the plots. It does not evaluate
 anything, so you can call it
 
@@ -59,14 +59,14 @@ anything, so you can call it
   [importing trials](import_trials.md).
 
 ```python
-import neps
+import autoscan
 
-neps.analyze("ROOT_DIRECTORY")
+autoscan.analyze("ROOT_DIRECTORY")
 ```
 
 ### Which plots?
 
-What NePS draws depends on how many objectives your `evaluate_pipeline` returns. Every
+What AutoScAn draws depends on how many objectives your `evaluate_pipeline` returns. Every
 figure comes with a CSV of the exact points it shows, so you can re-plot them your own way.
 
 | Objectives | Files in `summary/`                                    | Plot                                          |
@@ -96,17 +96,17 @@ joined up (red).
 
 Pass `live_plots=True` to have the plots
 redrawn after every evaluated trial as well. Where to pass it depends on how your
-trials are evaluated: via `neps.run()` or `neps.save_pipeline_results()` (see [the evaluate function](evaluate_pipeline.md)).
+trials are evaluated: via `autoscan.run()` or `autoscan.save_pipeline_results()` (see [the evaluate function](evaluate_pipeline.md)).
 
 !!! warning "Overhead"
 
     Each refresh reads every trial and redraws the figures, so it gets slower as the run
     grows. Next to a training job of a few minutes this is negligible, but for many cheap
-    evaluations, leave `live_plots` off and call `neps.analyze()` when you want to look.
+    evaluations, leave `live_plots` off and call `autoscan.analyze()` when you want to look.
 
 ## What's on disk?
 
-NePS keeps several human-readable files in the `ROOT_DIRECTORY`, and a `summary` folder
+AutoScAn keeps several human-readable files in the `ROOT_DIRECTORY`, and a `summary` folder
 with reports on the run.
 
 ```
@@ -136,24 +136,24 @@ ROOT_DIRECTORY
 
 # TensorBoard integration
 
-In NePS we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
+In AutoScAn we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
 
 ### Overview of ConfigWriter
 
-The `ConfigWriter` serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the NePS, enabling better visualization and analysis of model performance during hyperparameter searches.
+The `ConfigWriter` serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the AutoScAn, enabling better visualization and analysis of model performance during hyperparameter searches.
 
 To enable live logging of the incumbent trajectory, use the `write_summary_incumbent` argument when initializing `ConfigWriter`.
 
-If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the `neps.tblogger.WriteIncumbent()` function in their run pipeline
+If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the `autoscan.tblogger.WriteIncumbent()` function in their run pipeline
 
 ### Example Usage
 
 Below is an example implementation of the `ConfigWriter` for logging metrics during the training process:
 
 ```python
-import neps
-# Substitute the TensorBoard SummaryWriter with ConfigWriter from NePS
-writer = neps.tblogger.ConfigWriter(write_summary_incumbent=True)
+import autoscan
+# Substitute the TensorBoard SummaryWriter with ConfigWriter from AutoScAn
+writer = autoscan.tblogger.ConfigWriter(write_summary_incumbent=True)
 
 for i in range(max_epochs):
     objective_to_minimize = training(

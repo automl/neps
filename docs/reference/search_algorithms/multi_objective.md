@@ -4,7 +4,7 @@ Multi-Objective Optimization (MOO) addresses the challenge of optimizing multipl
 
 !!! tip "Interactive tutorial"
 
-    The [Multi-Objective Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb) runs PriMO on the ZDT1 benchmark with per-objective expert priors.
+    The [Multi-Objective Optimization tutorial](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/4_multi_objective.ipynb) runs PriMO on the ZDT1 benchmark with per-objective expert priors.
 
 ## What is Multi-Objective Optimization?
 
@@ -113,10 +113,10 @@ PriMO may not be ideal when:
     - **Prior generation**: Good priors should reflect expert intuition or be derived from similar tasks. Use the highest-fidelity data available when constructing priors
     - **Objective scaling**: Ensure objectives are on comparable scales for effective scalarization, or normalize them appropriately
 
-See the algorithm's implementation details in the [API][neps.optimizers.algorithms.primo].
+See the algorithm's implementation details in the [API][autoscan.optimizers.algorithms.primo].
 
 !!! info
-    `PriMO` is the recommended choice in NePS when you have **both Multi-Fidelity and Multi-Objective** settings with **expert priors** available.
+    `PriMO` is the recommended choice in AutoScAn when you have **both Multi-Fidelity and Multi-Objective** settings with **expert priors** available.
 
 ___
 

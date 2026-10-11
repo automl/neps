@@ -41,7 +41,7 @@ authors:
     given-names: Frank
   - family-names: Stoll
     given-names: Danny
-title: "Neural Pipeline Search (NePS)"
-version: 0.17.0
-date-released: 2026-10-02
-url: "https://github.com/automl/neps"
+title: "Automated Scaling Analysis (AutoScAn)"
+version: 0.1.0
+date-released: 2026-10-10
+url: "https://github.com/automl/auto-scan"

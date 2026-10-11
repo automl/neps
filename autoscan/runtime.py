@@ -1,0 +1,1140 @@
+"""Worker runtime implementation for AutoScAn.
+
+This module defines the default worker logic for running optimization trials in AutoScAn.
+It manages trial assignment, evaluation, stopping criteria, error handling, and
+integration with distributed setups (e.g., PyTorch DDP).
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import shutil
+import time
+import traceback
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from functools import cached_property
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
+
+from portalocker import portalocker
+
+from autoscan.env import (
+    FS_SYNC_GRACE_BASE,
+    FS_SYNC_GRACE_INC,
+    LINUX_FILELOCK_FUNCTION,
+    MAX_RETRIES_CREATE_LOAD_STATE,
+    MAX_RETRIES_GET_NEXT_TRIAL,
+    MAX_RETRIES_WORKER_CHECK_SHOULD_STOP,
+)
+from autoscan.exceptions import (
+    AutoScAnError,
+    TrialAlreadyExistsError,
+    WorkerFailedToGetPendingTrialsError,
+    WorkerRaiseError,
+)
+from autoscan.optimizers.optimizer import OptimizerInfo
+from autoscan.state import (
+    AutoScAnState,
+    BudgetInfo,
+    DefaultReportValues,
+    EvaluatePipelineReturn,
+    OnErrorPossibilities,
+    OptimizationState,
+    SeedSnapshot,
+    Trial,
+    UserResult,
+    WorkerSettings,
+    evaluate_trial,
+)
+from autoscan.status.summary import (
+    ResourceUsage,
+    SummaryWriter,
+    calculate_total_resource_usage,
+    resolve_fidelity_name,
+)
+from autoscan.utils.common import gc_disabled
+
+if TYPE_CHECKING:
+    from autoscan import SearchSpace
+    from autoscan.optimizers.optimizer import AskFunction
+    from autoscan.space.autoscan_spaces.autoscan_space import PipelineSpace
+
+logger = logging.getLogger(__name__)
+
+
+_DDP_ENV_VAR_NAME = "AUTOSCAN_DDP_TRIAL_ID"
+
+
+def _is_ddp_and_not_rank_zero() -> bool:
+    import torch.distributed as dist
+
+    # Check for environment variables typically set by DDP
+    ddp_env_vars = ["WORLD_SIZE", "MASTER_ADDR", "MASTER_PORT"]
+    rank_env_vars = ["RANK", "LOCAL_RANK", "SLURM_PROCID", "JSM_NAMESPACE_RANK"]
+
+    # Check if PyTorch distributed is initialized
+    if (dist.is_available() and dist.is_initialized()) or all(
+        var in os.environ for var in ddp_env_vars
+    ):
+        for var in rank_env_vars:
+            rank = os.environ.get(var)
+            if rank is not None:
+                return int(rank) != 0
+    return False
+
+
+def _set_ddp_env_var(trial_id: str) -> None:
+    """Sets an environment variable with current trial_id in a DDP setup."""
+    os.environ[_DDP_ENV_VAR_NAME] = trial_id
+
+
+# NOTE: As each AutoScAn process is only ever evaluating a single trial, this global can
+# be retrieved in AutoScAn and refers to what this process is currently evaluating.
+# Note that before `_set_in_progress_trial` is called, this should be cleared
+# with `_clear_in_progress_trial` to ensure that we are not in some erroneuous state.
+# Prefer to call `_clear_in_progress_trial` after a trial has finished evaluating and
+# not just before `_set_in_progress_trial`, as the latter defeats the purpose of this
+# assertion.
+_CURRENTLY_RUNNING_TRIAL_IN_PROCESS: Trial | None = None
+_WORKER_AUTOSCAN_STATE: AutoScAnState | None = None
+
+
+# TODO: This only works with a filebased autoscanstate
+def get_workers_autoscan_state() -> AutoScAnState:
+    """Get the worker's AutoScAn state."""
+    if _WORKER_AUTOSCAN_STATE is None:
+        raise RuntimeError(
+            "The worker's AutoScAn state has not been set! This should only be called"
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_autoscan_state`)"
+            " yourself, this is a bug and should be reported to AutoScAn."
+        )
+    return _WORKER_AUTOSCAN_STATE
+
+
+def _set_workers_autoscan_state(state: AutoScAnState) -> None:
+    global _WORKER_AUTOSCAN_STATE  # noqa: PLW0603
+    _WORKER_AUTOSCAN_STATE = state
+
+
+def is_in_progress_trial_set() -> bool:
+    """Check if the currently running trial in this process is set."""
+    return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None
+
+
+def get_in_progress_trial() -> Trial:
+    """Get the currently running trial in this process."""
+    if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is None:
+        raise RuntimeError(
+            "The worker's AutoScAn state has not been set! This should only be called"
+            " from within a `evaluate_pipeline` context. If you are not running a"
+            " pipeline and you did not call this function (`get_workers_autoscan_state`)"
+            " yourself, this is a bug and should be reported to AutoScAn."
+        )
+    return _CURRENTLY_RUNNING_TRIAL_IN_PROCESS
+
+
+_TRIAL_END_CALLBACKS: dict[str, Callable[[Trial], None]] = {}
+
+
+def register_notify_trial_end(key: str, callback: Callable[[Trial], None]) -> None:
+    """Register a callback to be called when a trial ends."""
+    _TRIAL_END_CALLBACKS[key] = callback
+
+
+@contextmanager
+def _set_global_trial(trial: Trial) -> Iterator[None]:
+    global _CURRENTLY_RUNNING_TRIAL_IN_PROCESS  # noqa: PLW0603
+    if _CURRENTLY_RUNNING_TRIAL_IN_PROCESS is not None:
+        raise AutoScAnError(
+            "A trial was already set to run in this process, yet some other trial was"
+            " attempted to be set as the global trial in progress."
+            " We assume that each process will only ever have one trial running at a time"
+            " to allow functionality like `autoscan.get_in_progress_trial()`,"
+            " `load_checkpoint()` and `save_checkpoint()` to work."
+            "\n\nThis is most likely a bug and should be reported to AutoScAn!"
+        )
+    _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
+    _set_ddp_env_var(trial.id)
+    yield
+
+    _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = None
+
+
+# NOTE: This class is quite stateful and has been split up quite a bit to make testing
+# interleaving of workers easier. This comes at the cost of more fragmented code.
+@dataclass
+class DefaultWorker:
+    """A default worker for the AutoScAn system.
+
+    This is the worker that is used by default in the autoscan.run() loop.
+    """
+
+    state: AutoScAnState
+    """The state of the AutoScAn system."""
+
+    settings: WorkerSettings
+    """The settings for the worker."""
+
+    evaluation_fn: Callable[..., EvaluatePipelineReturn]
+    """The evaluation function to use for the worker."""
+
+    optimizer: AskFunction
+    """The optimizer that is in use by the worker."""
+
+    worker_id: str
+    """The id of the worker."""
+
+    _GRACE: ClassVar = FS_SYNC_GRACE_BASE
+
+    @classmethod
+    def new(
+        cls,
+        *,
+        state: AutoScAnState,
+        optimizer: AskFunction,
+        settings: WorkerSettings,
+        evaluation_fn: Callable[..., EvaluatePipelineReturn],
+        worker_id: str | None = None,
+    ) -> DefaultWorker:
+        """Create a new worker."""
+        worker_id = state.lock_and_set_new_worker_id(worker_id)
+        return DefaultWorker(
+            state=state,
+            optimizer=optimizer,
+            settings=settings,
+            evaluation_fn=evaluation_fn,
+            worker_id=worker_id,
+        )
+
+    def _check_worker_local_settings(
+        self,
+        *,
+        time_monotonic_start: float,
+        error_from_this_worker: Exception | None,
+    ) -> str | Literal[False]:
+        # NOTE: Sorry this code is kind of ugly but it's pretty straightforward, just a
+        # lot of conditional checking and making sure to check cheaper conditions first.
+
+        # First check for stopping criterion for this worker in particular as it's
+        # cheaper and doesn't require anything from the state.
+        if error_from_this_worker and self.settings.on_error in (
+            OnErrorPossibilities.RAISE_WORKER_ERROR,
+            OnErrorPossibilities.RAISE_ANY_ERROR,
+            OnErrorPossibilities.STOP_WORKER_ERROR,
+            OnErrorPossibilities.STOP_ANY_ERROR,
+        ):
+            msg = (
+                "Error occurred while evaluating a configuration with this worker and"
+                f" the worker is set to stop with {self.settings.on_error}."
+                "\n"
+                "\n"
+                "If this was a bug in the evaluation code while you were developing your"
+                " pipeline and you have set ignore_errors=True, please delete"
+                " your results folder and fix the error before re-running."
+                "\n"
+                "If this is an issue specifically with the configuration, considering"
+                " setting `ignore_errors=False` to allow the worker to continue"
+                " evaluating other configurations, even if this one failed."
+                "\n"
+                "\n"
+            )
+            if self.settings.on_error in (
+                OnErrorPossibilities.RAISE_WORKER_ERROR,
+                OnErrorPossibilities.RAISE_ANY_ERROR,
+            ):
+                raise WorkerRaiseError(msg) from error_from_this_worker
+            return msg
+
+        if self.settings.max_wallclock_time_seconds is not None and (
+            time.monotonic() - time_monotonic_start
+            >= self.settings.max_wallclock_time_seconds
+        ):
+            return (
+                "Worker has reached the maximum wallclock time it is allowed to spend"
+                f", given by `{self.settings.max_wallclock_time_seconds=}`."
+            )
+
+        return False
+
+    def _check_shared_error_stopping_criterion(self) -> str | Literal[False]:
+        # We check this global error stopping criterion as it's much
+        # cheaper than sweeping the state from all trials.
+        if self.settings.on_error in (
+            OnErrorPossibilities.RAISE_ANY_ERROR,
+            OnErrorPossibilities.STOP_ANY_ERROR,
+        ):
+            err = self.state.lock_and_get_errors().latest_err_as_raisable()
+            if err is not None:
+                msg = (
+                    "An error occurred in another worker and this worker is set to stop"
+                    f" with {self.settings.on_error}."
+                    "\n"
+                    "If this was a bug in the evaluation code while you were developing"
+                    " your pipeline and you have set ignore_errors=True, please delete"
+                    " your results folder and fix the error before re-running."
+                    "\n"
+                    "If this is an issue specifically with the configuration, considering"
+                    " setting `ignore_errors=False` to allow the worker to continue"
+                    " evaluating other configurations, even if any worker fails."
+                    "\n"
+                )
+                if self.settings.on_error == OnErrorPossibilities.RAISE_ANY_ERROR:
+                    raise WorkerRaiseError(msg) from err
+
+                return msg
+
+        return False
+
+    @cached_property
+    def _fidelity_name(self) -> str | None:
+        return self.state.fidelity_name or resolve_fidelity_name(self.optimizer)
+
+    @cached_property
+    def _summary_writer(self) -> SummaryWriter:
+        return SummaryWriter(
+            root_directory=Path(self.state.path),
+            fidelity_name=self._fidelity_name,
+            live_plots=self.settings.live_plots,
+            optimizer=self.optimizer,
+        )
+
+    def _calculate_total_resource_usage(
+        self,
+        trials: Mapping[str, Trial],
+        subset_worker_id: str | None = None,
+        *,
+        include_in_progress: bool = False,
+    ) -> ResourceUsage:
+        """Calculates total resources returning a typed usage object.
+
+        Args:
+            trials: Dictionary of trials to calculate from.
+            subset_worker_id: If provided, only calculates for
+                trials evaluated by this worker ID.
+            include_in_progress: Whether to include incomplete trials.
+        """
+        return calculate_total_resource_usage(
+            trials,
+            self._fidelity_name,
+            subset_worker_id,
+            include_in_progress=include_in_progress,
+        )
+
+    def _check_global_stopping_criterion(  # noqa: C901, PLR0912
+        self,
+        trials: Mapping[str, Trial],
+        log_status: bool = False,  # noqa: FBT001, FBT002
+    ) -> tuple[str | Literal[False], ResourceUsage]:
+        """Evaluates if any global stopping criterion has been met.
+
+        Args:
+            trials: The trials to evaluate the stopping criterion on.
+            log_status: Whether to log the current status of the budget.
+
+        Returns:
+            A tuple of (stopping message or False, global resource usage).
+        """
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
+        total_evaluations_to_spend = (
+            getattr(budget_info, "total_evaluations_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_cost_to_spend = (
+            getattr(budget_info, "total_cost_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        total_fidelities_to_spend = (
+            getattr(budget_info, "total_fidelities_to_spend", None)
+            if budget_info is not None
+            else None
+        )
+        worker_resource_usage = self._calculate_total_resource_usage(
+            trials,
+            subset_worker_id=self.worker_id,
+            include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        )
+
+        global_resource_usage = self._calculate_total_resource_usage(
+            trials,
+            subset_worker_id=None,
+            include_in_progress=self.settings.include_in_progress_evaluations_towards_maximum,
+        )
+
+        if log_status:
+            # Log current budget status
+            budget_info_parts = []
+            if self.settings.worker_evaluations_to_spend is not None:
+                eval_percentage = int(
+                    (
+                        worker_resource_usage.evaluations
+                        / self.settings.worker_evaluations_to_spend
+                    )
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Evaluations:"
+                    f" {worker_resource_usage.evaluations}/"
+                    f"{self.settings.worker_evaluations_to_spend}"
+                    f" ({eval_percentage}%)"
+                )
+            if self.settings.worker_fidelities_to_spend is not None:
+                fidelity_percentage = int(
+                    (
+                        worker_resource_usage.fidelities
+                        / self.settings.worker_fidelities_to_spend
+                    )
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Fidelities:"
+                    f" {worker_resource_usage.fidelities}/"
+                    f"{self.settings.worker_fidelities_to_spend}"
+                    f" ({fidelity_percentage}%)"
+                )
+            if self.settings.worker_cost_to_spend is not None:
+                cost_percentage = int(
+                    (worker_resource_usage.cost / self.settings.worker_cost_to_spend)
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Cost:"
+                    f" {worker_resource_usage.cost}/"
+                    f"{self.settings.worker_cost_to_spend} ({cost_percentage}%)"
+                )
+            if self.settings.max_evaluation_time_total_seconds is not None:
+                time_percentage = int(
+                    (
+                        worker_resource_usage.time
+                        / self.settings.max_evaluation_time_total_seconds
+                    )
+                    * 100
+                )
+                budget_info_parts.append(
+                    "Time:"
+                    f" {worker_resource_usage.time}/"
+                    f"{self.settings.max_evaluation_time_total_seconds}s"
+                    f" ({time_percentage}%)"
+                )
+
+            if budget_info_parts:
+                logger.info("Budget status - %s", " | ".join(budget_info_parts))
+        return_string: str | Literal[False] = False
+
+        if (
+            self.settings.worker_evaluations_to_spend is not None
+            and worker_resource_usage.evaluations
+            >= self.settings.worker_evaluations_to_spend
+        ):
+            return_string = (
+                "Worker has reached the maximum number of evaluations it is allowed"
+                f" to do as given by `{self.settings.worker_evaluations_to_spend=}`."
+                "\nTo allow more evaluations, increase this value or use a different"
+                " stopping criterion."
+            )
+
+        if (
+            self.settings.worker_fidelities_to_spend is not None
+            and worker_resource_usage.fidelities
+            >= self.settings.worker_fidelities_to_spend
+        ):
+            return_string = (
+                "The total number of fidelity evaluations has reached the maximum"
+                f" allowed of `{self.settings.worker_fidelities_to_spend=}`."
+                " To allow more evaluations, increase this value or use a different"
+                " stopping criterion."
+            )
+
+        if (
+            self.settings.worker_cost_to_spend is not None
+            and worker_resource_usage.cost >= self.settings.worker_cost_to_spend
+        ):
+            return_string = (
+                "Worker has reached the maximum cost it is allowed to spend"
+                f" which is given by `{self.settings.worker_cost_to_spend=}`."
+                f" This worker has spend '{worker_resource_usage.cost}'."
+                "\n To allow more evaluations, increase this value or use a different"
+                " stopping criterion."
+            )
+
+        if (
+            self.settings.max_evaluation_time_total_seconds is not None
+            and worker_resource_usage.time
+            >= self.settings.max_evaluation_time_total_seconds
+        ):
+            return_string = (
+                "The maximum evaluation time of"
+                f" `{self.settings.max_evaluation_time_total_seconds=}` has been"
+                " reached. To allow more evaluations, increase this value or use"
+                " a different stopping criterion."
+            )
+
+        if (
+            total_evaluations_to_spend is not None
+            and global_resource_usage.evaluations >= total_evaluations_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum number of evaluations"
+                " allowed as given by"
+                f" `total_evaluations_to_spend={total_evaluations_to_spend}`."
+                f" The total number of evaluations is"
+                f" '{global_resource_usage.evaluations}'."
+            )
+
+        if (
+            total_cost_to_spend is not None
+            and global_resource_usage.cost >= total_cost_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum cost allowed as given by"
+                f" `total_cost_to_spend={total_cost_to_spend}`."
+                f" The total cost spent is '{global_resource_usage.cost}'."
+            )
+
+        if (
+            total_fidelities_to_spend is not None
+            and global_resource_usage.fidelities >= total_fidelities_to_spend
+        ):
+            return_string = (
+                "All workers together have reached the maximum fidelity allowed as"
+                f" given by `total_fidelities_to_spend={total_fidelities_to_spend}`."
+                f" The total fidelity spent is '{global_resource_usage.fidelities}'."
+            )
+
+        return (return_string, global_resource_usage)
+
+    @property
+    def _requires_global_stopping_criterion(self) -> bool:
+        optimizer_state = self.state._get_optimizer_state()
+        budget_info = optimizer_state.budget
+
+        return (
+            self.settings.worker_evaluations_to_spend is not None
+            or self.settings.worker_cost_to_spend is not None
+            or self.settings.worker_fidelities_to_spend is not None
+            or self.settings.max_evaluation_time_total_seconds is not None
+            or (
+                budget_info is not None
+                and (
+                    getattr(
+                        budget_info,
+                        "total_evaluations_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_cost_to_spend",
+                        None,
+                    )
+                    is not None
+                    or getattr(
+                        budget_info,
+                        "total_fidelities_to_spend",
+                        None,
+                    )
+                    is not None
+                )
+            )
+        )
+
+    def _get_next_trial(self) -> Trial | Literal["break"]:
+        # If there are no global stopping criterion, we can no just return early.
+        with self.state._optimizer_lock.lock(worker_id=self.worker_id):
+            # NOTE: It's important to release the trial lock before sampling
+            # as otherwise, any other service, such as reporting the result
+            # of a trial. Hence we do not lock these together with the above.
+            # OPTIM: We try to prevent garbage collection from happening in here to
+            # minimize time spent holding on to the lock.
+            with self.state._trial_lock.lock(worker_id=self.worker_id), gc_disabled():
+                # Give the file-system some time to sync if we encountered out-of-order
+                # issues with this worker.
+                if self._GRACE > 0:
+                    time.sleep(self._GRACE)
+
+                trials = self.state._trial_repo.latest()
+
+                if self._requires_global_stopping_criterion:
+                    should_stop, _stop_criteria = self._check_global_stopping_criterion(
+                        trials,
+                        log_status=True,
+                    )
+                    if should_stop is not False:
+                        logger.info(should_stop)
+                        return "break"
+
+                pending_trials = [
+                    trial
+                    for trial in trials.values()
+                    if trial.metadata.state == Trial.State.PENDING
+                ]
+
+                if len(pending_trials) > 0:
+                    earliest_pending = sorted(
+                        pending_trials,
+                        key=lambda t: t.metadata.time_sampled,
+                    )[0]
+                    earliest_pending.set_evaluating(
+                        time_started=time.time(),
+                        worker_id=self.worker_id,
+                    )
+                    self.state._trial_repo.update_trial(
+                        earliest_pending, hints="metadata"
+                    )
+                    logger.info(
+                        "Worker '%s' picked up pending trial: %s.",
+                        self.worker_id,
+                        earliest_pending.id,
+                    )
+                    return earliest_pending
+
+            sampled_trials = self.state._sample_trial(
+                optimizer=self.optimizer,
+                worker_id=self.worker_id,
+                trials=trials,
+                n=self.settings.batch_size,
+            )
+            if isinstance(sampled_trials, Trial):
+                this_workers_trial = sampled_trials
+            else:
+                this_workers_trial = sampled_trials[0]
+                sampled_trials[1:]
+
+            with self.state._trial_lock.lock(worker_id=self.worker_id), gc_disabled():
+                this_workers_trial.set_evaluating(
+                    time_started=time.time(),
+                    worker_id=self.worker_id,
+                )
+                try:
+                    self.state._trial_repo.store_new_trial(sampled_trials)
+                    if isinstance(sampled_trials, Trial):
+                        logger.info(
+                            "Worker '%s' sampled new trial: %s.",
+                            self.worker_id,
+                            this_workers_trial.id,
+                        )
+                    else:
+                        logger.info(
+                            "Worker '%s' sampled new trials: %s.",
+                            self.worker_id,
+                            ",".join(trial.id for trial in sampled_trials),
+                        )
+                    return this_workers_trial
+                except TrialAlreadyExistsError as e:
+                    if e.trial_id in trials:
+                        raise RuntimeError(
+                            f"The new sampled trial was given an id of {e.trial_id}, yet"
+                            " this exists in the loaded in trials given to the optimizer."
+                            " This is a bug with the optimizers allocation of ids."
+                        ) from e
+
+                    _grace = DefaultWorker._GRACE
+                    _inc = FS_SYNC_GRACE_INC
+                    logger.warning(
+                        "The new sampled trial was given an id of '%s', which is not"
+                        " one that was loaded in by the optimizer. This is usually"
+                        " an indication that the file-system you are running on"
+                        " is not atmoic in synchoronizing file operations."
+                        " We have attempted to stabalize this but milage may vary."
+                        " We are incrementing a grace period for file-locks from"
+                        " '%s's to '%s's. You can control the initial"
+                        " grace with 'AUTOSCAN_FS_SYNC_GRACE_BASE' and the increment with"
+                        " 'AUTOSCAN_FS_SYNC_GRACE_INC'.",
+                        e.trial_id,
+                        _grace,
+                        _grace + _inc,
+                    )
+                    DefaultWorker._GRACE = _grace + FS_SYNC_GRACE_INC
+                    raise e
+
+    # Forgive me lord, for I have sinned, this function is atrocious but complicated
+    # due to locking.
+    def run(self) -> None:  # noqa: C901, PLR0912, PLR0915
+        """Run the worker.
+
+        Will keep running until one of the criterion defined by the `WorkerSettings`
+        is met.
+        """
+        _set_workers_autoscan_state(self.state)
+
+        summary = self._summary_writer
+        summary.touch()
+
+        logger.info(
+            "Summary files can be found in the “summary” folder inside"
+            " the root directory: %s",
+            summary.summary_dir,
+        )
+
+        optimizer_name = self.state._optimizer_info["name"]
+        logger.info("Using optimizer: %s", optimizer_name)
+
+        _time_monotonic_start = time.monotonic()
+        _error_from_evaluation: Exception | None = None
+
+        _repeated_fail_get_next_trial_count = 0
+        n_repeated_failed_check_should_stop = 0
+
+        summary.update(self.state._trial_repo.get_valid_evaluated_trials())
+
+        while True:
+            try:
+                # First check local worker settings
+                should_stop = self._check_worker_local_settings(
+                    time_monotonic_start=_time_monotonic_start,
+                    error_from_this_worker=_error_from_evaluation,
+                )
+                if should_stop is not False:
+                    logger.info(should_stop)
+                    break
+
+                # Next check global errs having occured
+                should_stop = self._check_shared_error_stopping_criterion()
+                if should_stop is not False:
+                    logger.info(should_stop)
+                    break
+
+            except WorkerRaiseError as e:
+                # If we raise a specific error, we should stop the worker
+                raise e
+            except Exception as e:
+                # An unknown exception, check our retry countk
+                n_repeated_failed_check_should_stop += 1
+                if (
+                    n_repeated_failed_check_should_stop
+                    >= MAX_RETRIES_WORKER_CHECK_SHOULD_STOP
+                ):
+                    raise WorkerRaiseError(
+                        f"Worker {self.worker_id} failed to check if it should stop"
+                        f" {MAX_RETRIES_WORKER_CHECK_SHOULD_STOP} times in a row. Bailing"
+                    ) from e
+
+                logger.error(
+                    "Unexpected error from worker '%s' while checking if it should stop.",
+                    self.worker_id,
+                    exc_info=True,
+                )
+                time.sleep(1)  # Help stagger retries
+                continue
+
+            # From here, we now begin sampling or getting the next pending trial.
+            # As the global stopping criterion requires us to check all trials, and
+            # needs to be in locked in-step with sampling and is done inside
+            # _get_next_trial
+            try:
+                trial_to_eval = self._get_next_trial()
+                if trial_to_eval == "break":
+                    break
+                _repeated_fail_get_next_trial_count = 0
+            except Exception as e:
+                _repeated_fail_get_next_trial_count += 1
+                if isinstance(e, portalocker.exceptions.LockException):
+                    logger.debug(
+                        "Worker '%s': Timeout while trying to get the next trial to"
+                        " evaluate. If you are using a model based optimizer, such as"
+                        " Bayesian Optimization, this can occur as the number of"
+                        " configurations get large. There's not much to do here"
+                        " and we will retry to obtain the lock.",
+                        self.worker_id,
+                        exc_info=True,
+                    )
+                else:
+                    logger.debug(
+                        "Worker '%s': Error while trying to get the next trial to"
+                        " evaluate.",
+                        self.worker_id,
+                        exc_info=True,
+                    )
+                    time.sleep(1)  # Help stagger retries
+                # NOTE: This is to prevent any infinite loops if we can't get a trial
+                if _repeated_fail_get_next_trial_count >= MAX_RETRIES_GET_NEXT_TRIAL:
+                    raise WorkerFailedToGetPendingTrialsError(
+                        f"Worker {self.worker_id} failed to get pending trials"
+                        f" {MAX_RETRIES_GET_NEXT_TRIAL} times in"
+                        " a row. Bailing!"
+                    ) from e
+
+                continue
+
+            # We (this worker) has managed to set it to evaluating, now we can evaluate it
+            with _set_global_trial(trial_to_eval):
+                evaluated_trial, report = evaluate_trial(
+                    trial=trial_to_eval,
+                    evaluation_fn=self.evaluation_fn,
+                    default_report_values=self.settings.default_report_values,
+                )
+
+            if report is None:
+                logger.info(
+                    "Worker '%s' evaluated trial: %s async task detected.",
+                    self.worker_id,
+                    evaluated_trial.id,
+                )
+                continue
+
+            logger.info(
+                "Worker '%s' evaluated trial: %s as %s.",
+                self.worker_id,
+                evaluated_trial.id,
+                evaluated_trial.metadata.state,
+            )
+
+            if report.err is not None:
+                logger.error(
+                    f"Error during evaluation of '{evaluated_trial.id}'"
+                    f" : {evaluated_trial.config}."
+                )
+                logger.exception(report.err)
+                _error_from_evaluation = report.err
+
+            # We do not retry this, as if some other worker has
+            # managed to manipulate this trial in the meantime,
+            # then something has gone wrong
+            with self.state._trial_lock.lock(worker_id=self.worker_id):
+                self.state._report_trial_evaluation(
+                    trial=evaluated_trial,
+                    report=report,
+                    worker_id=self.worker_id,
+                )
+                # This is mostly for `tblogger`
+                for _key, callback in _TRIAL_END_CALLBACKS.items():
+                    callback(trial_to_eval)
+
+            if report.objective_to_minimize is not None and report.err is None:
+                with self.state._trial_lock.lock():
+                    evaluated_trials = self.state._trial_repo.get_valid_evaluated_trials()
+                summary.update(evaluated_trials)
+
+            logger.debug("Config %s: %s", evaluated_trial.id, evaluated_trial.config)
+            logger.debug("Loss %s: %s", evaluated_trial.id, report.objective_to_minimize)
+            logger.debug("Cost %s: %s", evaluated_trial.id, report.objective_to_minimize)
+            logger.debug(
+                "Learning Curve %s: %s", evaluated_trial.id, report.learning_curve
+            )
+
+
+def _save_results(
+    user_result: dict,
+    trial_id: str,
+    root_directory: Path,
+) -> None:
+    """Parse `user_result` and persist it for <trial_id> in the AutoScAn state."""
+    default_report_values = _make_default_report_values(
+        objective_value_on_error=0, cost_value_on_error=0
+    )
+
+    result = UserResult.parse(
+        user_result,
+        default_cost_value=default_report_values.cost_if_not_provided,
+        default_objective_to_minimize_value=default_report_values.objective_value_on_error,
+        default_learning_curve=default_report_values.learning_curve_if_not_provided,
+    )
+    if result.exception is None and result.cost is None:
+        logger.warning(
+            "The return value of `evaluate_pipeline` "
+            "must be a dictionary that includes a 'cost' key."
+        )
+
+    # load the AutoScAn state from the optimization directory
+    state = AutoScAnState.create_or_load(path=root_directory, load_only=True)
+
+    # lock the requested trial
+    trial = state.lock_and_get_trial_by_id(trial_id)
+    if trial is None:
+        raise RuntimeError(f"Trial '{trial_id}' not found in '{root_directory}'")
+
+    report = trial.set_complete(
+        report_as=(
+            Trial.State.SUCCESS.value
+            if result.exception is None
+            else Trial.State.CRASHED.value
+        ),
+        objective_to_minimize=result.objective_to_minimize,
+        cost=result.cost,
+        learning_curve=result.learning_curve,
+        err=result.exception,
+        tb=(
+            "".join(
+                traceback.format_exception(
+                    type(result.exception),
+                    result.exception,
+                    result.exception.__traceback__,
+                )
+            )
+            if result.exception is not None
+            else None
+        ),
+        extra=result.extra,
+        time_end=time.time(),
+        evaluation_duration=result.cost,
+    )
+
+    worker_id = trial.metadata.evaluating_worker_id
+    with state._trial_lock.lock():
+        state._report_trial_evaluation(
+            trial=trial,
+            report=report,
+            worker_id=worker_id,
+        )
+    for _, cb in _TRIAL_END_CALLBACKS.items():
+        cb(trial)
+    # plots here
+    logger.info(f"Saved result for trial {trial.id}")
+
+
+def _launch_ddp_runtime(
+    *,
+    evaluation_fn: Callable[..., EvaluatePipelineReturn],
+    optimization_dir: Path,
+    default_report_values: DefaultReportValues,
+) -> None:
+    autoscan_state = AutoScAnState.create_or_load(path=optimization_dir, load_only=True)
+
+    prev_trial: Trial | None = None
+
+    # TODO: This could accidentally spin lock if the break is never hit.
+    # This is quite dangerous as it could look like the worker is running but
+    # it's not actually doing anything.
+    while True:
+        current_eval_trials = autoscan_state.lock_and_get_current_evaluating_trials()
+
+        # If the worker id on previous trial is the same as the current one,
+        # only then evaluate it.
+        if len(current_eval_trials) == 0:
+            continue
+
+        current_trial: Trial | None = None
+        if prev_trial is None:
+            # In the beginning, we simply read the current trial from the env variable
+            current_id = os.getenv(_DDP_ENV_VAR_NAME, "").strip()
+            if current_id == "":
+                raise RuntimeError(
+                    "In a pytorch-lightning DDP setup, the environment variable"
+                    f" '{_DDP_ENV_VAR_NAME}' was not set. This is probably a bug"
+                    " in AutoScAn and should be reported."
+                )
+
+            current_trial = autoscan_state.lock_and_get_trial_by_id(current_id)
+
+        else:
+            for trial in current_eval_trials:
+                if (
+                    trial.metadata.evaluating_worker_id
+                    == prev_trial.metadata.evaluating_worker_id
+                ) and (trial.id != prev_trial.id):
+                    current_trial = trial
+                    break
+
+        if current_trial is not None:
+            evaluate_trial(
+                current_trial,
+                evaluation_fn=evaluation_fn,
+                default_report_values=default_report_values,
+            )
+            prev_trial = current_trial
+
+
+def _derived_info_with_fidelity_name(
+    optimizer_info: OptimizerInfo,
+    *,
+    optimizer: AskFunction,
+    pipeline_space: SearchSpace | PipelineSpace,
+) -> dict[str, Any]:
+    """The `derived` info to persist, backfilling a resolved fidelity name.
+
+    Bracket-based optimizers already compute a richer `derived["fidelity"]` (with
+    bounds) via their `derived_info`; for any other optimizer we fall back to
+    resolving just the fidelity's config key from the space.
+    """
+    derived = dict(optimizer_info.get("derived") or {})
+    if "fidelity" not in derived:
+        resolved_fidelity_name = resolve_fidelity_name(optimizer, pipeline_space)
+        if resolved_fidelity_name is not None:
+            derived["fidelity"] = {"name": resolved_fidelity_name}
+    return derived
+
+
+# TODO: This should be done directly in `api.run` at some point to make it clearer at an
+# entryy point how the worker is set up to run if someone reads the entry point code.
+def _launch_runtime(  # noqa: PLR0913
+    *,
+    evaluation_fn: Callable[..., EvaluatePipelineReturn],
+    optimizer: AskFunction,
+    optimizer_info: OptimizerInfo,
+    optimization_dir: Path,
+    pipeline_space: SearchSpace | PipelineSpace,
+    worker_cost_to_spend: float | None,
+    total_evaluations_to_spend: int | None,
+    total_cost_to_spend: float | None,
+    ignore_errors: bool = False,
+    objective_value_on_error: float | None,
+    cost_value_on_error: float | None,
+    continue_until_max_evaluation_completed: bool,
+    overwrite_optimization_dir: bool,
+    worker_evaluations_to_spend: int | None,
+    worker_fidelities_to_spend: int | float | None,
+    total_fidelities_to_spend: int | float | None,
+    sample_batch_size: int | None,
+    worker_id: str | None = None,
+    live_plots: bool = False,
+) -> None:
+    default_report_values = _make_default_report_values(
+        objective_value_on_error=objective_value_on_error,
+        cost_value_on_error=cost_value_on_error,
+    )
+
+    if _is_ddp_and_not_rank_zero():
+        # Do not launch a new worker if we are in a DDP setup and not rank 0
+        _launch_ddp_runtime(
+            evaluation_fn=evaluation_fn,
+            optimization_dir=optimization_dir,
+            default_report_values=default_report_values,
+        )
+        return
+
+    # Resolved once, here, and persisted with the optimizer info: everything that
+    # summarizes the run later (including `autoscan.save_pipeline_results`, which has
+    # no optimizer at hand) reads it back off disk instead of re-deriving it.
+    derived = _derived_info_with_fidelity_name(
+        optimizer_info, optimizer=optimizer, pipeline_space=pipeline_space
+    )
+    optimizer_info = OptimizerInfo(
+        name=optimizer_info["name"],
+        info=optimizer_info["info"],
+    )
+    if derived:
+        optimizer_info["derived"] = derived
+
+    if overwrite_optimization_dir and optimization_dir.exists():
+        logger.info(
+            f"Overwriting optimization directory '{optimization_dir}' as"
+            " `overwrite_optimization_dir=True`."
+        )
+        shutil.rmtree(optimization_dir)
+
+    for _retry_count in range(MAX_RETRIES_CREATE_LOAD_STATE):
+        try:
+            autoscan_state = AutoScAnState.create_or_load(
+                path=optimization_dir,
+                load_only=False,
+                optimizer_info=optimizer_info,
+                optimizer_state=OptimizationState(
+                    seed_snapshot=SeedSnapshot.new_capture(),
+                    budget=(
+                        BudgetInfo(
+                            worker_cost_to_spend=worker_cost_to_spend,
+                            used_cost_budget=0,
+                            worker_evaluations_to_spend=worker_evaluations_to_spend,
+                            worker_fidelities_to_spend=worker_fidelities_to_spend,
+                            used_evaluations=0,
+                            total_evaluations_to_spend=total_evaluations_to_spend,
+                            total_cost_to_spend=total_cost_to_spend,
+                            total_fidelities_to_spend=total_fidelities_to_spend,
+                        )
+                    ),
+                    shared_state=None,  # TODO: Unused for the time being...
+                    worker_ids=None,
+                ),
+                pipeline_space=pipeline_space,
+            )
+            break
+        except AutoScAnError:
+            # Don't retry on AutoScAnError - these are user errors
+            # like pipeline space mismatch
+            raise
+        except Exception:
+            time.sleep(0.5)
+            logger.debug(
+                "Error while trying to create or load the AutoScAn state. Retrying...",
+                exc_info=True,
+            )
+    else:
+        raise RuntimeError(
+            "Failed to create or load the AutoScAn state after"
+            f" {MAX_RETRIES_CREATE_LOAD_STATE} attempts. Bailing!"
+            " Please enable debug logging to see the errors that occured."
+        )
+
+    autoscan_state.lock_and_update_global_budgets(
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
+        total_fidelities_to_spend=total_fidelities_to_spend,
+    )
+
+    settings = WorkerSettings(
+        on_error=(
+            OnErrorPossibilities.IGNORE
+            if ignore_errors
+            else OnErrorPossibilities.RAISE_ANY_ERROR
+        ),
+        batch_size=sample_batch_size,
+        default_report_values=default_report_values,
+        worker_evaluations_to_spend=worker_evaluations_to_spend,
+        worker_fidelities_to_spend=worker_fidelities_to_spend,
+        include_in_progress_evaluations_towards_maximum=(
+            not continue_until_max_evaluation_completed
+        ),
+        worker_cost_to_spend=worker_cost_to_spend,
+        max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
+        max_wallclock_time_seconds=None,  # TODO: User can't specify yet
+        live_plots=live_plots,
+    )
+
+    # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.
+    # Hence, we overwrite `portalockers` lock call to use `lockf()` instead.
+    # This is commeneted in their source code that this is an option to use, however
+    # it's not directly advertised as a parameter/env variable or otherwise.
+    import portalocker.portalocker as portalocker_lock_module
+
+    try:
+        import fcntl
+
+        if LINUX_FILELOCK_FUNCTION.lower() == "flock":
+            setattr(portalocker_lock_module, "LOCKER", fcntl.flock)  # type: ignore[attr-defined]
+        elif LINUX_FILELOCK_FUNCTION.lower() == "lockf":
+            setattr(portalocker_lock_module, "LOCKER", fcntl.lockf)  # type: ignore[attr-defined]
+        else:
+            raise ValueError(
+                f"Unknown file-locking function '{LINUX_FILELOCK_FUNCTION}'."
+                " Must be one of 'flock' or 'lockf'."
+            )
+    except ImportError:
+        pass
+
+    worker = DefaultWorker.new(
+        state=autoscan_state,
+        optimizer=optimizer,
+        evaluation_fn=evaluation_fn,
+        settings=settings,
+        worker_id=worker_id,
+    )
+
+    # Callbacks registered during this run (e.g. by `tblogger`) hold state tied to it,
+    # so they must not fire for the trials of any later run in the same process.
+    callbacks_before_run = dict(_TRIAL_END_CALLBACKS)
+    try:
+        worker.run()
+    finally:
+        _TRIAL_END_CALLBACKS.clear()
+        _TRIAL_END_CALLBACKS.update(callbacks_before_run)
+
+
+def _make_default_report_values(
+    *,
+    objective_value_on_error: float | None = None,
+    cost_value_on_error: float | None = None,
+) -> DefaultReportValues:
+    return DefaultReportValues(
+        objective_value_on_error=objective_value_on_error,
+        cost_value_on_error=cost_value_on_error,
+        cost_if_not_provided=None,
+        learning_curve_on_error=None,
+        learning_curve_if_not_provided="objective_to_minimize",
+    )

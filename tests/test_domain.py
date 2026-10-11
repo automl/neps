@@ -6,7 +6,7 @@ import pytest
 import torch
 from pytest_cases import parametrize
 
-from neps.space import Domain
+from autoscan.space import Domain
 
 T = torch.tensor
 

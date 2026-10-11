@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from neps.space import SearchSpace
-from neps.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
+from autoscan.space import SearchSpace
+from autoscan.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
 
 
 def test_search_space_orders_parameters_by_name():
@@ -18,7 +18,7 @@ def test_search_space_orders_parameters_by_name():
 
 def test_multipe_fidelities_raises_error():
     # We should allow this at some point, but until we do, raise an error
-    with pytest.raises(ValueError, match="neps only supports one fidelity parameter"):
+    with pytest.raises(ValueError, match="autoscan only supports one fidelity parameter"):
         SearchSpace(
             {
                 "a": HPOFloat(0, 1, is_fidelity=True),

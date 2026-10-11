@@ -43,4 +43,4 @@ To read more about `BO`, please refer to this [`Bayesian Optimization` tutorial]
     - It is highly costumizable with many choices for the surrogate and acquisition functions, but even the basic settings work well in many cases.
 
 !!! info
-    Therefore, `BO` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    Therefore, `BO` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in AutoScAn when there is no [Prior](../search_algorithms/prior.md) or [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.

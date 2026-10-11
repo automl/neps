@@ -2,7 +2,7 @@ default_language_version:
   python: python3
 files: |
   (?x)^(
-    neps|
+    autoscan|
     tests
   )/.*\.py$
 repos:
@@ -32,7 +32,7 @@ repos:
       - id: mypy
         files: |
           (?x)^(
-            neps
+            autoscan
           )/.*\.py$
         additional_dependencies:
           - "types-pyyaml"

@@ -10,9 +10,9 @@ import mkdocs_gen_files
 
 logger = logging.getLogger(__name__)
 
-SRCDIR = Path("neps").absolute().resolve()
+SRCDIR = Path("autoscan").absolute().resolve()
 ROOT = SRCDIR.parent
-EXAMPLE_FOLDER = ROOT / "neps_examples"
+EXAMPLE_FOLDER = ROOT / "autoscan_examples"
 TAB = "    "
 
 if not SRCDIR.exists():

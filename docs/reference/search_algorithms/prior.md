@@ -19,14 +19,14 @@ The following illustration from the `PiBO`-paper shows the influence of a well-c
 
 In both cases, the optimization process uses the additional information provided by the Prior to arrive at the solution, however, the bad Prior (right) results in a slower convergence to the optimum.
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.pibo].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.pibo].
 
 ??? example "Practical Tips"
 
     TODO
 
 !!! info
-    ``PiBO`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is only Prior, but no [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    ``PiBO`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in AutoScAn when there is only Prior, but no [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).

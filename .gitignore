@@ -27,7 +27,7 @@ site/*
 
 # Results
 results
-neps_examples/results
+autoscan_examples/results
 tests_tmpdir
 usage_example
 lightning_logs

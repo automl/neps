@@ -12,12 +12,12 @@ It is defined using the `is_fidelity` parameter in the `pipeline_space` definiti
 
 ```python
 pipeline_space = {
-    "epoch": neps.Integer(lower=1, upper=100, is_fidelity=True),
+    "epoch": autoscan.Integer(lower=1, upper=100, is_fidelity=True),
     # epoch will be available as fidelity to the optimizer
 }
 ```
 
-For a more detailed explanation of Multi-Fidelity and a list of NePS-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
+For a more detailed explanation of Multi-Fidelity and a list of AutoScAn-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
 
 ### 1.2 Priors
 
@@ -27,37 +27,37 @@ It is defined using the `prior` parameter in the `pipeline_space` definition.
 
 ```python
 pipeline_space = {
-    "alpha": neps.Float(lower=0.1, upper=1.0, prior=0.4, prior_confidence="high"),
+    "alpha": autoscan.Float(lower=0.1, upper=1.0, prior=0.4, prior_confidence="high"),
     # alpha will have a prior pointing towards 0.4 with high confidence
 }
 ```
 
-For a more detailed explanation of Priors and a list of NePS-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
+For a more detailed explanation of Priors and a list of AutoScAn-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
 
-## 2 NePS Optimizer Selection
+## 2 AutoScAn Optimizer Selection
 
 ### 2.1 Automatic Optimizer Selection
 
-NePS provides a multitude of optimizers from the literature, the [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on each of them. This chapter focusses on how to select them when using NePS.
+AutoScAn provides a multitude of optimizers from the literature, the [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on each of them. This chapter focusses on how to select them when using AutoScAn.
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [NePS-ready](../reference/neps_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
+| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [AutoScAn-ready](../reference/autoscan_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
 | :- | :------------: | :----: | :---------: | :-----------------: | :---------------: |
-| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
-| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|❌|
-| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
-| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|✅|❌|
-| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|❌|
-| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|✅|❌|
-| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|❌|
-| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|❌|
-| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|❌|
+| `Grid Search`|[️️✖️*][autoscan.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
+| `Random Search`|[️️✖️*][autoscan.optimizers.algorithms.random_search]|[✔️*][autoscan.optimizers.algorithms.random_search]|❌|✅|❌|
+| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][autoscan.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
+| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][autoscan.optimizers.algorithms.successive_halving]|❌|✅|❌|
+| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][autoscan.optimizers.algorithms.asha]|❌|✅|❌|
+| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][autoscan.optimizers.algorithms.hyperband]|❌|✅|❌|
+| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][autoscan.optimizers.algorithms.async_hb]|❌|✅|❌|
+| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][autoscan.optimizers.algorithms.ifbo]|✅|❌|❌|
+| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][autoscan.optimizers.algorithms.pibo]|✅|✅|❌|❌|
 | [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
 | [`PriMO`](../reference/search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
 
 If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
-for the neps optimizer. This provides a hassle-free way to get started quickly, as NePS will automatically choose the best optimizer based on the characteristics of your search
+for the autoscan optimizer. This provides a hassle-free way to get started quickly, as AutoScAn will automatically choose the best optimizer based on the characteristics of your search
 space:
 
 - If it has fidelity: [`hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)
@@ -69,7 +69,7 @@ For example, running the following format, without specifying a optimizer will c
 the `pipeline_space` passed.
 
 ```python
-neps.run(
+autoscan.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
@@ -78,19 +78,19 @@ neps.run(
 )
 ```
 
-### 2.2 Choosing one of NePS Optimizers
+### 2.2 Choosing one of AutoScAn Optimizers
 
-We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. The available optimizers are imported via the `neps.algorithms` module.
+We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. The available optimizers are imported via the `autoscan.algorithms` module.
 You can use either the optimizer name or the optimizer class itself as the optimizer argument.
 
 ```python
-neps.run(
+autoscan.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
     total_evaluations_to_spend=25,
     # optimizer specified, along with an argument
-    optimizer=neps.algorithms.bayesian_optimization, # or as string: "bayesian_optimization"
+    optimizer=autoscan.algorithms.bayesian_optimization, # or as string: "bayesian_optimization"
 )
 ```
 
@@ -98,14 +98,14 @@ For a list of available optimizers, please refer [here](./search_algorithms/land
 
 !!! tip "Interactive tutorial"
 
-    The Optimizer Selection section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) lists all built-in optimizers with their default hyperparameters and runs several of them on the same task.
+    The Optimizer Selection section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/3_efficiency_techniques.ipynb) lists all built-in optimizers with their default hyperparameters and runs several of them on the same task.
 
 ### 2.3 Hyperparameter Overrides
 
 For users who want more control over the optimizer's hyperparameters, you can input a dictionary with your parameter choices together with the optimizer name.
 
 ```python
-neps.run(
+autoscan.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
@@ -116,13 +116,13 @@ neps.run(
 
 ### 2.4 Loading Optimizer Information
 
-NePS automatically saves the optimizer metadata (name and configuration) when you run an optimization. You can retrieve this information later using `neps.load_optimizer_info()`:
+AutoScAn automatically saves the optimizer metadata (name and configuration) when you run an optimization. You can retrieve this information later using `autoscan.load_optimizer_info()`:
 
 ```python
-import neps
+import autoscan
 
 # Load the optimizer info from a previous run
-optimizer_info = neps.load_optimizer_info("path/to/neps_folder")
+optimizer_info = autoscan.load_optimizer_info("path/to/autoscan_folder")
 
 # Access the optimizer name and configuration
 print(f"Optimizer: {optimizer_info['name']}")
@@ -137,11 +137,11 @@ This is useful for:
 
 !!! tip "Reconstructing a Complete Run"
 
-    Combine `load_optimizer_info()` with `load_pipeline_space()` to fully reconstruct a previous optimization. See [Reconstructing and Reproducing Runs](neps_run.md#reconstructing-and-reproducing-runs) for a complete example.
+    Combine `load_optimizer_info()` with `load_pipeline_space()` to fully reconstruct a previous optimization. See [Reconstructing and Reproducing Runs](autoscan_run.md#reconstructing-and-reproducing-runs) for a complete example.
 
 ## 3 Custom Optimizers
 
-To design entirely new optimizers, you can define them as class with a `__call__` method outside of NePS and pass them to the `neps.run()` function:
+To design entirely new optimizers, you can define them as class with a `__call__` method outside of AutoScAn and pass them to the `autoscan.run()` function:
 
 ```python
 @dataclass
@@ -160,10 +160,10 @@ class MyOptimizer:
         ...
 ```
 
-The class is then passed to the `neps.run()` function just like the built-in optimizers and can be configured the same way, using a dictionary:
+The class is then passed to the `autoscan.run()` function just like the built-in optimizers and can be configured the same way, using a dictionary:
 
 ```python
-neps.run(
+autoscan.run(
     evaluate_pipeline=run_function,
     pipeline_space=pipeline_space,
     root_directory="results/",
@@ -172,4 +172,4 @@ neps.run(
 )
 ```
 
-For more details on how to define a custom optimizer see the [Optimizer Interface][neps.optimizers.optimizer.AskFunction].
+For more details on how to define a custom optimizer see the [Optimizer Interface][autoscan.optimizers.optimizer.AskFunction].

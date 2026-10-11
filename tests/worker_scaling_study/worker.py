@@ -1,5 +1,5 @@
-"""One NePS worker of a scaling-study setting, in its own Slurm job on its own GPU.
-Calls `neps.run` on the setting's shared root directory for its share of the sweep.
+"""One AutoScAn worker of a scaling-study setting, in its own Slurm job on its own GPU.
+Calls `autoscan.run` on the setting's shared root directory for its share of the sweep.
 """
 
 from __future__ import annotations
@@ -11,17 +11,17 @@ from pathlib import Path
 
 from train import evaluate
 
-import neps
+import autoscan
 
-# How long a follower waits for the first worker to create the NePS state.
+# How long a follower waits for the first worker to create the AutoScAn state.
 STATE_WAIT_TIMEOUT_SEC = 900
 STATE_POLL_SEC = 2
 
 
-class HPOSpace(neps.PipelineSpace):
-    lr = neps.Categorical(choices=(3e-4, 1e-3))
-    wd = neps.Categorical(choices=(1e-5, 1e-4))
-    batch_size = neps.Categorical(choices=(256, 512))
+class HPOSpace(autoscan.PipelineSpace):
+    lr = autoscan.Categorical(choices=(3e-4, 1e-3))
+    wd = autoscan.Categorical(choices=(1e-5, 1e-4))
+    batch_size = autoscan.Categorical(choices=(256, 512))
 
     vision_width = 256
     vision_layers = 6
@@ -31,9 +31,9 @@ class HPOSpace(neps.PipelineSpace):
 
 
 def wait_for_state(root_dir: Path) -> None:
-    """Block until the first worker has finished creating the NePS state.
+    """Block until the first worker has finished creating the AutoScAn state.
 
-    `NePSState.create_or_load` deliberately does not lock the creation path, so
+    `AutoScAnState.create_or_load` deliberately does not lock the creation path, so
     two workers reaching it at once can read a half-written state. Only the
     first worker of a setting creates it; the rest wait here. `pipeline_space.pkl`
     is the last file creation writes, so its presence means the state is complete.
@@ -44,7 +44,8 @@ def wait_for_state(root_dir: Path) -> None:
         if time.time() > deadline:
             raise TimeoutError(
                 f"{marker} did not appear within {STATE_WAIT_TIMEOUT_SEC}s. The first "
-                "worker of this setting never created the NePS state -- check its log."
+                "worker of this setting never created the AutoScAn state -- check its"
+                " log."
             )
         time.sleep(STATE_POLL_SEC)
 
@@ -69,7 +70,7 @@ def main():
             **config,
         )
 
-    neps.run(
+    autoscan.run(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=HPOSpace(),
         root_directory=args.root_dir,

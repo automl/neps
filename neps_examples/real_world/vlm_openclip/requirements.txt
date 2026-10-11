@@ -1,4 +1,0 @@
-open_clip_torch
-pandas
-pyarrow
-neural-pipeline-search

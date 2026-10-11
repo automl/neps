@@ -5,7 +5,7 @@ For a detailed explanation of Multi-Fidelity and Priors, please refer [here](lan
 
 !!! tip "Interactive tutorial"
 
-    The Incorporating Expert Priors and Combining Strategies sections of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) run `PriorBand` on a search space with both priors and a fidelity.
+    The Incorporating Expert Priors and Combining Strategies sections of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/3_efficiency_techniques.ipynb) run `PriorBand` on a search space with both priors and a fidelity.
 
 ## Optimizers using Multi-Fidelity and Priors
 
@@ -51,7 +51,7 @@ $$
 
 where $\mathcal{S}_\pi$ and $\mathcal{S}_{\hat{\lambda}}$ are the summed probabilities of the top $1/\eta$ configurations under Prior and incumbent sampling, respectively. This way, the balance is shifted towards the distribution that would have yielded the best configurations so far. Crucially, this compensates for potentially bad Priors, as the incumbent sampling will take over when it has proven to be better.
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.priorband].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.priorband].
 
 ??? example "Practical Tips"
 
@@ -59,7 +59,7 @@ See the algorithm's implementation details in the [api][neps.optimizers.algorith
 
 !!! info
 
-    `PriorBand` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is both [Prior](../search_algorithms/prior.md) and [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
+    `PriorBand` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in AutoScAn when there is both [Prior](../search_algorithms/prior.md) and [Multi-Fidelity](../search_algorithms/multifidelity.md) information available.
 
 #### _Model-based_ `PriorBand`
 

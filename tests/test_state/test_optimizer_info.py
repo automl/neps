@@ -11,13 +11,17 @@ from typing import Any
 
 import pytest
 
-import neps
-from neps import algorithms
-from neps.exceptions import NePSError
-from neps.optimizers import OptimizerInfo, load_optimizer
-from neps.space import HPOFloat, HPOInteger, SearchSpace
-from neps.space.neps_spaces.parameters import Float, IntegerFidelity, PipelineSpace
-from neps.state import BudgetInfo, NePSState, OptimizationState, SeedSnapshot
+import autoscan
+from autoscan import algorithms
+from autoscan.exceptions import AutoScAnError
+from autoscan.optimizers import OptimizerInfo, load_optimizer
+from autoscan.space import HPOFloat, HPOInteger, SearchSpace
+from autoscan.space.autoscan_spaces.parameters import (
+    Float,
+    IntegerFidelity,
+    PipelineSpace,
+)
+from autoscan.state import AutoScAnState, BudgetInfo, OptimizationState, SeedSnapshot
 
 
 @pytest.fixture
@@ -27,8 +31,8 @@ def space() -> SearchSpace:
     )
 
 
-def _create_or_load(path: Path, info: OptimizerInfo) -> NePSState:
-    return NePSState.create_or_load(
+def _create_or_load(path: Path, info: OptimizerInfo) -> AutoScAnState:
+    return AutoScAnState.create_or_load(
         path=path,
         optimizer_info=info,
         optimizer_state=OptimizationState(
@@ -106,7 +110,7 @@ def test_resume_accepts_settings_not_recorded_on_disk(
     _create_or_load(root, same)
 
     _, different = load_optimizer(partial(algorithms.hyperband, eta=5), space)  # type: ignore
-    with pytest.raises(NePSError, match="optimizer info on disk does not match"):
+    with pytest.raises(AutoScAnError, match="optimizer info on disk does not match"):
         _create_or_load(root, different)
 
 
@@ -119,7 +123,7 @@ def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> N
     _create_or_load(root, OptimizerInfo(name="<lambda>", info={}))
 
     with pytest.raises(ValueError, match="custom optimizer '<lambda>'"):
-        neps.run(
+        autoscan.run(
             evaluate_pipeline=lambda x, epochs: x + epochs,
             pipeline_space=_PipelineSpace(),
             root_directory=root,
@@ -139,5 +143,5 @@ def test_bracket_optimizer_records_rung_layout(
 
     root = tmp_path / "run"
     _create_or_load(root, info)
-    assert neps.load_optimizer_info(root) == info
+    assert autoscan.load_optimizer_info(root) == info
     _create_or_load(root, info)  # `derived` is not compared when resuming

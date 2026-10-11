@@ -1,9 +1,9 @@
 # The `evaluate_pipeline` function
 
 > **TL;DR**
-> *Sync*: return a scalar or a dict ⟶ NePS records it automatically.
-> *Async*: return `None`, launch a job, and call `neps.save_pipeline_results()` when the job finishes.
-> *Plots*: pass `live_plots=True` to `neps.run()` (sync) or to `neps.save_pipeline_results()` (async) to redraw them after every result.
+> *Sync*: return a scalar or a dict ⟶ AutoScAn records it automatically.
+> *Async*: return `None`, launch a job, and call `autoscan.save_pipeline_results()` when the job finishes.
+> *Plots*: pass `live_plots=True` to `autoscan.run()` (sync) or to `autoscan.save_pipeline_results()` (async) to redraw them after every result.
 
 ---
 
@@ -15,14 +15,14 @@
 | **Dict**       | need cost/extra metrics                     | `{"objective_to_minimize": loss, "cost": 3}` |
 | **`None`**     | you launch the job elsewhere (SLURM, k8s …) | *see § 3 Async*                              |
 
-All other values raise a `TypeError` inside NePS.
+All other values raise a `TypeError` inside AutoScAn.
 
 ## 2 Result dictionary keys
 
 | key                     | purpose                                                                      | required?                     |
 | ----------------------- | ---------------------------------------------------------------------------- | ----------------------------- |
-| `objective_to_minimize` | scalar NePS will minimise                                                    | **yes**                       |
-| `cost`                  | wall‑clock, GPU‑hours, … —  Stopping criterion when passed `total_cost_to_spend` to `neps.run` | yes *iff* cost budget enabled |
+| `objective_to_minimize` | scalar AutoScAn will minimise                                                    | **yes**                       |
+| `cost`                  | wall‑clock, GPU‑hours, … —  Stopping criterion when passed `total_cost_to_spend` to `autoscan.run` | yes *iff* cost budget enabled |
 | `learning_curve`        | list/np.array of intermediate objectives                                     | optional                      |
 | `extra`                 | any JSON‑serialisable blob                                                   | optional                      |
 | `exception`                 | any Exception illustrating the error in evaluation                                                   | optional                      |
@@ -30,7 +30,7 @@ All other values raise a `TypeError` inside NePS.
 > **Tip**  Return exactly what you need; extra keys are preserved in the trial’s `report.yaml`.
 
 > **Live plots**  When `evaluate_pipeline` returns its result (sync), the worker records it
-> and refreshes `root_directory/summary/`. Pass `live_plots=True` to `neps.run()` to also
+> and refreshes `root_directory/summary/`. Pass `live_plots=True` to `autoscan.run()` to also
 > redraw the plots every time: the incumbent trajectory, or the Pareto front for two
 > objectives, plus anything the optimizer provides. See
 > [Analysing Runs](analyse.md#live-plots-during-a-run).
@@ -48,7 +48,7 @@ All other values raise a `TypeError` inside NePS.
 2. **The submit script** or **the job** must call
 
    ```python
-   neps.save_pipeline_results(
+   autoscan.save_pipeline_results(
        user_result=result_dict,
        pipeline_id=pipeline_id,
        root_directory=root_directory,
@@ -60,16 +60,16 @@ All other values raise a `TypeError` inside NePS.
 
 ### 3.2 Code walk‑through
 
-`submit.py` – called by NePS synchronously
+`submit.py` – called by AutoScAn synchronously
 
 ```python
 from pathlib import Path
-import neps
+import autoscan
 import os
 
 def evaluate_pipeline(
     pipeline_directory: Path,
-    pipeline_id: str,          # NePS injects this automatically
+    pipeline_id: str,          # AutoScAn injects this automatically
     root_directory: Path,      # idem
     learning_rate: float,
     optimizer: str,
@@ -100,7 +100,7 @@ python run_pipeline.py \
 `run_pipeline.py` – executed on the compute node
 
 ```python
-import argparse, json, time, neps
+import argparse, json, time, autoscan
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -124,7 +124,7 @@ except Exception as e:
         "exception": e
     }
 
-neps.save_pipeline_results(
+autoscan.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
@@ -133,15 +133,15 @@ neps.save_pipeline_results(
 
 * No worker idles while your job is in the queue ➜ better throughput.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
-* Compatible with Successive‑Halving/ASHA — NePS just waits for `report.yaml`.
+* Compatible with Successive‑Halving/ASHA — AutoScAn just waits for `report.yaml`.
 
 ### 3.3 Live plots
 
-In async mode the result is recorded by `neps.save_pipeline_results()` in your job, not by
+In async mode the result is recorded by `autoscan.save_pipeline_results()` in your job, not by
 the worker, so that is where you ask for the plots to be redrawn:
 
 ```python
-neps.save_pipeline_results(
+autoscan.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
@@ -151,13 +151,13 @@ neps.save_pipeline_results(
 
 This refreshes the general plots (incumbent trajectory or Pareto front) in
 `root_directory/summary/`. Optimizer-specific artifacts need the optimizer object, so
-they are only drawn by `neps.run(..., live_plots=True)`. To redraw everything once all
-jobs are done, call `neps.analyze(root_directory)`; see
-[Analysing Runs](analyse.md#plots-and-reports-nepsanalyze).
+they are only drawn by `autoscan.run(..., live_plots=True)`. To redraw everything once all
+jobs are done, call `autoscan.analyze(root_directory)`; see
+[Analysing Runs](analyse.md#plots-and-reports-autoscananalyze).
 
 ### 3.4 Common pitfalls
 
-* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `total_evaluations_to_spend` and/or `total_cost_to_spend`) when calling `neps.run`.
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `total_evaluations_to_spend` and/or `total_cost_to_spend`) when calling `autoscan.run`.
 
 ## 4 Extra injected arguments
 
@@ -175,6 +175,6 @@ Use them to handle warm‑starts, logging and result persistence.
 
 * [x] Return scalar **or** dict **or** `None`.
 * [x] Include `cost` when using cost budgets.
-* [x] When returning `None`, make sure **exactly one** call to `neps.save_pipeline_results` happens.
+* [x] When returning `None`, make sure **exactly one** call to `autoscan.save_pipeline_results` happens.
 * [x] Save checkpoints and artefacts in `pipeline_directory`.
 * [x] Handle resume via `previous_pipeline_directory`.

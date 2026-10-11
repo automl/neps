@@ -12,50 +12,50 @@
 #     name: python3
 # ---
 
-# # Defining Search Spaces in NePS
+# # Defining Search Spaces in AutoScAn
 # This tutorial covers the different parameter types and how to define expressive search spaces for your optimization problems.
 
 # ## Installation and Setup
 
 
-# !git clone --depth 1 https://github.com/automl/neps.git /content/neps
-# %cd /content/neps
-# !pip install -e /content/neps
+# !git clone --depth 1 https://github.com/automl/auto-scan.git /content/autoscan
+# %cd /content/autoscan
+# !pip install -e /content/autoscan
 
 
-import neps
+import autoscan
 import logging
 
 # ## Parameter Types
-# NePS supports several parameter types for defining your search space.
+# AutoScAn supports several parameter types for defining your search space.
 
 # ### 1. Float Parameters
 # Continuous parameters with optional log scaling.
 
 # Linear scale
-learning_rate_linear = neps.Float(lower=0.0001, upper=0.1)
+learning_rate_linear = autoscan.Float(lower=0.0001, upper=0.1)
 # Log scale (useful for learning rates, regularization)
-learning_rate_log = neps.Float(lower=1e-6, upper=1e-1, log=True)
+learning_rate_log = autoscan.Float(lower=1e-6, upper=1e-1, log=True)
 # With prior value
-dropout_rate = neps.Float(lower=0.0, upper=0.9, prior=0.5, prior_confidence="medium")
+dropout_rate = autoscan.Float(lower=0.0, upper=0.9, prior=0.5, prior_confidence="medium")
 
 # ### 2. Integer Parameters
 # Discrete integer parameters.
 
 # Basic integer
-num_layers = neps.Integer(lower=1, upper=10)
+num_layers = autoscan.Integer(lower=1, upper=10)
 # With prior value
-batch_size = neps.Integer(lower=16, upper=256, prior=64, prior_confidence="medium")
+batch_size = autoscan.Integer(lower=16, upper=256, prior=64, prior_confidence="medium")
 # With log scale
-hidden_units = neps.Integer(lower=32, upper=2048, log=True)
+hidden_units = autoscan.Integer(lower=32, upper=2048, log=True)
 
 # ### 3. Categorical Parameters
 # Discrete choices with optional ordering.
 
 # Basic categorical
-optimizer = neps.Categorical(choices=["sgd", "adam", "adamw"])
+optimizer = autoscan.Categorical(choices=["sgd", "adam", "adamw"])
 # With prior value
-activation = neps.Categorical(
+activation = autoscan.Categorical(
     choices=["relu", "tanh", "sigmoid"],
     prior=0,  # Index of default choice (relu)
     prior_confidence="high"
@@ -65,40 +65,40 @@ activation = neps.Categorical(
 
 # ### The PipelineSpace Class
 
-class MyOptimizationSpace(neps.PipelineSpace):
+class MyOptimizationSpace(autoscan.PipelineSpace):
     """Define a structured search space for neural architecture search."""
 
     # Architecture parameters
-    num_layers = neps.Integer(lower=2, upper=6, prior=3, prior_confidence="medium")
-    num_neurons = neps.Integer(lower=64, upper=512, log=True, prior=256, prior_confidence="medium")
-    activation = neps.Categorical(
+    num_layers = autoscan.Integer(lower=2, upper=6, prior=3, prior_confidence="medium")
+    num_neurons = autoscan.Integer(lower=64, upper=512, log=True, prior=256, prior_confidence="medium")
+    activation = autoscan.Categorical(
         choices=["relu", "elu", "gelu"],
         prior=0,
         prior_confidence="medium"
     )
 
     # Training hyperparameters
-    learning_rate = neps.Float(lower=1e-6, upper=1e-1, log=True, prior=1e-3, prior_confidence="medium")
-    optimizer = neps.Categorical(
+    learning_rate = autoscan.Float(lower=1e-6, upper=1e-1, log=True, prior=1e-3, prior_confidence="medium")
+    optimizer = autoscan.Categorical(
         choices=["sgd", "adam", "adamw"],
         prior=1,
         prior_confidence="high"
     )
 
     # Regularization
-    dropout_rate = neps.Float(lower=0.0, upper=0.9, prior=0.1, prior_confidence="medium")
-    weight_decay = neps.Float(lower=0.0, upper=1e-2, log=True, prior=1e-4, prior_confidence="medium")
+    dropout_rate = autoscan.Float(lower=0.0, upper=0.9, prior=0.1, prior_confidence="medium")
+    weight_decay = autoscan.Float(lower=0.0, upper=1e-2, log=True, prior=1e-4, prior_confidence="medium")
 
 # ## Fidelity Parameters
 
 # Use fidelity parameters for multi-fidelity optimization (train with different epochs, dataset sizes, etc.).
 
 # Define a search space with a fidelity parameter
-class FidelitySpace(neps.PipelineSpace):
-    learning_rate=neps.Float(1e-6, 1e-1, log=True)
-    optimizer=neps.Categorical(["sgd", "adam"])
+class FidelitySpace(autoscan.PipelineSpace):
+    learning_rate=autoscan.Float(1e-6, 1e-1, log=True)
+    optimizer=autoscan.Categorical(["sgd", "adam"])
     # Fidelity: Use IntegerFidelity or FloatFidelity for multi-fidelity optimization
-    epochs=neps.IntegerFidelity(1, 10)
+    epochs=autoscan.IntegerFidelity(1, 10)
 
 # ## Important: Constraint-Free Search Spaces
 #
@@ -108,8 +108,8 @@ class FidelitySpace(neps.PipelineSpace):
 # **Bad Example: Constrained search space**
 # If there's an implicit constraint like `max_units % max_layers = 0 and max_units <= 8 * max_layers`:
 # ```python
-# max_layers = neps.Integer(1, 10)
-# max_units = neps.Integer(64, 1024)
+# max_layers = autoscan.Integer(1, 10)
+# max_units = autoscan.Integer(64, 1024)
 # # Problem: Not all combinations are valid! The optimizer might waste time exploring
 # # configurations that violate the implicit constraint.
 # ```
@@ -117,8 +117,8 @@ class FidelitySpace(neps.PipelineSpace):
 # **Good Example: Constraint-free search space**
 # Refactor to use independent dimensions:
 # ```python
-# max_layers = neps.Integer(1, 10)
-# units_per_layer = neps.Integer(1, 8)  # Independent of max_layers
+# max_layers = autoscan.Integer(1, 10)
+# units_per_layer = autoscan.Integer(1, 8)  # Independent of max_layers
 # # Now all combinations are valid and the optimizer can search freely!
 # ```
 #
@@ -162,7 +162,7 @@ def make_pipeline(*blocks: dict, learning_rate: float, optimizer: str) -> dict:
     }
 
 
-class ConditionalPipelineSpace(neps.PipelineSpace):
+class ConditionalPipelineSpace(autoscan.PipelineSpace):
     """Build a variable pipeline from independently sampled conditional blocks.
 
     Each block independently chooses between a dense and convolutional branch. The
@@ -170,31 +170,31 @@ class ConditionalPipelineSpace(neps.PipelineSpace):
     the final evaluation receives the constructed pipeline object.
     """
 
-    _dense_layer = neps.Operation(
+    _dense_layer = autoscan.Operation(
         operator=dense_layer,
         kwargs={
-            "num_neurons": neps.Integer(64, 512, log=True).resample(),
-            "activation": neps.Categorical(["relu", "gelu", "elu"]).resample(),
+            "num_neurons": autoscan.Integer(64, 512, log=True).resample(),
+            "activation": autoscan.Categorical(["relu", "gelu", "elu"]).resample(),
         },
     )
-    _conv_layer = neps.Operation(
+    _conv_layer = autoscan.Operation(
         operator=conv_layer,
         kwargs={
-            "num_filters": neps.Integer(16, 128, log=True).resample(),
-            "kernel_size": neps.Categorical([3, 5, 7]).resample(),
+            "num_filters": autoscan.Integer(16, 128, log=True).resample(),
+            "kernel_size": autoscan.Categorical([3, 5, 7]).resample(),
         },
     )
 
-    _block = neps.Categorical(
+    _block = autoscan.Categorical(
         choices=(
             _dense_layer.resample(),
             _conv_layer.resample(),
         ),
     )
-    _learning_rate = neps.Float(1e-5, 1e-2, log=True)
-    _optimizer = neps.Categorical(["adam", "adamw", "sgd"])
+    _learning_rate = autoscan.Float(1e-5, 1e-2, log=True)
+    _optimizer = autoscan.Categorical(["adam", "adamw", "sgd"])
 
-    pipeline = neps.Operation(
+    pipeline = autoscan.Operation(
         operator=make_pipeline,
         args=(
             _block.resample(),
@@ -226,7 +226,7 @@ def evaluate_conditional_pipeline(pipeline: dict) -> float:
 
 
 conditional_space = ConditionalPipelineSpace()
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_conditional_pipeline,
     pipeline_space=conditional_space,
     root_directory="conditional_search_space_example/",
@@ -244,7 +244,7 @@ neps.run(
 # - **Float**: For continuous parameters, use `log=True` for log-scaled distributions
 # - **Integer**: For discrete counts, also supports `log=True` for exponential spacing
 # - **Categorical**: For discrete choices between multiple options
-# - **Fidelity**: Use `neps.IntegerFidelity()` and `neps.FloatFidelity()` for multi-fidelity optimization
+# - **Fidelity**: Use `autoscan.IntegerFidelity()` and `autoscan.FloatFidelity()` for multi-fidelity optimization
 # - **PipelineSpace**: Use class-based spaces for better organization in large search spaces
 # - **Priors**: Use `prior` and `prior_confidence` to incorporate domain knowledge
 #
@@ -253,7 +253,7 @@ neps.run(
 # refactor the space to use independent dimensions (e.g., units_per_layer and max_layers).
 # Constraints between hyperparameters can confuse optimization algorithms and reduce efficiency.
 #
-# For more details, see the [NePS Documentation](https://automl.github.io/neps/latest/reference/neps_spaces/).
+# For more details, see the [AutoScAn Documentation](https://automl.github.io/auto-scan/latest/reference/autoscan_spaces/).
 
 # Next steps:
-# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.
+# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.

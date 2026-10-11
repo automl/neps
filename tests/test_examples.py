@@ -6,7 +6,7 @@ import runpy
 from pathlib import Path
 
 import pytest
-from neps_examples import ci_examples, core_examples
+from autoscan_examples import ci_examples, core_examples
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +27,7 @@ def no_logs_gte_error(caplog):
     assert not errors
 
 
-examples_folder = Path(__file__, "..", "..", "neps_examples").resolve()
+examples_folder = Path(__file__, "..", "..", "autoscan_examples").resolve()
 core_examples_scripts = [examples_folder / f"{example}.py" for example in core_examples]
 ci_examples_scripts = [examples_folder / f"{example}.py" for example in ci_examples]
 

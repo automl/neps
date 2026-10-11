@@ -1,23 +1,23 @@
 # Algorithms
 
-Algorithms are the search strategies determining what configurations to evaluate next. In NePS, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms. This chapter gives an overview of the different algorithms available in NePS and practical tips for their usage.
+Algorithms are the search strategies determining what configurations to evaluate next. In AutoScAn, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms. This chapter gives an overview of the different algorithms available in AutoScAn and practical tips for their usage.
 
 We distinguish between algorithms that use different types of information and strategies to guide the search process:
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [NePS-ready](../neps_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
+| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [AutoScAn-ready](../autoscan_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
 | :- | :------------: | :----: | :---------: | :-----------------: | :---------------: |
-| `Grid Search`|[️️✖️*][neps.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
-| `Random Search`|[️️✖️*][neps.optimizers.algorithms.random_search]|[✔️*][neps.optimizers.algorithms.random_search]|❌|✅|❌|
-| `Complex Random Search`|[️️✖️*][neps.optimizers.algorithms.complex_random_search]|[✔️*][neps.optimizers.algorithms.complex_random_search]|❌|✅|❌|
-| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][neps.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
-| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][neps.optimizers.algorithms.successive_halving]|❌|✅|❌|
-| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][neps.optimizers.algorithms.asha]|❌|✅|❌|
-| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][neps.optimizers.algorithms.hyperband]|❌|✅|❌|
-| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][neps.optimizers.algorithms.async_hb]|❌|✅|❌|
-| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][neps.optimizers.algorithms.ifbo]|✅|❌|❌|
-| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][neps.optimizers.algorithms.pibo]|✅|✅|❌|❌|
+| `Grid Search`|[️️✖️*][autoscan.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
+| `Random Search`|[️️✖️*][autoscan.optimizers.algorithms.random_search]|[✔️*][autoscan.optimizers.algorithms.random_search]|❌|✅|❌|
+| `Complex Random Search`|[️️✖️*][autoscan.optimizers.algorithms.complex_random_search]|[✔️*][autoscan.optimizers.algorithms.complex_random_search]|❌|✅|❌|
+| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][autoscan.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
+| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][autoscan.optimizers.algorithms.successive_halving]|❌|✅|❌|
+| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][autoscan.optimizers.algorithms.asha]|❌|✅|❌|
+| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][autoscan.optimizers.algorithms.hyperband]|❌|✅|❌|
+| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][autoscan.optimizers.algorithms.async_hb]|❌|✅|❌|
+| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][autoscan.optimizers.algorithms.ifbo]|✅|❌|❌|
+| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][autoscan.optimizers.algorithms.pibo]|✅|✅|❌|❌|
 | [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
 | [`PriMO`](../search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
 
@@ -38,7 +38,7 @@ We present a collection of MF-algorithms [here](./multifidelity.md) and algorith
 
 ## What are Priors?
 
-Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your NePS-search space [here](../../reference/neps_spaces.md#1-constructing-hyperparameter-spaces).
+Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your AutoScAn-search space [here](../../reference/autoscan_spaces.md#1-constructing-hyperparameter-spaces).
 
 !!! tip "Advantages of using Priors"
 
@@ -48,6 +48,6 @@ Priors are used when there exists some information about the search space, that 
 !!! warning "Disadvantages of using Priors"
 
     - **Less exploration**: By focusing on these regions, the optimizer _might_ miss out on other regions that could potentially be better.
-    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in NePS are specifically designed to handle bad priors, but they still slow down the search process.
+    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in AutoScAn are specifically designed to handle bad priors, but they still slow down the search process.
 
 We present a collection of algorithms that use Priors [here](./prior.md) and algorithms that combine priors with Multi-Fidelity [here](./multifidelity_prior.md).

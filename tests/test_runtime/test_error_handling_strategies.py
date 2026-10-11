@@ -7,14 +7,14 @@ from pathlib import Path
 import pytest
 from pytest_cases import fixture, parametrize
 
-from neps.exceptions import WorkerRaiseError
-from neps.optimizers import OptimizerInfo
-from neps.optimizers.algorithms import random_search
-from neps.runtime import DefaultWorker
-from neps.space.neps_spaces.parameters import Float, PipelineSpace
-from neps.state import (
+from autoscan.exceptions import WorkerRaiseError
+from autoscan.optimizers import OptimizerInfo
+from autoscan.optimizers.algorithms import random_search
+from autoscan.runtime import DefaultWorker
+from autoscan.space.autoscan_spaces.parameters import Float, PipelineSpace
+from autoscan.state import (
+    AutoScAnState,
     DefaultReportValues,
-    NePSState,
     OnErrorPossibilities,
     OptimizationState,
     SeedSnapshot,
@@ -24,12 +24,12 @@ from neps.state import (
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState:
+def autoscan_state(tmp_path: Path) -> AutoScAnState:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
-    return NePSState.create_or_load(
-        path=tmp_path / "neps_state",
+    return AutoScAnState.create_or_load(
+        path=tmp_path / "autoscan_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
@@ -45,7 +45,7 @@ def neps_state(tmp_path: Path) -> NePSState:
     [OnErrorPossibilities.RAISE_ANY_ERROR, OnErrorPossibilities.RAISE_WORKER_ERROR],
 )
 def test_worker_raises_when_error_in_self(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
     on_error: OnErrorPossibilities,
 ) -> None:
     class TestSpace(PipelineSpace):
@@ -68,7 +68,7 @@ def test_worker_raises_when_error_in_self(
         raise ValueError("This is an error")
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -76,7 +76,7 @@ def test_worker_raises_when_error_in_self(
     with pytest.raises(WorkerRaiseError):
         worker.run()
 
-    trials = neps_state.lock_and_read_trials()
+    trials = autoscan_state.lock_and_read_trials()
     n_crashed = sum(
         trial.metadata.state == Trial.State.CRASHED is not None
         for trial in trials.values()
@@ -84,11 +84,11 @@ def test_worker_raises_when_error_in_self(
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 1
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 1
 
 
-def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None:
+def test_worker_raises_when_error_in_other_worker(autoscan_state: AutoScAnState) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
@@ -109,13 +109,13 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
         raise ValueError("This is an error")
 
     worker1 = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
     )
     worker2 = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
@@ -130,7 +130,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     with pytest.raises(WorkerRaiseError):
         worker2.run()
 
-    trials = neps_state.lock_and_read_trials()
+    trials = autoscan_state.lock_and_read_trials()
     n_crashed = sum(
         trial.metadata.state == Trial.State.CRASHED is not None
         for trial in trials.values()
@@ -138,8 +138,8 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 1
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 1
 
 
 @pytest.mark.parametrize(
@@ -147,7 +147,7 @@ def test_worker_raises_when_error_in_other_worker(neps_state: NePSState) -> None
     [OnErrorPossibilities.IGNORE, OnErrorPossibilities.RAISE_WORKER_ERROR],
 )
 def test_worker_does_not_raise_when_error_in_other_worker(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
     on_error: OnErrorPossibilities,
 ) -> None:
     class TestSpace(PipelineSpace):
@@ -178,13 +178,13 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     evaler = _Eval(do_raise=True)
 
     worker1 = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
     )
     worker2 = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
@@ -195,7 +195,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     with contextlib.suppress(WorkerRaiseError):
         worker1.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(1 for t in trials if t.metadata.evaluating_worker_id == worker1.worker_id)
         == 1
@@ -204,7 +204,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     # Worker2 should run successfully
     evaler.do_raise = False
     worker2.run()
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(1 for t in trials if t.metadata.evaluating_worker_id == worker2.worker_id)
         == 1
@@ -220,5 +220,5 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     assert n_crashed == 1
     assert len(trials) == 2
 
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 1
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 1

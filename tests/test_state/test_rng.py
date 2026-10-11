@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from neps.state.seed_snapshot import SeedSnapshot
+from autoscan.state.seed_snapshot import SeedSnapshot
 
 
 @pytest.mark.parametrize(

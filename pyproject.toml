@@ -1,7 +1,7 @@
 [project]
-name = "neural-pipeline-search"
-version = "v0.17.0"
-description = "Neural Pipeline Search helps deep learning experts find the best neural pipeline."
+name = "auto-scan"
+version = "v0.1.0"
+description = "Automated Scaling Analysis helps deep learning experts find the optimum Architectural and Hyperparameter choices."
 authors = [
     { name = "Nastaran Alipour", email = "alipourn@cs.uni-freiburg.de" },
     { name = "Neeratyoy Mallik"},
@@ -28,6 +28,8 @@ readme = "README.md"
 license = { file = "LICENSE" }
 keywords = [
     "Deep Learning",
+    "Scaling Laws",
+    "Scaling Analysis",
     "Neural Pipeline Search",
     "Neural Architecture Search",
     "Hyperparameter Optimization",
@@ -72,9 +74,9 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/automl/neps"
-repository = "https://github.com/automl/neps"
-documentation = "https://automl.github.io/neps/"
+homepage = "https://github.com/automl/auto-scan"
+repository = "https://github.com/automl/auto-scan"
+documentation = "https://automl.github.io/auto-scan/"
 
 [project.optional-dependencies]
 dev = [
@@ -98,9 +100,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = [
-    "neps",
-    "neps.*",
-    "neps_examples",
+    "autoscan",
+    "autoscan.*",
+    "autoscan_examples",
     "tutorials",
 ]
 exclude = []
@@ -117,10 +119,10 @@ build-backend = "setuptools.build_meta"
 target-version = "py311"
 output-format = "full"
 line-length = 90
-src = ["neps"]
+src = ["autoscan"]
 
 exclude = [
-    "neps_examples",
+    "autoscan_examples",
     "tutorials",
     ".bzr",
     ".direnv",
@@ -248,7 +250,7 @@ ignore = [
     "PT011", # Catch value error to broad
     "ARG001", # unused param
 ]
-"tests/test_neps_space/*.py" = [
+"tests/test_autoscan_space/*.py" = [
     "E501", # Line length for architecture strings
 ]
 "tests/worker_scaling_study/*.py" = [
@@ -256,7 +258,7 @@ ignore = [
 ]
 
 "__init__.py" = ["I002"]
-"neps_examples/*" = [
+"autoscan_examples/*" = [
     "INP001",
     "I002",
     "E741",
@@ -269,12 +271,12 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
-"neps/space/neps_spaces/sampling.py" = [
+"autoscan/space/autoscan_spaces/sampling.py" = [
   "T201",   # print() is intentional for IOSampler user interaction
   "RET508", # else after break is needed for error messages
 ]
 # TODO
-"neps/optimizers/**.py" = [
+"autoscan/optimizers/**.py" = [
   "D", # Documentation of everything
   "ARG002", # Unused arguments, bunch of them in inits
   "PLR0913", # Too many arguments...
@@ -282,7 +284,7 @@ ignore = [
 
 
 [tool.ruff.lint.isort]
-known-first-party = ["neps"]
+known-first-party = ["autoscan"]
 known-third-party = []
 required-imports = ["from __future__ import annotations"]
 no-lines-before = ["future"]
@@ -302,14 +304,13 @@ markers = [
     "ci_examples",
     "core_examples",
     "runtime",
-    "neps_api",
     "summary_csv",
 ]
 filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
 python_version = "3.11"  # Match minimum supported version
-packages = ["neps"]
+packages = ["autoscan"]
 show_error_codes = true
 
 namespace_packages = true
@@ -336,7 +337,7 @@ module = ["requests"]
 ignore_missing_imports = true
 
 [tool.bumpversion]
-current_version = "0.17.0"
+current_version = "0.1.0"
 commit = true
 tag = false  # tag master after the release PR is merged, see CONTRIBUTING.md
 

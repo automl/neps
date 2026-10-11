@@ -12,7 +12,7 @@ from run_scaling_study import (
     root_dir_for,
 )
 
-import neps
+import autoscan
 
 SUMMARY_DIR = ROOT_DIRECTORY / "summary"
 
@@ -31,7 +31,7 @@ def _sweep_df(n_workers: int) -> pd.DataFrame:
     if not root_dir.exists():
         return pd.DataFrame()
 
-    df, _ = neps.status(root_directory=root_dir)
+    df, _ = autoscan.status(root_directory=root_dir)
     if df.empty or "extra.samples_per_sec" not in df.columns:
         return pd.DataFrame()
 

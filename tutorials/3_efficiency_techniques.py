@@ -12,19 +12,19 @@
 #     name: python3
 # ---
 
-# # Efficient Optimization with NePS: Multi-Fidelity and Advanced Techniques
+# # Efficient Optimization with AutoScAn: Multi-Fidelity and Advanced Techniques
 # This tutorial covers advanced techniques to speed up hyperparameter optimization:
 # multi-fidelity learning, expert priors, optimizer selection, and parallelization.
 
 # ## Installation and Setup
 
 
-# !git clone --depth 1 https://github.com/automl/neps.git /content/neps
-# %cd /content/neps
-# !pip install -e /content/neps
+# !git clone --depth 1 https://github.com/automl/auto-scan.git /content/autoscan
+# %cd /content/autoscan
+# !pip install -e /content/autoscan
 
 
-import neps
+import autoscan
 import logging
 import numpy as np
 import time
@@ -88,7 +88,7 @@ def evaluate_pipeline(
 # Train configurations at different fidelities (e.g., different epoch counts)
 # to efficiently explore the search space.
 #
-# Multi-fidelity optimizers available in NePS include:
+# Multi-fidelity optimizers available in AutoScAn include:
 # - `successive_halving`: synchronous promotion through one bracket
 # - `asha`: asynchronous Successive Halving, useful with parallel workers
 # - `hyperband`: multiple bracket layouts, the default for flat HPO spaces with fidelity
@@ -97,24 +97,24 @@ def evaluate_pipeline(
 # - `priorband`: Hyperband-style multi-fidelity search with expert priors
 # - `moasha`, `mo_hyperband`, `primo`: multi-objective variants
 #
-# For complex `PipelineSpace` objects, NePS also exposes native variants such as
-# `neps_hyperband` and `neps_priorband`, and `optimizer="auto"` chooses them when
+# For complex `PipelineSpace` objects, AutoScAn also exposes native variants such as
+# `autoscan_hyperband` and `autoscan_priorband`, and `optimizer="auto"` chooses them when
 # the search space contains fidelity parameters.
 
 # ### Define Search Space with Fidelity
 
-class MultiFidelitySpace(neps.PipelineSpace):
+class MultiFidelitySpace(autoscan.PipelineSpace):
     """Search space for multi-fidelity optimization."""
-    learning_rate = neps.Float(1e-6, 1e-1, log=True)
-    optimizer = neps.Categorical(["sgd", "adamw"])
-    num_neurons = neps.Integer(64, 1024)
+    learning_rate = autoscan.Float(1e-6, 1e-1, log=True)
+    optimizer = autoscan.Categorical(["sgd", "adamw"])
+    num_neurons = autoscan.Integer(64, 1024)
     # Fidelity parameter: Use IntegerFidelity
-    epochs = neps.IntegerFidelity(1, 10)
+    epochs = autoscan.IntegerFidelity(1, 10)
 
 
 # ### Run Multi-Fidelity Optimization
 
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_multi_fidelity/",
     pipeline_space=MultiFidelitySpace(),
@@ -129,41 +129,41 @@ neps.run(
 # `previous_pipeline_directory` in `evaluate_pipeline` so promoted configurations can
 # load checkpoints from earlier fidelity rungs.
 
-# !python -m neps.status results_multi_fidelity/
+# !python -m autoscan.status results_multi_fidelity/
 
 # ## Technique 2: Incorporating Expert Priors
 # Provide prior values and confidence levels to incorporate domain knowledge.
 
 # ### Define Search Space with Priors
 
-class ExpertPriorSpace(neps.PipelineSpace):
+class ExpertPriorSpace(autoscan.PipelineSpace):
     """Search space with expert priors incorporated."""
 
     # We believe adamw with these settings is good (high confidence)
-    learning_rate = neps.Float(
+    learning_rate = autoscan.Float(
         1e-6, 1e-1,
         log=True,
         prior=0.001,  # Common prior
         prior_confidence="high"
     )
 
-    optimizer = neps.Categorical(
+    optimizer = autoscan.Categorical(
         ["sgd", "adamw"],
         prior=1,  # adamw
         prior_confidence="high"
     )
 
-    num_neurons = neps.Integer(
+    num_neurons = autoscan.Integer(
         64, 1024,
         prior=256,
         prior_confidence="low"  # Less confident about exact size
     )
 
-    epochs = neps.IntegerFidelity(1, 10)
+    epochs = autoscan.IntegerFidelity(1, 10)
 
 # ### Run Optimization with Priors
 
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_with_priors/",
     pipeline_space=ExpertPriorSpace(),
@@ -173,18 +173,18 @@ neps.run(
 )
 
 # `priorband` combines the fidelity ladder with prior-guided sampling. If you leave
-# `optimizer="auto"`, NePS chooses the appropriate prior-aware multi-fidelity
+# `optimizer="auto"`, AutoScAn chooses the appropriate prior-aware multi-fidelity
 # optimizer for spaces that contain both priors and fidelities.
 
-# !python -m neps.status results_with_priors/
+# !python -m autoscan.status results_with_priors/
 
 # ## Technique 3: Optimizer Selection
 
-# NePS supports multiple search algorithms. You can let `optimizer="auto"` pick from
+# AutoScAn supports multiple search algorithms. You can let `optimizer="auto"` pick from
 # the search-space structure, or specify an optimizer explicitly.
 
-from neps.optimizers.algorithms import PredefinedOptimizers
-from neps.utils.common import extract_keyword_defaults
+from autoscan.optimizers.algorithms import PredefinedOptimizers
+from autoscan.utils.common import extract_keyword_defaults
 
 print("Available optimization algorithms:")
 for algo in sorted(PredefinedOptimizers):
@@ -196,7 +196,7 @@ for algo in ["successive_halving", "asha", "hyperband", "async_hb", "ifbo", "pri
     print(f"\n{algo} hyperparameters:")
     print(extract_keyword_defaults(PredefinedOptimizers[algo]))
 
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_custom_optimizer/",
     pipeline_space=MultiFidelitySpace(),
@@ -207,13 +207,13 @@ neps.run(
 
 # ## Technique 4: Parallelization
 
-# NePS makes parallelization effortless. Multiple processes can work on the same
+# AutoScAn makes parallelization effortless. Multiple processes can work on the same
 # `root_directory` simultaneously.
 
 # ### Single Process Example (Sequential)
 
 # Sequential run
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_sequential/",
     pipeline_space=ExpertPriorSpace(),
@@ -221,17 +221,17 @@ neps.run(
     overwrite_root_directory=True,
 )
 
-# !python -m neps.status results_sequential/
+# !python -m autoscan.status results_sequential/
 
 print("Sequential run complete")
 
 # ### Parallel Execution Pattern
 
-# To parallelize, run multiple `neps.run()` calls with the same `root_directory`:
+# To parallelize, run multiple `autoscan.run()` calls with the same `root_directory`:
 
 import multiprocessing as mp
 def run_worker():
-    neps.run(
+    autoscan.run(
         evaluate_pipeline=evaluate_pipeline,
         root_directory="results_parallel/",
         pipeline_space=ExpertPriorSpace(),
@@ -247,42 +247,42 @@ for p in processes:
 
 # They'll coordinate and sample/run new configurations without conflicts, all writing to the same results directory.
 
-# !python -m neps.status results_parallel/
+# !python -m autoscan.status results_parallel/
 
 # ## Technique 5: Combining Strategies
 
 # Combine multiple techniques for maximum efficiency.
-class CombinedSearchSpace(neps.PipelineSpace):
+class CombinedSearchSpace(autoscan.PipelineSpace):
     """Combines multi-fidelity, priors, and complex search space."""
 
     # Architecture with priors
-    num_layers = neps.Integer(2, 6, prior=3, prior_confidence="medium")
-    num_neurons = neps.Integer(64, 512, log=True, prior=256, prior_confidence="low")
-    activation = neps.Categorical(
+    num_layers = autoscan.Integer(2, 6, prior=3, prior_confidence="medium")
+    num_neurons = autoscan.Integer(64, 512, log=True, prior=256, prior_confidence="low")
+    activation = autoscan.Categorical(
         ["relu", "elu", "gelu"],
         prior=0,  # relu
         prior_confidence="high"
     )
     # Training with priors
-    learning_rate = neps.Float(1e-5, 1e-2, log=True, prior=1e-3, prior_confidence="high")
-    optimizer = neps.Categorical(
+    learning_rate = autoscan.Float(1e-5, 1e-2, log=True, prior=1e-3, prior_confidence="high")
+    optimizer = autoscan.Categorical(
         ["adam", "adamw", "sgd"],
         prior=1,  # adamw
         prior_confidence="high"
     )
 
     # Regularization with priors
-    dropout_rate = neps.Float(0.0, 0.5, prior=0.1, prior_confidence="medium")
-    weight_decay = neps.Float(1e-6, 1e-2, log=True, prior=1e-4, prior_confidence="medium")
+    dropout_rate = autoscan.Float(0.0, 0.5, prior=0.1, prior_confidence="medium")
+    weight_decay = autoscan.Float(1e-6, 1e-2, log=True, prior=1e-4, prior_confidence="medium")
 
     # Multi-fidelity (epochs)
-    epochs = neps.IntegerFidelity(2, 20)
+    epochs = autoscan.IntegerFidelity(2, 20)
 
 # Run optimization with combined strategies:
 
 start_time = time.time()
 
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_combined/",
     pipeline_space=CombinedSearchSpace(),
@@ -294,7 +294,7 @@ neps.run(
 elapsed = time.time() - start_time
 print(f"\nOptimization completed in {elapsed:.2f} seconds")
 
-# !python -m neps.status results_combined/
+# !python -m autoscan.status results_combined/
 
 # ## Comparing Strategies
 
@@ -339,6 +339,6 @@ plt.show()
 # These techniques can reduce optimization time by 10-50% compared to standard random search!
 
 # Next steps:
-# - Explore [**Multi-Objective Optimization**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/4_multi_objective.ipynb) like PriMO Algorithm.
+# - Explore [**Multi-Objective Optimization**](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/4_multi_objective.ipynb) like PriMO Algorithm.
 
-# If you want to contribute new techniques or optimizers, check out the contribution guide [here](https://automl.github.io/neps/latest/dev_docs/contributing/).
+# If you want to contribute new techniques or optimizers, check out the contribution guide [here](https://automl.github.io/auto-scan/latest/dev_docs/contributing/).

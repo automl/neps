@@ -1,6 +1,6 @@
 # Importing External Trials
 
-When optimizing with NePS, you might have evaluations from previous studies that you want to incorporate into your current optimization run. The [`neps.import_trials()`][neps.api.import_trials] function enables seamless integration of externally evaluated configurations into NePS.
+When optimizing with AutoScAn, you might have evaluations from previous studies that you want to incorporate into your current optimization run. The [`autoscan.import_trials()`][autoscan.api.import_trials] function enables seamless integration of externally evaluated configurations into AutoScAn.
 
 ## When to Import Trials
 
@@ -12,15 +12,15 @@ You've already run evaluations with one algorithm (e.g., random search) and want
 ```python
 # Random search was used for initial exploration
 # Now switch to Bayesian optimization with those results
-import neps
+import autoscan
 
 evaluated_trials = [
-    ({"learning_rate": 0.001, "batch_size": 32}, neps.UserResultDict(objective_to_minimize=0.45)),
-    ({"learning_rate": 0.01, "batch_size": 64}, neps.UserResultDict(objective_to_minimize=0.38)),
-    ({"learning_rate": 0.0001, "batch_size": 16}, neps.UserResultDict(objective_to_minimize=0.52)),
+    ({"learning_rate": 0.001, "batch_size": 32}, autoscan.UserResultDict(objective_to_minimize=0.45)),
+    ({"learning_rate": 0.01, "batch_size": 64}, autoscan.UserResultDict(objective_to_minimize=0.38)),
+    ({"learning_rate": 0.0001, "batch_size": 16}, autoscan.UserResultDict(objective_to_minimize=0.52)),
 ]
 
-neps.import_trials(
+autoscan.import_trials(
     evaluated_trials=evaluated_trials,
     root_directory="bayesian_study",
     pipeline_space=my_pipeline_space, # need to define pipeline space
@@ -28,7 +28,7 @@ neps.import_trials(
 )
 
 # Continue optimization with Bayesian optimization
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline, # need to define evaluate pipeline
     pipeline_space=my_pipeline_space, # need to define pipeline space
     root_directory="bayesian_study",
@@ -37,16 +37,16 @@ neps.run(
 ```
 
 ### Scenario 2: Warm-starting from External Optimization
-You've optimized a model using a non-NePS tool and want to continue with NePS:
+You've optimized a model using a non-AutoScAn tool and want to continue with AutoScAn:
 
 ```python
 # Results from your own optimization framework
 external_results = [
-    ({"model_depth": 5, "learning_rate": 0.01}, neps.UserResultDict(objective_to_minimize=0.35)),
-    ({"model_depth": 10, "learning_rate": 0.001}, neps.UserResultDict(objective_to_minimize=0.32)),
+    ({"model_depth": 5, "learning_rate": 0.01}, autoscan.UserResultDict(objective_to_minimize=0.35)),
+    ({"model_depth": 10, "learning_rate": 0.001}, autoscan.UserResultDict(objective_to_minimize=0.32)),
 ]
 
-neps.import_trials(
+autoscan.import_trials(
     evaluated_trials=external_results,
     root_directory="continued_study",
     pipeline_space=my_pipeline_space,
@@ -62,7 +62,7 @@ You've performed separate optimization studies and want to merge results:
 previous_trials = load_previous_results()  # Your custom loading logic
 
 # Import into new unified study
-neps.import_trials(
+autoscan.import_trials(
     evaluated_trials=previous_trials,
     root_directory="unified_study",
     pipeline_space=my_pipeline_space,
@@ -77,7 +77,7 @@ neps.import_trials(
 The simplest format is a list of tuples containing configurations and results:
 
 ```python
-from neps import UserResultDict
+from autoscan import UserResultDict
 
 evaluated_trials = [
     # (configuration_dict, result_dict)
@@ -91,7 +91,7 @@ evaluated_trials = [
     ),
 ]
 
-neps.import_trials(
+autoscan.import_trials(
     evaluated_trials=evaluated_trials,
     root_directory="my_study",
     pipeline_space=my_pipeline_space,
@@ -104,10 +104,10 @@ neps.import_trials(
 The result dictionary should be a `UserResultDict`:
 
 ```python
-neps.UserResultDict(objective_to_minimize=0.45)  # Required
+autoscan.UserResultDict(objective_to_minimize=0.45)  # Required
 
 # Optional fields:
-neps.UserResultDict(
+autoscan.UserResultDict(
     objective_to_minimize=0.45, 
     cost=1000, 
     exception=None, 
@@ -117,21 +117,21 @@ neps.UserResultDict(
 
 ```
 
-### Format 2: From Previous NePS Run (Using `load_trials_from_pickle`)
+### Format 2: From Previous AutoScAn Run (Using `load_trials_from_pickle`)
 
-If your external evaluations were done with NePS previously, use `load_trials_from_pickle` to easily extract trials:
+If your external evaluations were done with AutoScAn previously, use `load_trials_from_pickle` to easily extract trials:
 
 ```python
-import neps
-from neps.utils import load_trials_from_pickle
+import autoscan
+from autoscan.utils import load_trials_from_pickle
 
-# Load from previous NePS run
+# Load from previous AutoScAn run
 evaluated_trials = load_trials_from_pickle(
     root_dir="path/to/old_study"
 )
 
 # Import into new study
-neps.import_trials(
+autoscan.import_trials(
     evaluated_trials=evaluated_trials,
     root_directory="new_study",
     pipeline_space=my_pipeline_space,

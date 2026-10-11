@@ -4,7 +4,7 @@ This section concerns optimizers that utilize Multi-Fidelity information to guid
 
 !!! tip "Interactive tutorial"
 
-    The Multi-Fidelity Optimization section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) defines an `epochs` fidelity and runs `ASHA` on it.
+    The Multi-Fidelity Optimization section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/3_efficiency_techniques.ipynb) defines an `epochs` fidelity and runs `ASHA` on it.
 
 ## 1 `Successive Halfing`
 
@@ -13,14 +13,14 @@ This section concerns optimizers that utilize Multi-Fidelity information to guid
 It starts with a large number of random configurations and evaluates them on a low-fidelity. The best-performing $1/\eta$ configurations are then promoted to the next fidelity, where they are evaluated again. This process is repeated until only a few configurations remain, evaluated on the highest fidelity.
 The process allows for broad exploration in the beginning and focus on the most promising configurations towards the end.
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.successive_halving].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.successive_halving].
 
 ??? example "Practical Tips"
 
     - For the same total compute, `SH` outperforms uninformed search algorithms like random search or grid search.
     - It highly depends on the correlation between lower and higher fidelities. If the correlation is low, `SH` underperforms.
     - `SH` has two parameters: $\eta$ and $n$, where $\eta$ is the promotion factor and $n$ is the number of configurations at the lowest fidelity.
-    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels. For more details, see the [api][neps.optimizers.algorithms.successive_halving].
+    This results in a total of $\frac{n*r}{\eta^r}$ steps (from one fidelity level to the next), where $r$ is the number of fidelity levels. For more details, see the [api][autoscan.optimizers.algorithms.successive_halving].
 
 ### _Asynchronous_ Successive Halving
 
@@ -32,7 +32,7 @@ Instead of waiting for all $n$ configurations to finish on one fidelity, `ASHA` 
 
 Although not inherently a Prior-optimizer, ``SH`` (and ``ASHA``) can make use of [Priors](../search_algorithms/prior.md). Instead of sampling configurations uniformly, the optimizer can directly sample from the Prior, which results in a more focused search - highly beneficial _if_ the Prior is reliable. Alternatively, the ``SH`` can bias the promotion of configurations towards the Prior, keeping worse-performing, but recommended configurations longer in the optimization process.
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.asha].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.asha].
 
 ## 2 `HyperBand`
 
@@ -40,16 +40,16 @@ See the algorithm's implementation details in the [api][neps.optimizers.algorith
 
 Each of these runs has a different resource budget and different number of configurations. This makes ``HyperBand`` more flexible and parallelizable than ``SH``.
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.hyperband].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.hyperband].
 
 ??? example "Practical Tips"
 
     - ``HyperBand`` is a good choice when you have a limited budget and want to parallelize your search.
     - It is more efficient than ``SH`` when the correlation between lower and higher fidelities is low.
-    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds. For more details, see the [api][neps.optimizers.algorithms.hyperband].
+    - ``Hyperband`` has two parameters: $\eta$ (typically 3 or 4) and $R$, where $\eta$ is the promotion factor and $R$ is the maximum budget any single configuration will be trained on. A larger $R$ will result in better, but slower results, while a larger $\eta$ will result in faster, but more noisy, potentially worse results. HB then spawns $\lfloor \log_\eta(R)\rfloor$ ``Successive Halfing``-rounds. For more details, see the [api][autoscan.optimizers.algorithms.hyperband].
 
 !!! info
-    ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in NePS when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
+    ``HyperBand`` is chosen as the [default optimizer](../../reference/optimizers.md#21-automatic-optimizer-selection) in AutoScAn when there is no [Prior](../search_algorithms/prior.md), only Multi-Fidelity information available.
 
 <!---
 ## 3 `BOHB`
@@ -108,11 +108,11 @@ Lastly, ``IfBO`` adapts the `FT-BO` idea of _freezing_ (pausing training on) con
 |:--:|
 |The image shows the Freeze-Thaw-mechanism, with the colors indicating, at what iteration a configuration has been evaluated at this fidelity. Note for example some yellow configurations being reused much later, ending in red. (Image Source: [FT-BO-paper](https://arxiv.org/pdf/1406.3896), Jan 27, 2025)|
 
-See the algorithm's implementation details in the [api][neps.optimizers.algorithms.ifbo].
+See the algorithm's implementation details in the [api][autoscan.optimizers.algorithms.ifbo].
 
 ??? example "Practical Tips"
 
-    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing neps's [checkpointing](../evaluate_pipeline.md#4-extra-injected-arguments) feature.
+    - ``IfBO`` is a good choice when the problem allows for low-fidelity configurations to be continued to retrieve high-fidelity results, utilizing autoscan's [checkpointing](../evaluate_pipeline.md#4-extra-injected-arguments) feature.
 ___
 
 For optimizers using both Priors and Multi-Fidelity, please refer [here](multifidelity_prior.md).

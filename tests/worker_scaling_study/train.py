@@ -1,5 +1,5 @@
 """Trains and evaluates one config on a single GPU, timing the training loop.
-Returns the NePS result plus the throughput numbers the scaling study plots.
+Returns the AutoScAn result plus the throughput numbers the scaling study plots.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader
 # The data and model helpers are shared with the VLM OpenCLIP real-world example.
 VLM_PIPELINE_DIR = (
     Path(__file__).resolve().parents[2]
-    / "neps_examples"
+    / "autoscan_examples"
     / "real_world"
     / "vlm_openclip"
     / "pipeline"
@@ -32,7 +32,7 @@ sys.path.insert(0, str(VLM_PIPELINE_DIR))
 
 # #CHANGE_ME: the fixed workload every trial trains on, whatever the worker
 # count. The cache must already cover it:
-# `python ../../neps_examples/real_world/vlm_openclip/pipeline/download_data.py
+# `python ../../autoscan_examples/real_world/vlm_openclip/pipeline/download_data.py
 # --n_samples 102000`.
 N_TRAIN = 100_000
 N_VAL = 2_000

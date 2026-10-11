@@ -8,18 +8,18 @@ from tutorials.model import SimpleCNN
 from tutorials.utils import (
     get_optimizer,
     get_scheduler,
-    load_neps_checkpoint,
+    load_autoscan_checkpoint,
     prepare_mnist_dataloader,
-    save_neps_checkpoint,
+    save_autoscan_checkpoint,
     train_one_epoch,
     validate_model
 )
 
-from neps.plot.tensorboard_eval import tblogger
+from autoscan.plot.tensorboard_eval import tblogger
 
 
 def training_pipeline(
-    # neps parameters for load-save of checkpoints
+    # autoscan parameters for load-save of checkpoints
     out_dir: Union[Path, None] = None,
     load_dir: Union[Path, None] = None,
     # hyperparameters
@@ -35,7 +35,7 @@ def training_pipeline(
     subsample: float = 1.0,
     # other parameters
     val_fraction: float = 0.3,
-    log_neps_tensorboard: bool = False,
+    log_autoscan_tensorboard: bool = False,
     verbose: bool = True,
     allow_checkpointing: bool = False,
     use_for_demo: bool = False,
@@ -45,9 +45,9 @@ def training_pipeline(
 
 
     This is a standard pipeline to train and validate models. 
-    The only exclusive requirement to interface NePS are:
+    The only exclusive requirement to interface AutoScAn are:
     * Arguments that pass hyperparameters
-    * (Optional) Using tblogger to log tensorboard metrics supported by NePS
+    * (Optional) Using tblogger to log tensorboard metrics supported by AutoScAn
     * Returning a dictionary with keys "loss", "cost", and "info_dict"
         * "loss" must be a minimizing metric
 
@@ -74,7 +74,7 @@ def training_pipeline(
             Number of epochs to train the model.
         subsample: (float)
              Fraction of the training data to use.
-        log_neps_tensorboard: (bool)
+        log_autoscan_tensorboard: (bool)
             Whether to log tensorboard metrics.
         verbose: (bool) 
             Whether to print training progress.
@@ -151,14 +151,14 @@ def training_pipeline(
     start = time.time()
     steps = None
     if allow_checkpointing:
-        steps, model, optimizer, scheduler = load_neps_checkpoint(
+        steps, model, optimizer, scheduler = load_autoscan_checkpoint(
             load_dir, model, optimizer, scheduler
         )
     checkpoint_load_time = time.time() - start
 
     train_start = time.time()
     validation_time = 0
-    if log_neps_tensorboard:
+    if log_autoscan_tensorboard:
         writer = tblogger.ConfigWriter(write_summary_incumbent=True)
     else:
         writer = None
@@ -190,7 +190,7 @@ def training_pipeline(
 
         minimizing_metric = val_loss if optimize_over_loss else 1-val_accuracy
 
-        # special logging for NePS
+        # special logging for AutoScAn
         start = time.time()
         if writer is not None:
             writer.add_scalar(tag="loss", scalar_value=minimizing_metric, global_step=epoch)
@@ -198,7 +198,7 @@ def training_pipeline(
             writer.add_scalar(tag="lr_decay", scalar_value=scheduler.get_last_lr()[0], global_step=epoch)
         logging_time = time.time() - start
         
-    if log_neps_tensorboard:  
+    if log_autoscan_tensorboard:  
         writer.add_hparams(
             hparam_dict={"lr": learning_rate, "optim": optimizer_name, "wd": weight_decay},
             metric_dict={"loss_val": val_loss}
@@ -209,7 +209,7 @@ def training_pipeline(
 
     # Save checkpoint
     if allow_checkpointing:
-        save_neps_checkpoint(out_dir, epoch, model, optimizer, scheduler)
+        save_autoscan_checkpoint(out_dir, epoch, model, optimizer, scheduler)
 
     return {
         "objective_to_minimize": minimizing_metric,  # validation loss in the last epoch

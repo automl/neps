@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from neps import Categorical, Fidelity, Float, Integer, PipelineSpace
-from neps.optimizers.algorithms import grid_search, neps_grid_search
-from neps.space import (
+from autoscan import Categorical, Fidelity, Float, Integer, PipelineSpace
+from autoscan.optimizers.algorithms import autoscan_grid_search, grid_search
+from autoscan.space import (
     HPOCategorical,
     HPOConstant,
     HPOFloat,
@@ -162,33 +162,35 @@ class TestGridSearchLogScale:
                 assert log_val == int(log_val)
 
 
-class TestNePSGridSearch:
-    def test_neps_grid_search_basic(self) -> None:
+class TestAutoScAnGridSearch:
+    def test_autoscan_grid_search_basic(self) -> None:
         class Space(PipelineSpace):
             x = Float(lower=0.0, upper=1.0)
             y = Categorical(choices=("a", "b", "c"))
 
         space = Space()
-        result = neps_grid_search(space, size_per_numerical_dimension=3)
+        result = autoscan_grid_search(space, size_per_numerical_dimension=3)
         configs = result.configs_list
         assert len(configs) == 9
 
-    def test_neps_grid_search_with_fidelity(self) -> None:
+    def test_autoscan_grid_search_with_fidelity(self) -> None:
         class Space(PipelineSpace):
             x = Float(lower=0.0, upper=1.0)
             y = Fidelity(Integer(lower=1, upper=10))
 
         space = Space()
         with pytest.raises(ValueError, match="fidelity"):
-            neps_grid_search(space, ignore_fidelity=False, size_per_numerical_dimension=3)
+            autoscan_grid_search(
+                space, ignore_fidelity=False, size_per_numerical_dimension=3
+            )
 
-    def test_neps_grid_search_ignore_fidelity_highest(self) -> None:
+    def test_autoscan_grid_search_ignore_fidelity_highest(self) -> None:
         class Space(PipelineSpace):
             x = Float(lower=0.0, upper=1.0)
             y = Fidelity(Integer(lower=1, upper=10))
 
         space = Space()
-        result = neps_grid_search(
+        result = autoscan_grid_search(
             space,
             ignore_fidelity="highest_fidelity",
             size_per_numerical_dimension=3,
@@ -197,13 +199,13 @@ class TestNePSGridSearch:
         assert len(configs) == 3
         assert all(c["ENVIRONMENT__y"] == 10 for c in configs)
 
-    def test_neps_grid_search_ignore_fidelity_true(self) -> None:
+    def test_autoscan_grid_search_ignore_fidelity_true(self) -> None:
         class Space(PipelineSpace):
             x = Float(lower=0.0, upper=1.0)
             y = Fidelity(Integer(lower=1, upper=10))
 
         space = Space()
-        result = neps_grid_search(
+        result = autoscan_grid_search(
             space, ignore_fidelity=True, size_per_numerical_dimension=3
         )
         configs = result.configs_list

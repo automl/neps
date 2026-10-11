@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from neps.space import (
+from autoscan.space import (
     HPOCategorical,
     HPOConstant,
     HPOFloat,

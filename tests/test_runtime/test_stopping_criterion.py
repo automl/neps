@@ -5,14 +5,14 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from neps.optimizers.algorithms import asha, random_search
-from neps.optimizers.optimizer import OptimizerInfo
-from neps.runtime import DefaultWorker
-from neps.space import HPOFloat, HPOInteger, SearchSpace
-from neps.space.neps_spaces.parameters import Float, PipelineSpace
-from neps.state import (
+from autoscan.optimizers.algorithms import asha, random_search
+from autoscan.optimizers.optimizer import OptimizerInfo
+from autoscan.runtime import DefaultWorker
+from autoscan.space import HPOFloat, HPOInteger, SearchSpace
+from autoscan.space.autoscan_spaces.parameters import Float, PipelineSpace
+from autoscan.state import (
+    AutoScAnState,
     DefaultReportValues,
-    NePSState,
     OnErrorPossibilities,
     OptimizationState,
     SeedSnapshot,
@@ -22,12 +22,12 @@ from neps.state import (
 
 
 @fixture
-def neps_state(tmp_path: Path) -> NePSState:
+def autoscan_state(tmp_path: Path) -> AutoScAnState:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
-    return NePSState.create_or_load(
-        path=tmp_path / "neps_state",
+    return AutoScAnState.create_or_load(
+        path=tmp_path / "autoscan_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
@@ -39,7 +39,7 @@ def neps_state(tmp_path: Path) -> NePSState:
 
 
 def test_evaluations_to_spend_stopping_criterion(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -61,14 +61,14 @@ def test_evaluations_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 3.0}
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -78,10 +78,10 @@ def test_evaluations_to_spend_stopping_criterion(
         )
         == 3
     )
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
-    trials = neps_state.lock_and_read_trials()
+    trials = autoscan_state.lock_and_read_trials()
     for _, trial in trials.items():
         assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
@@ -90,7 +90,7 @@ def test_evaluations_to_spend_stopping_criterion(
 
     # New worker also runs for another 3 evaluations
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -100,23 +100,23 @@ def test_evaluations_to_spend_stopping_criterion(
     assert (
         sum(
             1
-            for trial in list(neps_state.lock_and_read_trials().values())
+            for trial in list(autoscan_state.lock_and_read_trials().values())
             if trial.metadata.evaluating_worker_id == new_worker.worker_id
         )
         == 3
     )
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
 def test_total_evaluations_to_spend_stopping_criterion(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
     optimizer = random_search(pipeline_space=TestSpace())
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
@@ -137,14 +137,14 @@ def test_total_evaluations_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -159,14 +159,14 @@ def test_total_evaluations_to_spend_stopping_criterion(
     settings.worker_evaluations_to_spend = 10
 
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert len(trials) == 5
     assert (
@@ -177,17 +177,17 @@ def test_total_evaluations_to_spend_stopping_criterion(
         )
         == 2
     )
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
 def test_total_cost_to_spend_stopping_criterion(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
     optimizer = random_search(pipeline_space=TestSpace())
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=6,
         total_fidelities_to_spend=None,
@@ -208,14 +208,14 @@ def test_total_cost_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 2.0}
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert len(trials) == 2
     assert (
@@ -229,14 +229,14 @@ def test_total_cost_to_spend_stopping_criterion(
 
     settings.worker_evaluations_to_spend = 10
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert len(trials) == 3
     assert (
@@ -255,11 +255,11 @@ def test_total_cost_to_spend_stopping_criterion(
         )
         == 1
     )
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
 def test_total_fidelities_to_spend_stopping_criterion(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     optimizer = asha(
         pipeline_space=SearchSpace(
@@ -282,7 +282,7 @@ def test_total_fidelities_to_spend_stopping_criterion(
         batch_size=None,
     )
 
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=None,
         total_fidelities_to_spend=11,
@@ -294,12 +294,12 @@ def test_total_fidelities_to_spend_stopping_criterion(
     def total_fidelity_spent() -> float:
         return sum(
             trial.config["b"]
-            for trial in neps_state.lock_and_read_trials().values()
+            for trial in autoscan_state.lock_and_read_trials().values()
             if trial.report is not None
         )
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -315,7 +315,7 @@ def test_total_fidelities_to_spend_stopping_criterion(
     settings.worker_evaluations_to_spend = 10
 
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -324,7 +324,7 @@ def test_total_fidelities_to_spend_stopping_criterion(
 
     assert total_fidelity_spent() >= 11
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -334,38 +334,38 @@ def test_total_fidelities_to_spend_stopping_criterion(
         < 10
     )
 
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
-def test_global_budget_can_be_updated(neps_state: NePSState) -> None:
-    neps_state.lock_and_update_global_budgets(
+def test_global_budget_can_be_updated(autoscan_state: AutoScAnState) -> None:
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
     )
 
-    optimizer_state = neps_state.lock_and_get_optimizer_state()
+    optimizer_state = autoscan_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 5
 
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=10,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
     )
 
-    optimizer_state = neps_state.lock_and_get_optimizer_state()
+    optimizer_state = autoscan_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 10
 
     # Passing None means "do not change the stored global budget".
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
     )
 
-    optimizer_state = neps_state.lock_and_get_optimizer_state()
+    optimizer_state = autoscan_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 10
 
@@ -375,7 +375,7 @@ def eval_function(*_args, **_kwargs) -> float:
 
 
 def test_worker_uses_updated_global_budget(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -394,21 +394,21 @@ def test_worker_uses_updated_global_budget(
         batch_size=None,
     )
 
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
     )
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
 
     # Change the shared budget after the worker has already been created.
-    neps_state.lock_and_update_global_budgets(
+    autoscan_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=1,
         total_cost_to_spend=None,
         total_fidelities_to_spend=None,
@@ -416,7 +416,7 @@ def test_worker_uses_updated_global_budget(
 
     worker.run()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -429,7 +429,7 @@ def test_worker_uses_updated_global_budget(
 
 
 def test_multiple_criteria_set(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -451,7 +451,7 @@ def test_multiple_criteria_set(
         return {"objective_to_minimize": 1.0, "cost": 2.0}
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -459,7 +459,7 @@ def test_multiple_criteria_set(
     worker.run()
 
     # The worker_cost_to_spend criterion should stop the worker first after 3 evaluations
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -468,8 +468,8 @@ def test_multiple_criteria_set(
         )
         == 2
     )  # til the worker_cost_to_spend is reached
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
     assert len(trials) == 2
     for trial in trials:
@@ -480,13 +480,13 @@ def test_multiple_criteria_set(
 
     settings.worker_cost_to_spend = 100  # now only worker_evaluations_to_spend matters
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -495,12 +495,12 @@ def test_multiple_criteria_set(
         )
         == 5
     )
-    assert neps_state.lock_and_get_next_pending_trial() is None
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert autoscan_state.lock_and_get_next_pending_trial() is None
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
-    neps_state: NePSState,
+    autoscan_state: AutoScAnState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -523,22 +523,22 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
     worker = DefaultWorker.new(
         worker_id="test",
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
 
     # We put in one trial as being inprogress
-    pending_trial = neps_state.lock_and_sample_trial(
+    pending_trial = autoscan_state.lock_and_sample_trial(
         optimizer, worker_id=worker.worker_id
     )
     pending_trial.set_evaluating(time_started=0.0, worker_id=worker.worker_id)
-    neps_state.put_updated_trial(pending_trial)
+    autoscan_state.put_updated_trial(pending_trial)
 
     worker.run()
 
-    trials_dict = neps_state.lock_and_read_trials()
+    trials_dict = autoscan_state.lock_and_read_trials()
     trials = list(trials_dict.values())
     assert len(trials) == 2  # only one more trial should have been evaluated
     assert (
@@ -550,9 +550,9 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         == 2
     )
     assert (
-        neps_state.lock_and_get_next_pending_trial() is None
+        autoscan_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
     the_pending_trial = trials_dict[pending_trial.id]
     assert the_pending_trial == pending_trial
@@ -567,7 +567,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     assert the_completed_trial.report.objective_to_minimize == 1.0
 
 
-def test_worker_wallclock_time(neps_state: NePSState) -> None:
+def test_worker_wallclock_time(autoscan_state: AutoScAnState) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
@@ -588,7 +588,7 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
         return 1.0
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -598,17 +598,17 @@ def test_worker_wallclock_time(neps_state: NePSState) -> None:
     worker.run()
     time_end = time.monotonic()
 
-    trials = list(neps_state.lock_and_read_trials().values())
+    trials = list(autoscan_state.lock_and_read_trials().values())
     assert len(trials) > 0  # should have done some evaluations
     assert time_end - time_start >= 1.0  # should have run for at least 1 second
     assert (
-        neps_state.lock_and_get_next_pending_trial() is None
+        autoscan_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.lock_and_get_errors()) == 0
-    len(neps_state.lock_and_read_trials())
+    assert len(autoscan_state.lock_and_get_errors()) == 0
+    len(autoscan_state.lock_and_read_trials())
 
 
-def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
+def test_max_worker_evaluation_time(autoscan_state: AutoScAnState) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
@@ -630,7 +630,7 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
         return 1.0
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -638,7 +638,7 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
     )
     worker.run()
 
-    trials = neps_state.lock_and_read_trials().values()
+    trials = autoscan_state.lock_and_read_trials().values()
     assert (
         sum(
             1
@@ -658,12 +658,12 @@ def test_max_worker_evaluation_time(neps_state: NePSState) -> None:
     )  # some margin for time spent for the last evaluation that went over the limit.
 
     assert (
-        neps_state.lock_and_get_next_pending_trial() is None
+        autoscan_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
 
-def test_fidelity_to_spend(neps_state: NePSState) -> None:
+def test_fidelity_to_spend(autoscan_state: AutoScAnState) -> None:
     optimizer = asha(
         pipeline_space=SearchSpace(
             {"a": HPOFloat(0, 1), "b": HPOInteger(2, 10, is_fidelity=True)}
@@ -686,7 +686,7 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
         return 1.0
 
     worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -694,7 +694,7 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
     )
     worker.run()
 
-    trials1 = list(neps_state.lock_and_read_trials().values())
+    trials1 = list(autoscan_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -715,21 +715,21 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
     )
 
     assert (
-        neps_state.lock_and_get_next_pending_trial() is None
+        autoscan_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0
 
     # New worker should also run some trials more trials
     settings.worker_fidelities_to_spend = 4  # now only 2 fidelity matters
     new_worker = DefaultWorker.new(
-        state=neps_state,
+        state=autoscan_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
         worker_id="dummy2",
     )
     new_worker.run()
-    trials2 = list(neps_state.lock_and_read_trials().values())
+    trials2 = list(autoscan_state.lock_and_read_trials().values())
     assert (
         13
         >= sum(
@@ -740,6 +740,6 @@ def test_fidelity_to_spend(neps_state: NePSState) -> None:
         >= 4
     )
     assert (
-        neps_state.lock_and_get_next_pending_trial() is None
+        autoscan_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(neps_state.lock_and_get_errors()) == 0
+    assert len(autoscan_state.lock_and_get_errors()) == 0

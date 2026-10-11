@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from neps.state.pipeline_eval import EvaluatePipelineReturn, UserResult
+from autoscan.state.pipeline_eval import EvaluatePipelineReturn, UserResult
 
 
 def d(obj: Any = None, cost: Any = None, lc: Any = None) -> dict:

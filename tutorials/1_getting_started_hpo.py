@@ -12,21 +12,21 @@
 #     name: python3
 # ---
 
-# # Getting Started with NePS: Basic HPO
-# This tutorial introduces **Hyperparameter Optimization (HPO)** with NePS, starting with synthetic functions and progressing to real deep learning tasks.
+# # Getting Started with AutoScAn: Basic HPO
+# This tutorial introduces **Hyperparameter Optimization (HPO)** with AutoScAn, starting with synthetic functions and progressing to real deep learning tasks.
 
 # ## Installation
-# Requires Python 3.11+. Install NePS via:
+# Requires Python 3.11+. Install AutoScAn via:
 
-# !git clone --depth 1 https://github.com/automl/neps.git /content/neps
-# %cd /content/neps
-# !pip install -e /content/neps
+# !git clone --depth 1 https://github.com/automl/auto-scan.git /content/autoscan
+# %cd /content/autoscan
+# !pip install -e /content/autoscan
 
 # ## Example 1: Synthetic Function Optimization
-# We start with a simple optimization problem to understand NePS basics.
+# We start with a simple optimization problem to understand AutoScAn basics.
 
 import math
-import neps
+import autoscan
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -47,13 +47,13 @@ def branin(x1, x2):
     return f
 
 # Define the search space and run optimization
-class BraninSpace(neps.PipelineSpace):
-    x1 = neps.Float(-5, 10)
-    x2 = neps.Float(0, 15)
+class BraninSpace(autoscan.PipelineSpace):
+    x1 = autoscan.Float(-5, 10)
+    x2 = autoscan.Float(0, 15)
 
 from tutorials.utils import set_seeds
 set_seeds(1)
-neps.run(
+autoscan.run(
     pipeline_space=BraninSpace(),
     root_directory="branin_demo/",
     worker_evaluations_to_spend=25,
@@ -70,16 +70,16 @@ from IPython.display import Image
 Image(filename='./branin_demo/summary/incumbent_trajectory.png')
 
 
-# Great! NePS went in the direction of minimum loss over 25 evaluations. If you increase the budget to 1000 evaluations, you can get even closer to the global minimum of 0.397887.
-# The NePS workflow always follows this pattern:
+# Great! AutoScAn went in the direction of minimum loss over 25 evaluations. If you increase the budget to 1000 evaluations, you can get even closer to the global minimum of 0.397887.
+# The AutoScAn workflow always follows this pattern:
 # 1. **Define** an objective function
 # 2. **Specify** a search space
-# 3. **Call** `neps.run()` to optimize
+# 3. **Call** `autoscan.run()` to optimize
 
 # ## Example 2: Deep Learning HPO
 # Now we optimize hyperparameters for a neural network on MNIST (multi-class classification with CNNs).
 #
-# For the full training code, see [train.py](https://github.com/automl/neps/blob/master/tutorials/train.py).
+# For the full training code, see [train.py](https://github.com/automl/auto-scan/blob/master/tutorials/train.py).
 
 from tutorials.train import training_pipeline
 
@@ -99,16 +99,16 @@ training_pipeline(
     verbose=True,
 )
 
-# Note: `objective_to_minimize = 1 - val_accuracy` (validation error), since NePS minimizes.
+# Note: `objective_to_minimize = 1 - val_accuracy` (validation error), since AutoScAn minimizes.
 
 # ### Running the HPO
-# Now we apply the standard NePS pattern to optimize the training pipeline.
+# Now we apply the standard AutoScAn pattern to optimize the training pipeline.
 
-# Step 1: Create a NePS wrapper
+# Step 1: Create an AutoScAn wrapper
 def evaluate_pipeline(
     pipeline_directory,  # For saving checkpoints
     previous_pipeline_directory,  # For loading checkpoints
-    **hyperparameters,  # Determined by HPO algorithms and passed by NePS
+    **hyperparameters,  # Determined by HPO algorithms and passed by AutoScAn
 ):
     return training_pipeline(
         **hyperparameters,
@@ -116,21 +116,21 @@ def evaluate_pipeline(
         load_dir=previous_pipeline_directory,
         # misc settings
         batch_size=512,
-        log_neps_tensorboard=True,
+        log_autoscan_tensorboard=True,
         verbose=False,
         allow_checkpointing=True,
         use_for_demo=True  # toggle as desired
     )
 
 # Step 2: Define the search space (tuning learning rate)
-class HPODemoSpace(neps.PipelineSpace):
-    learning_rate = neps.Float(1e-6, 1e-1, log=True)
+class HPODemoSpace(autoscan.PipelineSpace):
+    learning_rate = autoscan.Float(1e-6, 1e-1, log=True)
 pipeline_space = HPODemoSpace()
 
 # Step 3: Run optimization
 logging.basicConfig(level=logging.INFO, force=True)
 set_seeds(1)
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_hpo_demo",
     pipeline_space=pipeline_space,
@@ -141,7 +141,7 @@ neps.run(
 # ### Analyzing Results
 # Check the status and outputs:
 
-!python -m neps.status results_hpo_demo/
+!python -m autoscan.status results_hpo_demo/
 
 # View the summary files:
 !cat results_hpo_demo/summary/short.csv
@@ -166,9 +166,9 @@ df.head()
 # Load the tensorboard
 # %load_ext tensorboard
 
-# %tensorboard --logdir /content/neps/results_hpo_demo
+# %tensorboard --logdir /content/autoscan/results_hpo_demo
 
-# For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/neps/latest/reference/analyse/#visualizing-results).
+# For more details on the Tensorboard integration, see documentation [here](https://automl.github.io/auto-scan/latest/reference/analyse/#visualizing-results).
 #
 # ## A slightly more elaborate HPO
 #
@@ -179,28 +179,28 @@ df.head()
 # <!-- *NOTE, again*: Using `run_pipeline_demo()` may affect the multi-fidelity runs in this notebook. -->
 
 
-class DemoSpace(neps.PipelineSpace):
-    learning_rate = neps.Float(1e-6, 1e-1, log=True)
-    optimizer = neps.Categorical(["sgd", "adamw"])
-    num_neurons = neps.Integer(64, 1024)
+class DemoSpace(autoscan.PipelineSpace):
+    learning_rate = autoscan.Float(1e-6, 1e-1, log=True)
+    optimizer = autoscan.Categorical(["sgd", "adamw"])
+    num_neurons = autoscan.Integer(64, 1024)
 pipeline_space = DemoSpace()
 
 set_seeds(1)
-neps.run(
+autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     root_directory="results_hpo",
     pipeline_space=pipeline_space,
     worker_evaluations_to_spend=8,
 )
 
-!python -m neps.status results_hpo/
+!python -m autoscan.status results_hpo/
 
 # ## Key Takeaways
-# 1. **NePS Pattern**: Define function → Define space → Call `neps.run()`
+# 1. **AutoScAn Pattern**: Define function → Define space → Call `autoscan.run()`
 # 2. **search space Types**: `Float`, `Integer`, `Categorical` parameters
 # 3. **Optimization Output**: Tracked in `root_directory` with easy analysis tools
 # 4. **Scalability**: Same API works for complex deep learning tasks
 #
 # Next steps:
-# - Learn more about [**Search Spaces**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/2_search_spaces.ipynb) and how to construct them for complex pipelines.
-# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/neps/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.
+# - Learn more about [**Search Spaces**](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/2_search_spaces.ipynb) and how to construct them for complex pipelines.
+# - Explore [**Efficiency Techniques**](https://colab.research.google.com/github/automl/auto-scan/blob/master/tutorials/3_efficiency_techniques.ipynb) like multi-fidelity optimization.

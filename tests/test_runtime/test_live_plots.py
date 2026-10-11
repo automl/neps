@@ -1,4 +1,4 @@
-"""Tests for `neps.run(..., live_plots=True)`."""
+"""Tests for `autoscan.run(..., live_plots=True)`."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
-import neps
-from neps.space.neps_spaces.parameters import Float, PipelineSpace
+import autoscan
+from autoscan.space.autoscan_spaces.parameters import Float, PipelineSpace
 
 
 class _Space(PipelineSpace):
@@ -23,7 +23,7 @@ def _two_objectives(x: float) -> dict:
 
 
 def _run(root: Path, evaluate_pipeline: object, *, live_plots: bool) -> None:
-    neps.run(
+    autoscan.run(
         evaluate_pipeline=evaluate_pipeline,  # type: ignore[arg-type]
         pipeline_space=_Space(),
         root_directory=root,

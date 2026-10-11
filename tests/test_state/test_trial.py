@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from neps.state import Trial
+from autoscan.state import Trial
 
 
 def test_trial_creation() -> None:
