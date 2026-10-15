@@ -42,6 +42,7 @@ from autoscan.optimizers.autoscan_regularized_evolution import (
 )
 from autoscan.optimizers.bayesian_optimization import BayesianOptimization
 from autoscan.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
+from autoscan.optimizers.chinchilla import ChinchillaGuidedScaling
 from autoscan.optimizers.grid_search import GridSearch
 from autoscan.optimizers.ifbo import IFBO
 from autoscan.optimizers.models.ftpfn import FTPFNSurrogate
@@ -88,6 +89,8 @@ def _bo(  # noqa: C901, PLR0912
     reference_point: tuple[float, ...] | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int | None = 256,
+    acquisition_func_type: Literal["EI", "IT-JES", "IT-MES", "IT-SCAN-JES"] = "EI",
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -174,6 +177,8 @@ def _bo(  # noqa: C901, PLR0912
         reference_point=reference_point,
         num_restarts=num_restarts,
         n_initial_start_points=n_initial_start_points,
+        constraints_func=constraints_func,
+        acquisition_func_type=acquisition_func_type,
     )
 
 
@@ -544,6 +549,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
 ) -> RandomSearch | AutoScAnRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -617,6 +623,7 @@ def random_search(
             if use_priors
             else Uniform(ndim=len(parameters))
         ),
+        constraints_func=constraints_func,
     )
 
 
@@ -625,6 +632,7 @@ def grid_search(
     *,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
     size_per_numerical_dimension: int | dict[str, int] = 5,
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -651,6 +659,7 @@ def grid_search(
                 pipeline_space,
                 ignore_fidelity=ignore_fidelity,
                 size_per_numerical_dimension=size_per_numerical_dimension,
+                constraints_func=constraints_func,
             )
 
     if any(
@@ -675,7 +684,8 @@ def grid_search(
             pipeline_space,
             ignore_fidelity=ignore_fidelity,
             size_per_numerical_hp=size_per_numerical_dimension,
-        )
+        ),
+        constraints_func=constraints_func,
     )
 
 
@@ -684,6 +694,7 @@ def autoscan_grid_search(
     *,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
     size_per_numerical_dimension: int | dict[str, int] = 5,
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
 ) -> GridSearch:
     """A simple grid search algorithm which discretizes the search
     space and evaluates all possible configurations.
@@ -726,7 +737,8 @@ def autoscan_grid_search(
             pipeline_space,
             ignore_fidelity=ignore_fidelity,
             size_per_numerical_hp=size_per_numerical_dimension,
-        )
+        ),
+        constraints_func=constraints_func,
     )
 
 
@@ -1360,6 +1372,7 @@ def bayesian_optimization(
     reference_point: tuple[float, ...] | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int | None = 256,
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -1415,6 +1428,9 @@ def bayesian_optimization(
         n_initial_start_points: Number of initial start points used when optimizing
             the acquisition function. If `None`, a dimension-dependent heuristic is
             used.
+        constraints_func: A function that takes a configuration and returns a float
+            indicating how much the configuration violates the constraints. A
+            non-negative value means the configuration is valid.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_autoscan_to_classic_search_space(pipeline_space)
@@ -1462,6 +1478,7 @@ def bayesian_optimization(
         reference_point=reference_point,
         num_restarts=num_restarts,
         n_initial_start_points=n_initial_start_points,
+        constraints_func=constraints_func,
     )
 
 
@@ -1613,6 +1630,174 @@ def primo(
         priors=_priors,
         epsilon=epsilon,
     )
+
+
+def carbs(
+    pipeline_space: SearchSpace | PipelineSpace,
+    *,
+    initial_search_radius: float = 0.3,
+    num_random_samples: int = 4,
+    resample_frequency: int = 0,
+    search_center_cost_fraction: float | None = None,
+    search_center_shrink_param: str | None = None,
+) -> AskFunction:
+    """[CARBS](https://github.com/imbue-ai/carbs), a cost-aware Bayesian optimizer that
+    searches around the pareto front of objective and cost, starting from a search
+    center and moving towards more expensive configurations as it goes.
+
+    !!! tip "When to use this?"
+
+        For scaling studies, where the cost of a configuration varies by orders of
+        magnitude and you want good configurations at every cost, not just one.
+
+    CARBS is an external library, install it with `pip install auto-scan[carbs]`.
+
+    It needs the cost of every evaluation. Either return a `cost` from your
+    `evaluate_pipeline`, or pass a `cost_estimator` to `autoscan.run()`. With
+    `max_cost_per_config`, CARBS does not suggest configurations it predicts to be
+    more expensive than that.
+
+    ```python
+    autoscan.run(
+        ...,
+        optimizer="carbs",
+        cost_estimator=estimate_flops,
+        max_cost_per_config=1e12,
+    )
+    ```
+
+    !!! note
+
+        Only `Integer` and `Float` parameters are supported, and no fidelities.
+        Seeding follows the global seeds, see the reference on seeding.
+
+    Args:
+        pipeline_space: The search space to sample from.
+        initial_search_radius: How far from a center to sample, as a standard deviation
+            in the space CARBS searches in.
+        num_random_samples: Sample around the search center until this many
+            evaluations succeeded, before the surrogate model is used.
+        resample_frequency: Re-evaluate a pareto-optimal configuration every this many
+            evaluations, `0` to never do so.
+        search_center_cost_fraction: Halve `search_center_shrink_param` until the
+            search center costs at most this fraction of `max_cost_per_config`.
+        search_center_shrink_param: The parameter to shrink for
+            `search_center_cost_fraction`, e.g. the size of the dataset.
+    """
+    module = _import_external_optimizer("autoscan.optimizers.carbs", extra="carbs")
+
+    if isinstance(pipeline_space, PipelineSpace):
+        converted_space = convert_autoscan_to_classic_search_space(pipeline_space)
+        if converted_space is None:
+            raise ValueError(
+                "CARBS only supports HPO search spaces, please use an AutoScAn"
+                " space-compatible optimizer."
+            )
+        pipeline_space = converted_space
+
+    return module.CARBSOptimizer(
+        space=pipeline_space,
+        initial_search_radius=initial_search_radius,
+        num_random_samples=num_random_samples,
+        resample_frequency=resample_frequency,
+        search_center_cost_fraction=search_center_cost_fraction,
+        search_center_shrink_param=search_center_shrink_param,
+    )
+
+
+def chinchilla(
+    pipeline_space: SearchSpace | PipelineSpace,
+    *,
+    data_parameter_name: str,
+    params_estimator: Callable[..., float],
+    strategy: Literal["approach1", "approach2"],
+    data_multipliers: Sequence[float] | None = None,
+    iso_flop_steps: int = 10,
+    candidates_per_iso_flop: int = 10,
+) -> ChinchillaGuidedScaling:
+    """Chinchilla guided scaling, following
+    [Training Compute-Optimal Large Language Models](https://arxiv.org/abs/2203.15556).
+    Lays out a list of configurations that grow the model and the amount of data
+    together, to fit how the two should scale with the compute.
+
+    !!! tip "When to use this?"
+
+        For scaling studies, where you want to know how to split a compute budget
+        between the size of the model and the amount of data it is trained on.
+
+    The parameters marked with `is_compute_scaling=True` make up the model, the one
+    named `data_parameter_name` sets the amount of data. Every other parameter is
+    drawn at random once and held fixed for the whole run.
+
+    It needs a `cost_estimator` and a cost budget to be given to `autoscan.run()`.
+    With `max_cost_per_config`, no configuration estimated to be more expensive than
+    that is laid out.
+
+    ```python
+    autoscan.run(
+        ...,
+        optimizer=(
+            "chinchilla",
+            {"data_parameter_name": "n_data", "params_estimator": estimate_params},
+        ),
+        cost_estimator=estimate_flops,
+        max_cost_per_config=1e12,
+        total_cost_to_spend=1e14,
+    )
+    ```
+
+    !!! note
+
+        Fidelities are not supported, and the configurations are evaluated one at a
+        time per worker.
+
+    Args:
+        pipeline_space: The search space to sample from.
+        data_parameter_name: The parameter that sets the amount of training data.
+        params_estimator: Called as `params_estimator(**config)`, returns the
+            parameter count of the model.
+        strategy: How to lay out the configurations.
+
+            * `"approach1"`: Train every model on `data_multipliers` times its
+                parameter count.
+            * `"approach2"`: Place the configurations on ISO-FLOP levels, spaced
+                logarithmically up to `max_cost_per_config`.
+        data_multipliers: The data to parameter count ratios of `"approach1"`.
+        iso_flop_steps: The number of ISO-FLOP levels of `"approach2"`.
+        candidates_per_iso_flop: How many configurations to place on an ISO-FLOP
+            level.
+    """
+    if isinstance(pipeline_space, PipelineSpace):
+        converted_space = convert_autoscan_to_classic_search_space(pipeline_space)
+        if converted_space is None:
+            raise ValueError(
+                "Chinchilla only supports HPO search spaces, please use an AutoScAn"
+                " space-compatible optimizer."
+            )
+        pipeline_space = converted_space
+
+    return ChinchillaGuidedScaling(
+        space=pipeline_space,
+        data_parameter_name=data_parameter_name,
+        params_estimator=params_estimator,
+        strategy=strategy,
+        data_multipliers=data_multipliers,
+        iso_flop_steps=iso_flop_steps,
+        candidates_per_iso_flop=candidates_per_iso_flop,
+    )
+
+
+def _import_external_optimizer(module: str, *, extra: str) -> Any:
+    """Import the module of an optimizer that wraps an optional, external library."""
+    import importlib
+
+    try:
+        return importlib.import_module(module)
+    except ImportError as e:
+        raise ImportError(
+            f"The '{extra}' optimizer needs an external library that is not installed."
+            f" Install it with `pip install auto-scan[{extra}]`."
+        ) from e
 
 
 @dataclass
@@ -1999,6 +2184,8 @@ PredefinedOptimizers: Mapping[str, Any] = {
         autoscan_hyperband,
         autoscan_regularized_evolution,
         autoscan_local_and_incumbent,
+        carbs,
+        chinchilla,
     )
 }
 
@@ -2022,4 +2209,6 @@ OptimizerChoice: TypeAlias = Literal[
     "autoscan_hyperband",
     "autoscan_regularized_evolution",
     "autoscan_local_and_incumbent",
+    "carbs",
+    "chinchilla",
 ]

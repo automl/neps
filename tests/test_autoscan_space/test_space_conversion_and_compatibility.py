@@ -21,6 +21,7 @@ from autoscan.space.autoscan_spaces.parameters import (
     Operation,
     PipelineSpace,
 )
+from autoscan.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
 
 
 class SimpleHPOSpace(PipelineSpace):
@@ -71,15 +72,13 @@ def test_convert_classic_to_autoscan():
     # Create a classic SearchSpace with various parameter types
     classic_space = autoscan.SearchSpace(
         {
-            "float_param": autoscan.HPOFloat(
-                0.0, 1.0, prior=0.5, prior_confidence="medium"
-            ),
-            "int_param": autoscan.HPOInteger(1, 10, prior=5, prior_confidence="high"),
-            "cat_param": autoscan.HPOCategorical(
+            "float_param": HPOFloat(0.0, 1.0, prior=0.5, prior_confidence="medium"),
+            "int_param": HPOInteger(1, 10, prior=5, prior_confidence="high"),
+            "cat_param": HPOCategorical(
                 ["a", "b", "c"], prior="b", prior_confidence="low"
             ),
-            "fidelity_param": autoscan.HPOInteger(1, 100, is_fidelity=True),
-            "constant_param": autoscan.HPOConstant("constant_value"),
+            "fidelity_param": HPOInteger(1, 100, is_fidelity=True),
+            "constant_param": HPOConstant("constant_value"),
         }
     )
 
@@ -140,21 +139,21 @@ def test_convert_autoscan_to_classic_simple():
 
     # Verify types and priors
     x_param = classic_attrs["x"]
-    assert isinstance(x_param, autoscan.HPOFloat)
+    assert isinstance(x_param, HPOFloat)
     assert x_param.lower == 0.0
     assert x_param.upper == 1.0
     assert x_param.prior == 0.5
     assert x_param.prior_confidence == "medium"
 
     y_param = classic_attrs["y"]
-    assert isinstance(y_param, autoscan.HPOInteger)
+    assert isinstance(y_param, HPOInteger)
     assert y_param.lower == 1
     assert y_param.upper == 10
     assert y_param.prior == 5
     assert y_param.prior_confidence == "high"
 
     z_param = classic_attrs["z"]
-    assert isinstance(z_param, autoscan.HPOCategorical)
+    assert isinstance(z_param, HPOCategorical)
     assert set(z_param.choices) == {"a", "b", "c"}  # Order might vary
     assert z_param.prior == "b"
     assert z_param.prior_confidence == "low"
@@ -171,7 +170,7 @@ def test_convert_autoscan_to_classic_with_fidelity():
 
     # Verify fidelity parameter
     epochs_param = classic_space.elements["epochs"]
-    assert isinstance(epochs_param, autoscan.HPOInteger)
+    assert isinstance(epochs_param, HPOInteger)
     assert epochs_param.is_fidelity
     assert epochs_param.lower == 1
     assert epochs_param.upper == 100
@@ -191,11 +190,9 @@ def test_round_trip_conversion():
     # Start with classic space
     original_classic = autoscan.SearchSpace(
         {
-            "x": autoscan.HPOFloat(0.0, 1.0, prior=0.5, prior_confidence="medium"),
-            "y": autoscan.HPOInteger(1, 10, prior=5, prior_confidence="high"),
-            "z": autoscan.HPOCategorical(
-                ["a", "b", "c"], prior="b", prior_confidence="low"
-            ),
+            "x": HPOFloat(0.0, 1.0, prior=0.5, prior_confidence="medium"),
+            "y": HPOInteger(1, 10, prior=5, prior_confidence="high"),
+            "z": HPOCategorical(["a", "b", "c"], prior="b", prior_confidence="low"),
         }
     )
 
@@ -214,12 +211,12 @@ def test_round_trip_conversion():
         assert type(original_param) is type(converted_param)
 
         # Check bounds for numerical parameters
-        if isinstance(original_param, autoscan.HPOFloat | autoscan.HPOInteger):
+        if isinstance(original_param, HPOFloat | HPOInteger):
             assert original_param.lower == converted_param.lower
             assert original_param.upper == converted_param.upper
 
         # Check choices for categorical parameters
-        if isinstance(original_param, autoscan.HPOCategorical):
+        if isinstance(original_param, HPOCategorical):
             # Sort choices for comparison since order might differ
             assert set(original_param.choices) == set(converted_param.choices)
 
@@ -443,7 +440,7 @@ def test_conversion_preserves_log_scaling():
     """Test that log scaling is preserved during conversion."""
     classic_space = autoscan.SearchSpace(
         {
-            "log_param": autoscan.HPOFloat(1e-5, 1e-1, log=True),
+            "log_param": HPOFloat(1e-5, 1e-1, log=True),
         }
     )
 
@@ -458,7 +455,7 @@ def test_conversion_preserves_log_scaling():
     assert converted_back is not None
     # Check the log property specifically for float parameters
     log_param = converted_back.elements["log_param"]
-    assert isinstance(log_param, autoscan.HPOFloat)
+    assert isinstance(log_param, HPOFloat)
     assert log_param.log is True
 
 
@@ -466,7 +463,7 @@ def test_conversion_handles_missing_priors():
     """Test that conversion works correctly when priors are missing."""
     classic_space = autoscan.SearchSpace(
         {
-            "no_prior": autoscan.HPOFloat(0.0, 1.0),  # No prior specified
+            "no_prior": HPOFloat(0.0, 1.0),  # No prior specified
         }
     )
 
@@ -478,7 +475,7 @@ def test_conversion_handles_missing_priors():
     assert converted_back is not None
     # Check the prior property specifically for float parameters
     no_prior_param = converted_back.elements["no_prior"]
-    assert isinstance(no_prior_param, autoscan.HPOFloat)
+    assert isinstance(no_prior_param, HPOFloat)
     assert no_prior_param.prior is None
 
 

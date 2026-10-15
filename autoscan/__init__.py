@@ -22,7 +22,7 @@ from autoscan.optimizers.ask_and_tell import AskAndTell
 from autoscan.optimizers.optimizer import SampledConfig
 from autoscan.plot.plot import plot
 from autoscan.plot.tensorboard_eval import tblogger
-from autoscan.space import HPOCategorical, HPOConstant, HPOFloat, HPOInteger, SearchSpace
+from autoscan.space import SearchSpace
 from autoscan.space.autoscan_spaces.parameters import (
     ByName,
     Categorical,
@@ -54,10 +54,6 @@ __all__ = [
     "Fidelity",
     "Float",
     "FloatFidelity",
-    "HPOCategorical",
-    "HPOConstant",
-    "HPOFloat",
-    "HPOInteger",
     "Integer",
     "IntegerFidelity",
     "Operation",

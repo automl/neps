@@ -159,7 +159,7 @@ class IFBO:
         parameters = self.space.searchables
 
         assert n is None, "TODO"
-        max_trial_id = _get_max_trial_id(trials)
+        max_trial_id = _get_max_trial_id(trials) or 0
         new_id = max_trial_id + 1
 
         # The FTPFN surrogate takes in a budget in the range [0, 1]
@@ -331,7 +331,8 @@ class IFBO:
             if key not in config_to_base_id:
                 config_to_base_id[key] = base_id
 
-        next_id = _get_max_trial_id(trials) + 1
+        max_trial_id = _get_max_trial_id(trials)
+        next_id = 0 if max_trial_id is None else max_trial_id + 1
 
         for config, result in external_evaluations:
             obj = result.get("objective_to_minimize")

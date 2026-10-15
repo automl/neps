@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from autoscan.optimizers.optimizer import ImportedConfig
+from autoscan.optimizers.utils.util import _get_next_trial_id
 from autoscan.space.autoscan_spaces.autoscan_space import (
     SamplingResolutionContext,
     _prepare_sampled_configs,
@@ -286,6 +287,7 @@ class AutoScAnRegularizedEvolution:
                 not a valid mapping of trial IDs to Trial objects.
         """
         n_prev_trials = len(trials)
+        first_id = _get_next_trial_id(trials)
         n_requested = 1 if n is None else n
 
         if n_prev_trials < self._population_size:
@@ -299,9 +301,7 @@ class AutoScAnRegularizedEvolution:
                 for _ in range(n_requested)
             ]
 
-            return _prepare_sampled_configs(
-                random_pipelines, n_prev_trials, n_requested == 1
-            )
+            return _prepare_sampled_configs(random_pipelines, first_id, n_requested == 1)
 
         successful_trials: list[Trial] = list(
             filter(
@@ -325,9 +325,7 @@ class AutoScAnRegularizedEvolution:
                 for _ in range(n_requested)
             ]
 
-            return _prepare_sampled_configs(
-                random_pipelines, n_prev_trials, n_requested == 1
-            )
+            return _prepare_sampled_configs(random_pipelines, first_id, n_requested == 1)
 
         return_pipelines = []
 
@@ -384,7 +382,7 @@ class AutoScAnRegularizedEvolution:
             else:
                 raise ValueError(f"Invalid mutation type: {self._mutation_type}")
 
-        return _prepare_sampled_configs(return_pipelines, n_prev_trials, n_requested == 1)
+        return _prepare_sampled_configs(return_pipelines, first_id, n_requested == 1)
 
     def import_trials(
         self,
@@ -402,10 +400,10 @@ class AutoScAnRegularizedEvolution:
         Returns:
             A list of ImportedConfig objects representing the imported trials.
         """
-        n_trials = len(trials)
+        first_id = _get_next_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(n_trials + i + 1)
+            config_id = str(first_id + i)
             imported_configs.append(
                 ImportedConfig(
                     config=config,

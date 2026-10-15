@@ -74,6 +74,62 @@ autoscan.run(
     This requires adding a cost value to the output of the `evaluate_pipeline` function, for example, return `#!python {'objective_to_minimize': loss, 'cost': cost}`.
     For more details, please refer [here](../reference/autoscan_spaces.md)
 
+## Scaling studies, estimating the cost of a configuration
+In a scaling study the cost of a configuration, e.g. its FLOPs, is known before it is
+evaluated, as it follows from the parameters marked with `is_compute_scaling=True`.
+Pass it as `cost_estimator=` to [`autoscan.run()`][autoscan.api.run]:
+
+```python
+class Space(autoscan.PipelineSpace):
+    width = autoscan.Integer(64, 1024, log=True, is_compute_scaling=True)
+    layers = autoscan.Integer(2, 24, is_compute_scaling=True)
+    learning_rate = autoscan.Float(1e-5, 1e-1, log=True)
+
+def estimate_flops(width: int, layers: int) -> float:  # (1)!
+    return ...
+
+autoscan.run(
+    evaluate_pipeline=evaluate_pipeline,
+    pipeline_space=Space(),
+    cost_estimator=estimate_flops,
+    max_cost_per_config=1e12,  # (2)!
+    total_cost_to_spend=1e14,  # (3)!
+)
+```
+
+1.  Called with the configuration as keyword arguments. A function without `**kwargs`
+    is only passed the parameters it names.
+2.  Optional. Configurations estimated to cost more than this are not sampled.
+3.  The estimate is used as the `cost` of every evaluation that does not report one,
+    so `evaluate_pipeline` does not have to return a `cost` for this to work.
+
+If the scaling parameters only take a finite number of values, the costs can instead
+be given as a JSON file, with one record for every combination of them:
+
+```json
+[
+  {"config": {"width": 256, "layers": 6},  "cost": 1.2e9},
+  {"config": {"width": 256, "layers": 12}, "cost": 2.4e9},
+  {"config": {"width": 512, "layers": 6},  "cost": 4.7e9},
+  {"config": {"width": 512, "layers": 12}, "cost": 9.4e9}
+]
+```
+
+```python
+autoscan.run(..., cost_estimator="costs.json")
+```
+
+The optimizers that make use of the cost estimate are the
+[scaling optimizers](optimizers.md#3-scaling-optimizers) `#!python "carbs"` and
+`#!python "chinchilla"`, as well as `#!python "bayesian_optimization"`,
+`#!python "random_search"` and `#!python "grid_search"`. Any other optimizer ignores it and logs a warning, the cost of
+the evaluations is still filled in.
+
+!!! note
+
+    The cost estimator is not stored in the `root_directory`. Every worker, and every
+    call continuing a run, has to pass the same one.
+
 ## Getting some feedback, logging
 AutoScAn will not print anything to the console. To view the progress of workers,
 you can enable logging through python's [logging.basicConfig][].

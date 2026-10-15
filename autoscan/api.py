@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 import shutil
 import warnings
@@ -34,6 +35,7 @@ from autoscan.space.parsing import convert_to_space
 from autoscan.state import AutoScAnState, OptimizationState, SeedSnapshot
 from autoscan.status.summary import SummaryWriter
 from autoscan.utils.common import dynamic_load_object
+from autoscan.utils.cost_estimator import CostEstimator
 from autoscan.validation import _validate_imported_config, _validate_imported_result
 
 if TYPE_CHECKING:
@@ -62,6 +64,8 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
+    cost_estimator: Callable[..., float] | str | Path | None = None,
+    max_cost_per_config: float | None = None,
     sample_batch_size: int | None = None,
     worker_id: str | None = None,
     live_plots: bool = False,
@@ -238,6 +242,34 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
         cost_value_on_error: Setting this and objective_value_on_error to any float will
             supress any error and will use given cost value instead. default: None
 
+        cost_estimator: Estimates the cost of a configuration, e.g. its FLOPs, for
+            scaling studies. Either a function called as `cost_estimator(**config)`,
+            which is only passed the parameters it names if it has no `**kwargs`,
+            or the path to a JSON table for a finite space:
+
+            ```json
+            [
+              {"config": {"width": 256, "layers": 6}, "cost": 1.2e9},
+              {"config": {"width": 512, "layers": 6}, "cost": 4.7e9}
+            ]
+            ```
+
+            The table is indexed by the parameters in `"config"`, usually the ones
+            marked with `is_compute_scaling=True`, and needs a record for every
+            combination of their values.
+
+            The estimate is used as the `cost` of an evaluation if
+            `evaluate_pipeline` does not report one, such that
+            `total_cost_to_spend` works without doing so, and is given to the
+            optimizers that make use of it, such as `#!python "carbs"`,
+            `#!python "chinchilla"`, `#!python "bayesian_optimization"`,
+            `#!python "random_search"` and `#!python "grid_search"`.
+
+            Every worker of a run has to pass the same `cost_estimator`.
+
+        max_cost_per_config: Do not sample configurations with an estimated cost
+            above this value. Requires `cost_estimator`.
+
         sample_batch_size:
             The number of samples to ask for in a single call to the optimizer.
 
@@ -391,6 +423,12 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
                 f" pipeline space found at: {root_directory}"
             )
 
+    if max_cost_per_config is not None and cost_estimator is None:
+        raise ValueError("`max_cost_per_config` requires a `cost_estimator`.")
+    _cost_estimator = (
+        CostEstimator.from_user(cost_estimator) if cost_estimator is not None else None
+    )
+
     # Check if we're continuing an existing run and should load the optimizer from disk
     root_path = Path(root_directory)
     optimizer_info_path = root_path / "optimizer_info.yaml"
@@ -505,7 +543,18 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
     # Log the search space after conversion
     logger.info(str(space))
 
-    _optimizer_ask, _optimizer_info = load_optimizer(optimizer=optimizer, space=space)
+    if _cost_estimator is not None:
+        if isinstance(space, PipelineSpace):
+            _cost_estimator.validate(space.get_attrs(), space.get_compute_scaling_params)
+        else:
+            _cost_estimator.validate(space.elements, space.arch_params)
+
+    _optimizer_ask, _optimizer_info = load_optimizer(
+        optimizer=optimizer,
+        space=space,
+        cost_estimator=_cost_estimator,
+        max_cost_per_config=max_cost_per_config,
+    )
 
     _eval: Callable
     if isinstance(evaluate_pipeline, str):
@@ -523,8 +572,10 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
             "evaluate_pipeline must be a callable or a string in the format"
             "'module:function'."
         )
+    if _cost_estimator is not None:
+        _eval = _with_estimated_cost(_eval, _cost_estimator)
     if isinstance(space, PipelineSpace):
-        _eval = adjust_evaluation_pipeline_for_autoscan_space(_eval, space)
+        _eval = adjust_evaluation_pipeline_for_autoscan_space(_eval, space)  # TODO
 
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
@@ -558,6 +609,37 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
         "best_config.txt for final incumbent)."
         f"\nYou can find summary folder at: {summary_dir}."
     )
+
+
+def _with_estimated_cost(
+    evaluate_pipeline: Callable[..., Any], cost_estimator: CostEstimator
+) -> Callable[..., Any]:
+    """Report the estimated cost for evaluations that do not report a cost."""
+    injected = ("pipeline_directory", "previous_pipeline_directory", "pipeline_id")
+
+    @functools.wraps(evaluate_pipeline)
+    def _evaluate(**kwargs: Any) -> Any:
+        result = evaluate_pipeline(**kwargs)
+        config = {k: v for k, v in kwargs.items() if k not in injected}
+        try:
+            cost = cost_estimator(**config)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                f"Cost estimator raised an exception for config {config}: {e}. "
+                "Returning the result without adding a cost."
+            )
+            return result
+        match result:
+            case bool():
+                return result
+            case dict() if result.get("cost") is None:
+                return {**result, "cost": cost}
+            case int() | float():
+                return {"objective_to_minimize": result, "cost": cost}
+            case _:
+                return result
+
+    return _evaluate
 
 
 def save_pipeline_results(

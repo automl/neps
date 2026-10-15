@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 from autoscan.optimizers import optimizer
-from autoscan.optimizers.utils.util import _get_max_trial_id
+from autoscan.optimizers.utils.util import _get_next_trial_id
 from autoscan.space.autoscan_spaces.autoscan_space import (
     _prepare_sampled_configs,
     resolve,
@@ -122,7 +122,7 @@ class AutoScAnRandomSearch:
             ValueError: If the pipeline is not a Pipeline object or if the trials are
                 not a valid mapping of trial IDs to Trial objects.
         """
-        max_prev_trial_id = _get_max_trial_id(trials)
+        first_id = _get_next_trial_id(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
 
@@ -145,9 +145,7 @@ class AutoScAnRandomSearch:
                 for _ in range(n_requested)
             ]
 
-        return _prepare_sampled_configs(
-            chosen_pipelines, max_prev_trial_id, return_single
-        )
+        return _prepare_sampled_configs(chosen_pipelines, first_id, return_single)
 
     def import_trials(
         self,
@@ -165,10 +163,10 @@ class AutoScAnRandomSearch:
         Returns:
             A list of ImportedConfig objects representing the imported trials.
         """
-        max_prev_trial_id = _get_max_trial_id(trials)
+        first_id = _get_next_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(max_prev_trial_id + i + 1)
+            config_id = str(first_id + i)
             imported_configs.append(
                 optimizer.ImportedConfig(
                     config=config,
@@ -276,7 +274,7 @@ class AutoScAnComplexRandomSearch:
             ValueError: If the pipeline is not a Pipeline object or if the trials are
                 not a valid mapping of trial IDs to Trial objects.
         """
-        max_prev_trial_id = _get_max_trial_id(trials)
+        first_id = _get_next_trial_id(trials)
         n_requested = 1 if n is None else n
         return_single = n is None
 
@@ -431,7 +429,7 @@ class AutoScAnComplexRandomSearch:
         # Currently, we just pick randomly from them.
         chosen_pipelines = random.sample(all_sampled_pipelines, k=n_requested)
 
-        if max_prev_trial_id == 0:
+        if not trials:
             # In this case, always include the prior pipeline.
             prior_pipeline = resolve(
                 pipeline=self._pipeline,
@@ -440,9 +438,7 @@ class AutoScAnComplexRandomSearch:
             )
             chosen_pipelines[0] = prior_pipeline
 
-        return _prepare_sampled_configs(
-            chosen_pipelines, max_prev_trial_id, return_single
-        )
+        return _prepare_sampled_configs(chosen_pipelines, first_id, return_single)
 
     def import_trials(
         self,
@@ -460,10 +456,10 @@ class AutoScAnComplexRandomSearch:
         Returns:
             A list of ImportedConfig objects representing the imported trials.
         """
-        max_prev_trial_id = _get_max_trial_id(trials)
+        first_id = _get_next_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(max_prev_trial_id + i + 1)
+            config_id = str(first_id + i)
             imported_configs.append(
                 optimizer.ImportedConfig(
                     config=config,

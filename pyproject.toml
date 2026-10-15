@@ -55,22 +55,20 @@ requires-python = ">=3.11,<3.15"
 
 dependencies = [
     "numpy>=2.0",
-    "pandas>=2.0,<3.0",
-    "networkx>=2.6.3,<3.0",
+    "pandas>=2.0",
     "scipy>=1.13.1",
     "torch>=2.0.1",
-    "matplotlib>=3.0,<4.0",
+    "matplotlib>=3.0",
     "more-itertools",
-    "portalocker>=2.0,<3.0",
-    "seaborn>=0.13,<0.14",
-    "pyyaml>=6.0,<7.0",
-    "tensorboard>=2.0,<3.0",
+    "portalocker>=2.0",
+    "seaborn>=0.13",
+    "pyyaml>=6.0",
+    "tensorboard>=2.0",
     "typing-extensions",
     "torchvision>=0.8.0",
     "botorch>=0.12",
-    "gpytorch==1.13.0",
+    "gpytorch>=1.13",
     "ifbo>=0.4.0",
-    "pymoo>=0.6.1.5",
 ]
 
 [project.urls]
@@ -79,6 +77,10 @@ repository = "https://github.com/automl/auto-scan"
 documentation = "https://automl.github.io/auto-scan/"
 
 [project.optional-dependencies]
+# External optimizers are opt-in: `pip install auto-scan[carbs]`.
+carbs = [
+    "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea",
+]
 dev = [
     "ruff",
     "pre-commit>=3,<4",

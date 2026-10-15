@@ -21,6 +21,7 @@ from autoscan.space.autoscan_spaces.parameters import (
     Operation,
     PipelineSpace,
 )
+from autoscan.space.parameters import HPOCategorical, HPOFloat, HPOInteger
 
 
 def hyperparameter_pipeline_to_optimize(
@@ -418,11 +419,9 @@ def test_space_conversion_functions():
     # Create a classic SearchSpace
     classic_space = autoscan.SearchSpace(
         {
-            "x": autoscan.HPOFloat(0.0, 1.0, prior=0.5, prior_confidence="medium"),
-            "y": autoscan.HPOInteger(1, 10, prior=5, prior_confidence="high"),
-            "z": autoscan.HPOCategorical(
-                ["a", "b", "c"], prior="b", prior_confidence="low"
-            ),
+            "x": HPOFloat(0.0, 1.0, prior=0.5, prior_confidence="medium"),
+            "y": HPOInteger(1, 10, prior=5, prior_confidence="high"),
+            "z": HPOCategorical(["a", "b", "c"], prior="b", prior_confidence="low"),
         }
     )
 

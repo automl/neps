@@ -12,7 +12,6 @@ from collections.abc import Callable, Generator, Mapping
 from functools import partial
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeVar, cast
 
-import autoscan
 from autoscan.optimizers import algorithms, optimizer
 from autoscan.space.autoscan_spaces.parameters import (
     _UNSET,
@@ -35,6 +34,7 @@ from autoscan.space.autoscan_spaces.sampling import (
     OnlyPredefinedValuesSampler,
     RandomSampler,
 )
+from autoscan.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
 from autoscan.space.parsing import convert_mapping
 
 if TYPE_CHECKING:
@@ -1042,7 +1042,7 @@ class AutoScAnCompatConverter:
 
 def _prepare_sampled_configs(
     chosen_pipelines: list[tuple[PipelineSpace, SamplingResolutionContext]],
-    max_prev_trial_id: int,
+    first_id: int,
     return_single: bool,  # noqa: FBT001
 ) -> optimizer.SampledConfig | list[optimizer.SampledConfig]:
     configs = []
@@ -1053,7 +1053,7 @@ def _prepare_sampled_configs(
 
         config = optimizer.SampledConfig(
             config=autoscan_config,
-            id=str(max_prev_trial_id + i + 1),
+            id=str(first_id + i),
             previous_config_id=None,
         )
         configs.append(config)
@@ -1161,7 +1161,7 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
             classic_space: dict[str, Any] = {}
             for key, value in space.get_attrs().items():
                 if isinstance(value, Categorical):
-                    classic_space[key] = autoscan.HPOCategorical(
+                    classic_space[key] = HPOCategorical(
                         choices=list(set(value.choices)),  # type: ignore
                         prior=value.choices[value.prior] if value.has_prior else None,  # type: ignore
                         prior_confidence=(
@@ -1169,7 +1169,7 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
                         ),
                     )
                 elif isinstance(value, Integer):
-                    classic_space[key] = autoscan.HPOInteger(
+                    classic_space[key] = HPOInteger(
                         lower=value.lower,
                         upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
@@ -1178,9 +1178,10 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
                         prior_confidence=(
                             value.prior_confidence.value if value.has_prior else "low"
                         ),
+                        is_compute_scaling=value._is_compute_scaling,
                     )
                 elif isinstance(value, Float):
-                    classic_space[key] = autoscan.HPOFloat(
+                    classic_space[key] = HPOFloat(
                         lower=value.lower,
                         upper=value.upper,
                         log=value._log if hasattr(value, "_log") else False,
@@ -1192,7 +1193,7 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
                     )
                 elif isinstance(value, Fidelity):
                     if isinstance(value.domain, Integer):
-                        classic_space[key] = autoscan.HPOInteger(
+                        classic_space[key] = HPOInteger(
                             lower=value.domain.lower,
                             upper=value.domain.upper,
                             log=(
@@ -1208,7 +1209,7 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
                             is_fidelity=True,
                         )
                     elif isinstance(value.domain, Float):
-                        classic_space[key] = autoscan.HPOFloat(
+                        classic_space[key] = HPOFloat(
                             lower=value.domain.lower,
                             upper=value.domain.upper,
                             log=(
@@ -1224,7 +1225,7 @@ def convert_autoscan_to_classic_search_space(space: PipelineSpace) -> SearchSpac
                             is_fidelity=True,
                         )
                 else:
-                    classic_space[key] = autoscan.HPOConstant(value)
+                    classic_space[key] = HPOConstant(value)
             return convert_mapping(classic_space)
     return None
 
@@ -1246,7 +1247,7 @@ def convert_classic_to_autoscan_search_space(
         """A AutoScAn-specific PipelineSpace."""
 
     for parameter_name, parameter in space.elements.items():
-        if isinstance(parameter, autoscan.HPOCategorical):
+        if isinstance(parameter, HPOCategorical):
             setattr(
                 AutoScAnSpace,
                 parameter_name,
@@ -1264,9 +1265,9 @@ def convert_classic_to_autoscan_search_space(
                     ),
                 ),
             )
-        elif isinstance(parameter, autoscan.HPOConstant):
+        elif isinstance(parameter, HPOConstant):
             setattr(AutoScAnSpace, parameter_name, parameter.value)
-        elif isinstance(parameter, autoscan.HPOInteger):
+        elif isinstance(parameter, HPOInteger):
             new_integer = Integer(
                 lower=parameter.lower,
                 upper=parameter.upper,
@@ -1276,13 +1277,14 @@ def convert_classic_to_autoscan_search_space(
                 prior_confidence=(
                     parameter.prior_confidence if parameter.prior_confidence else _UNSET
                 ),
+                is_compute_scaling=parameter.is_compute_scaling,
             )
             setattr(
                 AutoScAnSpace,
                 parameter_name,
                 (Fidelity(domain=new_integer) if parameter.is_fidelity else new_integer),
             )
-        elif isinstance(parameter, autoscan.HPOFloat):
+        elif isinstance(parameter, HPOFloat):
             new_float = Float(
                 lower=parameter.lower,
                 upper=parameter.upper,
@@ -1312,6 +1314,8 @@ ONLY_CLASSIC_ALGORITHMS_NAMES = [
     "successive_halving",
     "moasha",
     "pibo",
+    "carbs",
+    "chinchilla",
 ]
 CLASSIC_AND_AUTOSCAN_ALGORITHMS_NAMES = [
     "random_search",
@@ -1334,6 +1338,8 @@ def _get_only_classic_algorithms_functions() -> list[Callable]:
         algorithms.successive_halving,
         algorithms.moasha,
         algorithms.pibo,
+        algorithms.carbs,
+        algorithms.chinchilla,
     ]
 
 

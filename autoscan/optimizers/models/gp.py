@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass
 from functools import reduce
@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 import gpytorch.constraints
 import numpy as np
 import torch
+from botorch.acquisition import AcquisitionFunction
+from botorch.exceptions.errors import OptimizationGradientError
 from botorch.exceptions.warnings import InputDataWarning
 from botorch.fit import fit_gpytorch_mll
 from botorch.models import SingleTaskGP
@@ -25,10 +27,15 @@ from botorch.optim import (
     optimize_acqf_discrete_local_search,
     optimize_acqf_mixed,
 )
+from botorch.optim.initializers import initialize_q_batch
+from botorch.optim.utils import fix_features
+from botorch.utils.sampling import draw_sobol_samples
 from gpytorch import ExactMarginalLogLikelihood
 from gpytorch.kernels import ScaleKernel
+from gpytorch.means import Mean as GpMean
 from gpytorch.utils.warnings import NumericalWarning
 
+from autoscan.exceptions import ConstraintViolationError
 from autoscan.optimizers.acquisition import (
     WrappedAcquisition,
     cost_cooled_acq,
@@ -38,8 +45,6 @@ from autoscan.space.encoding import CategoricalToIntegerTransformer, ConfigEncod
 from autoscan.utils.common import disable_warnings
 
 if TYPE_CHECKING:
-    from botorch.acquisition import AcquisitionFunction
-
     from autoscan.sampling.priors import Prior
     from autoscan.space.parameters import Parameter
     from autoscan.state.trial import Trial
@@ -74,14 +79,62 @@ def default_categorical_kernel(
     )
 
 
+class PowerLawMean(GpMean):
+    """A fixed power law in the cost as the GP prior mean.
+
+    `mean = slope * log(cost / reference_cost) + bias`, with the cost of an encoded
+    configuration given by `cost_estimator`. Relative to `reference_cost`, the mean
+    stays near `bias` instead of the large values the raw log cost would give.
+    """
+
+    def __init__(
+        self,
+        encoder: ConfigEncoder,
+        cost_estimator: Callable[..., float],
+        slope: float,
+        bias: float,
+        reference_cost: float = 1e16,
+    ) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.cost_estimator = cost_estimator
+        # Buffers, not parameters: the power law is fixed, not learned with the GP
+        self.register_buffer("slope", torch.tensor(slope, dtype=torch.float64))
+        self.register_buffer("bias", torch.tensor(bias, dtype=torch.float64))
+        self.register_buffer(
+            "reference_cost", torch.tensor(reference_cost, dtype=torch.float64)
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        batch_shape = x.shape[:-1]
+        with torch.no_grad():
+            configs = self.encoder.decode(x.reshape(-1, x.shape[-1]))
+            costs = torch.tensor(
+                [self.cost_estimator(**config) for config in configs],
+                dtype=x.dtype,
+                device=x.device,
+            )
+        log_cost = torch.log((costs / self.reference_cost).clamp(min=1e-10))
+        return (self.slope * log_cost + self.bias).view(batch_shape)
+
+
 def make_default_single_obj_gp(
     x: torch.Tensor,
     y: torch.Tensor,
     encoder: ConfigEncoder,
     *,
     y_transform: OutcomeTransform | None = None,
+    cost_estimator: Callable[..., float] | None = None,
+    min_cost: float = 1e16,
+    mean_slope: float = -0.5,
+    mean_bias: float = 5.0,
 ) -> SingleTaskGP:
-    """Default GP for single objective optimization."""
+    """Default GP for single objective optimization.
+
+    With a `cost_estimator`, the prior mean is the power law `mean_slope *
+    log(cost / min_cost) + mean_bias`, see `PowerLawMean`. It is not used for purely
+    categorical spaces.
+    """
     if y.ndim == 1:
         y = y.unsqueeze(-1)
 
@@ -96,9 +149,23 @@ def make_default_single_obj_gp(
         else:
             numerics.append(encoder.index_of[hp_name])
 
+    mean_module = (
+        None
+        if cost_estimator is None
+        else PowerLawMean(
+            encoder=encoder,
+            cost_estimator=cost_estimator,
+            slope=mean_slope,
+            bias=mean_bias,
+            reference_cost=min_cost,
+        )
+    )
+
     # Purely vectorial
     if len(categoricals) == 0:
-        return SingleTaskGP(train_X=x, train_Y=y, outcome_transform=y_transform)
+        return SingleTaskGP(
+            train_X=x, train_Y=y, outcome_transform=y_transform, mean_module=mean_module
+        )
 
     # Purely categorical
     if len(numerics) == 0:
@@ -132,11 +199,15 @@ def make_default_single_obj_gp(
     kernel = numeric_kernel + cat_kernel
 
     return SingleTaskGP(
-        train_X=x, train_Y=y, covar_module=kernel, outcome_transform=y_transform
+        train_X=x,
+        train_Y=y,
+        covar_module=kernel,
+        outcome_transform=y_transform,
+        mean_module=mean_module,
     )
 
 
-def optimize_acq(  # noqa: PLR0915
+def optimize_acq(  # noqa: C901, PLR0912, PLR0915
     acq_fn: AcquisitionFunction,
     encoder: ConfigEncoder,
     *,
@@ -178,7 +249,36 @@ def optimize_acq(  # noqa: PLR0915
     warning_context = (
         disable_warnings(NumericalWarning) if hide_warnings else nullcontext()
     )
-    acq_options = acq_options or {}
+    # Copy, as we add the `ic_generator` below and must not mutate the caller's dict
+    acq_options = dict(acq_options or {})
+
+    # BoTorch requires an `ic_generator` producing feasible initial conditions when
+    # there are non-linear constraints. The discrete optimizers don't support them,
+    # so for those we mask the acquisition value of infeasible candidates instead.
+    nonlinear_constraints = acq_options.get("nonlinear_inequality_constraints")
+    # Only accepted by `optimize_acqf()`, not by `optimize_acqf_mixed()`
+    continuous_only_options: dict[str, Any] = {}
+    if nonlinear_constraints is not None:
+        acq_options.setdefault("ic_generator", make_ic_generator(nonlinear_constraints))
+        # Black-box constraints are piecewise constant in integer/categorical dims,
+        # so SLSQP mostly hits its iteration limit when the optimum is on the
+        # boundary. Cap the iterations and don't retry, as BoTorch then falls back
+        # to the feasible initial conditions anyway.
+        acq_options["options"] = {
+            "maxiter": _CONSTRAINED_SLSQP_MAXITER,
+            **acq_options.get("options", {}),
+        }
+        continuous_only_options["retry_on_optimization_warning"] = False
+        discrete_acq_fn: AcquisitionFunction = _FeasibilityMaskedAcquisition(
+            acq_fn, nonlinear_constraints
+        )
+    else:
+        discrete_acq_fn = acq_fn
+    discrete_acq_options = {
+        k: v
+        for k, v in acq_options.items()
+        if k not in ("nonlinear_inequality_constraints", "ic_generator", "options")
+    }
 
     _fixed_features: dict[int, float] = {}
     if fixed_features is not None:
@@ -213,15 +313,21 @@ def optimize_acq(  # noqa: PLR0915
             n_intial_start_points = min(64 * len(bounds) ** 2, 4096)
 
         with warning_context:
-            return optimize_acqf(  # type: ignore
-                acq_function=acq_fn,
-                bounds=bounds,
-                q=n_candidates_required,
-                num_restarts=num_restarts,
-                raw_samples=n_intial_start_points,
-                fixed_features=_fixed_features,
-                **acq_options,
-            )
+            try:
+                return optimize_acqf(  # type: ignore
+                    acq_function=acq_fn,
+                    bounds=bounds,
+                    q=n_candidates_required,
+                    num_restarts=num_restarts,
+                    raw_samples=n_intial_start_points,
+                    fixed_features=_fixed_features,
+                    **acq_options,
+                    **continuous_only_options,
+                )
+            except OptimizationGradientError as err:
+                # TODO: Handle this better, maybe by retrying with more
+                # initial points or restarts
+                raise err
 
     # First, just collect the possible values per cat column
     # {hp_name: [v1, v2], hp_name2: [v1, v2, v3], ...}
@@ -292,6 +398,7 @@ def optimize_acq(  # noqa: PLR0915
                 raw_samples=n_intial_start_points,
                 fixed_features=fixed_cat,
                 **acq_options,
+                **continuous_only_options,
             )
 
             # Extract the numerical dims from the optimized continuous vector
@@ -306,7 +413,7 @@ def optimize_acq(  # noqa: PLR0915
 
             # Step 2: Wrap acquisition function for discrete search
             wrapped_acq = WrappedAcquisition(
-                acq=acq_fn,
+                acq=discrete_acq_fn,
                 encoder=encoder,
                 fixed_numericals=fixed_numericals,
             )
@@ -348,6 +455,12 @@ def optimize_acq(  # noqa: PLR0915
             best_x_full[:, mask] = best_cat_tensor
 
             # Evaluate the final acquisition value
+            # The categorical search may not find a feasible combination for the
+            # fixed numericals, fall back to the feasible continuous candidates then
+            if nonlinear_constraints is not None:
+                infeasible = ~_feasibility_mask(best_x_full, nonlinear_constraints)
+                best_x_full[infeasible] = best_x_continuous[infeasible]
+
             with torch.no_grad():
                 best_val_final = acq_fn(best_x_full)
 
@@ -356,12 +469,12 @@ def optimize_acq(  # noqa: PLR0915
     else:
         with warning_context:
             return optimize_acqf_discrete_local_search(  # type: ignore
-                acq_function=acq_fn,
+                acq_function=discrete_acq_fn,
                 discrete_choices=choices,
                 q=n_candidates_required,
                 num_restarts=num_restarts,
                 raw_samples=n_intial_start_points,
-                **acq_options,
+                **discrete_acq_options,
             )
 
 
@@ -431,7 +544,7 @@ def encode_trials_for_gp(
 
 def fit_and_acquire_from_gp(
     *,
-    gp: SingleTaskGP,
+    gp: SingleTaskGP,  # noqa: ARG001
     x_train: torch.Tensor,
     encoder: ConfigEncoder,
     acquisition: AcquisitionFunction,
@@ -499,8 +612,6 @@ def fit_and_acquire_from_gp(
     if seed is not None:
         raise NotImplementedError("Seed is not implemented yet for gps")
 
-    fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
-
     if prior:
         if pibo_exp_term is None:
             raise ValueError(
@@ -530,8 +641,8 @@ def fit_and_acquire_from_gp(
 
         if missing_costs.any():
             not_missing_mask = ~missing_costs
-            x_train_cost = costs[not_missing_mask]
-            y_train_cost = x_train[not_missing_mask]
+            x_train_cost = x_train[not_missing_mask]
+            y_train_cost = costs[not_missing_mask]
         else:
             x_train_cost = x_train
             y_train_cost = costs
@@ -572,3 +683,258 @@ def fit_and_acquire_from_gp(
         hide_warnings=hide_warnings,
     )
     return candidates
+
+
+INFEASIBLE_CONSTRAINT_VALUE = -1e6
+"""Constraint value used for configurations whose constraint can not be evaluated."""
+
+_INFEASIBLE_ACQ_VALUE = -1e10
+"""Acquisition value given to infeasible candidates in the discrete optimizers."""
+
+_FD_MIN_STEP = 1e-3
+_FD_MAX_STEP = 0.5
+_IC_MAX_ATTEMPTS = 4
+_CONSTRAINED_SLSQP_MAXITER = 50
+
+
+def _evaluate_constraint(
+    constraint_func: Callable[[Mapping[str, Any]], float],
+    config: Mapping[str, Any],
+) -> tuple[float, bool]:
+    """Evaluate a black-box constraint, mapping failures to an infeasible value.
+
+    Returns:
+        The constraint value and whether the evaluation succeeded.
+    """
+    try:
+        val = float(constraint_func(config))
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"Constraint evaluation failed for config {config}: {e}")
+        return INFEASIBLE_CONSTRAINT_VALUE, False
+
+    if not np.isfinite(val):
+        logger.debug(f"Constraint returned non-finite value {val} for config {config}")
+        return INFEASIBLE_CONSTRAINT_VALUE, False
+
+    return val, True
+
+
+def _finite_difference_step(
+    x: torch.Tensor,
+    dim: int,
+    base_config: Mapping[str, Any],
+    encoder: ConfigEncoder,
+) -> tuple[Mapping[str, Any], float] | None:
+    """Find the smallest step along `dim` that changes the decoded configuration.
+
+    Integer and categorical dimensions are rounded on decode, so a fixed tiny step
+    mostly decodes to the same configuration. We therefore grow the step until the
+    decoded configuration changes, stepping backwards near the upper bound so that
+    we never leave the domain.
+
+    Returns:
+        The perturbed configuration and the signed step, or `None` if no step within
+        `_FD_MAX_STEP` changes the configuration.
+    """
+    domain = encoder.domains[dim]
+    width = domain.upper - domain.lower
+    h = _FD_MIN_STEP * width
+    while h <= _FD_MAX_STEP * width:
+        if x[dim] + h <= domain.upper:
+            signed_h = h
+        elif x[dim] - h >= domain.lower:
+            signed_h = -h
+        else:
+            return None
+
+        x_p = x.clone()
+        x_p[dim] += signed_h
+        config_p = encoder.decode(x_p.unsqueeze(0).cpu())[0]
+        if config_p != base_config:
+            return config_p, signed_h
+        h *= 2
+    return None
+
+
+class BlackBoxConstraintFn(torch.autograd.Function):
+    """Wraps a black-box constraint on configurations as a differentiable function
+    of the encoded tensor, using finite differences for the gradient.
+
+    The constraint follows the BoTorch convention: `>= 0` is feasible. Configurations
+    for which the constraint fails or is non-finite are treated as infeasible.
+    """
+
+    @staticmethod
+    def forward(ctx, x, constraint_func, encoder):  # type: ignore
+        x_flat = x.detach().reshape(-1, x.shape[-1])
+        configs = encoder.decode(x_flat.cpu())
+        results = [_evaluate_constraint(constraint_func, c) for c in configs]
+
+        n_failed = sum(not ok for _, ok in results)
+        if n_failed > 0:
+            logger.warning(
+                f"Constraint evaluation failed for {n_failed}/{len(configs)} "
+                "configurations, treating them as infeasible."
+            )
+
+        ctx.constraint_func = constraint_func
+        ctx.encoder = encoder
+        ctx.configs = configs
+        ctx.results = results
+        ctx.save_for_backward(x)
+
+        vals = [val for val, _ in results]
+        # (..., d) -> (...), e.g. (d,) -> () and (b, q, d) -> (b, q)
+        return torch.tensor(vals, dtype=x.dtype, device=x.device).view(x.shape[:-1])
+
+    @staticmethod
+    def backward(ctx, grad_output):  # type: ignore
+        (x,) = ctx.saved_tensors
+        x_flat = x.detach().reshape(-1, x.shape[-1])
+        grad_out_flat = grad_output.reshape(-1)
+        grad_in_flat = torch.zeros_like(x_flat)
+
+        for i in range(len(x_flat)):
+            base_val, base_ok = ctx.results[i]
+            # Skip points that don't contribute, or where we have no base value
+            if grad_out_flat[i] == 0 or not base_ok:
+                continue
+
+            for d in range(x_flat.shape[1]):
+                step = _finite_difference_step(x_flat[i], d, ctx.configs[i], ctx.encoder)
+                if step is None:
+                    continue
+
+                config_p, h = step
+                val_p, ok = _evaluate_constraint(ctx.constraint_func, config_p)
+                if not ok:
+                    continue
+
+                slope = float(np.clip((val_p - base_val) / h, -1e6, 1e6))
+                grad_in_flat[i, d] = slope * grad_out_flat[i]
+
+        return grad_in_flat.view_as(x), None, None
+
+
+def encode_constraints_func(
+    constraints_func: Callable[[Mapping[str, Any]], float],
+    *,
+    encoder: ConfigEncoder,
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """Turn a constraint on configurations into a constraint on encoded tensors."""
+
+    def inner(x: torch.Tensor) -> torch.Tensor:
+        return BlackBoxConstraintFn.apply(x, constraints_func, encoder)
+
+    return inner
+
+
+def _feasibility_mask(
+    X: torch.Tensor,
+    constraints: Sequence[tuple[Callable[[torch.Tensor], torch.Tensor], bool]],
+) -> torch.Tensor:
+    """Return a mask of shape `X.shape[:-1]` of points satisfying all constraints."""
+    mask = torch.ones(X.shape[:-1], dtype=torch.bool, device=X.device)
+    with torch.no_grad():
+        for constraint, _ in constraints:
+            mask &= constraint(X) >= 0
+    return mask
+
+
+def make_ic_generator(
+    constraints: Sequence[tuple[Callable[[torch.Tensor], torch.Tensor], bool]],
+) -> Callable[..., torch.Tensor]:
+    """Create an initial condition generator that respects non-linear constraints.
+
+    Feasible points are collected into a pool first and q-batches are assembled
+    from it, so the share of feasible starting points does not decay with `q`.
+    """
+
+    def ic_generator(
+        acq_function: AcquisitionFunction,
+        bounds: torch.Tensor,
+        q: int,
+        num_restarts: int,
+        raw_samples: int,
+        fixed_features: dict[int, float] | None = None,
+        options: Mapping[str, Any] | None = None,
+        **kwargs: Any,  # noqa: ARG001
+    ) -> torch.Tensor:
+        options = options or {}
+        seed = options.get("seed")
+        if seed is None:
+            # Draw from the global RNG so `torch.manual_seed` makes this reproducible
+            seed = int(torch.randint(0, 2**31 - 1, (1,)).item())
+
+        n_needed = num_restarts * q
+        n_draw = raw_samples * q
+        n_drawn = 0
+        pools: list[torch.Tensor] = []
+        for attempt in range(_IC_MAX_ATTEMPTS):
+            X = draw_sobol_samples(bounds=bounds, n=n_draw, q=1, seed=seed + attempt)
+            X = fix_features(X.squeeze(-2), fixed_features)
+            n_drawn += len(X)
+            pools.append(X[_feasibility_mask(X, constraints)])
+            if sum(len(p) for p in pools) >= n_needed:
+                break
+            n_draw *= 4
+
+        pool = torch.unique(torch.cat(pools), dim=0)
+        if len(pool) == 0:
+            raise ConstraintViolationError(
+                f"No feasible initial conditions found in {n_drawn} samples."
+            )
+        if len(pool) < n_needed:
+            logger.warning(
+                f"Constraint is very strict: only {len(pool)} feasible points found "
+                f"in {n_drawn} samples for {num_restarts} restarts of q={q}."
+            )
+
+        # Assemble q-batches from the feasible pool
+        generator = torch.Generator().manual_seed(seed)
+        n_batches = max(raw_samples, num_restarts)
+        if len(pool) >= n_batches * q:
+            idx = torch.randperm(len(pool), generator=generator)[: n_batches * q]
+            idx = idx.view(n_batches, q)
+        else:
+            idx = torch.randint(len(pool), (n_batches, q), generator=generator)
+            idx = torch.unique(idx, dim=0)
+        X_batches = pool[idx.to(pool.device)]
+
+        with torch.no_grad():
+            acq_vals = acq_function(X_batches)
+
+        finite = torch.isfinite(acq_vals)
+        if not finite.any():
+            raise RuntimeError(
+                "All initial conditions produced non-finite acquisition values."
+            )
+        X_batches, acq_vals = X_batches[finite], acq_vals[finite]
+
+        if len(X_batches) <= num_restarts:
+            return X_batches
+        return initialize_q_batch(X_batches, acq_vals, num_restarts)
+
+    return ic_generator
+
+
+class _FeasibilityMaskedAcquisition(AcquisitionFunction):
+    """Assigns a very low acquisition value to infeasible candidates.
+
+    Used for the discrete optimizers, which do not support non-linear constraints.
+    """
+
+    def __init__(
+        self,
+        acq: AcquisitionFunction,
+        constraints: Sequence[tuple[Callable[[torch.Tensor], torch.Tensor], bool]],
+    ) -> None:
+        super().__init__(model=acq.model)
+        self.acq = acq
+        self.constraints = constraints
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        vals = self.acq(X)
+        # A q-batch is only feasible if all of its points are
+        feasible = _feasibility_mask(X, self.constraints).all(dim=-1)
+        return torch.where(feasible, vals, torch.full_like(vals, _INFEASIBLE_ACQ_VALUE))

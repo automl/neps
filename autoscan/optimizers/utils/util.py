@@ -61,7 +61,7 @@ def get_config_key_to_id_mapping(
     return config_to_id
 
 
-def _get_max_trial_id(trials: Mapping[str, Any]) -> int:
+def _get_max_trial_id(trials: Mapping[str, Any]) -> int | None:
     """Get the maximum numeric trial ID from the trials mapping.
     Args:
         trials: Mapping of trial IDs to Trial objects.
@@ -70,7 +70,7 @@ def _get_max_trial_id(trials: Mapping[str, Any]) -> int:
         If no numeric IDs are found, returns 0.
     """
     if not trials:
-        return 0
+        return None
     max_id = 0
     for trial_id in trials:
         try:
@@ -82,3 +82,9 @@ def _get_max_trial_id(trials: Mapping[str, Any]) -> int:
             # If not numeric, skip
             pass
     return max_id
+
+
+def _get_next_trial_id(trials: Mapping[str, Any]) -> int:
+    """Get the next free numeric trial ID: 0 if there are no trials, else max + 1."""
+    max_id = _get_max_trial_id(trials)
+    return 0 if max_id is None else max_id + 1

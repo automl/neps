@@ -7,40 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 
-
-def pareto_efficient(X: np.ndarray) -> np.ndarray:
-    """
-    Evaluates for each allocation in the provided array whether it is Pareto efficient.
-    The costs are assumed to be improved by lowering them (eg lower is better).
-
-    Parameters
-    ----------
-    X: np.ndarray [N, D]
-        The allocations to check where N is the number of allocations and D the number of
-        costs per allocation.
-
-    Returns
-    -------
-    np.ndarray [N]
-        A boolean array, indicating for each allocation whether it is Pareto efficient.
-    """
-    # First, we assume that all allocations are Pareto efficient, i.e. not dominated
-    mask = np.ones(X.shape[0], dtype=bool)
-    # Then, we iterate over all allocations A and check which are dominated by then
-    # current allocation A. If it is, we don't need to check it against another
-    # allocation.
-    for i, allocation in enumerate(X):
-        # Only consider allocation if it hasn't been dominated yet
-        if mask[i]:
-            # An allocation is dominated by A if all costs are equal or lower
-            # and at least one cost is strictly lower. Using that definition,
-            # A cannot be dominated by itself.
-            dominated = np.all(allocation <= X[mask], axis=1) * np.any(
-                allocation < X[mask], axis=1
-            )
-            mask[mask] = ~dominated
-
-    return mask
+from autoscan.utils.pareto import pareto_efficient
 
 
 def compute_epsilon_net(X: np.ndarray, dim: int | None = None) -> np.ndarray:

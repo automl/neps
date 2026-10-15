@@ -101,6 +101,7 @@ class Domain(Generic[V]):
     `cardinality` of the domain is finite, i.e. `bins` is not `None` OR `round`
     is `True` or the boundaries are both integers.
     """
+    is_compute_scaling: bool = False
 
     is_unit_float: bool = field(init=False, repr=False)
     is_int: bool = field(init=False, repr=False)
@@ -198,6 +199,7 @@ class Domain(Generic[V]):
         log_base: float | None = None,
         bins: int | None = None,
         is_categorical: bool = False,
+        is_compute_scaling: bool = False,
     ) -> Domain[int]:
         """Create a domain for a range of integer values.
 
@@ -209,6 +211,7 @@ class Domain(Generic[V]):
               Ignored if log is False.
             bins: The number of discrete bins to split the domain into.
             is_categorical: Whether the domain is representing a categorical.
+            is_compute_scaling: Whether this domain is used for scaling purposes.
 
         Returns:
             A domain for a range of integer values.
@@ -232,6 +235,7 @@ class Domain(Generic[V]):
             round=True,
             bins=bins,
             is_categorical=is_categorical,
+            is_compute_scaling=is_compute_scaling,
         )
 
     @classmethod
@@ -269,9 +273,11 @@ class Domain(Generic[V]):
         if self.is_unit_float and q is None:
             return x.to(dtype)
 
-        if self.log_bounds is not None and self.round:
+        # For log-scaled integer domains, quantize before taking log
+        if self.log_bounds is not None and self.round and q is not None:
             quantization_levels = torch.floor(x).clip(self.lower, self.upper)
             x = quantization_levels.to(dtype)
+            q = None  # Don't apply quantization again after normalization
 
         if self.log_bounds is not None:
             if self.log_base is None:
@@ -305,6 +311,17 @@ class Domain(Generic[V]):
             return x.to(dtype)
 
         q = self.cardinality
+
+        # For log-scaled integer domains, quantize in log space to integer exponent levels
+        if self.log_bounds is not None and self.round and q is not None:
+            lower, upper = self.log_bounds
+            # Number of integer log-space levels: e.g., for log_2[3, 6]
+            #  -> [3, 4, 5, 6] = 4 levels
+            n_log_levels = round(upper - lower) + 1
+            quantization_levels = torch.floor(x * n_log_levels).clip(0, n_log_levels - 1)
+            x = quantization_levels / (n_log_levels - 1)
+            q = None  # Don't quantize again after exponential
+
         if q is not None:
             quantization_levels = torch.floor(x * q).clip(0, q - 1)
             x = quantization_levels / (q - 1)
@@ -329,8 +346,8 @@ class Domain(Generic[V]):
         if (x > upper).any():
             # Decoded value is above the upper bound of the domain.
             # Clipping to the upper bound.
-            # This is likely due floating point precision in `torch.exp(x)`
-            # with torch.float64.
+            # This is likely due floating point precision in the exponential operation
+            # (torch.exp or torch.pow) with torch.float64.
             x = torch.clip(x, max=self.upper)
 
         return x.type(dtype)

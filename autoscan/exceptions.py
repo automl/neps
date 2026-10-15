@@ -70,3 +70,9 @@ class TrialValidationError(ValueError):
             f"Trial validation failed for configuration {self.config}. "
             f"Reason: {self.message}"
         )
+
+
+class ConstraintViolationError(
+    AutoScAnError
+):  # TODO: add constraint information to the error message
+    """Raised when a configuration violates the constraints of the search space."""

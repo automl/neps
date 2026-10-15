@@ -147,7 +147,12 @@ REQUIRES_AUTOSCAN_SPACE = [
     "autoscan_local_and_incumbent",
 ]
 
-REQUIRES_ADDTIONAL_SETUP = ["autoscan_local_and_incumbent"]
+# Chinchilla needs a data parameter, a `params_estimator` and a `cost_estimator`,
+# see tests/test_optimizers/test_chinchilla.py
+REQUIRES_ADDTIONAL_SETUP = ["autoscan_local_and_incumbent", "chinchilla"]
+
+# Every search space case here has a categorical, see tests/test_optimizers/test_carbs.py
+NO_CATEGORICAL_SUPPORT = ["carbs"]
 
 
 @fixture
@@ -158,6 +163,9 @@ def optimizer_and_key_and_search_space(
 ) -> tuple[AskFunction, str, PipelineSpace | SearchSpace]:
     if key in JUST_SKIP:
         pytest.xfail(f"{key} is not instantiable")
+
+    if key in NO_CATEGORICAL_SUPPORT:
+        pytest.xfail(f"{key} does not support categoricals")
 
     if key in NO_DEFAULT_PRIOR_SUPPORT and search_space.has_priors():
         pytest.xfail(f"{key} crashed with a prior")

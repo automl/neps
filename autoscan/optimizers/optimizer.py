@@ -25,7 +25,7 @@ autoscan.run(..., optimizer=(MyOpt, {"a": 1, "b": 2}))
 from __future__ import annotations
 
 from abc import abstractmethod
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict
@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from autoscan.state.optimizer import BudgetInfo
     from autoscan.state.pipeline_eval import UserResultDict
     from autoscan.state.trial import Trial
+    from autoscan.utils.cost_estimator import CostEstimator
 
 
 class OptimizerInfo(TypedDict):
@@ -181,3 +182,72 @@ class AskFunction(Protocol):
             ...     ]
         """
         return None
+
+
+class ScalingOptimizer:
+    """Base class for optimizers that are ScAn native.
+
+    `autoscan.run(..., cost_estimator=..., max_cost_per_config=...)` hands both to
+    every optimizer inheriting from this class, right after it was created.
+
+    ```python
+    class MyOpt(ScalingOptimizer):
+        def __call__(self, trials, budget_info, n=None):
+            if self.cost_estimator is not None:
+                cost = self.cost_estimator(**config)
+            ...
+    ```
+    """
+
+    cost_estimator: CostEstimator | None = None
+    """Estimates the cost of a configuration, `None` if the run has none."""
+
+    max_cost_per_config: float | None = None
+    """Configurations estimated to cost more than this should not be sampled."""
+
+    def set_cost_estimator(
+        self,
+        cost_estimator: CostEstimator | None,
+        *,
+        max_cost_per_config: float | None = None,
+    ) -> None:
+        """Called by `autoscan.run()` with the cost estimator of the run."""
+        self.cost_estimator = cost_estimator
+        self.max_cost_per_config = max_cost_per_config
+
+    def budget_constraint(
+        self,
+        constraints_func: Callable[[Mapping[str, Any]], float] | None = None,
+        *,
+        constants: Mapping[str, Any] | None = None,
+    ) -> Callable[[Mapping[str, Any]], float] | None:
+        """Combine `max_cost_per_config` with a user given constraint.
+
+        Args:
+            constraints_func: A constraint that is `>= 0` for valid configurations.
+            constants: Values to add to a configuration before estimating its cost
+                and evaluating `constraints_func`, for optimizers that check
+                configurations without their constants.
+
+        Returns:
+            A function that is `>= 0` for configurations that satisfy the constraints
+        """
+        estimator, max_cost = self.cost_estimator, self.max_cost_per_config
+        has_budget = estimator is not None and max_cost is not None
+        if not has_budget and not constants:
+            return constraints_func
+        if not has_budget and constraints_func is None:
+            return None
+
+        def _constraint(config: Mapping[str, Any]) -> float:
+            # Both the cost estimator and the user constraint see the full config
+            full_config = {**(constants or {}), **config}
+            values = []
+            if has_budget:
+                # Normalize the cost to a slack value between 0 and 1.
+                values.append(1.0 - estimator(**full_config) / max_cost)  # type: ignore
+            if constraints_func is not None:
+                values.append(constraints_func(full_config))
+            return min(values)
+
+        return _constraint

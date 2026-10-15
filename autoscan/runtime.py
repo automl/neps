@@ -371,7 +371,7 @@ class DefaultWorker:
         if log_status:
             # Log current budget status
             budget_info_parts = []
-            if self.settings.worker_evaluations_to_spend is not None:
+            if self.settings.worker_evaluations_to_spend:
                 eval_percentage = int(
                     (
                         worker_resource_usage.evaluations
@@ -385,7 +385,7 @@ class DefaultWorker:
                     f"{self.settings.worker_evaluations_to_spend}"
                     f" ({eval_percentage}%)"
                 )
-            if self.settings.worker_fidelities_to_spend is not None:
+            if self.settings.worker_fidelities_to_spend:
                 fidelity_percentage = int(
                     (
                         worker_resource_usage.fidelities
@@ -399,7 +399,7 @@ class DefaultWorker:
                     f"{self.settings.worker_fidelities_to_spend}"
                     f" ({fidelity_percentage}%)"
                 )
-            if self.settings.worker_cost_to_spend is not None:
+            if self.settings.worker_cost_to_spend:
                 cost_percentage = int(
                     (worker_resource_usage.cost / self.settings.worker_cost_to_spend)
                     * 100
@@ -409,7 +409,7 @@ class DefaultWorker:
                     f" {worker_resource_usage.cost}/"
                     f"{self.settings.worker_cost_to_spend} ({cost_percentage}%)"
                 )
-            if self.settings.max_evaluation_time_total_seconds is not None:
+            if self.settings.max_evaluation_time_total_seconds:
                 time_percentage = int(
                     (
                         worker_resource_usage.time

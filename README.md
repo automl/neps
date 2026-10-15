@@ -14,6 +14,11 @@ To learn about AutoScAn, check out [the documentation](https://automl.github.io/
 
 ## Why AutoScAn
 
+### Scaling laws built in
+
+- **Search on a budget, predict at scale:** scaling laws are integrated directly into the optimization loop, so that results obtained at small scale inform predictions of optimal configurations at larger scales.
+- **Cost-constrained sampling:** optimizers restrict sampling to the feasible region of the search space, i.e., configurations that satisfy a user-specified black-box cost constraint.
+
 ### Tailored to large scale models
 
 - **Tuning distributed models:** AutoScAn works with [DDP](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html) and [FSDP](https://docs.pytorch.org/tutorials/intermediate/FSDP1_tutorial.html), on a single node or across multiple nodes, out of the box ([examples](autoscan_examples/efficiency/)).
@@ -25,6 +30,7 @@ To learn about AutoScAn, check out [the documentation](https://automl.github.io/
 - **Low-fidelity evaluations:** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
 - **Expert knowledge and prior studies:** use your intuition as priors, and results from earlier studies, when you have them.
 - **Model-based search:** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
+- **[Scaling optimizers](https://automl.github.io/auto-scan/latest/reference/optimizers/#3-scaling-optimizers):** grounded scaling-law prescriptions, adapted to budget-aware search.
 
 ### Generally applicable
 
@@ -47,6 +53,7 @@ Using `autoscan` is based on the following pattern:
 1. Define an `evaluate_pipeline` function that evaluates a configuration of your pipeline.
 1. Define a `pipeline_space` of the parameters to optimize.
 1. Call `autoscan.run(evaluate_pipeline, pipeline_space)`.
+1. Optionally, pass a `cost_estimator` and a cost budget to constrain the search by cost.
 
 In code, the usage pattern can look like this:
 
@@ -58,9 +65,9 @@ logging.basicConfig(level=logging.INFO)
 
 
 # 1. Define a function that accepts hyperparameters and computes the validation error
-def evaluate_pipeline(lr: float, alpha: int, optimizer: str):
+def evaluate_pipeline(lr: float, alpha: int, optimizer: str, width: int):
     # Create your model
-    model = MyModel(lr=lr, alpha=alpha, optimizer=optimizer)
+    model = MyModel(lr=lr, alpha=alpha, optimizer=optimizer, width=width)
 
     # Train and evaluate the model with your training pipeline
     validation_error = train_and_eval(model)
@@ -78,6 +85,12 @@ class ExampleSpace(autoscan.PipelineSpace):
     )
     alpha = autoscan.Integer(lower=1, upper=42)
     optimizer = autoscan.Categorical(choices=["sgd", "adam"])
+    width = autoscan.Integer(lower=64, upper=1024, log=True, is_compute_scaling=True)
+
+
+# Optional: the cost of a configuration, e.g. its FLOPs, known before it is evaluated
+def estimate_flops(width: int) -> float:
+    return 6 * width**2 * 1e6
 
 
 # 3. Run the AutoScAn optimization
@@ -85,9 +98,13 @@ autoscan.run(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=ExampleSpace(),
     root_directory="path/to/save/results",  # Replace with the actual path.
-    total_evaluations_to_spend=100,
+    cost_estimator=estimate_flops,  # Cost of every configuration
+    max_cost_per_config=1e12,  # Never sample a configuration costing more than this
+    total_cost_to_spend=1e14,  # Budget for the whole search
 )
 ```
+
+To also fit scaling laws on top of the cost constraints, use one of the [scaling optimizers](https://automl.github.io/auto-scan/latest/reference/optimizers/#3-scaling-optimizers), e.g. `optimizer="carbs"`.
 
 ## Resources to Get Started
 
@@ -117,6 +134,7 @@ To run them locally instead, see the [tutorials folder](tutorials/).
 
 - [Getting started](https://automl.github.io/auto-scan/latest/getting_started/)
 - [Reference](https://automl.github.io/auto-scan/latest/reference/autoscan_run/): running AutoScAn, search spaces, optimizers, and analysing runs
+- [Scaling optimizers](https://automl.github.io/auto-scan/latest/reference/optimizers/#3-scaling-optimizers): cost-constrained search guided by scaling laws
 - [Algorithms](https://automl.github.io/auto-scan/latest/reference/search_algorithms/landing_page_algo/)
 - [API](https://automl.github.io/auto-scan/latest/api/autoscan/api/)
 

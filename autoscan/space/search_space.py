@@ -119,6 +119,7 @@ class SearchSpace(
                         prior=prior_int,
                         prior_confidence=prior_confidence_int,  # type: ignore[arg-type]
                         is_fidelity=getattr(hp, "_is_fidelity_compat", False),
+                        is_compute_scaling=hp.is_compute_scaling,
                     )
                 elif isinstance(hp, PSCategorical):
                     # Categorical conversion - extract choices as list
@@ -163,6 +164,7 @@ class SearchSpace(
         fidelities: dict[str, HPOFloat | HPOInteger] = {}
         numerical: dict[str, HPOFloat | HPOInteger] = {}
         categoricals: dict[str, HPOCategorical] = {}
+        arch_params: dict[str, HPOInteger] = {}
         constants: dict[str, Any] = {}
 
         # Process the hyperparameters
@@ -179,6 +181,10 @@ class SearchSpace(
                         )
                     fidelities[name] = hp
 
+                case HPOInteger() if hp.is_compute_scaling:
+                    arch_params[name] = hp
+                    numerical[name] = hp
+
                 case HPOFloat() | HPOInteger():
                     numerical[name] = hp
                 case HPOCategorical():
@@ -193,6 +199,7 @@ class SearchSpace(
         self.numerical = numerical
         self.constants = constants
         self.fidelities = fidelities
+        self.arch_params = arch_params
 
     def __getitem__(self, key: str) -> Parameter | HPOConstant:
         return self.elements[key]

@@ -4,7 +4,7 @@ import inspect
 import logging
 from collections.abc import Callable, Mapping
 from functools import partial
-from typing import TYPE_CHECKING, Any, Concatenate, Literal
+from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 
 from autoscan.optimizers.algorithms import (
     CustomOptimizer,
@@ -12,15 +12,54 @@ from autoscan.optimizers.algorithms import (
     PredefinedOptimizers,
     determine_optimizer_automatically,
 )
-from autoscan.optimizers.optimizer import AskFunction, OptimizerInfo
+from autoscan.optimizers.optimizer import AskFunction, OptimizerInfo, ScalingOptimizer
 from autoscan.utils.common import extract_keyword_defaults
 from autoscan.utils.files import serializable_format
 
 if TYPE_CHECKING:
     from autoscan.space import SearchSpace
     from autoscan.space.autoscan_spaces.parameters import PipelineSpace
+    from autoscan.utils.cost_estimator import CostEstimator
+
+    # Every form an optimizer can be specified in
+    OptimizerSpec: TypeAlias = (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
+        | CustomOptimizer
+        | Literal["auto"]
+    )
 
 logger = logging.getLogger(__name__)
+
+
+def load_optimizer(
+    optimizer: OptimizerSpec,
+    space: SearchSpace | PipelineSpace,
+    *,
+    cost_estimator: CostEstimator | None = None,
+    max_cost_per_config: float | None = None,
+) -> tuple[AskFunction, OptimizerInfo]:
+    """Create the optimizer and the info describing it.
+
+    Args:
+        optimizer: Which optimizer to create.
+        space: The space the optimizer searches.
+        cost_estimator: Handed to optimizers inheriting from `ScalingOptimizer`.
+        max_cost_per_config: The cost ceiling that goes with `cost_estimator`.
+    """
+    _optimizer, info = _construct_optimizer(optimizer, space)
+    if cost_estimator is not None:
+        _attach_cost_estimator(
+            _optimizer,
+            info,
+            cost_estimator=cost_estimator,
+            max_cost_per_config=max_cost_per_config,
+        )
+    return _optimizer, info
 
 
 def _yaml_safe(value: Any) -> Any:
@@ -105,19 +144,10 @@ def _load_optimizer_from_string(
     return opt, info
 
 
-def load_optimizer(
-    optimizer: (
-        OptimizerChoice
-        | Mapping[str, Any]
-        | tuple[OptimizerChoice, Mapping[str, Any]]
-        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
-        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
-        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
-        | CustomOptimizer
-        | Literal["auto"]
-    ),
-    space: SearchSpace | PipelineSpace,
+def _construct_optimizer(
+    optimizer: OptimizerSpec, space: SearchSpace | PipelineSpace
 ) -> tuple[AskFunction, OptimizerInfo]:
+    """Build the optimizer from whatever form the user specified it in."""
     match optimizer:
         # Predefined string (including "auto")
         case str():
@@ -178,3 +208,30 @@ def load_optimizer(
                 f" {optimizer}. Must either be a string, callable or"
                 " a `CustomOptimizer` instance."
             )
+
+
+def _attach_cost_estimator(
+    optimizer: AskFunction,
+    info: OptimizerInfo,
+    *,
+    cost_estimator: CostEstimator,
+    max_cost_per_config: float | None,
+) -> None:
+    """Hand the cost estimator of the run to an optimizer that can use it."""
+    if isinstance(optimizer, ScalingOptimizer):
+        optimizer.set_cost_estimator(
+            cost_estimator, max_cost_per_config=max_cost_per_config
+        )
+    else:
+        logger.warning(
+            "The optimizer '%s' does not use `cost_estimator`%s. Optimizers that do"
+            " inherit from `autoscan.optimizers.optimizer.ScalingOptimizer`.",
+            info["name"],
+            " and `max_cost_per_config`" if max_cost_per_config is not None else "",
+        )
+
+    # Not in `info`, which is passed back to the optimizer when continuing a run
+    info["derived"] = {
+        **info.get("derived", {}),
+        "max_cost_per_config": max_cost_per_config,
+    }

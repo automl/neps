@@ -21,6 +21,7 @@ from autoscan.status.status import (
     status,
 )
 from autoscan.utils.files import get_file_writer
+from autoscan.utils.pareto import dominates
 
 if TYPE_CHECKING:
     from autoscan.state.autoscan_state import FileLocker
@@ -165,9 +166,7 @@ def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> 
         f_seq = _to_sequence(t.report.objective_to_minimize)
         if len(f_seq) != len(cand_seq):
             continue
-        if all(fi <= ci for fi, ci in zip(f_seq, cand_seq, strict=False)) and any(
-            fi < ci for fi, ci in zip(f_seq, cand_seq, strict=False)
-        ):
+        if dominates(f_seq, cand_seq):
             return True
     return False
 
@@ -182,11 +181,7 @@ def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[
         if t.report is None:
             continue
         f_seq = _to_sequence(t.report.objective_to_minimize)
-        if (
-            len(f_seq) == len(cand_seq)
-            and all(ci <= fi for ci, fi in zip(cand_seq, f_seq, strict=False))
-            and any(ci < fi for ci, fi in zip(cand_seq, f_seq, strict=False))
-        ):
+        if len(f_seq) == len(cand_seq) and dominates(cand_seq, f_seq):
             continue
         new_frontier.append(t)
     new_frontier.append(candidate)
@@ -297,7 +292,7 @@ class SummaryWriter:
         """
         if trials is None:
             state = AutoScAnState.create_or_load(path=self.root_directory, load_only=True)
-            trials = state._trial_repo.get_valid_evaluated_trials()
+            trials = state._trial_repo.get_valid_evaluated_trials(refresh_cache=False)
 
         self.write(self.collect(trials, final=final))
 

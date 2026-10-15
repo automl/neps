@@ -381,6 +381,20 @@ class PipelineSpace(Resolvable):
         """
         return {k: v for k, v in self.get_attrs().items() if isinstance(v, Fidelity)}
 
+    @property
+    def get_compute_scaling_params(self) -> Mapping[str, Integer]:
+        """Get the scaling parameters of the pipeline.
+
+        Returns:
+            A mapping of attribute names to HPOInteger objects that are marked as
+            scaling parameters.
+        """
+        return {
+            k: v
+            for k, v in self.get_attrs().items()
+            if isinstance(v, Integer) and getattr(v, "is_compute_scaling", False)
+        }
+
     def get_attrs(self) -> Mapping[str, Any]:
         """Get the attributes of the pipeline as a mapping.
         This method collects all attributes of the pipeline class and instance,
@@ -401,7 +415,7 @@ class PipelineSpace(Resolvable):
                 continue
             attrs[attr_name] = attr_value
 
-        properties_to_ignore = ("fidelity_attrs",)
+        properties_to_ignore = ("fidelity_attrs", "get_compute_scaling_params")
         for property_to_ignore in properties_to_ignore:
             attrs.pop(property_to_ignore, None)
 
@@ -1114,6 +1128,7 @@ class Float(Domain[float]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        is_compute_scaling: bool = False,  # noqa: FBT001, FBT002
         **kwargs: object,
     ):
         """Initialize the Float domain with min and max values, and optional prior.
@@ -1126,6 +1141,8 @@ class Float(Domain[float]):
               Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
+            is_compute_scaling: Whether this parameter scales the compute cost of
+              the pipeline (e.g. a fidelity used for compute-scaling optimizers).
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
                 for backward compatibility but ignored in PipelineSpace parameters.
 
@@ -1159,6 +1176,7 @@ class Float(Domain[float]):
             raise ValueError(
                 "If prior is set, prior_confidence must also be set to a valid value."
             )
+        self._is_compute_scaling = is_compute_scaling
 
     def __str__(self) -> str:
         """Get a string representation of the floating-point domain."""
@@ -1177,6 +1195,7 @@ class Float(Domain[float]):
             and self.upper == other.upper
             and self._log == other.log
             and self._log_base == other.log_base
+            and self._is_compute_scaling == other._is_compute_scaling
         )
 
     @property
@@ -1266,6 +1285,16 @@ class Float(Domain[float]):
         return cast("ConfidenceLevel", self._prior_confidence)
 
     @property
+    def is_compute_scaling(self) -> bool:
+        """Check if the integer domain is used for scaling purposes.
+
+        Returns:
+            True if the domain is used for scaling, False otherwise.
+
+        """
+        return self._is_compute_scaling
+
+    @property
     def range_compatibility_identifier(self) -> str:
         """Get a string identifier for the range compatibility of the floating-point
         domain.
@@ -1327,6 +1356,7 @@ class Float(Domain[float]):
             log_base=self._log_base,
             prior=center,
             prior_confidence=confidence,
+            is_compute_scaling=self._is_compute_scaling,
         )
 
 
@@ -1351,6 +1381,7 @@ class Integer(Domain[int]):
         prior_confidence: (
             Literal["low", "medium", "high"] | ConfidenceLevel | _Unset
         ) = _UNSET,
+        is_compute_scaling: bool = False,  # noqa: FBT001, FBT002
         **kwargs: object,
     ):
         """Initialize the Integer domain with min and max values, and optional prior.
@@ -1363,6 +1394,8 @@ class Integer(Domain[int]):
               Ignored if log is False.
             prior: The prior value for the domain, if any.
             prior_confidence: The confidence level of the prior value.
+            is_compute_scaling: Whether this parameter scales the compute cost of
+              the pipeline (e.g. a fidelity used for compute-scaling optimizers).
             **kwargs: Additional keyword arguments (e.g., is_fidelity) are accepted
                 for backward compatibility but ignored in PipelineSpace parameters.
         """
@@ -1385,6 +1418,7 @@ class Integer(Domain[int]):
         self._upper = upper
         self._log = log
         self._log_base = log_base
+        self._is_compute_scaling = is_compute_scaling
         self._prior = prior
         self._prior_confidence = (
             convert_confidence_level(prior_confidence)
@@ -1413,7 +1447,18 @@ class Integer(Domain[int]):
             and self.upper == other.upper
             and self._log == other.log
             and self._log_base == other.log_base
+            and self._is_compute_scaling == other.is_compute_scaling
         )
+
+    @property
+    def is_compute_scaling(self) -> bool:
+        """Check if the integer domain is used for scaling purposes.
+
+        Returns:
+            True if the domain is used for scaling, False otherwise.
+
+        """
+        return self._is_compute_scaling
 
     @property
     def lower(self) -> int:
@@ -1561,6 +1606,7 @@ class Integer(Domain[int]):
             log=self._log,
             log_base=self._log_base,
             prior=center,
+            is_compute_scaling=self.is_compute_scaling,
             prior_confidence=confidence,
         )
 

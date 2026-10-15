@@ -1,11 +1,16 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from autoscan.optimizers.optimizer import ImportedConfig, SampledConfig
-from autoscan.optimizers.utils.util import _get_max_trial_id
+from autoscan.exceptions import ConstraintViolationError
+from autoscan.optimizers.optimizer import (
+    ImportedConfig,
+    SampledConfig,
+    ScalingOptimizer,
+)
+from autoscan.optimizers.utils.util import _get_next_trial_id
 from autoscan.space.autoscan_spaces.autoscan_space import (
     convert_autoscan_to_classic_search_space,
 )
@@ -19,14 +24,17 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class RandomSearch:
+class RandomSearch(ScalingOptimizer):
     """A simple random search optimizer."""
 
     space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
+    constraints_func: Callable[[Mapping[str, Any]], float] | None = None
+    raw_samples: int = 1024
+    constraint_cache: dict[str, bool] | None = None
 
-    def __call__(
+    def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
         budget_info: BudgetInfo | None,
@@ -42,11 +50,21 @@ class RandomSearch:
                     " AutoScAn"
                     " space-compatible optimizer."
                 )
-        max_trial_id = _get_max_trial_id(trials)
+        next_id = _get_next_trial_id(trials)
         _n = 1 if n is None else n
-        configs = self.sampler.sample(_n, to=self.encoder.domains)
 
+        # Initialize constraint cache if needed
+        if self.constraint_cache is None:
+            self.constraint_cache = {}
+        constraints_func = self.budget_constraint(self.constraints_func)
+
+        # Generate fresh samples each time
+        configs = self.sampler.sample(
+            _n * (self.raw_samples or 1), to=self.encoder.domains
+        )
         config_dicts = self.encoder.decode(configs)
+
+        valid_configs = []
         for config in config_dicts:
             config.update(self.space.constants)
             if self.space.fidelity is not None:
@@ -58,18 +76,43 @@ class RandomSearch:
                     }
                 )
 
-        if n is None:
-            config = config_dicts[0]
-            config_id = str(max_trial_id + 1)
+            # Check constraints on the exact config that may be returned.
+            config_key = str(sorted(config.items()))
+            if config_key not in self.constraint_cache:
+                if constraints_func is not None:
+                    result = constraints_func(config)
+                    self.constraint_cache[config_key] = result >= 0
+                else:
+                    self.constraint_cache[config_key] = True
+
+            if not self.constraint_cache[config_key]:
+                continue
+
+            valid_configs.append(config)
+            if len(valid_configs) >= _n:
+                break
+
+        if constraints_func is not None and len(valid_configs) < _n:
+            raise ConstraintViolationError(
+                f"Could not sample enough valid configurations out of "
+                f"{_n * (self.raw_samples or 1)} samples, "
+                f"only got {len(valid_configs)} valid ones."
+            )
+
+        confs = valid_configs[:_n]
+
+        if n is None or n == 1:
+            config = confs[0]
+            config_id = str(next_id)
             return SampledConfig(config=config, id=config_id, previous_config_id=None)
 
         return [
             SampledConfig(
                 config=config,
-                id=str(max_trial_id + i + 1),
+                id=str(next_id + i),
                 previous_config_id=None,
             )
-            for i, config in enumerate(config_dicts)
+            for i, config in enumerate(confs)
         ]
 
     def import_trials(
@@ -77,10 +120,10 @@ class RandomSearch:
         external_evaluations: Sequence[tuple[Mapping[str, Any], UserResultDict]],
         trials: Mapping[str, Trial],
     ) -> list[ImportedConfig]:
-        max_trial_id = _get_max_trial_id(trials)
+        next_id = _get_next_trial_id(trials)
         imported_configs = []
         for i, (config, result) in enumerate(external_evaluations):
-            config_id = str(max_trial_id + i + 1)
+            config_id = str(next_id + i)
             imported_configs.append(
                 ImportedConfig(
                     config=config,

@@ -8,6 +8,8 @@ import lightning as L
 from lightning.pytorch.strategies import DDPStrategy
 from torch.optim.lr_scheduler import PolynomialLR
 
+import autoscan
+
 
 class LitSegmentation(L.LightningModule):
     def __init__(self, iters_per_epoch, lr, momentum, weight_decay):
@@ -123,24 +125,24 @@ def evaluate_pipeline(**kwargs):
     return val_loss
 
 
+class SegmentationSpace(autoscan.PipelineSpace):
+    """Search space for the image segmentation hyperparameters."""
+
+    lr = autoscan.Float(lower=0.0001, upper=0.1, log=True, prior=0.02)
+    momentum = autoscan.Float(lower=0.1, upper=0.9, prior=0.5)
+    weight_decay = autoscan.Float(lower=1e-5, upper=1e-3, log=True, prior=1e-4)
+    epoch = autoscan.Fidelity(autoscan.Integer(lower=10, upper=30))
+    batch_size = autoscan.Integer(lower=4, upper=12, prior=4)
+
+
 if __name__ == "__main__":
-    import autoscan
     import logging
 
     logging.basicConfig(level=logging.INFO)
 
-    # Search space for hyperparameters
-    pipeline_space = dict(
-        lr=autoscan.HPOFloat(lower=0.0001, upper=0.1, log=True, prior=0.02),
-        momentum=autoscan.HPOFloat(lower=0.1, upper=0.9, prior=0.5),
-        weight_decay=autoscan.HPOFloat(lower=1e-5, upper=1e-3, log=True, prior=1e-4),
-        epoch=autoscan.HPOInteger(lower=10, upper=30, is_fidelity=True),
-        batch_size=autoscan.HPOInteger(lower=4, upper=12, prior=4),
-    )
-
     autoscan.run(
         evaluate_pipeline=evaluate_pipeline,
-        pipeline_space=pipeline_space,
+        pipeline_space=SegmentationSpace(),
         root_directory="results/hpo_image_segmentation",
         worker_fidelities_to_spend=500
     )
