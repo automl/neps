@@ -120,6 +120,14 @@ To run them locally instead, see the [tutorials folder](tutorials/).
 - [Algorithms](https://automl.github.io/neps/latest/reference/search_algorithms/landing_page_algo/)
 - [API](https://automl.github.io/neps/latest/api/neps/api/)
 
+## Drawing2CAD prototype
+
+The standalone [Drawing2CAD prototype](drawing2cad/README.md) runs a local CadQuery
+MCP server that builds and validates STEP models from structured drawing specs.
+It covers four of nine sample parts: Welle, Fuss, Rotation, and Haken.
+See its README for setup, regeneration, Docker, and verification limits.
+No Siemens NX open test has been performed; OpenCascade STEP re-import is a separate check.
+
 ## Contributing
 
 Please see the [documentation for contributors](https://automl.github.io/neps/latest/dev_docs/contributing/).
