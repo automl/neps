@@ -52,6 +52,8 @@ classifiers = [
 requires-python = ">=3.11,<3.15"
 
 dependencies = [
+    "cadquery>=2.4",
+    "mcp>=1.2,<2",
     "numpy>=2.0",
     "pandas>=2.0,<3.0",
     "networkx>=2.6.3,<3.0",

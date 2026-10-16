@@ -57,3 +57,7 @@ path
 copilot/
 
 .env
+
+# Drawing2CAD generated outputs; keep human-review notes.
+/drawing2cad/out/*
+!/drawing2cad/out/*.review.md
