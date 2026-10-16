@@ -1,0 +1,357 @@
+{
+ "part": "Welle",
+ "drawing": "Welle_dwg.pdf",
+ "kind": "turned part (revolve about X)",
+ "dimensions": [
+  {
+   "id": "length_total",
+   "value": 300,
+   "found_in": "front view, top dimension",
+   "confidence": "high"
+  },
+  {
+   "id": "d1",
+   "value": 35,
+   "found_in": "front view, left end",
+   "confidence": "high"
+  },
+  {
+   "id": "l1",
+   "value": 35,
+   "found_in": "front view, '35'",
+   "confidence": "high"
+  },
+  {
+   "id": "d2",
+   "value": 45,
+   "found_in": "front view",
+   "confidence": "high"
+  },
+  {
+   "id": "x_d2_end",
+   "value": 100,
+   "found_in": "front view, '100' from left end",
+   "confidence": "high"
+  },
+  {
+   "id": "d3",
+   "value": 40,
+   "found_in": "front view",
+   "confidence": "high"
+  },
+  {
+   "id": "l_right_section",
+   "value": 50,
+   "found_in": "front view, '50' from right end",
+   "confidence": "high"
+  },
+  {
+   "id": "d_right",
+   "value": 30,
+   "found_in": "front view, right end (Ø30)",
+   "confidence": "high"
+  },
+  {
+   "id": "groove_d",
+   "value": 28,
+   "found_in": "front view Ø28 / detail",
+   "confidence": "high"
+  },
+  {
+   "id": "groove_w",
+   "value": 2.5,
+   "found_in": "front view '2,5'",
+   "confidence": "high"
+  },
+  {
+   "id": "groove_to_end",
+   "value": 20,
+   "found_in": "front view '20' from right end to groove",
+   "confidence": "high"
+  },
+  {
+   "id": "left_chamfer",
+   "value": "1x45°",
+   "found_in": "front view bottom-left",
+   "confidence": "high"
+  },
+  {
+   "id": "fillet_d2_d3",
+   "value": 2,
+   "found_in": "front view 'R2'",
+   "confidence": "high"
+  },
+  {
+   "id": "keyway_len_centres",
+   "value": 80,
+   "found_in": "front view '80' (centre of arc to centre of arc)",
+   "confidence": "medium",
+   "note": "dimension arrows end at arc centres; overall slot = 92"
+  },
+  {
+   "id": "keyway_end_offset",
+   "value": 35,
+   "found_in": "front view '35' from right slot-arc centre to the Ø40/Ø30 shoulder",
+   "confidence": "high"
+  },
+  {
+   "id": "keyway_w",
+   "value": 12,
+   "found_in": "front view '12' / section A-A",
+   "confidence": "high"
+  },
+  {
+   "id": "keyway_depth",
+   "value": 6,
+   "found_in": "section A-A '6' from shaft surface",
+   "confidence": "high"
+  }
+ ],
+ "expected": {
+  "bbox": [
+   300,
+   45,
+   45
+  ],
+  "cylinders": [
+   {
+    "id": "d35",
+    "diameter": 35,
+    "axis": "X",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "d45",
+    "diameter": 45,
+    "axis": "X",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "d40",
+    "diameter": 40,
+    "axis": "X",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "d30",
+    "diameter": 30,
+    "axis": "X",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "groove_d28",
+    "diameter": 28,
+    "axis": "X",
+    "perp": [
+     0,
+     0
+    ]
+   }
+  ]
+ },
+ "plan": [
+  {
+   "tool": "create_revolved_body",
+   "args": {
+    "profile": [
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      16.5
+     ],
+     [
+      1,
+      17.5
+     ],
+     [
+      35,
+      17.5
+     ],
+     [
+      35,
+      22.5
+     ],
+     [
+      100,
+      22.5
+     ],
+     [
+      100,
+      20
+     ],
+     [
+      250,
+      20
+     ],
+     [
+      250,
+      15
+     ],
+     [
+      277.5,
+      15
+     ],
+     [
+      277.5,
+      14
+     ],
+     [
+      280,
+      14
+     ],
+     [
+      280,
+      15
+     ],
+     [
+      299,
+      15
+     ],
+     [
+      300,
+      14
+     ],
+     [
+      300,
+      0
+     ]
+    ],
+    "axis": "X"
+   }
+  },
+  {
+   "tool": "round_circular_edges",
+   "args": {
+    "edges": [
+     {
+      "radius_at": 20,
+      "axial_at": 100,
+      "size": 2
+     }
+    ],
+    "axis": "X",
+    "mode": "fillet"
+   }
+  },
+  {
+   "tool": "round_circular_edges",
+   "args": {
+    "edges": [
+     {
+      "radius_at": 17.5,
+      "axial_at": 35,
+      "size": 2
+     }
+    ],
+    "axis": "X",
+    "mode": "fillet"
+   }
+  },
+  {
+   "tool": "round_circular_edges",
+   "args": {
+    "edges": [
+     {
+      "radius_at": 20,
+      "axial_at": 250,
+      "size": 1
+     }
+    ],
+    "axis": "X",
+    "mode": "chamfer"
+   }
+  },
+  {
+   "tool": "add_extrusion",
+   "args": {
+    "shapes": [
+     {
+      "type": "slot",
+      "x1": 135,
+      "y1": 0,
+      "x2": 215,
+      "y2": 0,
+      "w": 12,
+      "op": "add"
+     }
+    ],
+    "z_from": 14,
+    "z_to": 21,
+    "mode": "cut"
+   }
+  }
+ ],
+ "review": [
+  {
+   "item": "Groove Ø28 position",
+   "assumed_value": "x = 277.5 … 280 (2.5 wide, 20 mm from right end)",
+   "reason": "'2,5' and '20' are stacked from the right end; groove is the Ø28 band, rest of right section is Ø30",
+   "severity": "low",
+   "drawing_source": "front view detail"
+  },
+  {
+   "item": "Fillet at Ø35/Ø45 shoulder",
+   "assumed_value": "R2",
+   "reason": "round visible in the front view but not dimensioned; assumed equal to the only dimensioned fillet (R2)",
+   "severity": "medium",
+   "drawing_source": "front view, x=35"
+  },
+  {
+   "item": "Chamfer at Ø40 right shoulder edge (x=250)",
+   "assumed_value": "1x45°",
+   "reason": "bevel visible on the outer corner of the Ø40 section, not dimensioned (assumed equal to the dimensioned 1x45° at the left end)",
+   "severity": "medium",
+   "drawing_source": "front view, x=250"
+  },
+  {
+   "item": "Chamfer at right end (Ø30)",
+   "assumed_value": "1x45°",
+   "reason": "visible chamfer on the right end, no dimension (assumed equal to the dimensioned left chamfer)",
+   "severity": "medium",
+   "drawing_source": "front view, right end"
+  },
+  {
+   "item": "Fillet at Ø45/Ø40 shoulder",
+   "assumed_value": "R2 on the Ø40 side only",
+   "reason": "'R2' arrow points at the inner corner at x=100; outer corner left sharp",
+   "severity": "low",
+   "drawing_source": "front view"
+  },
+  {
+   "item": "Keyway orientation",
+   "assumed_value": "on +Z side (top of the shaft in the isometric view)",
+   "reason": "section A-A is rotated; the drawing does not state the angular position",
+   "severity": "medium",
+   "drawing_source": "iso view / A-A"
+  },
+  {
+   "item": "Keyway end shape",
+   "assumed_value": "full semicircular ends, centres 80 apart",
+   "reason": "slot drawn with round ends; '80' read as centre-to-centre",
+   "severity": "medium",
+   "drawing_source": "front view"
+  },
+  {
+   "item": "Keyway depth reference",
+   "assumed_value": "6 mm below the Ø40 surface (flat bottom at 14 mm from axis)",
+   "reason": "'6' is measured from the circle edge to the flat in A-A",
+   "severity": "low",
+   "drawing_source": "section A-A"
+  }
+ ]
+}

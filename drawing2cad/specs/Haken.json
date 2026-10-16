@@ -1,0 +1,406 @@
+{
+ "part": "Haken",
+ "drawing": "Haken_dwg.pdf",
+ "kind": "flat plate (extrude, symmetric about mid-plane) + raised boss",
+ "dimensions": [
+  {
+   "id": "hole_d",
+   "value": 76,
+   "found_in": "plan Ø76 (3x)",
+   "confidence": "high"
+  },
+  {
+   "id": "outer_d",
+   "value": 152,
+   "found_in": "plan Ø152 (lower-left disc and upper disc)",
+   "confidence": "high"
+  },
+  {
+   "id": "dx_lowerleft_to_centre",
+   "value": 128,
+   "found_in": "plan '128'",
+   "confidence": "high"
+  },
+  {
+   "id": "dy_centre_to_top",
+   "value": 152,
+   "found_in": "plan '152'",
+   "confidence": "high"
+  },
+  {
+   "id": "hook_x",
+   "value": 159,
+   "found_in": "plan '159' from section line",
+   "confidence": "high"
+  },
+  {
+   "id": "slot_w",
+   "value": 64,
+   "found_in": "plan '64'",
+   "confidence": "high"
+  },
+  {
+   "id": "slot_depth",
+   "value": 76,
+   "found_in": "plan '76'",
+   "confidence": "high"
+  },
+  {
+   "id": "r_hook_outer",
+   "value": 76,
+   "found_in": "plan R76",
+   "confidence": "high"
+  },
+  {
+   "id": "r_tip",
+   "value": 16,
+   "found_in": "plan R16",
+   "confidence": "high"
+  },
+  {
+   "id": "r_fillet",
+   "value": 35,
+   "found_in": "plan R35 (2x)",
+   "confidence": "high"
+  },
+  {
+   "id": "t_boss",
+   "value": 30,
+   "found_in": "section A-A '30'",
+   "confidence": "high"
+  },
+  {
+   "id": "t_plate",
+   "value": 20,
+   "found_in": "section A-A '20'",
+   "confidence": "high"
+  }
+ ],
+ "expected": {
+  "bbox": [
+   439,
+   304,
+   30
+  ],
+  "cylinders": [
+   {
+    "id": "hole_ll",
+    "diameter": 76,
+    "axis": "Z",
+    "perp": [
+     -128,
+     0
+    ]
+   },
+   {
+    "id": "hole_c",
+    "diameter": 76,
+    "axis": "Z",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "hole_top",
+    "diameter": 76,
+    "axis": "Z",
+    "perp": [
+     0,
+     152
+    ]
+   },
+   {
+    "id": "disc_ll_d152",
+    "diameter": 152,
+    "axis": "Z",
+    "perp": [
+     -128,
+     0
+    ]
+   },
+   {
+    "id": "disc_top_d152",
+    "diameter": 152,
+    "axis": "Z",
+    "perp": [
+     0,
+     152
+    ]
+   },
+   {
+    "id": "slot_d64",
+    "diameter": 64,
+    "axis": "Z",
+    "perp": [
+     159,
+     152
+    ]
+   },
+   {
+    "id": "hook_outer_d152",
+    "diameter": 152,
+    "axis": "Z",
+    "perp": [
+     159,
+     152
+    ]
+   },
+   {
+    "id": "tip_d32",
+    "diameter": 32,
+    "axis": "Z",
+    "perp": [
+     207,
+     116
+    ]
+   }
+  ]
+ },
+ "plan": [
+  {
+   "tool": "create_extruded_body",
+   "args": {
+    "z_from": -10,
+    "z_to": 10,
+    "shapes": [
+     {
+      "type": "circle",
+      "cx": -128,
+      "cy": 0,
+      "d": 152
+     },
+     {
+      "type": "circle",
+      "cx": 0,
+      "cy": 0,
+      "d": 152
+     },
+     {
+      "type": "circle",
+      "cx": 0,
+      "cy": 152,
+      "d": 152
+     },
+     {
+      "type": "rect",
+      "cx": -64,
+      "cy": 0,
+      "w": 128,
+      "h": 152
+     },
+     {
+      "type": "rect",
+      "cx": -38,
+      "cy": 114,
+      "w": 76,
+      "h": 76
+     },
+     {
+      "type": "path",
+      "start": [
+       -76,
+       76
+      ],
+      "segments": [
+       {
+        "line": [
+         -111,
+         76
+        ]
+       },
+       {
+        "arc": {
+         "mid": [
+          -86.25126265847084,
+          86.25126265847084
+         ],
+         "to": [
+          -76,
+          111
+         ]
+        }
+       }
+      ]
+     },
+     {
+      "type": "path",
+      "start": [
+       0,
+       0
+      ],
+      "segments": [
+       {
+        "line": [
+         76,
+         0
+        ]
+       },
+       {
+        "line": [
+         76,
+         41
+        ]
+       },
+       {
+        "arc": {
+         "mid": [
+          86.25126265847084,
+          65.74873734152916
+         ],
+         "to": [
+          111,
+          76
+         ]
+        }
+       },
+       {
+        "line": [
+         127,
+         76
+        ]
+       },
+       {
+        "line": [
+         127,
+         152
+        ]
+       },
+       {
+        "arc": {
+         "mid": [
+          159,
+          184
+         ],
+         "to": [
+          191,
+          152
+         ]
+        }
+       },
+       {
+        "line": [
+         191,
+         116
+        ]
+       },
+       {
+        "arc": {
+         "mid": [
+          207,
+          100
+         ],
+         "to": [
+          219.8,
+          106.4
+         ]
+        }
+       },
+       {
+        "arc": {
+         "mid": [
+          226.9765,
+          185.9882
+         ],
+         "to": [
+          159,
+          228
+         ]
+        }
+       },
+       {
+        "line": [
+         0,
+         228
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "tool": "add_extrusion",
+   "args": {
+    "shapes": [
+     {
+      "type": "circle",
+      "cx": 0,
+      "cy": 152,
+      "d": 152
+     }
+    ],
+    "z_from": -15,
+    "z_to": 15,
+    "mode": "add"
+   }
+  },
+  {
+   "tool": "add_holes",
+   "args": {
+    "diameter": 76,
+    "start": 15,
+    "positions": [
+     [
+      -128,
+      0
+     ],
+     [
+      0,
+      0
+     ],
+     [
+      0,
+      152
+     ]
+    ],
+    "axis": "Z",
+    "direction": -1
+   }
+  }
+ ],
+ "review": [
+  {
+   "item": "R16 hook-tip circle position",
+   "assumed_value": "centre (207, 116): tangent to the R76 outer arc and to the slot wall x=191",
+   "reason": "R16 is dimensioned but its position is not; derived by tangency from the drawing",
+   "severity": "medium",
+   "drawing_source": "plan, hook tip"
+  },
+  {
+   "item": "Plate thickness is symmetric about the boss mid-plane",
+   "assumed_value": "plate −10…+10, boss −15…+15",
+   "reason": "A-A shows the 20 mm plate centred on the 30 mm boss (5 mm proud each side)",
+   "severity": "low",
+   "drawing_source": "section A-A"
+  },
+  {
+   "item": "Extent of the 30 mm boss",
+   "assumed_value": "only the Ø152 upper disc is 30 mm thick",
+   "reason": "A-A cut line passes through the upper disc; its 30 mm span ends at y = 76 (disc edge)",
+   "severity": "medium",
+   "drawing_source": "section A-A"
+  },
+  {
+   "item": "Convex round at (76,76)/(−76,76) corners",
+   "assumed_value": "R35 concave fillets, centres (111,41) and (−111,111)",
+   "reason": "R35 drawn twice; centres derived from tangency with the adjoining edges",
+   "severity": "low",
+   "drawing_source": "plan"
+  },
+  {
+   "item": "Hook R76 centre",
+   "assumed_value": "(159,152), same centre as the slot arc",
+   "reason": "R76 arc and U-slot look concentric; the '159' dimension refers to the slot axis",
+   "severity": "low",
+   "drawing_source": "plan"
+  },
+  {
+   "item": "Right edge of the centre disc",
+   "assumed_value": "vertical edge x=76 from y=0 to y=41",
+   "reason": "drawn tangent to the R76 disc; start of the R35 arc derived (41 = 76 − 35)",
+   "severity": "low",
+   "drawing_source": "plan"
+  }
+ ]
+}

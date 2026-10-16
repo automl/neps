@@ -1,0 +1,283 @@
+{
+ "part": "Fuss",
+ "drawing": "Fuss_dwg.pdf",
+ "kind": "prismatic (extrude + boss)",
+ "dimensions": [
+  {
+   "id": "plate_w",
+   "value": 115,
+   "found_in": "top view '115'",
+   "confidence": "high"
+  },
+  {
+   "id": "plate_h",
+   "value": 115,
+   "found_in": "top view, square",
+   "confidence": "medium",
+   "note": "only one 115 dim; plate drawn square"
+  },
+  {
+   "id": "plate_t",
+   "value": 19,
+   "found_in": "front view '19'",
+   "confidence": "high"
+  },
+  {
+   "id": "corner_r",
+   "value": 22,
+   "found_in": "top view 'R22'",
+   "confidence": "high"
+  },
+  {
+   "id": "hole_d",
+   "value": 19,
+   "found_in": "top view Ø19",
+   "confidence": "high"
+  },
+  {
+   "id": "hole_pitch",
+   "value": 71,
+   "found_in": "top view '71' (centre to centre)",
+   "confidence": "high"
+  },
+  {
+   "id": "boss_d",
+   "value": 57,
+   "found_in": "top view Ø57",
+   "confidence": "high"
+  },
+  {
+   "id": "height_total",
+   "value": 76.2,
+   "found_in": "front view '76,2'",
+   "confidence": "high"
+  },
+  {
+   "id": "boss_bore_d",
+   "value": 33,
+   "found_in": "top view Ø33",
+   "confidence": "high"
+  },
+  {
+   "id": "base_bore_d",
+   "value": 19,
+   "found_in": "top view '19' above the centre",
+   "confidence": "high"
+  },
+  {
+   "id": "fillet",
+   "value": 9.5,
+   "found_in": "front view 'R9,5' (boss to plate)",
+   "confidence": "high"
+  }
+ ],
+ "expected": {
+  "bbox": [
+   115,
+   115,
+   76.2
+  ],
+  "cylinders": [
+   {
+    "id": "boss_d57",
+    "diameter": 57,
+    "axis": "Z",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "bore_d33",
+    "diameter": 33,
+    "axis": "Z",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "bore_d19",
+    "diameter": 19,
+    "axis": "Z",
+    "perp": [
+     0,
+     0
+    ]
+   },
+   {
+    "id": "hole_1",
+    "diameter": 19,
+    "axis": "Z",
+    "perp": [
+     35.5,
+     35.5
+    ]
+   },
+   {
+    "id": "hole_2",
+    "diameter": 19,
+    "axis": "Z",
+    "perp": [
+     -35.5,
+     35.5
+    ]
+   },
+   {
+    "id": "hole_3",
+    "diameter": 19,
+    "axis": "Z",
+    "perp": [
+     35.5,
+     -35.5
+    ]
+   },
+   {
+    "id": "hole_4",
+    "diameter": 19,
+    "axis": "Z",
+    "perp": [
+     -35.5,
+     -35.5
+    ]
+   }
+  ]
+ },
+ "plan": [
+  {
+   "tool": "create_extruded_body",
+   "args": {
+    "shapes": [
+     {
+      "type": "rect",
+      "cx": 0,
+      "cy": 0,
+      "w": 115,
+      "h": 115,
+      "r": 22
+     }
+    ],
+    "z_from": 0,
+    "z_to": 19
+   }
+  },
+  {
+   "tool": "add_extrusion",
+   "args": {
+    "shapes": [
+     {
+      "type": "circle",
+      "cx": 0,
+      "cy": 0,
+      "d": 57
+     }
+    ],
+    "z_from": 19,
+    "z_to": 76.2,
+    "mode": "add"
+   }
+  },
+  {
+   "tool": "round_circular_edges",
+   "args": {
+    "edges": [
+     {
+      "radius_at": 28.5,
+      "axial_at": 19,
+      "size": 9.5
+     }
+    ],
+    "axis": "Z",
+    "mode": "fillet"
+   }
+  },
+  {
+   "tool": "add_holes",
+   "args": {
+    "diameter": 19,
+    "start": 19,
+    "positions": [
+     [
+      35.5,
+      35.5
+     ],
+     [
+      -35.5,
+      35.5
+     ],
+     [
+      35.5,
+      -35.5
+     ],
+     [
+      -35.5,
+      -35.5
+     ]
+    ],
+    "axis": "Z",
+    "direction": -1
+   }
+  },
+  {
+   "tool": "add_holes",
+   "args": {
+    "diameter": 33,
+    "start": 76.2,
+    "positions": [
+     [
+      0,
+      0
+     ]
+    ],
+    "depth": 57.2,
+    "axis": "Z",
+    "direction": -1
+   }
+  },
+  {
+   "tool": "add_holes",
+   "args": {
+    "diameter": 19,
+    "start": 19,
+    "positions": [
+     [
+      0,
+      0
+     ]
+    ],
+    "axis": "Z",
+    "direction": -1
+   }
+  }
+ ],
+ "review": [
+  {
+   "item": "Plate height (Y) = 115",
+   "assumed_value": "115",
+   "reason": "only one overall dimension given; plan view drawn square",
+   "severity": "low",
+   "drawing_source": "top view"
+  },
+  {
+   "item": "Hole pitch in both directions",
+   "assumed_value": "71 x 71, symmetric about the boss axis",
+   "reason": "'71' given once (vertical); horizontal pitch read from the symmetric layout",
+   "severity": "low",
+   "drawing_source": "top view"
+  },
+  {
+   "item": "Ø33 bore depth",
+   "assumed_value": "57.2 (= 76.2 − 19, down to the plate top)",
+   "reason": "no depth dimension; dashed lines in the front view show Ø33 over the boss height and Ø19 through the plate",
+   "severity": "medium",
+   "drawing_source": "front view hidden lines"
+  },
+  {
+   "item": "Which of Ø19 / Ø33 is the boss bore",
+   "assumed_value": "Ø33 upper bore, Ø19 lower through-bore",
+   "reason": "plan view shows both circles; hidden lines in the front view disambiguate them",
+   "severity": "medium",
+   "drawing_source": "front/top view"
+  }
+ ]
+}
