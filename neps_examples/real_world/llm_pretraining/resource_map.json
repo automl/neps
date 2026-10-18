@@ -1,0 +1,26 @@
+[
+  {
+    "name": "small",
+    "max_flops": 1e15,
+    "partition": "CHANGE_ME__SMALL_PARTITION",
+    "gres": "gpu:1",
+    "mem": "16G",
+    "time": "00:20:00"
+  },
+  {
+    "name": "medium",
+    "max_flops": 5e15,
+    "partition": "CHANGE_ME__MEDIUM_PARTITION",
+    "gres": "gpu:1",
+    "mem": "16G",
+    "time": "00:40:00"
+  },
+  {
+    "name": "large",
+    "max_flops": null,
+    "partition": "CHANGE_ME__LARGE_PARTITION",
+    "gres": "gpu:1",
+    "mem": "16G",
+    "time": "01:30:00"
+  }
+]
