@@ -22,11 +22,11 @@ def training_flops(d_model, n_layers, n_tokens, vocab_size, seq_len):
     """FLOPs to train on `n_tokens` tokens, counted as in scan_llm_bench: the matmuls
     and attention of a forward pass, times 3 for forward + backward."""
     per_layer = (
-        8 * d_model**2  # q, k, v and output projections
-        + 4 * seq_len * d_model  # attention scores and the weighted sum of values
-        + 6 * d_model * glu_hidden_dim(d_model)  # GLU
+        8 * d_model**2  
+        + 4 * seq_len * d_model  
+        + 6 * d_model * glu_hidden_dim(d_model)
     )
-    forward_per_token = n_layers * per_layer + 2 * d_model * vocab_size  # + lm_head
+    forward_per_token = n_layers * per_layer + 2 * d_model * vocab_size
     return 3 * forward_per_token * n_tokens
 
 
@@ -115,11 +115,10 @@ class Transformer(nn.Module):
         for module in self.modules():
             if isinstance(module, nn.Linear | nn.Embedding):
                 nn.init.normal_(module.weight, mean=0.0, std=INIT_STD)
-        # Scale down the output layers of the residual branches, as in GPT-2.
         for name, param in self.named_parameters():
             if name.endswith(("fc2.weight", "w_out.weight")):
                 nn.init.normal_(param, mean=0.0, std=INIT_STD / math.sqrt(2 * n_layers))
-        self.lm_head.weight = self.embed_tokens.weight  # tied embeddings
+        self.lm_head.weight = self.embed_tokens.weight 
 
     def forward(self, tokens):
         x = self.embed_tokens(tokens)

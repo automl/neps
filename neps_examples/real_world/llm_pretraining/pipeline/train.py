@@ -25,8 +25,7 @@ from model import Transformer, training_flops
 
 import neps
 
-# Fixed training settings, the defaults of scan_llm_bench. The searched ones are in
-# `generate_configs.py`.
+
 BETAS = (0.9, 0.95)
 GRAD_CLIP = 1.0
 WARMUP_FRACTION = 0.05
@@ -39,7 +38,7 @@ def wsd_schedule(step, total_steps):
     warmup_steps = max(1, int(WARMUP_FRACTION * total_steps))
     cooldown_steps = int(COOLDOWN_FRACTION * total_steps)
     if step < warmup_steps:
-        return (step + 1) / warmup_steps
+        return step / warmup_steps
     if step < total_steps - cooldown_steps:
         return 1.0
     return (total_steps - step) / max(1, cooldown_steps)
@@ -64,13 +63,11 @@ def validation_loss(model):
 
 def evaluate(lr, weight_decay, d_model, n_heads, n_layers, n_tokens):
     torch.manual_seed(SEED)
-    # A trial with budget n_tokens trains on the first n_tokens tokens, in shuffled windows.
     steps = max(1, n_tokens // (BATCH_SIZE * SEQ_LEN))
     train_tokens = load_tokens("train", steps * BATCH_SIZE * SEQ_LEN + 1)
     starts = np.random.default_rng(SEED).permutation(steps * BATCH_SIZE) * SEQ_LEN
 
     model = Transformer(VOCAB_SIZE, SEQ_LEN, d_model, n_layers, n_heads).to(DEVICE)
-    # No weight decay on the norm weights (the only 1-D parameters), as in scan_llm_bench.
     params = list(model.parameters())
     optimizer = torch.optim.AdamW(
         [
@@ -95,7 +92,7 @@ def evaluate(lr, weight_decay, d_model, n_heads, n_layers, n_tokens):
         optimizer.step()
         optimizer.zero_grad(set_to_none=True)
         scheduler.step()
-    train_loss = loss.item()  # also waits for the GPU, so the time below is complete
+    train_loss = loss.item() 
     train_seconds = time.time() - start_time
 
     val_loss = validation_loss(model)
@@ -108,7 +105,6 @@ def evaluate(lr, weight_decay, d_model, n_heads, n_layers, n_tokens):
         "cost": train_seconds,
         "info_dict": {
             "train_loss": train_loss,
-            # Counted as in scan_llm_bench
             "flops": training_flops(d_model, n_layers, n_tokens_trained, VOCAB_SIZE, SEQ_LEN),
             "n_params": sum(p.numel() for p in model.parameters()),
             "n_tokens_trained": n_tokens_trained,
@@ -130,8 +126,6 @@ def main():
         result = evaluate(**config)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
-        # Marks the trial as crashed instead of leaving it pending forever. The explicit
-        # `None` keeps NePS from recording its default of 0, which looks like the best loss.
         result = {"objective_to_minimize": None, "cost": None, "exception": e}
 
     neps.save_pipeline_results(
@@ -140,7 +134,7 @@ def main():
         root_directory=args.root_dir,
     )
     if "exception" in result:
-        sys.exit(1)  # so Slurm also records the job as failed
+        sys.exit(1) 
 
 
 if __name__ == "__main__":

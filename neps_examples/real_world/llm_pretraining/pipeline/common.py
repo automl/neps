@@ -22,8 +22,6 @@ DATASET_CONFIG = "sample-10BT"
 TOKENIZER = "gpt2"
 VOCAB_SIZE = 50_257
 
-# Every trial trains on BATCH_SIZE sequences of SEQ_LEN tokens per step, and is
-# scored on the same N_VAL_TOKENS validation tokens.
 SEQ_LEN = 256
 BATCH_SIZE = 32
 N_VAL_TOKENS = 1_000_000
@@ -38,7 +36,6 @@ def autocast():
     return contextlib.nullcontext()
 
 
-# What the cache was built from; a cache built from anything else is not reused.
 _CACHE_SOURCE = {"dataset": DATASET, "dataset_config": DATASET_CONFIG, "tokenizer": TOKENIZER}
 
 
@@ -49,7 +46,7 @@ def _n_cached(split, cache_dir):
         return 0
     if json.loads(meta_path.read_text()) != _CACHE_SOURCE:
         return 0
-    return path.stat().st_size // 2  # 2 bytes per uint16 token
+    return path.stat().st_size // 2 
 
 
 def prepare_tokens(n_train_tokens, cache_dir=None):
@@ -72,11 +69,10 @@ def prepare_tokens(n_train_tokens, cache_dir=None):
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER)
     docs = iter(load_dataset(DATASET, DATASET_CONFIG, split="train", streaming=True))
     cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / "meta.json").unlink(missing_ok=True)  # invalid until fully rebuilt
+    (cache_dir / "meta.json").unlink(missing_ok=True) 
 
     for split, n_tokens in (("val", N_VAL_TOKENS), ("train", n_train_tokens)):
         n_written = 0
-        # Written to a temporary name, so an interrupted run leaves no partial file.
         tmp_path = cache_dir / f"{split}.bin.tmp"
         with tmp_path.open("wb") as f:
             while n_written < n_tokens:

@@ -16,11 +16,9 @@ def evaluate_pipeline(**config):
 class HPOSpace(neps.PipelineSpace):
     lr = neps.Float(lower=1e-4, upper=1e-2, log=True, prior=3e-3, prior_confidence="medium")
     weight_decay = neps.Float(lower=1e-3, upper=0.2, log=True, prior=0.1, prior_confidence="medium")
-    # Every width is divisible by every head count, so all configs are valid.
     d_model = neps.Categorical(choices=(128, 256, 384, 512), prior=1, prior_confidence="medium")
     n_heads = neps.Categorical(choices=(2, 4, 8), prior=1, prior_confidence="medium")
     n_layers = neps.Integer(lower=2, upper=8, prior=4, prior_confidence="medium")
-    # Training tokens, searched together with model size as in a scaling study.
     n_tokens = neps.Categorical(
         choices=(5_000_000, 10_000_000, 20_000_000, 50_000_000), prior=2, prior_confidence="medium"
     )
@@ -37,7 +35,5 @@ if __name__ == "__main__":
         root_directory=ROOT_DIRECTORY,
         optimizer=("random_search", {"use_priors": True}),
         worker_evaluations_to_spend=40,
-        # Trials crash inside Slurm jobs; without this, one crash makes every later
-        # call of this script raise that error instead of sampling more configs.
         ignore_errors=True,
     )

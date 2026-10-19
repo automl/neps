@@ -69,3 +69,6 @@ to the jobs:
 export NEPS_LLM_CACHE_DIR=/work/$USER/llm_tokens
 python pipeline/download_data.py
 ```
+
+The model and training loop are adapted from scan_llm_bench, which builds on
+[PlainLM](https://github.com/Niccolo-Ajroldi/plainLM) by Niccolò Ajroldi (MIT License).

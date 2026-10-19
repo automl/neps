@@ -17,8 +17,7 @@ from generate_configs import ROOT_DIRECTORY
 from pipeline.common import BATCH_SIZE, SEQ_LEN, VOCAB_SIZE
 from pipeline.model import training_flops
 
-# The training process reads tokens from a memory-mapped file, so it needs no
-# dataloader workers.
+
 CPUS_PER_TASK = 4
 
 # #CHANGE_ME: nodes to keep jobs off (e.g. ones with a faulty GPU), or leave empty.
@@ -66,8 +65,6 @@ def write_array_job(tier, config_ids):
     (ARRAY_JOBS_DIR / "logs").mkdir(parents=True, exist_ok=True)
 
     exclude = f"#SBATCH --exclude={','.join(EXCLUDE_NODES)}\n" if EXCLUDE_NODES else ""
-    # The config ids live in the script itself, which sbatch copies at submission:
-    # re-running this file never changes what an already queued job trains.
     script = f"""#!/bin/bash
 #SBATCH --job-name=llm_pretraining_{tier["name"]}
 #SBATCH --array=0-{len(config_ids) - 1}
@@ -115,8 +112,7 @@ def main():
         tier = resource_tier(estimated_flops(config), tiers)
         groups[tier["name"]].append(config_dir.name.removeprefix("config_"))
 
-    # Scripts of earlier runs were copied by sbatch when submitted, so removing them
-    # only keeps them from being submitted again by mistake.
+
     for old_script in ARRAY_JOBS_DIR.glob("array_job_*.sh"):
         old_script.unlink()
 
