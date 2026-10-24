@@ -22,8 +22,10 @@ DATASET_CONFIG = "sample-10BT"
 TOKENIZER = "gpt2"
 VOCAB_SIZE = 50_257
 
-SEQ_LEN = 256
-BATCH_SIZE = 32
+
+# Sequence length as in scan_llm_bench. The batch size is set per config by
+# `prepare_config_resources.py`.
+SEQ_LEN = 2048
 N_VAL_TOKENS = 1_000_000
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,7 +48,7 @@ def _n_cached(split, cache_dir):
         return 0
     if json.loads(meta_path.read_text()) != _CACHE_SOURCE:
         return 0
-    return path.stat().st_size // 2 
+    return path.stat().st_size // 2
 
 
 def prepare_tokens(n_train_tokens, cache_dir=None):
@@ -69,7 +71,7 @@ def prepare_tokens(n_train_tokens, cache_dir=None):
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER)
     docs = iter(load_dataset(DATASET, DATASET_CONFIG, split="train", streaming=True))
     cache_dir.mkdir(parents=True, exist_ok=True)
-    (cache_dir / "meta.json").unlink(missing_ok=True) 
+    (cache_dir / "meta.json").unlink(missing_ok=True)
 
     for split, n_tokens in (("val", N_VAL_TOKENS), ("train", n_train_tokens)):
         n_written = 0
