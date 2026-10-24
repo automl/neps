@@ -1,24 +1,23 @@
-"""Groups pending configs by their training compute and writes one Slurm array job
-per resource tier (see `resource_map.json`).
-Run once after `generate_configs.py` has sampled some configs:
+"""Groups pending configs by `recommended_num_gpus` and writes one Slurm array job
+per GPU count (see `resource_map.json`), as scan_llm_bench's
+`cluster/slurm_manager.py train_array_grouped` does.
+Run once after `prepare_config_resources.py` has prepared the sampled configs:
 
     python array_job.py
     python array_job.py --rerun_crashed   # also re-queue trials reported as crashed
     sbatch results/hpo_llm_pretraining/array_jobs/array_job_<tier>.sh
 """
 
+
 import argparse
 import json
 from pathlib import Path
 
 import yaml
-
 from generate_configs import ROOT_DIRECTORY
-from pipeline.common import BATCH_SIZE, SEQ_LEN, VOCAB_SIZE
-from pipeline.model import training_flops
 
-
-CPUS_PER_TASK = 4
+# CPUs for each of a job's training processes (one per GPU).
+CPUS_PER_GPU = 4
 
 # #CHANGE_ME: nodes to keep jobs off (e.g. ones with a faulty GPU), or leave empty.
 EXCLUDE_NODES: list[str] = []
@@ -29,34 +28,30 @@ ROOT_DIR = Path(ROOT_DIRECTORY).resolve()
 ARRAY_JOBS_DIR = ROOT_DIR / "array_jobs"
 
 
-def pending_configs(rerun_crashed=False):
+def pending_configs(*, rerun_crashed=False):
     for config_dir in sorted(ROOT_DIR.glob("configs/config_*")):
         if not (config_dir / "config.yaml").exists():
             continue
         report_path = config_dir / "report.yaml"
-        if not report_path.exists():
-            yield config_dir
-        elif (
+        if not report_path.exists() or (
             rerun_crashed
             and yaml.safe_load(report_path.read_text()).get("reported_as") == "crashed"
         ):
             yield config_dir
 
-
-def estimated_flops(config):
-    """Training FLOPs of a config, counted as in scan_llm_bench and in `pipeline/train.py`."""
-    steps = max(1, config["n_tokens"] // (BATCH_SIZE * SEQ_LEN))
-    n_tokens_trained = steps * BATCH_SIZE * SEQ_LEN
-    return training_flops(
-        config["d_model"], config["n_layers"], n_tokens_trained, VOCAB_SIZE, SEQ_LEN
-    )
-
-
-def resource_tier(flops, tiers):
+def resource_tier(num_gpus, tiers):
     for tier in tiers:
-        if tier["max_flops"] is None or flops <= tier["max_flops"]:
+        if tier["num_gpus"] == num_gpus:
             return tier
-    raise ValueError(f"No resource tier in resource_map.json covers {flops:.1e} FLOPs")
+    raise ValueError(f"No entry in resource_map.json has num_gpus={num_gpus}")
+
+
+def run_cmd(num_gpus):
+    """The training command: python on one GPU, torchrun with one process per GPU on more."""
+    cmd = f"pipeline/train.py --config_dir {ROOT_DIR}/configs/config_$CONFIG_ID --root_dir {ROOT_DIR}"
+    if num_gpus > 1:
+        return f"torchrun --standalone --nnodes=1 --nproc_per_node={num_gpus} {cmd}"
+    return f"python {cmd}"
 
 
 def write_array_job(tier, config_ids):
@@ -70,7 +65,7 @@ def write_array_job(tier, config_ids):
 #SBATCH --array=0-{len(config_ids) - 1}
 #SBATCH --partition={tier["partition"]}
 #SBATCH --gres={tier["gres"]}
-#SBATCH --cpus-per-task={CPUS_PER_TASK}
+#SBATCH --cpus-per-task={CPUS_PER_GPU * tier["num_gpus"]}
 #SBATCH --mem={tier["mem"]}
 #SBATCH --time={tier["time"]}
 {exclude}#SBATCH --chdir={SOURCE_DIR}
@@ -79,7 +74,7 @@ def write_array_job(tier, config_ids):
 
 CONFIG_IDS=({" ".join(config_ids)})
 CONFIG_ID=${{CONFIG_IDS[$SLURM_ARRAY_TASK_ID]}}
-python pipeline/train.py --config_dir {ROOT_DIR}/configs/config_$CONFIG_ID --root_dir {ROOT_DIR}
+{run_cmd(tier["num_gpus"])}
 """
     script_path = ARRAY_JOBS_DIR / f"array_job_{tier['name']}.sh"
     script_path.write_text(script)
@@ -104,14 +99,18 @@ def main():
             "Edit resource_map.json and set each 'partition' to a real Slurm "
             "partition name for your cluster before running array_job.py."
         )
-
+            
     groups = {tier["name"]: [] for tier in tiers}
+    unprepared = []
 
     for config_dir in pending_configs(rerun_crashed=args.rerun_crashed):
         config = yaml.safe_load((config_dir / "config.yaml").read_text())
-        tier = resource_tier(estimated_flops(config), tiers)
-        groups[tier["name"]].append(config_dir.name.removeprefix("config_"))
-
+        config_id = config_dir.name.removeprefix("config_")
+        if "recommended_num_gpus" not in config:
+            unprepared.append(config_id)
+            continue
+        tier = resource_tier(config["recommended_num_gpus"], tiers)
+        groups[tier["name"]].append(config_id)
 
     for old_script in ARRAY_JOBS_DIR.glob("array_job_*.sh"):
         old_script.unlink()
@@ -124,6 +123,12 @@ def main():
         print(
             f"{tier['name']}: {len(config_ids)} configs on {tier['partition']}"
             f" -> sbatch {script_path}"
+        )
+        
+    if unprepared:
+        print(
+            f"Not queued, no recommended_num_gpus yet (run prepare_config_resources.py): "
+            f"configs {', '.join(unprepared)}"
         )
 
 

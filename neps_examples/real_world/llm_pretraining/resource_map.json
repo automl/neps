@@ -1,26 +1,26 @@
 [
   {
-    "name": "small",
-    "max_flops": 1e15,
-    "partition": "CHANGE_ME__SMALL_PARTITION",
+    "name": "1gpu",
+    "num_gpus": 1,
+    "partition": "CHANGE_ME__PARTITION",
     "gres": "gpu:1",
     "mem": "16G",
-    "time": "00:20:00"
+    "time": "01:30:00"
   },
   {
-    "name": "medium",
-    "max_flops": 5e15,
-    "partition": "CHANGE_ME__MEDIUM_PARTITION",
-    "gres": "gpu:1",
-    "mem": "16G",
-    "time": "00:40:00"
+    "name": "2gpu",
+    "num_gpus": 2,
+    "partition": "CHANGE_ME__PARTITION",
+    "gres": "gpu:2",
+    "mem": "32G",
+    "time": "01:30:00"
   },
   {
-    "name": "large",
-    "max_flops": null,
-    "partition": "CHANGE_ME__LARGE_PARTITION",
-    "gres": "gpu:1",
-    "mem": "16G",
+    "name": "4gpu",
+    "num_gpus": 4,
+    "partition": "CHANGE_ME__PARTITION",
+    "gres": "gpu:4",
+    "mem": "64G",
     "time": "01:30:00"
   }
 ]
