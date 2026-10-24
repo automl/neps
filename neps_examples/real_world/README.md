@@ -13,7 +13,7 @@ See [`vlm_openclip/README.md`](https://github.com/automl/neps/tree/master/neps_e
 
 ## **LLM Pre-training Hyperparameter and Architecture Search**
 
-A real-world HPO and architecture search example: pre-training small Llama-style language models on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu). NePS searches over learning rate, weight decay, Transformer width, depth, attention heads, and training-token budget. Because configurations have different computational requirements, sampling and training are decoupled: each configuration is grouped by its estimated training FLOPs into a Slurm resource tier and independently evaluated on a GPU. After training, the final validation loss is reported back to NePS.
+A real-world HPO and architecture search example: pre-training small Llama-style language models on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu). NePS searches over learning rate, weight decay, Transformer width, depth, attention heads, and training-token budget. Because configurations have different computational requirements, sampling and training are decoupled: each configuration is probed on a GPU, assigned up to 4 GPUs (as in scan_llm_bench) and trained in a Slurm array job for that GPU count, with DistributedDataParallel on more than one GPU. After training, the final validation loss is reported back to NePS.
 
 See [`llm_pretraining/README.md`](https://github.com/automl/neps/tree/master/neps_examples/real_world/llm_pretraining/README.md) for the full workflow and setup.
 
