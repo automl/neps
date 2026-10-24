@@ -20,10 +20,11 @@ def glu_hidden_dim(d_model):
 
 def training_flops(d_model, n_layers, n_tokens, vocab_size, seq_len):
     """FLOPs to train on `n_tokens` tokens, counted as in scan_llm_bench: the matmuls
-    and attention of a forward pass, times 3 for forward + backward."""
+    and attention of a forward pass, times 3 for forward + backward.
+    """
     per_layer = (
-        8 * d_model**2  
-        + 4 * seq_len * d_model  
+        8 * d_model**2
+        + 4 * seq_len * d_model
         + 6 * d_model * glu_hidden_dim(d_model)
     )
     forward_per_token = n_layers * per_layer + 2 * d_model * vocab_size
@@ -118,7 +119,7 @@ class Transformer(nn.Module):
         for name, param in self.named_parameters():
             if name.endswith(("fc2.weight", "w_out.weight")):
                 nn.init.normal_(param, mean=0.0, std=INIT_STD / math.sqrt(2 * n_layers))
-        self.lm_head.weight = self.embed_tokens.weight 
+        self.lm_head.weight = self.embed_tokens.weight
 
     def forward(self, tokens):
         x = self.embed_tokens(tokens)
