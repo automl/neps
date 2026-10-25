@@ -10,14 +10,14 @@ amounts of GPU memory and compute. So sampling and training are decoupled: NePS 
 samples configs and hands each one off to a Slurm job with as many GPUs as it needs,
 instead of one worker blocking on training.
 
-`generate_configs.py` drives the search: it calls `neps.run()` in asynchronous mode,
+`generate_configs.py` drives the search. It calls `neps.run()` in asynchronous mode,
 so NePS only samples configs without immediate training.
 `prepare_config_resources.py` then probes each config on one GPU and decides how many
 GPUs it trains on, as in scan_llm_bench (see below). `array_job.py` writes one Slurm
 array job per GPU count.
 
 Each array task runs `pipeline/train.py`, with `torchrun` and one process per GPU
-(DistributedDataParallel) when a config gets more than one GPU: it trains one config,
+(DistributedDataParallel) when a config gets more than one GPU. It trains one config,
 measures its validation loss and reports the result back to NePS, once, from the first
 process. The report's `cost` is the training time in seconds, and its `extra` holds the
 training FLOPs (counted as in scan_llm_bench), parameter count, batch sizes and peak GPU
@@ -59,7 +59,7 @@ keeping the largest whose training step stays under 88% of GPU memory. Then
   (`--max-gpus-cap`, 1, 2 or 4 to match `resource_map.json`);
 - `grad_accumulation_steps` covers the rest of the target batch, if the GPUs can't.
 
-Two differences from scan_llm_bench: the micro-batch never exceeds the target batch, so
+Two differences from scan_llm_bench. The micro-batch never exceeds the target batch, so
 every config trains with the same global batch of 16 sequences whatever GPU it was
 probed on (scan_llm_bench lets a small model train with a larger batch if it fits),
 and probing starts at 1 instead of 4 sequences, so a large model that doesn't fit 4
@@ -86,7 +86,7 @@ report, has no report; `array_job.py` re-queues it either way, as above.
 
 This example pre-trains on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu),
 tokenized with GPT-2's tokenizer. `download_data.py` streams documents from the
-Hugging Face Hub once and writes two flat token files: the first 1M tokens are the
+Hugging Face Hub once and writes two flat token files. The first 1M tokens are the
 validation set and the next 50M the training set (~100 MB). Training only reads this
 cache, and a trial with a budget of `n_tokens` trains on its first `n_tokens` tokens.
 
