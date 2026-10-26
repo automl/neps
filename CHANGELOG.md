@@ -8,10 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Add LLM pre-training pipeline as a real-world example.
-
-### Changed
-- Train the LLM pre-training example on up to 4 GPUs per config, as in scan_llm_bench.
+- Add an LLM pre-training real-world example with asynchronous evaluation training each config on up to 4 GPUs as in scan_llm_bench.
 
 ## [0.17.0] - 2026-10-02
 

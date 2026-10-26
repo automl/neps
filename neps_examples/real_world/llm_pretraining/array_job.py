@@ -8,7 +8,6 @@ Run once after `prepare_config_resources.py` has prepared the sampled configs:
     sbatch results/hpo_llm_pretraining/array_jobs/array_job_<tier>.sh
 """
 
-
 import argparse
 import json
 from pathlib import Path
@@ -30,14 +29,13 @@ ARRAY_JOBS_DIR = ROOT_DIR / "array_jobs"
 
 def pending_configs(*, rerun_crashed=False):
     for config_dir in sorted(ROOT_DIR.glob("configs/config_*")):
-        if not (config_dir / "config.yaml").exists():
-            continue
         report_path = config_dir / "report.yaml"
         if not report_path.exists() or (
             rerun_crashed
             and yaml.safe_load(report_path.read_text()).get("reported_as") == "crashed"
         ):
             yield config_dir
+
 
 def resource_tier(num_gpus, tiers):
     for tier in tiers:
@@ -99,7 +97,7 @@ def main():
             "Edit resource_map.json and set each 'partition' to a real Slurm "
             "partition name for your cluster before running array_job.py."
         )
-            
+
     groups = {tier["name"]: [] for tier in tiers}
     unprepared = []
 
@@ -124,7 +122,7 @@ def main():
             f"{tier['name']}: {len(config_ids)} configs on {tier['partition']}"
             f" -> sbatch {script_path}"
         )
-        
+
     if unprepared:
         print(
             f"Not queued, no recommended_num_gpus yet (run prepare_config_resources.py): "

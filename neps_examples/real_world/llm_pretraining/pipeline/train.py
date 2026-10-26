@@ -2,9 +2,9 @@
 chosen by `prepare_config_resources.py` (one process per GPU, started by torchrun)
 """
 
-import os
 import argparse
 import math
+import os
 import sys
 import time
 import traceback
@@ -113,7 +113,7 @@ def evaluate( lr, weight_decay, d_model, n_heads, n_layers, n_tokens, micro_batc
 
     start_time = time.time()
     model.train()
-    
+
     for step in range(steps):
         for micro_step in range(grad_accumulation_steps):
             i = step * global_batch + (micro_step * world_size + rank) * micro_batch_size
@@ -167,7 +167,7 @@ def main():
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
         result = {"objective_to_minimize": None, "cost": None, "exception": e}
-    
+
     if int(os.environ.get("RANK", "0")) == 0:
         neps.save_pipeline_results(
             user_result=result,

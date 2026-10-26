@@ -17,7 +17,6 @@ from pathlib import Path
 import torch
 import torch.nn.functional as F
 import yaml
-
 from generate_configs import ROOT_DIRECTORY
 from pipeline.common import DEVICE, SEQ_LEN, VOCAB_SIZE, autocast
 from pipeline.model import Transformer
