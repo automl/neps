@@ -1,6 +1,7 @@
 # Real World Examples
 
 - [OpenCLIP Hyperparameter and Architecture Search](#openclip-hyperparameter-and-architecture-search)
+- [LLM Pre-training Hyperparameter and Architecture Search](#llm-pre-training-hyperparameter-and-architecture-search)
 - [Image Segmentation Pipeline Hyperparameter Optimization](#image-segmentation-pipeline-hyperparameter-optimization)
 
 ## **OpenCLIP Hyperparameter and Architecture Search**
@@ -8,6 +9,13 @@
 A real-world HPO example: searching an [OpenCLIP](https://github.com/mlfoundations/open_clip) model's optimization hyperparameters (learning rate, weight decay) together with its vision/text tower width and depth, pre-training contrastively on real LAION image/caption pairs. Sampling and training are decoupled so each sampled config -- which can need a very different amount of GPU memory -- is routed to a right-sized Slurm job instead of blocking one worker on training.
 
 See [`vlm_openclip/README.md`](https://github.com/automl/neps/tree/master/neps_examples/real_world/vlm_openclip/README.md) for the full workflow and setup.
+
+
+## **LLM Pre-training Hyperparameter and Architecture Search**
+
+A real-world HPO and architecture search example: pre-training small Llama-style language models on [FineWeb-Edu](https://huggingface.co/datasets/HuggingFaceFW/fineweb-edu). NePS searches over learning rate, weight decay, Transformer width, depth, attention heads, and training-token budget. Because configurations have different computational requirements, sampling and training are decoupled. Each configuration is probed on a GPU, assigned up to 4 GPUs (as in scan_llm_bench) and trained in a Slurm array job for that GPU count, with DistributedDataParallel on more than one GPU. After training, the final validation loss is reported back to NePS.
+
+See [`llm_pretraining/README.md`](https://github.com/automl/neps/tree/master/neps_examples/real_world/llm_pretraining/README.md) for the full workflow and setup.
 
 ## **Image Segmentation Pipeline Hyperparameter Optimization**
 
