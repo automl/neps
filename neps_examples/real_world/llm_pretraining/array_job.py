@@ -4,11 +4,9 @@ per GPU count (see `resource_map.json`), as scan_llm_bench's
 Run once after `prepare_config_resources.py` has prepared the sampled configs:
 
     python array_job.py
-    python array_job.py --rerun_crashed   # also re-queue trials reported as crashed
     sbatch results/hpo_llm_pretraining/array_jobs/array_job_<tier>.sh
 """
 
-import argparse
 import json
 from pathlib import Path
 
@@ -18,22 +16,14 @@ from generate_configs import ROOT_DIRECTORY
 # CPUs for each of a job's training processes (one per GPU).
 CPUS_PER_GPU = 4
 
-# #CHANGE_ME: nodes to keep jobs off (e.g. ones with a faulty GPU), or leave empty.
-EXCLUDE_NODES: list[str] = []
-
-
 SOURCE_DIR = Path(__file__).parent.resolve()
 ROOT_DIR = Path(ROOT_DIRECTORY).resolve()
 ARRAY_JOBS_DIR = ROOT_DIR / "array_jobs"
 
 
-def pending_configs(*, rerun_crashed=False):
+def pending_configs():
     for config_dir in sorted(ROOT_DIR.glob("configs/config_*")):
-        report_path = config_dir / "report.yaml"
-        if not report_path.exists() or (
-            rerun_crashed
-            and yaml.safe_load(report_path.read_text()).get("reported_as") == "crashed"
-        ):
+        if not (config_dir / "report.yaml").exists():
             yield config_dir
 
 
@@ -46,7 +36,7 @@ def resource_tier(num_gpus, tiers):
 
 def run_cmd(num_gpus):
     """The training command: python on one GPU, torchrun with one process per GPU on more."""
-    cmd = f"pipeline/train.py --config_dir {ROOT_DIR}/configs/config_$CONFIG_ID --root_dir {ROOT_DIR}"
+    cmd = f"pipeline/train.py --config-dir {ROOT_DIR}/configs/config_$CONFIG_ID --root-dir {ROOT_DIR}"
     if num_gpus > 1:
         return f"torchrun --standalone --nnodes=1 --nproc_per_node={num_gpus} {cmd}"
     return f"python {cmd}"
@@ -57,7 +47,6 @@ def write_array_job(tier, config_ids):
     # directory has to exist at submit time.
     (ARRAY_JOBS_DIR / "logs").mkdir(parents=True, exist_ok=True)
 
-    exclude = f"#SBATCH --exclude={','.join(EXCLUDE_NODES)}\n" if EXCLUDE_NODES else ""
     script = f"""#!/bin/bash
 #SBATCH --job-name=llm_pretraining_{tier["name"]}
 #SBATCH --array=0-{len(config_ids) - 1}
@@ -66,7 +55,7 @@ def write_array_job(tier, config_ids):
 #SBATCH --cpus-per-task={CPUS_PER_GPU * tier["num_gpus"]}
 #SBATCH --mem={tier["mem"]}
 #SBATCH --time={tier["time"]}
-{exclude}#SBATCH --chdir={SOURCE_DIR}
+#SBATCH --chdir={SOURCE_DIR}
 #SBATCH --output={ARRAY_JOBS_DIR}/logs/%x-%A_%a.out
 #SBATCH --error={ARRAY_JOBS_DIR}/logs/%x-%A_%a.err
 
@@ -80,14 +69,6 @@ CONFIG_ID=${{CONFIG_IDS[$SLURM_ARRAY_TASK_ID]}}
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--rerun_crashed",
-        action="store_true",
-        help="Also queue configs whose report says they crashed (e.g. on a faulty GPU).",
-    )
-    args = parser.parse_args()
-
     tiers = json.loads((SOURCE_DIR / "resource_map.json").read_text())
 
     unset = [tier["name"] for tier in tiers if "CHANGE_ME" in tier["partition"]]
@@ -101,7 +82,7 @@ def main():
     groups = {tier["name"]: [] for tier in tiers}
     unprepared = []
 
-    for config_dir in pending_configs(rerun_crashed=args.rerun_crashed):
+    for config_dir in pending_configs():
         config = yaml.safe_load((config_dir / "config.yaml").read_text())
         config_id = config_dir.name.removeprefix("config_")
         if "recommended_num_gpus" not in config:

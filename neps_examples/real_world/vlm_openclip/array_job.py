@@ -3,11 +3,9 @@ resource tier (see `resource_map.json`).
 Run once after `generate_configs.py` has sampled some configs:
 
     python array_job.py
-    python array_job.py --rerun_crashed   # also re-queue trials reported as crashed
     sbatch results/hpo_vlm_openclip/array_jobs/array_job_<tier>.sh
 """
 
-import argparse
 import json
 from pathlib import Path
 
@@ -28,14 +26,11 @@ ROOT_DIR = Path(ROOT_DIRECTORY).resolve()
 ARRAY_JOBS_DIR = ROOT_DIR / "array_jobs"
 
 
-def pending_configs(rerun_crashed=False):
+def pending_configs():
     for config_dir in sorted(ROOT_DIR.glob("configs/config_*")):
         if not (config_dir / "config.yaml").exists():
             continue
-        report_path = config_dir / "report.yaml"
-        if not report_path.exists():
-            yield config_dir
-        elif rerun_crashed and yaml.safe_load(report_path.read_text()).get("reported_as") == "crashed":
+        if not (config_dir / "report.yaml").exists():
             yield config_dir
 
 
@@ -74,14 +69,6 @@ python pipeline/train.py --group_file {group_file} --task_id $SLURM_ARRAY_TASK_I
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--rerun_crashed",
-        action="store_true",
-        help="Also queue configs whose report says they crashed (e.g. on a faulty GPU).",
-    )
-    args = parser.parse_args()
-
     tiers = json.loads((SOURCE_DIR / "resource_map.json").read_text())
 
     unset = [tier["name"] for tier in tiers if "CHANGE_ME" in tier["partition"]]
@@ -94,7 +81,7 @@ def main():
 
     groups = {tier["name"]: [] for tier in tiers}
 
-    for config_dir in pending_configs(rerun_crashed=args.rerun_crashed):
+    for config_dir in pending_configs():
         config = yaml.safe_load((config_dir / "config.yaml").read_text())
         tier = resource_tier(config["batch_size"], tiers)
         groups[tier["name"]].append(config_dir.name.removeprefix("config_"))

@@ -40,7 +40,6 @@ pass `--exclude=<node1>,<node2>` to `sbatch`.
 
 Running `array_job.py` again re-queues every config without a report (e.g. jobs killed
 by the time limit), so wait until the previous jobs have finished.
-`--rerun_crashed` also re-queues trials reported as crashed.
 
 ## GPUs per config
 

@@ -156,8 +156,8 @@ def evaluate( lr, weight_decay, d_model, n_heads, n_layers, n_tokens, micro_batc
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config_dir", required=True, type=Path)
-    parser.add_argument("--root_dir", required=True, type=Path)
+    parser.add_argument("--config-dir", required=True, type=Path)
+    parser.add_argument("--root-dir", required=True, type=Path)
     args = parser.parse_args()
 
     try:

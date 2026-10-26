@@ -94,7 +94,7 @@ def load_tokens(split, n_tokens, cache_dir=None):
         raise RuntimeError(
             f"The token cache at {cache_dir} holds {_n_cached(split, cache_dir):,} {split} "
             f"tokens from {_CACHE_SOURCE} but {n_tokens:,} are needed. Run "
-            "`python pipeline/download_data.py --n_train_tokens <largest n_tokens choice>`."
+            "`python pipeline/download_data.py --n-train-tokens <largest n_tokens choice>`."
         )
     return np.memmap(cache_dir / f"{split}.bin", dtype=np.uint16, mode="r")[:n_tokens]
 
