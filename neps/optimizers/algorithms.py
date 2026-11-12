@@ -1628,7 +1628,8 @@ def primo(
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
-    space = convert_neps_to_classic_search_space(space) or space
+    if isinstance(space, PipelineSpace):
+        space = convert_neps_to_classic_search_space(space) or space
     _moasha = _bracket_optimizer(
         pipeline_space=space,
         bracket_type="asha",

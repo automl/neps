@@ -58,8 +58,8 @@ def serializable_format(data: Any) -> Any:  # noqa: PLR0911
     if isinstance(data, Mapping):
         return {key: serializable_format(val) for key, val in data.items()}
 
-    if not isinstance(data, str) and isinstance(data, Iterable):
-        return [serializable_format(val) for val in data]
+    if type(data).__module__ == "torch" and type(data).__name__ in ("device", "dtype"):
+        return str(data)
 
     if type(data).__module__ in ["numpy", "torch"]:
         data = data.tolist()  # type: ignore
@@ -67,6 +67,9 @@ def serializable_format(data: Any) -> Any:  # noqa: PLR0911
             data = data.item()
 
         return serializable_format(data)
+
+    if not isinstance(data, str) and isinstance(data, Iterable):
+        return [serializable_format(val) for val in data]
 
     return data
 
