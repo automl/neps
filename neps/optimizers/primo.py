@@ -126,6 +126,25 @@ class PriMO:
             self.scalarization_weights = np.random.uniform(size=num_objectives)
             self.scalarization_weights /= np.sum(self.scalarization_weights)
 
+        # Collect max-fidelity objectives for normalization so that random weights
+        # are scale-invariant across objectives with different magnitudes.
+        max_fid_objectives: list[np.ndarray] = []
+        for trial in trials.values():
+            if (
+                trial.report is not None
+                and trial.report.objective_to_minimize is not None
+                and trial.config.get(self.fid_name) == self.fid_max
+            ):
+                max_fid_objectives.append(
+                    np.array(trial.report.objective_to_minimize, dtype=float)
+                )
+
+        obj_array = np.stack(max_fid_objectives, axis=0)  # (n, num_objectives)
+        obj_min = obj_array.min(axis=0)
+        obj_max = obj_array.max(axis=0)
+        # Avoid division by zero when all observed values are identical on a dimension.
+        obj_range = np.where(obj_max - obj_min > 0, obj_max - obj_min, 1.0)
+
         # Scalarize trials.report.objective_to_minimize and remove fidelity
         # from the trial configs
         nxt_id = 1
@@ -146,13 +165,11 @@ class PriMO:
                 f"got {type(_trial.report.objective_to_minimize)}"
             )
 
-            # Convert the objective to an ndarray and scalarize it
-            if not isinstance(_trial.report.objective_to_minimize, np.ndarray):
-                _trial.report.objective_to_minimize = np.array(
-                    _trial.report.objective_to_minimize
-                )
-            _trial.report.objective_to_minimize = np.dot(
-                _trial.report.objective_to_minimize, self.scalarization_weights
+            # Normalize to [0, 1] over the observed range, then scalarize.
+            raw = np.array(_trial.report.objective_to_minimize, dtype=float)
+            normalized = (raw - obj_min) / obj_range
+            _trial.report.objective_to_minimize = float(
+                np.dot(normalized, self.scalarization_weights)
             )
 
             # Remove the fidelity from the trial config

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
+from neps.optimizers.utils.initial_design import next_from_initial_design
 from neps.optimizers.utils.util import _get_max_trial_id
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
@@ -23,6 +24,9 @@ class RandomSearch:
     space: SearchSpace | PipelineSpace
     encoder: ConfigEncoder
     sampler: Sampler
+    initial_design: list[dict[str, Any]] | None = None
+    """Configs proposed first (completed with constants and fidelities), before
+    sampling at random."""
 
     def __call__(
         self,
@@ -41,9 +45,13 @@ class RandomSearch:
                 )
         max_trial_id = _get_max_trial_id(trials)
         _n = 1 if n is None else n
-        configs = self.sampler.sample(_n, to=self.encoder.domains)
-
-        config_dicts = self.encoder.decode(configs)
+        design_configs = next_from_initial_design(self.initial_design, trials, _n)
+        n_random = _n - len(design_configs)
+        config_dicts = (
+            self.encoder.decode(self.sampler.sample(n_random, to=self.encoder.domains))
+            if n_random > 0
+            else []
+        )
         for config in config_dicts:
             config.update(self.space.constants)
             if self.space.fidelity is not None:
@@ -54,6 +62,7 @@ class RandomSearch:
                         if key not in config
                     }
                 )
+        config_dicts = design_configs + config_dicts
 
         if n is None:
             config = config_dicts[0]

@@ -515,7 +515,8 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
             "'module:function'."
         )
     if isinstance(space, PipelineSpace):
-        _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
+        pass
+        # _eval = adjust_evaluation_pipeline_for_neps_space(_eval, space)
 
     _launch_runtime(
         evaluation_fn=_eval,  # type: ignore
@@ -549,7 +550,6 @@ def run(  # noqa: C901, PLR0912, PLR0913, PLR0915
         "best_config.txt for final incumbent)."
         f"\nYou can find summary folder at: {summary_dir}."
     )
-
 
 def save_pipeline_results(
     user_result: dict,

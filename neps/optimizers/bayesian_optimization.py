@@ -11,10 +11,6 @@ import numpy as np
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
-from botorch.acquisition.multi_objective.logei import (
-    qLogNoisyExpectedHypervolumeImprovement,
-)
-from botorch.models.transforms.outcome import Standardize
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -22,7 +18,10 @@ from neps.optimizers.models.gp import (
     make_default_single_obj_gp,
 )
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
-from neps.optimizers.utils.initial_design import make_initial_design
+from neps.optimizers.utils.initial_design import (
+    make_initial_design,
+    next_from_initial_design,
+)
 from neps.optimizers.utils.util import _get_max_trial_id
 from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
 from neps.space.neps_spaces.parameters import PipelineSpace
@@ -106,6 +105,11 @@ class BayesianOptimization:
     trades acquisition quality for its speed.
     """
 
+    initial_design: list[dict[str, Any]] | None = None
+    """Configs given from outside to use as initial design (completed with constants
+    and fidelities), instead of sampling one. They are proposed in order, indexed by
+    the number of known trials, then the GP takes over."""
+
     def __call__(  # noqa: C901, PLR0912, PLR0915  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
@@ -143,7 +147,41 @@ class BayesianOptimization:
         )
         sampled_configs: list[SampledConfig] = []
 
-        if n_evaluated < self.n_initial_design:
+        if self.initial_design is not None:
+            design_samples = next_from_initial_design(
+                self.initial_design, trials, n_to_sample
+            )
+            sampled_configs.extend(
+                SampledConfig(id=config_id, config=config)
+                for config_id, config in zip(id_generator, design_samples, strict=False)
+            )
+            if len(sampled_configs) >= n_to_sample:
+                return sampled_configs[0] if n is None else sampled_configs
+            if n_evaluated == 0:
+                # Design exhausted, but nothing finished yet (other workers still
+                # evaluating it), so there is no data for the GP: sample at random.
+                design_samples = make_initial_design(
+                    parameters=parameters,
+                    encoder=self.encoder,
+                    sample_prior_first=False,
+                    sampler="uniform",
+                    sample_size=n_to_sample - len(sampled_configs),
+                )
+                for sample in design_samples:
+                    sample.update(self.space.constants)
+                    if self.space.fidelity is not None:
+                        sample.update(
+                            {k: v.upper for k, v in self.space.fidelities.items()}
+                        )
+                sampled_configs.extend(
+                    SampledConfig(id=config_id, config=config)
+                    for config_id, config in zip(
+                        id_generator, design_samples, strict=False
+                    )
+                )
+                return sampled_configs[0] if n is None else sampled_configs
+
+        elif n_evaluated < self.n_initial_design:
             # For reproducibility, we need to ensure we do the same sample of all
             # configs each time.
             design_samples = make_initial_design(
@@ -152,7 +190,7 @@ class BayesianOptimization:
                 sample_prior_first=self.sample_prior_first
                 if max_trial_id == 0
                 else False,
-                sampler=self.prior if self.prior is not None else "uniform",
+                sampler="uniform",
                 seed=None,  # TODO: Seeding, however we need to avoid repeating configs
                 sample_size=self.n_initial_design,
             )
@@ -181,9 +219,72 @@ class BayesianOptimization:
             if len(sampled_configs) >= n_to_sample:
                 return sampled_configs[0] if n is None else sampled_configs
 
+        num_objectives = None
+        _trials: dict[str, Trial] = {}
+        all_objectives: list[list[float]] = []
+
+        # First pass: detect num_objectives and collect vectors for normalization.
+        for trial in trials.values():
+            if trial.report is None or trial.report.objective_to_minimize is None:
+                continue
+            match trial.report.objective_to_minimize:
+                case Sequence():
+                    n = len(trial.report.objective_to_minimize)
+                    if num_objectives is None:
+                        num_objectives = n
+                    assert len(trial.report.objective_to_minimize) == num_objectives, (
+                        "All trials must have the same number of objectives."
+                    )
+                    all_objectives.append(list(trial.report.objective_to_minimize))
+                case float():
+                    if num_objectives is None:
+                        num_objectives = 1
+                    assert num_objectives == 1, (
+                        "All trials must have the same number of objectives."
+                    )
+                case _:
+                    raise TypeError(
+                        "Objective to minimize must be a float or a sequence "
+                        "of floats."
+                    )
+
+        # Second pass: scalarize multi-objective trials with normalized objectives so
+        # that random weights are scale-invariant across objectives with different
+        # magnitudes (e.g. compute cost vs. accuracy metrics).
+        if num_objectives is not None and num_objectives > 1:
+            obj_array = np.array(all_objectives, dtype=float)
+            obj_min = obj_array.min(axis=0)
+            obj_max = obj_array.max(axis=0)
+            # Avoid division by zero when all observed values are identical.
+            obj_range = np.where(obj_max - obj_min > 0, obj_max - obj_min, 1.0)
+
+            scalarization_weights = np.random.uniform(size=num_objectives)
+            scalarization_weights /= np.sum(scalarization_weights)
+
+            for trial in trials.values():
+                if (
+                    trial.report is not None
+                    and isinstance(trial.report.objective_to_minimize, Sequence)
+                ):
+                    normalized = (
+                        np.array(trial.report.objective_to_minimize, dtype=float) - obj_min
+                    ) / obj_range
+                    _trial = copy.deepcopy(trial)
+                    _trial.report.objective_to_minimize = float(
+                        np.dot(normalized, scalarization_weights)
+                    )
+                    _trials[trial.id] = _trial
+
+        # Sanity check, but this shouldn't happen in the first place since we
+        # check `n_evaluated < self.n_initial_design` above.
+        assert num_objectives is not None, (
+            "Either no trials have been completed or"
+            " No trials reports have objective values."
+        )
+
         # Otherwise, we encode trials and setup to fit and acquire from a GP
         data, encoder = encode_trials_for_gp(
-            trials,
+            _trials,
             parameters,
             device=self.device,
             encoder=self.encoder,
@@ -210,71 +311,26 @@ class BayesianOptimization:
         prior = None
         if self.prior:
             pibo_exp_term = _pibo_exp_term(
-                len(trials), encoder.ndim, self.n_initial_design
+                len(_trials), encoder.ndim, self.n_initial_design
             )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
         n_to_acquire = n_to_sample - len(sampled_configs)
 
-        num_objectives = None
-        for trial in trials.values():
-            if trial.report is not None:
-                match trial.report.objective_to_minimize:
-                    case None:
-                        continue
-                    case Sequence():
-                        if num_objectives is None:
-                            num_objectives = len(trial.report.objective_to_minimize)
-                        assert (
-                            len(trial.report.objective_to_minimize) == num_objectives
-                        ), "All trials must have the same number of objectives."
-                    case float():
-                        if num_objectives is None:
-                            num_objectives = 1
-                        assert num_objectives == 1, (
-                            "All trials must have the same number of objectives."
-                        )
-                    case _:
-                        raise TypeError(
-                            "Objective to minimize must be a float or a sequence "
-                            "of floats."
-                        )
-
-        # Sanity check, but this shouldn't happen in the first place since we
-        # check `n_evaluated < self.n_initial_design` above.
-        assert num_objectives is not None, (
-            "Either no trials have been completed or"
-            " No trials reports have objective values."
-        )
-
         if num_objectives > 1:
             gp = make_default_single_obj_gp(
                 x=data.x,
                 y=data.y,
                 encoder=encoder,
-                y_transform=Standardize(m=data.y.shape[-1]),
             )
-            if self.reference_point is not None:
-                assert len(self.reference_point) == num_objectives, (
-                    "Reference point must have the same number of objectives as the"
-                    " trials."
-                )
-                ref_point = torch.tensor(
-                    self.reference_point,
-                    dtype=data.x.dtype,
-                    device=data.x.device,
-                )
-            else:
-                ref_point = torch.tensor(
-                    _get_reference_point(data.y.numpy()),
-                    dtype=data.x.dtype,
-                    device=data.x.device,
-                )
-            acquisition = qLogNoisyExpectedHypervolumeImprovement(
+            acquisition = qLogNoisyExpectedImprovement(
                 model=gp,
-                ref_point=ref_point,
                 X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
                 X_pending=data.x_pending,
                 prune_baseline=True,
             )

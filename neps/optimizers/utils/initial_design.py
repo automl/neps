@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
 import torch
@@ -8,7 +8,8 @@ import torch
 from neps.sampling import Prior, Sampler
 
 if TYPE_CHECKING:
-    from neps.space import ConfigEncoder
+    from neps.space import ConfigEncoder, SearchSpace
+    from neps.space.neps_spaces.parameters import PipelineSpace
     from neps.space.parameters import Parameter
 
 
@@ -77,3 +78,129 @@ def make_initial_design(
         configs.extend(sample_configs)
 
     return configs
+
+
+def complete_initial_design(
+    initial_design: Sequence[Mapping[str, Any]],
+    space: SearchSpace,
+    *,
+    parameters: Mapping[str, Parameter],
+) -> list[dict[str, Any]]:
+    """Validate an initial design given from outside the optimizer and complete it.
+
+    Each config must set every parameter in `parameters` (the parameters the
+    optimizer searches over). Constants of the space are always set, and fidelities
+    not given in a config are set to their maximum.
+
+    Args:
+        initial_design: The configurations to evaluate first, in order.
+        space: The (classic) search space the optimizer works on.
+        parameters: The parameters the optimizer searches over.
+
+    Returns:
+        The completed configurations, in the same order.
+    """
+    known = set(space.elements)
+    completed: list[dict[str, Any]] = []
+    for i, config in enumerate(initial_design):
+        if missing := set(parameters) - set(config):
+            raise ValueError(
+                f"Initial design config {i} misses parameters {sorted(missing)}: {config}"
+            )
+        if unknown := set(config) - known:
+            raise ValueError(
+                f"Initial design config {i} has unknown parameters {sorted(unknown)}:"
+                f" {config}"
+            )
+        completed.append(
+            {
+                **{name: f.upper for name, f in space.fidelities.items()},
+                **config,
+                **space.constants,
+            }
+        )
+    return completed
+
+
+def next_from_initial_design(
+    initial_design: Sequence[Mapping[str, Any]] | None,
+    trials: Mapping[str, Any],
+    n: int,
+) -> list[dict[str, Any]]:
+    """Return the next (at most `n`) configs of a given initial design.
+
+    The position in the design is the number of trials NePS knows about (pending,
+    failed and successful), so every optimizer given the same design proposes the
+    same configs first, and multiple workers do not propose the same config twice.
+    """
+    if not initial_design:
+        return []
+    start = len(trials)
+    return [dict(config) for config in initial_design[start : start + n]]
+
+
+def sample_initial_design(
+    pipeline_space: SearchSpace | PipelineSpace | Mapping[str, Any],
+    size: int,
+    *,
+    seed: int,
+    sampler: Literal["sobol", "uniform"] = "uniform",
+    sample_fidelity: bool = False,
+) -> list[dict[str, Any]]:
+    """Sample an initial design to give to several optimizers so they start the same.
+
+    Pass the result as `initial_design=` to e.g.
+    [`random_search`][neps.optimizers.algorithms.random_search],
+    [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization] or
+    [`optuna_motpe`][neps.optimizers.algorithms.optuna_motpe].
+
+    Args:
+        pipeline_space: The search space to sample from.
+        size: The number of configurations.
+        seed: The seed; the same seed gives the same design.
+        sampler: "uniform" (random) or "sobol" (scrambled Sobol sequence).
+        sample_fidelity: Whether to sample fidelities like any other parameter
+            (`ignore_fidelity=True` in the optimizers). If False they are set to
+            their maximum.
+    """
+    from neps.space import ConfigEncoder
+    from neps.space.neps_spaces.neps_space import convert_neps_to_classic_search_space
+    from neps.space.neps_spaces.parameters import PipelineSpace
+    from neps.space.parsing import convert_to_space
+
+    space = convert_to_space(pipeline_space)
+    if isinstance(space, PipelineSpace):
+        converted = convert_neps_to_classic_search_space(space)
+        if converted is None:
+            raise ValueError("initial designs are only supported for HPO search spaces.")
+        space = converted
+    parameters = (
+        {**space.searchables, **space.fidelities}
+        if sample_fidelity
+        else {**space.searchables}
+    )
+    encoder = ConfigEncoder.from_parameters(parameters)
+    match sampler:
+        case "sobol":
+            _sampler = Sampler.sobol(ndim=len(parameters))
+        case "uniform":
+            _sampler = Sampler.uniform(ndim=len(parameters))
+        case _:
+            raise ValueError(f"Unknown sampler {sampler!r}")
+    # The samplers do not all support a seed argument, so seed a forked torch RNG
+    # (this does not change the global RNG state).
+    with torch.random.fork_rng(devices=[]):
+        torch.manual_seed(seed)
+        encoded = _sampler.sample(size * 4, to=encoder.domains)
+    # Drop duplicates (possible with integers/categoricals) keeping the sample order
+    design: list[dict[str, Any]] = []
+    for config in encoder.decode(encoded):
+        if config not in design:
+            design.append(config)
+        if len(design) == size:
+            break
+    if len(design) < size:
+        raise ValueError(
+            f"Could only sample {len(design)} unique configs, but {size} were requested."
+        )
+    return complete_initial_design(design, space, parameters=parameters)

@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 import torch
 
 from neps.optimizers.bayesian_optimization import BayesianOptimization
+from neps.optimizers.external.optuna_motpe import OptunaMOTPE
 from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
@@ -46,6 +47,7 @@ from neps.optimizers.optimizer import AskFunction  # noqa: TC001
 from neps.optimizers.primo import PriMO
 from neps.optimizers.priorband import PriorBandSampler
 from neps.optimizers.random_search import RandomSearch
+from neps.optimizers.utils.initial_design import complete_initial_design
 from neps.sampling import Prior, Sampler, Uniform
 from neps.space.encoding import CategoricalToUnitNorm, ConfigEncoder
 from neps.space.neps_spaces.neps_space import (
@@ -84,6 +86,7 @@ def _bo(  # noqa: C901, PLR0912
     reference_point: tuple[float, ...] | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int | None = 256,
+    initial_design: Sequence[Mapping[str, Any]] | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -110,6 +113,8 @@ def _bo(  # noqa: C901, PLR0912
         num_restarts: Number of restarts used when optimizing the acquisition function.
         n_initial_start_points: Number of initial start points used when optimizing the
             acquisition function. If `None`, a dimension-dependent heuristic is used.
+        initial_design: Configs to evaluate first instead of sampling an initial
+            design. If given, `initial_design_size` is ignored and set to its length.
 
     Raises:
         ValueError: if initial_design_size < 1
@@ -135,6 +140,12 @@ def _bo(  # noqa: C901, PLR0912
         parameters = {**pipeline_space.searchables, **pipeline_space.fidelities}
     else:
         parameters = {**pipeline_space.searchables}
+
+    if initial_design is not None:
+        initial_design = complete_initial_design(
+            initial_design, pipeline_space, parameters=parameters
+        )
+        initial_design_size = len(initial_design)
 
     match initial_design_size:
         case "ndim":
@@ -170,6 +181,7 @@ def _bo(  # noqa: C901, PLR0912
         reference_point=reference_point,
         num_restarts=num_restarts,
         n_initial_start_points=n_initial_start_points,
+        initial_design=initial_design,
     )
 
 
@@ -540,6 +552,7 @@ def random_search(
     *,
     use_priors: bool = False,
     ignore_fidelity: bool | Literal["highest_fidelity"] = False,
+    initial_design: Sequence[Mapping[str, Any]] | None = None,
 ) -> RandomSearch | NePSRandomSearch:
     """A simple random search algorithm that samples configurations uniformly at random.
 
@@ -553,12 +566,19 @@ def random_search(
             Setting this to "highest_fidelity" will always sample at max fidelity.
             Setting this to True will randomly sample from the fidelity like any other
             parameter.
+        initial_design: Configs to evaluate first, before sampling at random.
+            See [`sample_initial_design`][neps.optimizers.utils.initial_design.sample_initial_design]
+            to share one design between optimizers.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
         if converted_space is not None:
             pipeline_space = converted_space
         else:
+            if initial_design is not None:
+                raise ValueError(
+                    "initial_design is only supported for HPO search spaces."
+                )
             return neps_random_search(
                 pipeline_space, use_priors=use_priors, ignore_fidelity=ignore_fidelity
             )
@@ -609,9 +629,12 @@ def random_search(
         space=pipeline_space,
         encoder=ConfigEncoder.from_parameters(parameters),
         sampler=(
-            Prior.from_parameters(parameters)
-            if use_priors
-            else Uniform(ndim=len(parameters))
+            Uniform(ndim=len(parameters))
+        ),
+        initial_design=(
+            complete_initial_design(initial_design, pipeline_space, parameters=parameters)
+            if initial_design is not None
+            else None
         ),
     )
 
@@ -1351,6 +1374,7 @@ def bayesian_optimization(
     reference_point: tuple[float, ...] | None = None,
     num_restarts: int = 20,
     n_initial_start_points: int | None = 256,
+    initial_design: Sequence[Mapping[str, Any]] | None = None,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -1406,6 +1430,10 @@ def bayesian_optimization(
         n_initial_start_points: Number of initial start points used when optimizing
             the acquisition function. If `None`, a dimension-dependent heuristic is
             used.
+        initial_design: Configs to evaluate first instead of sampling an initial
+            design. If given, `initial_design_size` is ignored and set to its length.
+            See [`sample_initial_design`][neps.optimizers.utils.initial_design.sample_initial_design]
+            to share one design between optimizers.
     """
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_neps_to_classic_search_space(pipeline_space)
@@ -1453,6 +1481,53 @@ def bayesian_optimization(
         reference_point=reference_point,
         num_restarts=num_restarts,
         n_initial_start_points=n_initial_start_points,
+        initial_design=initial_design,
+    )
+
+
+def optuna_motpe(
+    pipeline_space: SearchSpace | PipelineSpace,
+    *,
+    seed: int | None = None,
+    num_objectives: int = 3,
+    initial_design: Sequence[Mapping[str, Any]] | None = None,
+    **sampler_kwargs: Any,
+) -> OptunaMOTPE:
+    """Optuna's multi-objective TPE (MOTPE), requires `optuna` to be installed.
+
+    The fidelity, if any, is always set to its maximum.
+
+    Args:
+        pipeline_space: The search space to sample from.
+        seed: Seed of the TPE sampler. If None, the run is not reproducible.
+        num_objectives: Number of objectives (all minimized) reported by the trials.
+        initial_design: Configs to evaluate first. If given, Optuna's own random
+            startup trials are disabled (unless `n_startup_trials` is given).
+            See [`sample_initial_design`][neps.optimizers.utils.initial_design.sample_initial_design]
+            to share one design between optimizers.
+        **sampler_kwargs: Extra arguments for `optuna.samplers.TPESampler`.
+    """
+    if isinstance(pipeline_space, PipelineSpace):
+        converted_space = convert_neps_to_classic_search_space(pipeline_space)
+        if converted_space is None:
+            raise ValueError(
+                "This optimizer only supports HPO search spaces, please use a NePS"
+                " space-compatible optimizer."
+            )
+        pipeline_space = converted_space
+
+    return OptunaMOTPE(
+        space=pipeline_space,
+        seed=seed,
+        num_objectives=num_objectives,
+        initial_design=(
+            complete_initial_design(
+                initial_design, pipeline_space, parameters=pipeline_space.searchables
+            )
+            if initial_design is not None
+            else None
+        ),
+        sampler_kwargs=sampler_kwargs,
     )
 
 
@@ -1553,6 +1628,7 @@ def primo(
 ) -> PriMO:
     """Replaces the initial design of Bayesian optimization with MOASHA, then switches to
     BO after N*max_fidelity worth of evaluations, where N is the initial_design_size."""
+    space = convert_neps_to_classic_search_space(space) or space
     _moasha = _bracket_optimizer(
         pipeline_space=space,
         bracket_type="asha",
@@ -1982,6 +2058,7 @@ PredefinedOptimizers: Mapping[str, Any] = {
         async_hb,
         priorband,
         primo,
+        optuna_motpe,
         neps_random_search,
         complex_random_search,
         neps_priorband,
@@ -2005,6 +2082,7 @@ OptimizerChoice: TypeAlias = Literal[
     "grid_search",
     "ifbo",
     "primo",
+    "optuna_motpe",
     "neps_random_search",
     "complex_random_search",
     "neps_priorband",

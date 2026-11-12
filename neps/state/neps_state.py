@@ -163,9 +163,9 @@ class TrialRepo:
             return all(obj is not None and not np.isnan(obj) for obj in objective)
         return not np.isnan(objective)
 
-    def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:
+    def latest(self, *, create_cache_if_missing: bool = True, refresh_cache: bool = False) -> dict[str, Trial]:
         """Get the latest trials from the cache."""
-        if not self.cache_path.exists():
+        if not self.cache_path.exists() or refresh_cache:
             if not create_cache_if_missing:
                 return {}
             # If we end up with no cache but there are trials on disk, we need to read in.
@@ -179,6 +179,7 @@ class TrialRepo:
                 with atomic_write(self.cache_path, "wb") as f:
                     f.write(pickle_bytes)
 
+                return trials
             return {}
 
         return self._read_pkl_and_maybe_consolidate()
