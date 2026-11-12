@@ -229,9 +229,9 @@ class BayesianOptimization:
                 continue
             match trial.report.objective_to_minimize:
                 case Sequence():
-                    n = len(trial.report.objective_to_minimize)
+                    n_obj = len(trial.report.objective_to_minimize)
                     if num_objectives is None:
-                        num_objectives = n
+                        num_objectives = n_obj
                     assert len(trial.report.objective_to_minimize) == num_objectives, (
                         "All trials must have the same number of objectives."
                     )

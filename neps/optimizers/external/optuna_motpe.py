@@ -140,8 +140,12 @@ class OptunaMOTPE:
         )
         for trial in trials.values():
             # Pending and failed trials are skipped, as optuna's TPE ignores them
-            # anyway (no constant liar)
-            if trial.metadata.state != State.SUCCESS or trial.report is None:
+            # anyway (no constant liar). Imported trials (neps.import_trials) are
+            # EXTERNAL, not SUCCESS.
+            if (
+                trial.metadata.state not in (State.SUCCESS, State.EXTERNAL)
+                or trial.report is None
+            ):
                 continue
             values = trial.report.objective_to_minimize
             values = list(values) if isinstance(values, Sequence) else [values]

@@ -1307,6 +1307,7 @@ ONLY_CLASSIC_ALGORITHMS_NAMES = [
     "successive_halving",
     "moasha",
     "pibo",
+    "optuna_motpe",
 ]
 CLASSIC_AND_NEPS_ALGORITHMS_NAMES = [
     "random_search",
@@ -1329,6 +1330,7 @@ def _get_only_classic_algorithms_functions() -> list[Callable]:
         algorithms.successive_halving,
         algorithms.moasha,
         algorithms.pibo,
+        algorithms.optuna_motpe,
     ]
 
 
