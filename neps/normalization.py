@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 def _normalize_imported_config(
     space: SearchSpace | PipelineSpace, config: Mapping[str, float]
 ) -> dict:
-    """Completes a configuration by adding default values for missing fidelities.
+    """Completes a configuration by adding default values for missing fidelities
+    and constants.
 
     Args:
         space: The search space defining the defaults.
@@ -27,12 +28,26 @@ def _normalize_imported_config(
         A new, completed configuration dictionary.
     """
     if isinstance(space, SearchSpace):
-        all_param_keys = set(space.searchables.keys()) | set(space.fidelities.keys())
+        all_param_keys = (
+            set(space.searchables.keys())
+            | set(space.fidelities.keys())
+            | set(space.constants.keys())
+        )
         # copy to avoid modifying the original config
         normalized_conf = dict(config)
         for key, param in space.fidelities.items():
             if key not in normalized_conf:
                 normalized_conf[key] = param.upper
+        # Keep the constants, like in sampled configs. A given value is kept as it is
+        # what the trial was evaluated with, but a mismatch is worth knowing about.
+        for key, value in space.constants.items():
+            if key not in normalized_conf:
+                normalized_conf[key] = value
+            elif normalized_conf[key] != value:
+                logger.warning(
+                    f"Imported config has {key}={normalized_conf[key]!r}, but it is the"
+                    f" constant {value!r} in the search space. Keeping the imported value."
+                )
         extra_keys = set(normalized_conf.keys()) - all_param_keys
     else:
         # For PipelineSpace, we need to generate the prefixed keys
