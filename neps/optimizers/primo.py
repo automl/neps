@@ -8,6 +8,9 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import torch
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.multi_objective.logei import (
+    qLogNoisyExpectedHypervolumeImprovement,
+)
 from botorch.acquisition.monte_carlo import qLowerConfidenceBound
 from botorch.acquisition.objective import LinearMCObjective
 from botorch.acquisition.thompson_sampling import PathwiseThompsonSampling
@@ -91,6 +94,7 @@ class PriMO:
         - "qlnei": q-Log Noisy Expected Improvement
         - "ts": Pathwise Thompson Sampling
         - "lcb": Lower Confidence Bound Acquisition Function
+        - "qlnehvi": q-Log Noisy Expected Hypervolume Improvement
     Defaults to "qlnei".
     """
 
@@ -177,70 +181,73 @@ class PriMO:
         # from the trial configs
         nxt_id = 1
         _trials = {}
-        for trial_id, trial in trials.items():
-            _trial = copy.deepcopy(trial)
-            # Skip trials that are not evaluated at the maximum fidelity
-            if _trial.config.get(self.fid_name) != self.fid_max:
-                continue
-            # Skip trials that are still pending
-            if _trial.report is None:
-                continue
-            assert _trial.report.objective_to_minimize is not None, (
-                f"Trial {trial_id} has no objective to minimize."
-            )
-            assert isinstance(_trial.report.objective_to_minimize, Sequence), (
-                "Trial objectives must be a sequence for PriMO, "
-                f"got {type(_trial.report.objective_to_minimize)}"
-            )
-
-            # Convert the objective to an ndarray and scalarize it
-            if not isinstance(_trial.report.objective_to_minimize, np.ndarray):
-                _trial.report.objective_to_minimize = np.array(
-                    _trial.report.objective_to_minimize
+        if self.acq_fn == "qlnehvi":
+            _trials = trials
+        else:
+            for trial_id, trial in trials.items():
+                _trial = copy.deepcopy(trial)
+                # Skip trials that are not evaluated at the maximum fidelity
+                if _trial.config.get(self.fid_name) != self.fid_max:
+                    continue
+                # Skip trials that are still pending
+                if _trial.report is None:
+                    continue
+                assert _trial.report.objective_to_minimize is not None, (
+                    f"Trial {trial_id} has no objective to minimize."
+                )
+                assert isinstance(_trial.report.objective_to_minimize, Sequence), (
+                    "Trial objectives must be a sequence for PriMO, "
+                    f"got {type(_trial.report.objective_to_minimize)}"
                 )
 
-            match self.scalarization:
-                case LinearScalarization():
-                    _trial.report.objective_to_minimize = self.scalarization.scalarize(
-                        objective_values=_trial.report.objective_to_minimize
-                    )
-                case HypervolumeScalarization():
-                    all_obj_vals = [
-                        t.report.objective_to_minimize
-                        for t in trials.values()
-                        if t.report is not None
-                    ]
-                    _trial.report.objective_to_minimize = self.scalarization.scalarize(
-                        objective_values=_trial.report.objective_to_minimize,
-                        all_obj_vals=all_obj_vals,
-                    )
-                case _:
-                    raise TypeError(
-                        "Scalarization must be of type LinearScalarization "
-                        "or HypervolumeScalarization."
+                # Convert the objective to an ndarray and scalarize it
+                if not isinstance(_trial.report.objective_to_minimize, np.ndarray):
+                    _trial.report.objective_to_minimize = np.array(
+                        _trial.report.objective_to_minimize
                     )
 
-            # Remove the fidelity from the trial config
-            # Cannot do simple pop since Config type is Mapping in most places in Neps
-            _trial.config = {k: v for k, v in _trial.config.items() if k != self.fid_name}
+                match self.scalarization:
+                    case LinearScalarization():
+                        _trial.report.objective_to_minimize = self.scalarization.scalarize(
+                            objective_values=_trial.report.objective_to_minimize
+                        )
+                    case HypervolumeScalarization():
+                        all_obj_vals = [
+                            t.report.objective_to_minimize
+                            for t in trials.values()
+                            if t.report is not None
+                        ]
+                        _trial.report.objective_to_minimize = self.scalarization.scalarize(
+                            objective_values=_trial.report.objective_to_minimize,
+                            all_obj_vals=all_obj_vals,
+                        )
+                    case _:
+                        raise TypeError(
+                            "Scalarization must be of type LinearScalarization "
+                            "or HypervolumeScalarization."
+                        )
 
-            _trials[trial_id] = _trial
+                # Remove the fidelity from the trial config
+                # Cannot do simple pop since Config type is Mapping in most places in Neps
+                _trial.config = {k: v for k, v in _trial.config.items() if k != self.fid_name}
 
-            # Get the next ID for the sampled configuration
-            if "_" in trial_id:
-                config_id_str, _ = trial_id.split("_")
-            else:
-                config_id_str = trial_id
+                _trials[trial_id] = _trial
 
-            nxt_id = max(nxt_id, int(config_id_str) + 1)
+                # Get the next ID for the sampled configuration
+                if "_" in trial_id:
+                    config_id_str, _ = trial_id.split("_")
+                else:
+                    config_id_str = trial_id
 
-        assert len(_trials) > 0, (
-            "No trials found with the maximum fidelity. "
-            "Consider increasing the initial design size to run MOASHA longer."
-        )
+                nxt_id = max(nxt_id, int(config_id_str) + 1)
 
-        if self.n_init_used == 0:
-            self.n_init_used = len(_trials)
+            assert len(_trials) > 0, (
+                "No trials found with the maximum fidelity. "
+                "Consider increasing the initial design size to run MOASHA longer."
+            )
+
+            if self.n_init_used == 0:
+                self.n_init_used = len(_trials)
 
         # Sample new configurations using the Bayesian optimization
         return self.sample_using_bo(
@@ -347,6 +354,19 @@ class PriMO:
                         X_pending=data.x_pending,
                         prune_baseline=True,
                     )
+                case "qlnehvi":
+                    ref_point = torch.tensor(
+                        _get_reference_point(data.y.numpy()),
+                        dtype=data.x.dtype,
+                        device=data.x.device,
+                    )
+                    acquisition = qLogNoisyExpectedHypervolumeImprovement(
+                        model=gp,
+                        ref_point=ref_point,
+                        X_baseline=data.x,
+                        X_pending=data.x_pending,
+                        prune_baseline=True,
+                    )
                 case "lcb":
                     acquisition = qLowerConfidenceBound(
                         model=gp,
@@ -394,6 +414,14 @@ def _primo_exp_term(
 
     n_bo_samples = n_sampled_already - initial_design_size
     return math.exp(-(n_bo_samples**2) / ndims)
+
+
+def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
+    """Get the reference point from the completed Trials."""
+    eps = 1e-4
+    worst_point = np.max(loss_vals, axis=0)
+    return worst_point * (1 + eps)
+
 
 
 def _pibo_exp_term(
