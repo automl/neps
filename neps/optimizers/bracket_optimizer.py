@@ -13,6 +13,7 @@ from botorch.acquisition.multi_objective.parego import qLogNoisyExpectedImprovem
 from botorch.acquisition.objective import LinearMCObjective
 from gpytorch.utils.warnings import NumericalWarning
 
+from neps.optimizers.bohb import BOHBSampler
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
     fit_and_acquire_from_gp,
@@ -387,6 +388,14 @@ class BracketOptimizer:
                         return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
 
                     case PriorBandSampler():
+                        config = self.sampler.sample_config(table, rung=rung)
+                        config = {
+                            **config,
+                            **space.constants,
+                            self.fid_name: self.rung_to_fid[rung],
+                        }
+                        return SampledConfig(id=f"{nxt_id}_rung_{rung}", config=config)
+                    case BOHBSampler():
                         config = self.sampler.sample_config(table, rung=rung)
                         config = {
                             **config,

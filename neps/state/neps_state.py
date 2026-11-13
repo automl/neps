@@ -147,13 +147,21 @@ class TrialRepo:
     def get_valid_evaluated_trials(self) -> dict[str, Trial]:
         """Get all trials that have a valid evaluation report."""
         trials = self.latest()
+
+        def _is_valid_objective(obj: Any) -> bool:
+            # Single objectives are scalars; multi-objective reports are lists/arrays.
+            # np.isnan raises on a list, so normalize to an array first.
+            if obj is None:
+                return False
+            arr = np.asarray(obj, dtype=float)
+            return not np.isnan(arr).any()
+
         return {
             trial_id: trial
             for trial_id, trial in trials.items()
             if trial.report is not None
             and trial.report.err is None
-            and trial.report.objective_to_minimize is not None
-            and not np.isnan(trial.report.objective_to_minimize)
+            and _is_valid_objective(trial.report.objective_to_minimize)
         }
 
     def latest(self, *, create_cache_if_missing: bool = True) -> dict[str, Trial]:

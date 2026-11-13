@@ -29,7 +29,9 @@ from typing import TYPE_CHECKING, Any, Concatenate, Literal, TypeAlias
 import torch
 
 from neps.optimizers.bayesian_optimization import BayesianOptimization
+from neps.optimizers.bohb import BOHBSampler
 from neps.optimizers.bracket_optimizer import BracketOptimizer, GPSampler
+from neps.optimizers.neps_bohb import NePSBOHBSampler
 from neps.optimizers.grid_search import GridSearch
 from neps.optimizers.ifbo import IFBO
 from neps.optimizers.models.ftpfn import FTPFNSurrogate
@@ -386,6 +388,9 @@ def _bracket_optimizer(  # noqa: C901, PLR0912, PLR0915
                 confidence_values=prior_confidences,
                 encoder=encoder,
             )
+        case BOHBSampler():
+            # A pre-built sampler instance (e.g. from `bohb()`), pass through
+            _sampler = sampler
         case _:
             raise ValueError(f"Unknown sampler: {sampler}")
 
@@ -1639,6 +1644,7 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
     sample_prior_first: bool | Literal["highest_fidelity"],
     early_stopping_rate: int | None,
     sampler_kwargs: dict[str, Any] | None = None,
+    mf_budget: float | None = None,
 ) -> _NePSBracketOptimizer:
     fidelity_attrs = pipeline_space.fidelity_attrs
 
@@ -1649,6 +1655,7 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
         )
 
     fidelity_name, fidelity_obj = next(iter(fidelity_attrs.items()))
+    raw_fid_name = fidelity_name
     fidelity_name = NepsCompatConverter._ENVIRONMENT_PREFIX + fidelity_name
 
     if sample_prior_first not in (True, False, "highest_fidelity"):
@@ -1762,6 +1769,13 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
                 space=pipeline_space,
                 **_sampler_kwargs,
             )
+        case "bohb":
+            _sampler = NePSBOHBSampler(
+                space=pipeline_space,
+                rung_to_fid=rung_to_fidelity,
+                fid_name=raw_fid_name,
+                **_sampler_kwargs,
+            )
         case "uniform":
             _sampler = RandomSampler({})
         case "prior":
@@ -1779,6 +1793,7 @@ def _neps_bracket_optimizer(  # noqa: C901, PLR0915
         sample_prior_first=sample_prior_first,
         create_brackets=create_brackets,
         fid_name=fidelity_name,
+        mf_budget=mf_budget,
     )
 
 
@@ -1922,6 +1937,183 @@ def neps_local_and_incumbent(
         },
     )
 
+def bohb(
+    pipeline_space: SearchSpace | PipelineSpace,
+    *,
+    eta: int = 3,
+    min_points_in_model: int | None = None,
+    top_n_percent: int = 15,
+    num_samples: int = 64,
+    random_fraction: float = 1 / 3,
+    bandwidth_factor: float = 3,
+    min_bandwidth: float = 1e-3,
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+) -> BracketOptimizer:
+    """BOHB: Robust and Efficient Hyperparameter Optimization at Scale
+    (Falkner et al., ICML 2018, https://arxiv.org/abs/1807.01774).
+
+    BOHB combines Hyperband with a TPE-style Bayesian optimization
+    component. Hyperband determines how many configurations to evaluate at
+    which budget, but instead of sampling configurations uniformly at
+    random, a pair of kernel density estimators (good/bad, split by the
+    `top_n_percent` quantile of observed performance at the largest budget
+    with enough observations) is used to propose promising configurations.
+
+    !!! tip "When to use this?"
+
+        Use this when you have a fidelity parameter and want the strong
+        anytime performance of Hyperband combined with the final performance
+        of model-based search. Note that, unlike the paper, this
+        implementation does not (yet) support parallel workers.
+
+    Args:
+        pipeline_space: The search space to sample from. Must have exactly
+            one fidelity parameter.
+        eta: The reduction factor used for building brackets (eta in the
+            paper, default 3 as recommended by Li et al., 2017).
+        min_points_in_model: Minimum number of observations needed to fit a
+            KDE. If `None`, defaults to `d + 1` where `d` is the number of
+            hyperparameters, as in the paper.
+        top_n_percent: The percentage of best configurations at a budget
+            used to fit the good KDE (`q` in the paper, default 15).
+        num_samples: The number of candidates sampled from the widened good
+            KDE to optimize the acquisition function (`N_s` in the paper,
+            default 64).
+        random_fraction: The fraction of configurations sampled uniformly at
+            random (`rho` in the paper, default 1/3).
+        bandwidth_factor: The factor by which to widen the bandwidths of the
+            good KDE when proposing candidates (`bw` in the paper, default
+            3).
+        min_bandwidth: The minimum bandwidth used for any dimension
+            (default 1e-3).
+        sample_prior_first: Whether to sample the prior configuration first,
+            and if so, should it be at the highest_fidelity level.
+    """
+    if isinstance(pipeline_space, PipelineSpace):
+        converted_space = convert_neps_to_classic_search_space(pipeline_space)
+        if converted_space is not None:
+            pipeline_space = converted_space
+        else:
+            raise ValueError(
+                "This optimizer only supports HPO search spaces, please use a NePS"
+                " space-compatible optimizer."
+            )
+
+    if pipeline_space.fidelity is None:
+        raise ValueError(
+            "BOHB requires a fidelity parameter in the search space."
+            f"\nGot: {pipeline_space.fidelities}"
+        )
+
+    sampler = BOHBSampler(
+        parameters=pipeline_space.searchables,
+        encoder=ConfigEncoder.from_parameters(pipeline_space.searchables),
+        min_points_in_model=min_points_in_model,
+        top_n_percent=top_n_percent,
+        num_samples=num_samples,
+        random_fraction=random_fraction,
+        bandwidth_factor=bandwidth_factor,
+        min_bandwidth=min_bandwidth,
+    )
+
+    return _bracket_optimizer(
+        pipeline_space=pipeline_space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler=sampler,
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        bayesian_optimization_kick_in_point=None,
+        device=None,
+    )
+
+
+def neps_bohb(
+    pipeline_space: PipelineSpace,
+    *,
+    eta: int = 3,
+    kernel_function: Literal["hamming"] | Callable = "hamming",
+    acqu_sampling_density: int = 1000,
+    acqu_function: Literal["EI", "LogEI"] = "EI",
+    use_batch_acquisition: bool = False,
+    krr_alpha: float = 1e-6,
+    random_fraction: float = 1 / 3,
+    min_points_in_model: int = 4,
+    sample_prior_first: bool | Literal["highest_fidelity"] = False,
+    sampler_cache_generator: Callable | None = None,
+    surrogate: Literal["krr", "gp"] = "krr",
+    hp_tuning: Literal["none", "loo_cv", "mll", "mll_noise_only"] = "none",
+    mf_budget: float | None = None,
+) -> _NePSBracketOptimizer:
+    """BOHB for NePS spaces: Hyperband brackets + the new BO's kernel surrogate.
+
+    This is the "new BOHB" arm of the 2x2 comparison {classic BO, classic
+    BOHB} x {new BO, new BOHB}. The surrogate machinery is identical to
+    [`neps_bayesian_optimization`][neps.optimizers.algorithms.neps_bayesian_optimization]
+    (`KernelSurrogateModel` with a pluggable `kernel_function` over neps
+    config dicts, EI/LogEI acquisition over freshly resolved candidates),
+    so the only difference to the new BO is the multi-fidelity Hyperband
+    bracket structure. The only difference to the classic BOHB is the
+    surrogate (KDE vs kernel KRR).
+
+    Args:
+        pipeline_space: The NePS pipeline space to sample from. Must have
+            exactly one fidelity attribute.
+        eta: The reduction factor used for building brackets (eta in the
+            BOHB paper, default 3).
+        kernel_function: The kernel function to use. One of:
+            - "hamming": A kernel that considers the Hamming distance between
+              configurations.
+            - A callable `kernel_fn(config_i: dict, config_j: dict) -> float`,
+              e.g. an SPO kernel from `kernel_experiments`.
+        acqu_sampling_density: The number of candidates to sample and score
+            per acquisition step.
+        acqu_function: The acquisition function. One of "EI", "LogEI".
+        use_batch_acquisition: Whether to use greedy batch-aware acquisition.
+        krr_alpha: The KRR regularization parameter.
+        random_fraction: The fraction of configurations sampled uniformly at
+            random (rho in the BOHB paper, default 1/3).
+        min_points_in_model: Fit the surrogate only once more than this many
+            trials are completed. Default 4 matches the new BO's
+            `initial_design_size=5`.
+        sample_prior_first: Whether to sample the prior configuration first.
+        sampler_cache_generator: Optional callable that generates candidate
+            pipelines (e.g. from a cache pool), same contract as the new
+            BO's `sampler_cache_generator`. Candidates are re-resolved with
+            the fidelity pinned to the rung.
+    """
+    if isinstance(kernel_function, str):
+        match kernel_function:
+            case "hamming":
+                from neps.optimizers.models.neps_gp import _hamming_kernel
+
+                kernel_function = _hamming_kernel
+            case _:
+                raise ValueError(f"Unsupported kernel: {kernel_function}")
+
+    return _neps_bracket_optimizer(
+        pipeline_space=pipeline_space,
+        bracket_type="hyperband",
+        eta=eta,
+        sampler="bohb",
+        sample_prior_first=sample_prior_first,
+        early_stopping_rate=None,
+        sampler_kwargs={
+            "kernel_function": kernel_function,
+            "acqu_sampling_density": acqu_sampling_density,
+            "acqu_function": acqu_function,
+            "use_batch_acquisition": use_batch_acquisition,
+            "krr_alpha": krr_alpha,
+            "random_fraction": random_fraction,
+            "min_points_in_model": min_points_in_model,
+            "sampler_cache_generator": sampler_cache_generator,
+            "surrogate": surrogate,
+            "hp_tuning": hp_tuning,
+        },
+        mf_budget=mf_budget,
+    )
+
+
 def neps_bayesian_optimization(  # noqa: C901, PLR0912
     pipeline_space: SearchSpace | PipelineSpace,
     *,
@@ -1932,6 +2124,9 @@ def neps_bayesian_optimization(  # noqa: C901, PLR0912
     kernel_function: Literal["hamming"] | Callable = "hamming",
     sampler_cache_generator: Callable | None = None,
     device: torch.device | str | None = None,
+    surrogate: Literal["krr", "gp"] = "krr",
+    hp_tuning: Literal["none", "loo_cv", "mll", "mll_noise_only"] = "none",
+    tunable_params: dict[str, tuple[float, float]] | None = None,
 
 ) -> BayesianOptimization:
     """Initialise the BO loop.
@@ -1949,6 +2144,26 @@ def neps_bayesian_optimization(  # noqa: C901, PLR0912
             - "hamming": A kernel that considers the Hamming distance between configurations.
         sampler_cache_generator: A callable that samples configurations instead of using the default random sampling.
         device: Device to use for the optimization.
+        surrogate: The surrogate model to use. One of:
+            - "krr": KernelSurrogateModel with the given kernel_function
+              (the default, unchanged behavior).
+            - "gp": GPSurrogateModel — exact GP over the given
+              kernel_function (y = f(x) + noise).
+        hp_tuning: How the surrogate's hyperparameters are set. One of:
+            - "none": fixed defaults (no tuning). Valid for "krr" and "gp".
+            - "loo_cv": closed-form leave-one-out CV each fit. For "krr",
+              the kernel_function's hyperparameters are tuned via **hp
+              injection; for "gp", the kernel hyperparameters + noise are
+              tuned. Bounds from tunable_params or a `tunable_params`
+              attribute on the kernel_fn.
+            - "mll": maximize the log marginal likelihood each fit over
+              noise + kernel hyperparameters jointly. Only valid for "gp".
+            - "mll_noise_only": MLL over the noise only, kernel
+              hyperparameters at their defaults (cheap: the Gram matrix is
+              fixed during the optimization). Only valid for "gp".
+        tunable_params: Hyperparameter name -> (low, high) bounds for the
+            kernel hyperparameters. Ignored if the kernel_fn carries its own
+            `tunable_params` attribute.
     Raises:
         ValueError: if initial_design_size < 1
     """
@@ -1972,7 +2187,10 @@ def neps_bayesian_optimization(  # noqa: C901, PLR0912
         acqu_function=acqu_function,
         use_batch_acquisition=use_batch_acquisition,
         kernel_function=kernel_function,
-        sampler_cache_generator=sampler_cache_generator
+        sampler_cache_generator=sampler_cache_generator,
+        surrogate=surrogate,
+        hp_tuning=hp_tuning,
+        tunable_params=tunable_params,
     )
 
 
@@ -2003,6 +2221,8 @@ PredefinedOptimizers: Mapping[str, Any] = {
         neps_grid_search,
         neps_exhaustive_search,
         neps_bayesian_optimization,
+        bohb,
+        neps_bohb,
     )
 }
 
@@ -2029,4 +2249,6 @@ OptimizerChoice: TypeAlias = Literal[
     "neps_exhaustive_search",
     "neps_grid_search",
     "neps_bayesian_optimization",
+    "bohb",
+    "neps_bohb",
 ]

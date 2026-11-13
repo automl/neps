@@ -53,6 +53,69 @@ def _extract_training_data(
     return configs, np.array(objectives)
 
 
+def build_kernel_surrogate(
+    training_configs: list[dict],
+    training_y: np.ndarray,
+    kernel_fn: Callable,
+    surrogate: Literal["krr", "gp"] = "krr",
+    hp_tuning: Literal["none", "loo_cv", "mll", "mll_noise_only"] = "none",
+    tunable_params: dict[str, tuple[float, float]] | None = None,
+    krr_alpha: float = 1e-6,
+):
+    """Build the kernel-based surrogate shared by the new BO and the new BOHB.
+
+    `surrogate` selects the model ("krr" or "gp"), `hp_tuning` how its
+    hyperparameters are set ("none", "loo_cv", "mll", "mll_noise_only").
+    Bounds come from the explicit `tunable_params` or from a
+    `tunable_params` attribute attached to the kernel_fn (e.g. by
+    bo_kernels.make_tunable_pairwise_kernel).
+    """
+    if surrogate == "krr":
+        if hp_tuning == "none":
+            return KernelSurrogateModel(
+                training_configs=training_configs,
+                training_y=training_y,
+                kernel_fn=kernel_fn,
+                krr_alpha=krr_alpha,
+            )
+        if hp_tuning == "loo_cv":
+            # KRR over the given kernel_function, whose hyperparameters
+            # are tuned by closed-form LOO-CV each fit via **hp
+            # injection. The kernel_fn must accept the tunable
+            # hyperparameters as keyword arguments.
+            from neps.optimizers.models.neps_gp import TunedKernelSurrogateModel
+
+            tunable = tunable_params or getattr(kernel_fn, "tunable_params", None)
+            return TunedKernelSurrogateModel(
+                training_configs=training_configs,
+                training_y=training_y,
+                kernel_fn=kernel_fn,
+                tunable_params=tunable,
+            )
+        raise ValueError(
+            f"hp_tuning={hp_tuning!r} not supported for surrogate='krr'"
+        )
+    if surrogate == "gp":
+        # Exact GP over the given kernel_function; noise (+ kernel
+        # hyperparameters, if tunable_params are given) set per
+        # hp_tuning.
+        if hp_tuning not in ("none", "loo_cv", "mll", "mll_noise_only"):
+            raise ValueError(
+                f"hp_tuning={hp_tuning!r} not supported for surrogate='gp'"
+            )
+        from neps.optimizers.models.neps_gp import GPSurrogateModel
+
+        tunable = tunable_params or getattr(kernel_fn, "tunable_params", None)
+        return GPSurrogateModel(
+            training_configs=training_configs,
+            training_y=training_y,
+            kernel_fn=kernel_fn,
+            tunable_params=tunable,
+            hp_tuning=hp_tuning,
+        )
+    raise ValueError(f"Unknown surrogate kind: {surrogate}")
+
+
 @dataclass
 class NepsBayesianOptimization:
     """Uses `botorch` as an engine for doing bayesian optimiziation."""
@@ -67,6 +130,9 @@ class NepsBayesianOptimization:
         use_batch_acquisition: bool = False,
         kernel_function: Literal["hamming"] | Callable = "hamming",
         sampler_cache_generator: Callable | None = None,
+        surrogate: Literal["krr", "gp"] = "krr",
+        hp_tuning: Literal["none", "loo_cv", "mll", "mll_noise_only"] = "none",
+        tunable_params: dict[str, tuple[float, float]] | None = None,
     ) -> None:
         self._pipeline = space
         self.n_initial_design = n_initial_design
@@ -77,6 +143,18 @@ class NepsBayesianOptimization:
         self.acqu_function = acqu_function
         self.kernel = kernel_function
         self.sampler_cache_generator = sampler_cache_generator
+        self.surrogate = surrogate
+        self.hp_tuning = hp_tuning
+        self.tunable_params = tunable_params
+
+        # BO ignores the fidelity and always evaluates at max fidelity (same
+        # as classic `bayesian_optimization(ignore_fidelity=True)`). Pin the
+        # fidelity via environment values so `resolve` does not fail on
+        # spaces with a Fidelity attribute.
+        self._max_fidelity_env = {
+            fid_name: fid_obj.upper
+            for fid_name, fid_obj in space.fidelity_attrs.items()
+        }
 
         if isinstance(acqu_function, str):
             match acqu_function:
@@ -124,11 +202,10 @@ class NepsBayesianOptimization:
                     resolve(
                         pipeline=self._pipeline,
                         domain_sampler=self._random_sampler,
-                        environment_values={},
+                        environment_values=self._max_fidelity_env,
                     )
                     for _ in range(n_to_sample)
                 ]
-                print(chosen_pipelines)
             return _prepare_sampled_configs(chosen_pipelines, max_trial_id, n_to_sample==1)
 
         training_configs, training_y = _extract_training_data(trials)
@@ -136,13 +213,32 @@ class NepsBayesianOptimization:
         if not training_configs:
             raise ValueError("No training data available despite passing initial design phase")
 
-        # STEP 2: Fit kernel-based surrogate model
-        surrogate = KernelSurrogateModel(
+        # STEP 2: Fit kernel-based surrogate model. `surrogate` selects the
+        # model/kernel, `hp_tuning` how its hyperparameters are set. The fit
+        # time is recorded in self.surrogate_fit_times and, if the
+        # NEPS_SURROGATE_TIMES_FILE env var is set, appended to that file
+        # (one float per line) so the experiment runner can persist it.
+        import os as _os
+        import time as _time
+
+        _fit_t0 = _time.perf_counter()
+        surrogate = build_kernel_surrogate(
             training_configs=training_configs,
             training_y=training_y,
             kernel_fn=self.kernel,
-            krr_alpha=1e-6,
+            surrogate=self.surrogate,
+            hp_tuning=self.hp_tuning,
+            tunable_params=self.tunable_params,
         )
+
+        fit_time = _time.perf_counter() - _fit_t0
+        if not hasattr(self, "surrogate_fit_times"):
+            self.surrogate_fit_times = []
+        self.surrogate_fit_times.append(fit_time)
+        times_file = _os.environ.get("NEPS_SURROGATE_TIMES_FILE")
+        if times_file:
+            with open(times_file, "a") as f:
+                f.write(f"{fit_time}\n")
 
         best_y = np.min(training_y)
         n_to_acquire = n_to_sample - len(sampled_configs)
@@ -160,7 +256,7 @@ class NepsBayesianOptimization:
                 candidate = resolve(
                     pipeline=self._pipeline,
                     domain_sampler=self._random_sampler,
-                    environment_values={},
+                    environment_values=self._max_fidelity_env,
                 )
 
             # Extract config dict from resolution context

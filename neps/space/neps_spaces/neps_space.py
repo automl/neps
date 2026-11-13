@@ -1286,6 +1286,7 @@ def convert_classic_to_neps_search_space(
 ONLY_CLASSIC_ALGORITHMS_NAMES = [
     "asha",
     "bayesian_optimization",
+    "bohb",
     "ifbo",
     "mo_hyperband",
     "primo",
@@ -1308,6 +1309,7 @@ def _get_only_classic_algorithms_functions() -> list[Callable]:
     return [
         algorithms.asha,
         algorithms.bayesian_optimization,
+        algorithms.bohb,
         algorithms.ifbo,
         algorithms.mo_hyperband,
         algorithms.primo,

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 import neps.optimizers.bracket_optimizer as standard_bracket_optimizer
+from neps.optimizers.neps_bohb import NePSBOHBSampler
 from neps.optimizers.neps_local_and_incumbent import NePSLocalPriorIncumbentSampler
 from neps.optimizers.neps_priorband import NePSPriorBandSampler
 from neps.optimizers.optimizer import ImportedConfig, SampledConfig
@@ -71,6 +72,18 @@ class _NePSBracketOptimizer:
     """The name of the fidelity in the space."""
     fid_name: str
 
+    """Optional multi-fidelity cutoff, in max-fidelity-equivalents.
+
+    Once this many max-fidelity-equivalents of budget have been consumed by
+    completed trials (sum of trial fidelities / max fidelity), the
+    multi-fidelity bracket structure is turned OFF: from then on, only
+    fresh configurations sampled at the maximum fidelity are returned (no
+    more low-rung samples or promotions). The surrogate is still fit on ALL
+    completed trials, so the low-fidelity data collected during the MF
+    phase still informs the model. `None` (default) disables the cutoff and
+    keeps pure multi-fidelity behavior."""
+    mf_budget: float | None = None
+
     def __call__(  # noqa: C901, PLR0912
         self,
         trials: Mapping[str, Trial],
@@ -107,30 +120,59 @@ class _NePSBracketOptimizer:
         if self.sample_prior_first == "highest_fidelity":
             table = table.iloc[1:]
 
-        # Get and execute the next action from our brackets that are not pending or done
-        assert isinstance(table, pd.DataFrame)
-        brackets = self.create_brackets(table)
+        # Optional MF cutoff: once `mf_budget` max-fidelity-equivalents of
+        # budget have been consumed by completed trials, stop using the
+        # multi-fidelity bracket structure and only sample fresh configs at
+        # the maximum fidelity (the surrogate is still fit on ALL completed
+        # trials, so the low-fidelity data still informs the model).
+        mf_off = False
+        if self.mf_budget is not None:
+            fid_max = max(self.rung_to_fid.values())
+            raw_fid_name = self.fid_name
+            if raw_fid_name.startswith(neps_space.NepsCompatConverter._ENVIRONMENT_PREFIX):
+                raw_fid_name = raw_fid_name[
+                    len(neps_space.NepsCompatConverter._ENVIRONMENT_PREFIX) :
+                ]
+            spent = 0.0
+            for trial in trials.values():
+                if trial.report is None:
+                    continue
+                fid = trial.config.get(self.fid_name)
+                if fid is None:
+                    fid = trial.config.get(raw_fid_name)
+                if fid is not None:
+                    spent += float(fid)
+            mf_off = spent / fid_max >= self.mf_budget
 
-        if not isinstance(brackets, Sequence):
-            brackets = [brackets]
+        if mf_off:
+            # Bypass the brackets entirely: always a fresh sample at the
+            # maximum-fidelity rung.
+            next_action = SampleAction(rung=max(self.rung_to_fid))
+        else:
+            # Get and execute the next action from our brackets that are not pending or done
+            assert isinstance(table, pd.DataFrame)
+            brackets = self.create_brackets(table)
 
-        next_action = next(
-            (
-                action
-                for bracket in brackets
-                if (action := bracket.next()) not in ("done", "pending")
-            ),
-            None,
-        )
+            if not isinstance(brackets, Sequence):
+                brackets = [brackets]
 
-        if next_action is None:
-            raise RuntimeError(
-                f"{self.__class__.__name__} never got a 'sample' or 'promote' action!"
-                f" This likely means the implementation of {self.create_brackets}"
-                " is incorrect and should have provded enough brackets, where at"
-                " least one of them should have requested another sample."
-                f"\nBrackets:\n{brackets}"
+            next_action = next(
+                (
+                    action
+                    for bracket in brackets
+                    if (action := bracket.next()) not in ("done", "pending")
+                ),
+                None,
             )
+
+            if next_action is None:
+                raise RuntimeError(
+                    f"{self.__class__.__name__} never got a 'sample' or 'promote' action!"
+                    f" This likely means the implementation of {self.create_brackets}"
+                    " is incorrect and should have provded enough brackets, where at"
+                    " least one of them should have requested another sample."
+                    f"\nBrackets:\n{brackets}"
+                )
 
         match next_action:
             # The bracket would like us to promote a configuration
@@ -145,6 +187,8 @@ class _NePSBracketOptimizer:
             # We need to sample for a new rung.
             case SampleAction(rung=rung):
                 if isinstance(self.sampler, NePSPriorBandSampler):
+                    config = self.sampler.sample_config(table, rung=rung)
+                elif isinstance(self.sampler, NePSBOHBSampler):
                     config = self.sampler.sample_config(table, rung=rung)
                 elif isinstance(self.sampler, NePSLocalPriorIncumbentSampler):
                     config = self.sampler.sample_config(table)

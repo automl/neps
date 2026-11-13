@@ -21,6 +21,51 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from filelock import FileLock
 from portalocker import portalocker
 
+
+class _NFSRobustFileLock(FileLock):
+    """FileLock that retries on transient NFS errors (ESTALE, EIO, ENOENT).
+
+    On busy NFS servers, lock files can briefly return stale handles or
+    disappear, which would otherwise crash the whole run. Retrying with a
+    short backoff resolves this in practice.
+    """
+
+    _NFS_ERRNOS = {116, 5, 2, 37}  # ESTALE, EIO, ENOENT, ENOLCK
+
+    def acquire(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        last_exc: Exception | None = None
+        for attempt in range(10):
+            try:
+                return super().acquire(*args, **kwargs)
+            except OSError as e:
+                if e.errno not in self._NFS_ERRNOS:
+                    raise
+                last_exc = e
+                time.sleep(min(2.0, 0.1 * (2**attempt)))
+                # The lock file may now be a stale inode; recreate it.
+                try:
+                    Path(self.lock_file).unlink(missing_ok=True)
+                except OSError:
+                    pass
+                self._context.lock_file_fd = None
+        assert last_exc is not None
+        raise last_exc
+
+    def release(self, force: bool = False) -> None:  # type: ignore[no-untyped-def]
+        # ENOLCK (37) can also occur on flock release under NFS load.
+        last_exc: Exception | None = None
+        for attempt in range(10):
+            try:
+                return super().release(force=force)
+            except OSError as e:
+                if e.errno not in self._NFS_ERRNOS:
+                    raise
+                last_exc = e
+                time.sleep(min(2.0, 0.1 * (2**attempt)))
+        assert last_exc is not None
+        raise last_exc
+
+
 from neps.env import (
     FS_SYNC_GRACE_BASE,
     FS_SYNC_GRACE_INC,
@@ -418,7 +463,7 @@ class DefaultWorker:
         if log_status:
             # Log current budget status
             budget_info_parts = []
-            if self.settings.evaluations_to_spend is not None:
+            if self.settings.evaluations_to_spend:
                 eval_percentage = int(
                     (
                         worker_resource_usage.evaluations
@@ -443,7 +488,7 @@ class DefaultWorker:
                     f"{self.settings.fidelities_to_spend}"
                     f" ({fidelity_percentage}%)"
                 )
-            if self.settings.cost_to_spend is not None:
+            if self.settings.cost_to_spend:
                 cost_percentage = int(
                     (worker_resource_usage.cost / self.settings.cost_to_spend) * 100
                 )
@@ -682,7 +727,7 @@ class DefaultWorker:
         improvement_trace_path.touch(exist_ok=True)
         best_config_path = summary_dir / "best_config.txt"
         best_config_path.touch(exist_ok=True)
-        _trace_lock = FileLock(".trace.lock")
+        _trace_lock = _NFSRobustFileLock(".trace.lock")
         _trace_lock_path = Path(str(_trace_lock.lock_file))
         _trace_lock_path.touch(exist_ok=True)
         full_df_path, short_path, csv_locker = _initiate_summary_csv(main_dir)
