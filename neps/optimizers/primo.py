@@ -8,12 +8,13 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 import torch
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
+from botorch.acquisition.monte_carlo import qLowerConfidenceBound
 from botorch.acquisition.multi_objective.logei import (
     qLogNoisyExpectedHypervolumeImprovement,
 )
-from botorch.acquisition.monte_carlo import qLowerConfidenceBound
 from botorch.acquisition.objective import LinearMCObjective
 from botorch.acquisition.thompson_sampling import PathwiseThompsonSampling
+from botorch.models.transforms.outcome import Standardize
 from gpytorch.utils.warnings import NumericalWarning
 
 from neps.optimizers.models.gp import (
@@ -183,6 +184,7 @@ class PriMO:
         _trials = {}
         if self.acq_fn == "qlnehvi":
             _trials = trials
+            nxt_id = max(nxt_id, max(int(tid.split("_")[0]) for tid in trials) + 1)
         else:
             for trial_id, trial in trials.items():
                 _trial = copy.deepcopy(trial)
@@ -334,7 +336,19 @@ class PriMO:
 
         n_to_acquire = 1
 
-        gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+        if self.acq_fn != "qlnehvi":
+            gp = make_default_single_obj_gp(
+                x=data.x,
+                y=data.y,
+                encoder=encoder
+            )
+        else:
+            gp = make_default_single_obj_gp(
+                x=data.x,
+                y=data.y,
+                encoder=encoder,
+                y_transform=Standardize(m=data.y.shape[-1]),
+            )
         with disable_warnings(NumericalWarning):
             match self.acq_fn:
                 case "ts":
