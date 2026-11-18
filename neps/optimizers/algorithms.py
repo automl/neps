@@ -63,6 +63,8 @@ def _bo(
     sample_prior_first: bool,
     device: torch.device | str | None,
     reference_point: tuple[float, ...] | None = None,
+    prior_decay: Literal["default", "legacy"] = "default",
+    beta: float = 10.0,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -83,6 +85,11 @@ def _bo(
 
         sample_prior_first: Whether to sample the default configuration first.
         device: Device to use for the optimization.
+        prior_decay: The decay mode for the prior distributions. If "default", the
+            default decay will be used. If "legacy", the legacy decay from the
+            original paper will be used.
+        beta: The beta parameter for legacy pibo's prior decay.
+            Only used if `prior_decay="legacy"`.
 
     Raises:
         ValueError: if initial_design_size < 1
@@ -137,6 +144,8 @@ def _bo(
         device=device,
         mo_priors=mo_priors,
         reference_point=reference_point,
+        prior_decay=prior_decay,
+        beta=beta,
     )
 
 
