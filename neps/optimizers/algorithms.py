@@ -1242,6 +1242,8 @@ def pibo(
     mo_prior_centers: Mapping[str, Mapping[str, Any]] | None = None,
     mo_prior_confidences: Mapping[str, Mapping[str, float]] | None = None,
     reference_point: tuple[float, ...] | None = None,
+    prior_decay: Literal["default", "legacy"] = "default",
+    beta: float = 10.0,
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -1278,6 +1280,11 @@ def pibo(
         reference_point: The reference point to use for the multi-objective
             optimization. If None, the reference point will be calculated
             dynamically based on the current objective values.
+        prior_decay: The decay mode for the prior distributions. If "default", the
+            default decay will be used. If "legacy", the legacy decay from the
+            original paper will be used.
+        beta: The beta parameter for legacy pibo's prior decay.
+            Only used if `prior_decay="legacy"`.
     """
     return _bo(
         pipeline_space=space,
@@ -1289,6 +1296,8 @@ def pibo(
         mo_priors_centers=mo_prior_centers,
         mo_priors_confidences=mo_prior_confidences,
         reference_point=reference_point,
+        prior_decay=prior_decay,
+        beta=beta,
     )
 
 

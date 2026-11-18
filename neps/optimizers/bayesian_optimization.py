@@ -33,6 +33,9 @@ def _pibo_exp_term(
     n_sampled_already: int,
     ndims: int,
     initial_design_size: int,
+    *,
+    use_legacy: bool = False,
+    beta: float = 10.0,
 ) -> float:
     # pibo paper
     # https://arxiv.org/pdf/2204.11051
@@ -56,6 +59,8 @@ def _pibo_exp_term(
     # the easiest function that does this is `exp(-n)`, with some discounting of `n`
     # dependant on the number of dimensions.
     n_bo_samples = n_sampled_already - initial_design_size
+    if use_legacy:
+        return (beta / n_bo_samples + 1)
     return math.exp(-n_bo_samples / ndims)
 
 
@@ -89,6 +94,12 @@ class BayesianOptimization:
 
     reference_point: tuple[float, ...] | None
     """The reference point to use for the multi-objective optimization."""
+
+    prior_decay: Literal["default", "legacy"]
+    """The decay mode for the prior distributions."""
+
+    beta: float
+    """The beta parameter for legacy pibo's prior decay."""
 
     def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
@@ -177,7 +188,13 @@ class BayesianOptimization:
         pibo_exp_term = None
         prior = None
         if self.prior:
-            pibo_exp_term = _pibo_exp_term(n_sampled, encoder.ndim, self.n_initial_design)
+            pibo_exp_term = _pibo_exp_term(
+                n_sampled,
+                encoder.ndim,
+                self.n_initial_design,
+                use_legacy=self.prior_decay == "legacy",
+                beta=self.beta
+            )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
 
