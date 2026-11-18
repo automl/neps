@@ -33,11 +33,13 @@ class LinearScalarization:
             The scalarized objective value.
         """
 
-        if self.scalarization_weights is None:
-            self.scalarization_weights = np.random.uniform(size=len(objective_values))
-            self.scalarization_weights /= np.sum(self.scalarization_weights)
+        if self.scalarization_weights is not None:
+            return np.dot(objective_values, self.scalarization_weights)
 
-        return np.dot(objective_values, self.scalarization_weights)
+        # Default to randomly sample weights at each call if no weights are provided
+        scalar_wts = np.random.uniform(size=len(objective_values))
+        scalar_wts /= np.sum(scalar_wts)
+        return np.dot(objective_values, scalar_wts)
 
 
 class HypervolumeScalarization:
