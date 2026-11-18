@@ -60,7 +60,7 @@ def _pibo_exp_term(
     # dependant on the number of dimensions.
     n_bo_samples = n_sampled_already - initial_design_size
     if use_legacy:
-        return (beta / n_bo_samples + 1)
+        return beta / (n_bo_samples + 1)
     return math.exp(-n_bo_samples / ndims)
 
 
