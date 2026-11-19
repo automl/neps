@@ -8,12 +8,21 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
-from botorch.acquisition import LinearMCObjective
+from botorch.acquisition import AcquisitionFunction, LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
 from botorch.acquisition.multi_objective.logei import (
     qLogNoisyExpectedHypervolumeImprovement,
 )
+from botorch.acquisition.multi_objective.objective import WeightedMCMultiOutputObjective
 from botorch.models.transforms.outcome import Standardize
+from botorch.sampling.normal import SobolQMCNormalSampler
+from botorch.utils.multi_objective.pareto import is_non_dominated
+from botorch.utils.transforms import (
+    concatenate_pending_points,
+    match_batch_shape,
+    t_batch_mode_transform,
+)
+from optuna._hypervolume import compute_hypervolume
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -24,9 +33,70 @@ from neps.optimizers.optimizer import SampledConfig
 from neps.optimizers.utils.initial_design import make_initial_design
 
 if TYPE_CHECKING:
+    from botorch.models.model import Model
+
     from neps.sampling import Prior
     from neps.space import ConfigEncoder, SearchSpace
     from neps.state import BudgetInfo, Trial
+
+
+class _OptunaEHVI(AcquisitionFunction):
+    """Expected joint HVI against observed losses using Optuna's MO-TPE kernel."""
+
+    _log = True
+    _average_joint_weights = True
+
+    def __init__(
+        self,
+        model: Model,
+        observed_losses: torch.Tensor,
+        reference_point: torch.Tensor,
+        X_pending: torch.Tensor | None,
+    ) -> None:
+        super().__init__(model=model)
+        self.set_X_pending(None)
+        # Keep running trials in full coordinates when a wrapper exposes only categories.
+        self.register_buffer("running_points", X_pending)
+        self.sampler = SobolQMCNormalSampler(sample_shape=torch.Size([64]))
+        self.register_buffer("reference_point", reference_point)
+        self._reference_point = reference_point.detach().cpu().numpy()
+        inside_reference = (observed_losses < reference_point).all(dim=-1)
+        observed_losses = observed_losses[inside_reference]
+        pareto_losses = observed_losses[is_non_dominated(observed_losses, maximize=False)]
+        self._pareto_losses = pareto_losses.detach().cpu().numpy()
+        self._baseline_hv = compute_hypervolume(
+            self._pareto_losses, self._reference_point, assume_pareto=True
+        )
+
+    def _hypervolume_improvement(self, losses: np.ndarray) -> float:
+        losses = losses[(losses < self._reference_point).all(axis=-1)]
+        if len(losses) == 0:
+            return 0.0
+        joint_losses = np.concatenate((self._pareto_losses, losses))
+        joint_hv = compute_hypervolume(joint_losses, self._reference_point)
+        return max(joint_hv - self._baseline_hv, 0.0)
+
+    @concatenate_pending_points  # type: ignore
+    @t_batch_mode_transform()  # type: ignore
+    @torch.no_grad()
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        candidates = X
+        X = X.to(self.reference_point)
+        if self.running_points is not None:
+            X = torch.cat((X, match_batch_shape(self.running_points, X)), dim=-2)
+        samples = self.sampler(self.model.posterior(X)).cpu().numpy()
+        sample_count, *batch_shape, q, objectives = samples.shape
+        improvements = np.fromiter(
+            (
+                self._hypervolume_improvement(losses)
+                for losses in samples.reshape(-1, q, objectives)
+            ),
+            dtype=np.float64,
+            count=sample_count * math.prod(batch_shape),
+        )
+        ehvi = improvements.reshape(sample_count, *batch_shape).mean(axis=0)
+        scores = X.new_tensor(ehvi).clamp_min(torch.finfo(X.dtype).tiny).log()
+        return scores.to(candidates)
 
 
 def _pibo_exp_term(
@@ -100,6 +170,15 @@ class BayesianOptimization:
 
     beta: float
     """The beta parameter for legacy pibo's prior decay."""
+
+    mo_acquisition: Literal["qlnehvi", "optuna_ehvi"]
+    """The acquisition function used for multiple objectives."""
+
+    def __post_init__(self) -> None:
+        if self.mo_acquisition not in ("qlnehvi", "optuna_ehvi"):
+            raise ValueError(
+                f"Unknown multi-objective acquisition {self.mo_acquisition!r}."
+            )
 
     def __call__(  # noqa: C901, PLR0912, PLR0915
         self,
@@ -193,7 +272,7 @@ class BayesianOptimization:
                 encoder.ndim,
                 self.n_initial_design,
                 use_legacy=self.prior_decay == "legacy",
-                beta=self.beta
+                beta=self.beta,
             )
             # If the exp term is insignificant, skip prior acq. weighting
             prior = None if pibo_exp_term < 1e-4 else self.prior
@@ -229,6 +308,9 @@ class BayesianOptimization:
             " No trials reports have objective values."
         )
 
+        acquisition: AcquisitionFunction
+        acq_options = None
+        num_restarts = 20
         if num_objectives > 1:
             gp = make_default_single_obj_gp(
                 x=data.x,
@@ -236,7 +318,14 @@ class BayesianOptimization:
                 encoder=encoder,
                 y_transform=Standardize(m=data.y.shape[-1]),
             )
-            if self.reference_point is not None:
+            if self.reference_point is None:
+                losses = data.y.detach().cpu().numpy()
+                ref_point = torch.as_tensor(
+                    _get_reference_point(losses, strictly_worse=True),
+                    dtype=data.y.dtype,
+                    device=data.y.device,
+                )
+            else:
                 assert len(self.reference_point) == num_objectives, (
                     "Reference point must have the same number of objectives as the"
                     " trials."
@@ -246,19 +335,41 @@ class BayesianOptimization:
                     dtype=data.x.dtype,
                     device=data.x.device,
                 )
-            else:
-                ref_point = torch.tensor(
-                    _get_reference_point(data.y.numpy()),
-                    dtype=data.x.dtype,
-                    device=data.x.device,
+            if self.mo_acquisition == "optuna_ehvi":
+                acquisition = _OptunaEHVI(
+                    model=gp,
+                    observed_losses=data.y,
+                    reference_point=ref_point,
+                    X_pending=data.x_pending,
                 )
-            acquisition = qLogNoisyExpectedHypervolumeImprovement(
-                model=gp,
-                ref_point=ref_point,
-                X_baseline=data.x,
-                X_pending=data.x_pending,
-                prune_baseline=True,
-            )
+                domains = encoder.domains
+                if any(not domain.is_categorical for domain in domains):
+                    # Only continuous candidate selection accepts finite differences.
+                    acq_options = {
+                        "options": {
+                            "with_grad": False,
+                            "batch_limit": 1,
+                            "init_batch_limit": 64,
+                        }
+                    }
+                categorical_sizes = [
+                    domain.cardinality
+                    for domain in domains
+                    if domain.is_categorical and domain.cardinality is not None
+                ]
+                if categorical_sizes:
+                    # Each previously selected candidate removes one discrete start.
+                    available_starts = math.prod(categorical_sizes) - n_to_acquire + 1
+                    num_restarts = max(1, min(num_restarts, available_starts))
+            else:
+                acquisition = qLogNoisyExpectedHypervolumeImprovement(
+                    model=gp,
+                    ref_point=-ref_point,
+                    objective=WeightedMCMultiOutputObjective(-torch.ones_like(ref_point)),
+                    X_baseline=data.x,
+                    X_pending=data.x_pending,
+                    prune_baseline=True,
+                )
         else:
             gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
             acquisition = qLogNoisyExpectedImprovement(
@@ -282,6 +393,8 @@ class BayesianOptimization:
             costs=data.cost if self.cost_aware is not False else None,
             cost_percentage_used=cost_percent,
             costs_on_log_scale=self.cost_aware == "log",
+            num_restarts=num_restarts,
+            acq_options=acq_options,
             hide_warnings=True,
         )
 
@@ -303,8 +416,15 @@ class BayesianOptimization:
         return sampled_configs[0] if n is None else sampled_configs
 
 
-def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
-    """Get the reference point from the completed Trials."""
+def _get_reference_point(
+    loss_vals: np.ndarray, *, strictly_worse: bool = False
+) -> np.ndarray:
+    """Infer a reference point from the worst observed loss in each objective.
+
+    With `strictly_worse`, the margin increases every loss coordinate.
+    """
     eps = 1e-4
     worst_point = np.max(loss_vals, axis=0)
+    if strictly_worse:
+        return worst_point + eps * np.where(worst_point == 0, 1.0, np.abs(worst_point))
     return worst_point * (1 + eps)

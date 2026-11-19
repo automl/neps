@@ -89,7 +89,7 @@ class PriMO:
     bo_type: Literal["epsbo", "pibo", "vanilla"] = "epsbo"
     """The type of Bayesian optimization to use. Defaults to "epsbo"."""
 
-    acq_fn: Literal["qlnei", "ts", "lcb"] = "qlnei"
+    acq_fn: Literal["qlnei", "ts", "lcb", "qlnehvi"] = "qlnei"
     """The acquisition function to use for Bayesian optimization.
     Options are:
         - "qlnei": q-Log Noisy Expected Improvement

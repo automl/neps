@@ -65,6 +65,7 @@ def _bo(
     reference_point: tuple[float, ...] | None = None,
     prior_decay: Literal["default", "legacy"] = "default",
     beta: float = 10.0,
+    mo_acquisition: Literal["qlnehvi", "optuna_ehvi"] = "qlnehvi",
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -90,6 +91,7 @@ def _bo(
             original paper will be used.
         beta: The beta parameter for legacy pibo's prior decay.
             Only used if `prior_decay="legacy"`.
+        mo_acquisition: Acquisition function for multiple objectives.
 
     Raises:
         ValueError: if initial_design_size < 1
@@ -146,6 +148,7 @@ def _bo(
         reference_point=reference_point,
         prior_decay=prior_decay,
         beta=beta,
+        mo_acquisition=mo_acquisition,
     )
 
 
@@ -1190,6 +1193,7 @@ def bayesian_optimization(
     initial_design_size: int | Literal["ndim"] = "ndim",
     cost_aware: bool | Literal["log"] = False,
     device: torch.device | str | None = None,
+    mo_acquisition: Literal["qlnehvi", "optuna_ehvi"] = "qlnehvi",
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
     and the results of `evaluate_pipeline` using bayesian optimization.
@@ -1230,6 +1234,9 @@ def bayesian_optimization(
                 If using `cost`, cost must be provided in the reports of the trials.
 
         device: Device to use for the optimization.
+        mo_acquisition: For multiple objectives, use BoTorch's qLogNEHVI (`"qlnehvi"`)
+            or estimate EHVI from GP samples with Optuna's MO-TPE hypervolume kernel
+            (`"optuna_ehvi"`). The Optuna option uses finite differences.
     """
     return _bo(
         pipeline_space=space,
@@ -1238,6 +1245,7 @@ def bayesian_optimization(
         device=device,
         use_priors=False,
         sample_prior_first=False,
+        mo_acquisition=mo_acquisition,
     )
 
 
@@ -1253,6 +1261,7 @@ def pibo(
     reference_point: tuple[float, ...] | None = None,
     prior_decay: Literal["default", "legacy"] = "default",
     beta: float = 10.0,
+    mo_acquisition: Literal["qlnehvi", "optuna_ehvi"] = "qlnehvi",
 ) -> BayesianOptimization:
     """A modification of
     [`bayesian_optimization`][neps.optimizers.algorithms.bayesian_optimization]
@@ -1286,14 +1295,15 @@ def pibo(
         mo_prior_centers: The means of the prior distributions to sample from.
         mo_prior_confidences: The confidence values of the prior distributions to sample
             from.
-        reference_point: The reference point to use for the multi-objective
-            optimization. If None, the reference point will be calculated
-            dynamically based on the current objective values.
+        reference_point: The reference point in minimization coordinates for
+            multi-objective optimization. If None, infer it from the observed losses.
         prior_decay: The decay mode for the prior distributions. If "default", the
             default decay will be used. If "legacy", the legacy decay from the
             original paper will be used.
         beta: The beta parameter for legacy pibo's prior decay.
             Only used if `prior_decay="legacy"`.
+        mo_acquisition: For multiple objectives, use BoTorch's qLogNEHVI (`"qlnehvi"`)
+            or EHVI with the Optuna MO-TPE hypervolume kernel (`"optuna_ehvi"`).
     """
     return _bo(
         pipeline_space=space,
@@ -1307,6 +1317,7 @@ def pibo(
         reference_point=reference_point,
         prior_decay=prior_decay,
         beta=beta,
+        mo_acquisition=mo_acquisition,
     )
 
 

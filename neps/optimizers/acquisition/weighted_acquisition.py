@@ -124,6 +124,8 @@ class WeightedAcquisition(AcquisitionFunction):
         self.apply_weight = apply_weight
         self.acq = acq
         self._log = acq._log
+        # Carry the base acquisition's opt-in through nested prior and cost wrappers.
+        self._average_joint_weights = getattr(acq, "_average_joint_weights", False)
 
     # Taken from PiBO implementation in botorch (PriorGuidedAcquisitionFunction).
     @concatenate_pending_points  # type: ignore
@@ -150,4 +152,6 @@ class WeightedAcquisition(AcquisitionFunction):
         # shape: batch x q-candidates
         acq_values = self.acq(X).unsqueeze(-1)
         weighted_acq_values = self.apply_weight(acq_values, X, self.acq)
+        if self._average_joint_weights:
+            return weighted_acq_values.mean(dim=-1)
         return weighted_acq_values.squeeze(-1)  # type: ignore
