@@ -16,13 +16,13 @@ from botorch.acquisition.multi_objective.logei import (
 from botorch.acquisition.multi_objective.objective import WeightedMCMultiOutputObjective
 from botorch.models.transforms.outcome import Standardize
 from botorch.sampling.normal import SobolQMCNormalSampler
-from botorch.utils.multi_objective.pareto import is_non_dominated
 from botorch.utils.transforms import (
     concatenate_pending_points,
     match_batch_shape,
     t_batch_mode_transform,
 )
-from optuna._hypervolume import compute_hypervolume
+from optuna._gp.acqf import _get_non_dominated_box_bounds, logehvi
+from torch.nn.utils.rnn import pad_sequence
 
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
@@ -41,10 +41,12 @@ if TYPE_CHECKING:
 
 
 class _OptunaEHVI(AcquisitionFunction):
-    """Expected joint HVI against observed losses using Optuna's MO-TPE kernel."""
+    """Optuna's LogEHVI with posterior samples from the NePS GP."""
 
     _log = True
     _average_joint_weights = True
+    _box_eps = 1e-12
+    _pending_box_cache: tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None
 
     def __init__(
         self,
@@ -59,43 +61,75 @@ class _OptunaEHVI(AcquisitionFunction):
         self.register_buffer("running_points", X_pending)
         self.sampler = SobolQMCNormalSampler(sample_shape=torch.Size([64]))
         self.register_buffer("reference_point", reference_point)
-        self._reference_point = reference_point.detach().cpu().numpy()
-        inside_reference = (observed_losses < reference_point).all(dim=-1)
-        observed_losses = observed_losses[inside_reference]
-        pareto_losses = observed_losses[is_non_dominated(observed_losses, maximize=False)]
-        self._pareto_losses = pareto_losses.detach().cpu().numpy()
-        self._baseline_hv = compute_hypervolume(
-            self._pareto_losses, self._reference_point, assume_pareto=True
+        self._loss_reference_point = reference_point.detach().cpu().numpy()
+        self._observed_values = -observed_losses.detach().cpu()
+        lower, upper = _get_non_dominated_box_bounds(
+            self._observed_values, self._loss_reference_point
         )
+        self.register_buffer("box_lower", lower.to(reference_point))
+        self.register_buffer(
+            "box_widths", (upper - lower).clamp_min(self._box_eps).to(reference_point)
+        )
+        self._pending_box_cache = None
 
-    def _hypervolume_improvement(self, losses: np.ndarray) -> float:
-        losses = losses[(losses < self._reference_point).all(axis=-1)]
-        if len(losses) == 0:
-            return 0.0
-        joint_losses = np.concatenate((self._pareto_losses, losses))
-        joint_hv = compute_hypervolume(joint_losses, self._reference_point)
-        return max(joint_hv - self._baseline_hv, 0.0)
+    def _pending_boxes(
+        self, pending: torch.Tensor, samples: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        # All restarts for a suggestion share the same pending points and fantasies.
+        points = pending.flatten(end_dim=-3)[0].detach()
+        if self._pending_box_cache is not None:
+            cached_points, lower, widths = self._pending_box_cache
+            if torch.equal(cached_points, points):
+                return lower, widths
+
+        fantasies = samples.flatten(start_dim=1, end_dim=-3)[:, 0, :-1].detach().cpu()
+        lower_bounds, upper_bounds = zip(
+            *(
+                _get_non_dominated_box_bounds(
+                    torch.cat((self._observed_values, draw)), self._loss_reference_point
+                )
+                for draw in fantasies
+            ),
+            strict=True,
+        )
+        lower = pad_sequence(lower_bounds, batch_first=True).to(samples)
+        widths = pad_sequence(
+            [
+                (hi - lo).clamp_min(self._box_eps)
+                for lo, hi in zip(lower_bounds, upper_bounds, strict=True)
+            ],
+            batch_first=True,
+            padding_value=self._box_eps,
+        ).to(samples)
+        self._pending_box_cache = points.clone(), lower, widths
+        return lower, widths
 
     @concatenate_pending_points  # type: ignore
     @t_batch_mode_transform()  # type: ignore
-    @torch.no_grad()
     def forward(self, X: torch.Tensor) -> torch.Tensor:
         candidates = X
         X = X.to(self.reference_point)
+        # Greedy selection appends earlier suggestions to the point being scored.
+        pending = X[..., 1:, :]
         if self.running_points is not None:
-            X = torch.cat((X, match_batch_shape(self.running_points, X)), dim=-2)
-        samples = self.sampler(self.model.posterior(X)).cpu().numpy()
-        sample_count, *batch_shape, q, objectives = samples.shape
-        improvements = np.fromiter(
-            (
-                self._hypervolume_improvement(losses)
-                for losses in samples.reshape(-1, q, objectives)
-            ),
-            dtype=np.float64,
-            count=sample_count * math.prod(batch_shape),
-        )
-        ehvi = improvements.reshape(sample_count, *batch_shape).mean(axis=0)
-        scores = X.new_tensor(ehvi).clamp_min(torch.finfo(X.dtype).tiny).log()
+            pending = torch.cat(
+                (match_batch_shape(self.running_points, X), pending), dim=-2
+            )
+        # A pending-first joint draw pairs fixed pending fantasies with each candidate.
+        joint = torch.cat((pending, X[..., :1, :]), dim=-2)
+        samples = -self.sampler(self.model.posterior(joint))
+        values = samples[..., -1, :].movedim(0, -2)
+
+        # Optuna creates its clamp constant on the default device during scoring.
+        if pending.shape[-2] == 0:
+            with torch.device(values.device):
+                scores = logehvi(values, self.box_lower, self.box_widths)
+        else:
+            lower, widths = self._pending_boxes(pending, samples)
+            # Give each QMC draw its own boxes and average the paired HVI terms.
+            with torch.device(values.device):
+                log_hvi = logehvi(values.unsqueeze(-2), lower[:, None], widths[:, None])
+            scores = torch.logsumexp(log_hvi, dim=-1) - math.log(values.shape[-2])
         return scores.to(candidates)
 
 
@@ -344,14 +378,8 @@ class BayesianOptimization:
                 )
                 domains = encoder.domains
                 if any(not domain.is_categorical for domain in domains):
-                    # Only continuous candidate selection accepts finite differences.
-                    acq_options = {
-                        "options": {
-                            "with_grad": False,
-                            "batch_limit": 1,
-                            "init_batch_limit": 64,
-                        }
-                    }
+                    # The discrete local search already selects batch members greedily.
+                    acq_options = {"sequential": True}
                 categorical_sizes = [
                     domain.cardinality
                     for domain in domains

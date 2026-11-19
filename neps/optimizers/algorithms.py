@@ -1235,8 +1235,8 @@ def bayesian_optimization(
 
         device: Device to use for the optimization.
         mo_acquisition: For multiple objectives, use BoTorch's qLogNEHVI (`"qlnehvi"`)
-            or estimate EHVI from GP samples with Optuna's MO-TPE hypervolume kernel
-            (`"optuna_ehvi"`). The Optuna option uses finite differences.
+            or Optuna 5's LogEHVI (`"optuna_ehvi"`). The Optuna option selects
+            batch members sequentially.
     """
     return _bo(
         pipeline_space=space,
@@ -1303,7 +1303,7 @@ def pibo(
         beta: The beta parameter for legacy pibo's prior decay.
             Only used if `prior_decay="legacy"`.
         mo_acquisition: For multiple objectives, use BoTorch's qLogNEHVI (`"qlnehvi"`)
-            or EHVI with the Optuna MO-TPE hypervolume kernel (`"optuna_ehvi"`).
+            or Optuna 5's LogEHVI (`"optuna_ehvi"`).
     """
     return _bo(
         pipeline_space=space,
