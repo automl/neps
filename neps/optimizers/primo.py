@@ -12,11 +12,13 @@ from botorch.acquisition.monte_carlo import qLowerConfidenceBound
 from botorch.acquisition.multi_objective.logei import (
     qLogNoisyExpectedHypervolumeImprovement,
 )
+from botorch.acquisition.multi_objective.objective import WeightedMCMultiOutputObjective
 from botorch.acquisition.objective import LinearMCObjective
 from botorch.acquisition.thompson_sampling import PathwiseThompsonSampling
 from botorch.models.transforms.outcome import Standardize
 from gpytorch.utils.warnings import NumericalWarning
 
+from neps.optimizers.bayesian_optimization import _get_reference_point
 from neps.optimizers.models.gp import (
     encode_trials_for_gp,
     fit_and_acquire_from_gp,
@@ -210,8 +212,10 @@ class PriMO:
 
                 match self.scalarization:
                     case LinearScalarization():
-                        _trial.report.objective_to_minimize = self.scalarization.scalarize(
-                            objective_values=_trial.report.objective_to_minimize
+                        _trial.report.objective_to_minimize = (
+                            self.scalarization.scalarize(
+                                objective_values=_trial.report.objective_to_minimize
+                            )
                         )
                     case HypervolumeScalarization():
                         all_obj_vals = [
@@ -219,9 +223,11 @@ class PriMO:
                             for t in trials.values()
                             if t.report is not None
                         ]
-                        _trial.report.objective_to_minimize = self.scalarization.scalarize(
-                            objective_values=_trial.report.objective_to_minimize,
-                            all_obj_vals=all_obj_vals,
+                        _trial.report.objective_to_minimize = (
+                            self.scalarization.scalarize(
+                                objective_values=_trial.report.objective_to_minimize,
+                                all_obj_vals=all_obj_vals,
+                            )
                         )
                     case _:
                         raise TypeError(
@@ -231,7 +237,9 @@ class PriMO:
 
                 # Remove the fidelity from the trial config
                 # Cannot do simple pop since Config type is Mapping in most places in Neps
-                _trial.config = {k: v for k, v in _trial.config.items() if k != self.fid_name}
+                _trial.config = {
+                    k: v for k, v in _trial.config.items() if k != self.fid_name
+                }
 
                 _trials[trial_id] = _trial
 
@@ -337,11 +345,7 @@ class PriMO:
         n_to_acquire = 1
 
         if self.acq_fn != "qlnehvi":
-            gp = make_default_single_obj_gp(
-                x=data.x,
-                y=data.y,
-                encoder=encoder
-            )
+            gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
         else:
             gp = make_default_single_obj_gp(
                 x=data.x,
@@ -369,14 +373,18 @@ class PriMO:
                         prune_baseline=True,
                     )
                 case "qlnehvi":
-                    ref_point = torch.tensor(
-                        _get_reference_point(data.y.numpy()),
-                        dtype=data.x.dtype,
-                        device=data.x.device,
+                    losses = data.y.detach().cpu().numpy()
+                    ref_point = torch.as_tensor(
+                        _get_reference_point(losses, strictly_worse=True),
+                        dtype=data.y.dtype,
+                        device=data.y.device,
                     )
                     acquisition = qLogNoisyExpectedHypervolumeImprovement(
                         model=gp,
-                        ref_point=ref_point,
+                        ref_point=-ref_point,
+                        objective=WeightedMCMultiOutputObjective(
+                            -torch.ones_like(ref_point)
+                        ),
                         X_baseline=data.x,
                         X_pending=data.x_pending,
                         prune_baseline=True,
@@ -428,14 +436,6 @@ def _primo_exp_term(
 
     n_bo_samples = n_sampled_already - initial_design_size
     return math.exp(-(n_bo_samples**2) / ndims)
-
-
-def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
-    """Get the reference point from the completed Trials."""
-    eps = 1e-4
-    worst_point = np.max(loss_vals, axis=0)
-    return worst_point * (1 + eps)
-
 
 
 def _pibo_exp_term(
