@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -142,14 +143,12 @@ def test_async_save_updates_the_whole_summary(extrapolaw_state: ExtrapolawState)
     ).run()
 
     summary_dir = Path(extrapolaw_state.path) / "summary"
-    assert (summary_dir / "best_config.txt").read_text() == ""
 
     callback_holder[0]({"objective_to_minimize": 0.3, "cost": 1.2})
 
-    assert "Objective to minimize: 0.3" in (summary_dir / "best_config.txt").read_text()
-    assert "Config ID:" in (summary_dir / "best_config_trajectory.txt").read_text()
-    assert "objective_to_minimize" in (summary_dir / "full.csv").read_text()
-    assert "best_objective_to_minimize" in (summary_dir / "short.csv").read_text()
+    full = (summary_dir / "full.csv").read_text()
+    assert "objective_to_minimize" in full
+    assert "0.3" in full
 
 
 def test_analyze_rebuilds_the_summary(extrapolaw_state: ExtrapolawState) -> None:
@@ -174,20 +173,12 @@ def test_analyze_rebuilds_the_summary(extrapolaw_state: ExtrapolawState) -> None
     ).run()
 
     summary_dir = Path(extrapolaw_state.path) / "summary"
-    for file in summary_dir.iterdir():
-        file.unlink()
+    shutil.rmtree(summary_dir)
 
     analyze(extrapolaw_state.path)
 
-    assert "Config ID:" in (summary_dir / "best_config.txt").read_text()
-    assert "Final cumulative metrics" in (summary_dir / "best_config.txt").read_text()
-    assert "Config ID:" in (summary_dir / "best_config_trajectory.txt").read_text()
-    assert (summary_dir / "full.csv").exists()
-    assert (summary_dir / "short.csv").exists()
-    assert (summary_dir / "incumbent_trajectory.csv").exists()
-    assert list(summary_dir.glob("incumbent_trajectory.*")) != [
-        summary_dir / "incumbent_trajectory.csv"
-    ]
+    assert "objective_to_minimize" in (summary_dir / "full.csv").read_text()
+    assert list(summary_dir.rglob("*.png"))
 
 
 def test_analyze_missing_directory_raises(tmp_path: Path) -> None:

@@ -140,6 +140,8 @@ class ChinchillaGuidedScaling(ScalingOptimizer):
     random once and held fixed.
     """
 
+    predictor = "chinchilla3"
+
     space: SearchSpace
     """The search space, fidelities are not supported."""
 

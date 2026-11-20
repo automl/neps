@@ -31,69 +31,6 @@ if TYPE_CHECKING:
     from extrapolaw.space.search_space import SearchSpace
 
 
-def _format_config_entry(entry: dict, indent: str = "") -> str:
-    """Format a single best-config entry into a text block.
-
-    indent is a string prefixed to the first line for nicer indentation in
-    the `best_config_text` block.
-    """
-    parts: list[str] = []
-    parts.append(f"{indent}Config ID: {entry['trial_id']}")
-    parts.append(f"Objective to minimize: {entry['score']}")
-    if "cost" in entry:
-        parts.append(f"Cost: {entry['cost']}")
-
-    if "cumulative_evaluations" in entry:
-        parts.append(f"Cumulative evaluations: {entry['cumulative_evaluations']}")
-    if "cumulative_fidelities" in entry:
-        parts.append(f"Cumulative fidelities: {entry['cumulative_fidelities']}")
-    if "cumulative_cost" in entry:
-        parts.append(f"Cumulative cost: {entry['cumulative_cost']}")
-    if "cumulative_time" in entry:
-        parts.append(f"Cumulative time: {entry['cumulative_time']}")
-
-    parts.append(f"Config: {entry['config']}")
-
-    return "\n".join(parts) + "\n" + ("-" * 80) + "\n"
-
-
-def _build_incumbent_content(best_configs: list[dict]) -> str:
-    """Build trace text and best config text from a list of best configurations.
-
-    Args:
-        best_configs: List of best configuration dictionaries containing
-                     'trial_id', 'score', 'config', and optional metrics.
-
-    Returns:
-        Tuple of (trace_text, best_config_text) strings.
-    """
-    trace_content = (
-        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
-    )
-    for conf in best_configs:
-        trace_content += _format_config_entry(conf)
-
-    return trace_content
-
-
-def _build_optimal_set_content(best_configs: list[dict]) -> str:
-    """Build trace text and best config text from a list of best configurations.
-
-    Args:
-        best_configs: List of best configuration dictionaries containing
-                        'trial_id', 'score', 'config', and optional metrics.
-
-    Returns:
-        content: str.
-    """
-    trace_text = (
-        "Best configs and their objectives across evaluations:\n" + "-" * 80 + "\n"
-    )
-    for conf in best_configs:
-        trace_text += _format_config_entry(conf)
-    return trace_text
-
-
 @dataclass
 class Summary:
     """Summary of the current state of an extrapolaw run."""
@@ -397,7 +334,7 @@ def status(
     return df, short
 
 
-def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileLocker]:
+def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, FileLocker]:
     """Initializes a summary CSV and an associated locker for file access control.
 
     Args:
@@ -405,8 +342,7 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileL
             containing CSV files and a locker for file access control, will be created.
 
     Returns:
-        A tuple containing the file paths for the configuration data CSV, run data CSV,
-        and a locker file.
+        A tuple containing the file path of the trials CSV and a locker file.
 
     The locker is used for file access control to ensure data integrity in a
     multi-threaded or multi-process environment.
@@ -416,7 +352,6 @@ def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, Path, FileL
     summary_path.mkdir(parents=True, exist_ok=True)
 
     full_path = summary_path / "full.csv"
-    short_path = summary_path / "short.csv"
     summary_locker = FileLocker(summary_path / ".summary.lock", poll=0.1, timeout=10)
 
-    return (full_path, short_path, summary_locker)
+    return (full_path, summary_locker)

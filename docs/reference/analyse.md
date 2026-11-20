@@ -102,7 +102,7 @@ mark the Pareto frontier: the runs with the best result for their cost.
 
 | Files in `summary/scaling/`        | Plot                                                                                                      |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `loss_over_cost.{png,csv}`         | the loss of every run over its training cost, the frontier and a power law fitted through it             |
+| `loss_over_cost.{png,csv}` | the loss of every run over its training cost, the frontier and the fit of the run's optimizer |
 | `downstream/<name>_over_cost.{png,csv}` | the same for each metric in `downstream_performances`, with a frontier of its own                        |
 | `parameters/<name>_over_cost.{png,csv}` | each number in the config or `info_dict` that varies, coloured by the loss, with the frontier runs circled |
 | `pareto_optimal_points.json`       | the runs on the frontier of loss over cost, with their configs                                           |
@@ -113,6 +113,14 @@ cheap to train can still be expensive to use. Accuracy-like metrics (names
 containing `_acc` or `recall`) are plotted as `1 - value`. See
 [the evaluate function](evaluate_pipeline.md) for the values to return.
 
+The fit on `loss_over_cost` is the scaling law the run's optimizer names. The
+Chinchilla law for the `chinchilla` optimizer, if the runs return `n_params` and
+`n_data`, and a power law otherwise. `extrapolaw.predict()` uses the same one.
+
+#### Prediction plot
+
+`extrapolaw.predict(ROOT_DIRECTORY, target_flops)` also saves `summary/scaling/prediction.png`, with its CSVs: the fit extended to the target
+   budgets (left), and the predicted loss after each finished run (right).
 
 ## Live plots during a run
 

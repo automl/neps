@@ -148,6 +148,10 @@ def test_worker_budget_is_used_without_a_total_one() -> None:
     assert sum(_flops_of(c) for c in optimizer.config_list) <= 1e10
 
 
+def test_its_runs_are_fitted_with_chinchilla3() -> None:
+    assert _optimizer().predictor == "chinchilla3"
+
+
 def test_missing_requirements_raise() -> None:
     with pytest.raises(ValueError, match="needs a cost budget"):
         _optimizer()({}, None)

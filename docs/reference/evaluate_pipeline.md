@@ -53,7 +53,7 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
 > **Live plots**  When `evaluate_pipeline` returns its result (sync), the worker records it
 > and refreshes `root_directory/summary/`. Pass `live_plots=True` to `extrapolaw.acquire()` to also
-> redraw the plots every time: the incumbent trajectory, or the Pareto front for two
+> redraw the plots every time: the scaling plots, or the Pareto front for two
 > objectives, plus anything the optimizer provides. See
 > [Analysing Runs](analyse.md#live-plots-during-a-run).
 
@@ -171,7 +171,7 @@ extrapolaw.save_pipeline_results(
 )
 ```
 
-This refreshes the general plots (incumbent trajectory or Pareto front) in
+This refreshes the general plots (scaling plots or Pareto front) in
 `root_directory/summary/`. Optimizer-specific artifacts need the optimizer object, so
 they are only drawn by `extrapolaw.acquire(..., live_plots=True)`. To redraw everything once all
 jobs are done, call `extrapolaw.analyze(root_directory)`; see

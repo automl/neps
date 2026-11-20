@@ -36,11 +36,6 @@ if TYPE_CHECKING:
     from extrapolaw.space import SearchSpace
     from extrapolaw.state import Trial
 
-DEFAULT_PREDICTORS: dict[str, PredictorTypes] = {
-    "chinchilla": PredictorTypes.CHINCHILLA3,
-}
-"""The predictor to use for the runs of an optimizer, by optimizer name."""
-
 
 @dataclass
 class Prediction:
@@ -304,7 +299,6 @@ def _nan_float(value: Any) -> float:
 
 __all__ = [
     "DEFAULT_EXPONENT_BOUNDS",
-    "DEFAULT_PREDICTORS",
     "Prediction",
     "PredictorTypes",
     "Row",

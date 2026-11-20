@@ -1,4 +1,4 @@
-"""Tests for the scaling plots in `summary/scaling/`."""
+"""Tests for the scaling plots in `summary/pre_train/` and `summary/downstream/`."""
 
 from __future__ import annotations
 
@@ -31,10 +31,9 @@ def _scaling(width: int, lr: float) -> dict:
         "cost": 6.0 * n_params * 1e6,
         "inference_cost": 2.0 * n_params,
         "downstream_performances": {"task_acc": 0.9 - 1.0 / width},
-        "info_dict": {
-            "n_param": n_params,
-            "dropout": 0.0 if width < 64 else 0.1,
-        },
+        "n_params": n_params,
+        "n_data": 1e6,
+        "info_dict": {"dropout": 0.0 if width < 64 else 0.1},
     }
 
 
@@ -55,48 +54,42 @@ def _run(root: Path, evaluate_pipeline: object) -> None:
 def test_scaling_plots_are_written(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _scaling)
-    assert not (root / "summary" / "scaling").exists()
+    summary = root / "summary"
+    assert not (summary / "pre_train").exists()
 
     extrapolaw.analyze(root)
-    scaling = root / "summary" / "scaling"
     for name in (
-        "loss_over_cost",
-        "parameters/width_over_cost",
-        "parameters/lr_over_cost",
-        "parameters/n_param_over_cost",
-        "downstream/task_acc_over_cost",
-        "loss_over_inference_cost",
-        "parameters/width_over_inference_cost",
-        "downstream/task_acc_over_inference_cost",
+        "pre_train/loss_over_cost",
+        "pre_train/loss_over_inference_cost",
+        "pre_train/parameters/width_over_cost",
+        "pre_train/parameters/lr_over_cost",
+        "pre_train/parameters/n_params_over_cost",
+        "pre_train/parameters/width_over_inference_cost",
+        "downstream/task_acc/task_acc_over_cost",
+        "downstream/task_acc/task_acc_over_inference_cost",
+        "downstream/task_acc/parameters/width_over_cost",
     ):
-        assert (scaling / f"{name}.png").exists()
-        assert len(pd.read_csv(scaling / f"{name}.csv")) == 6
+        assert (summary / f"{name}.png").exists()
+        assert len(pd.read_csv(summary / f"{name}.csv")) == 6
 
-    assert not (scaling / "parameters" / "inference_cost_over_cost.png").exists()
-    downstream = pd.read_csv(scaling / "downstream" / "task_acc_over_cost.csv")
+    assert not (summary / "pre_train/parameters/inference_cost_over_cost.png").exists()
+    downstream = pd.read_csv(summary / "downstream/task_acc/task_acc_over_cost.csv")
     assert (downstream["downstream/task_acc"] < 0.5).all()
 
-    table = pd.read_csv(scaling / "loss_over_cost.csv")
+    table = pd.read_csv(summary / "pre_train/loss_over_cost.csv")
     assert table.loc[table["loss"].idxmin(), "on_frontier"]
+    pareto = pd.read_csv(summary / "pre_train/pareto_over_cost.csv")
+    assert len(pareto) == table["on_frontier"].sum()
+    assert {"trial_id", "cost", "loss", "n_params", "width", "lr"} <= set(pareto)
+    assert "width" in (summary / "pre_train/pareto_over_cost.txt").read_text()
 
-    points = json.loads((scaling / "pareto_optimal_points.json").read_text())
-    assert len(points) == table["on_frontier"].sum()
-    assert set(points[0]["config"]) == {"width", "lr"}
-
-    events = _events(root / "summary_tb")
-    assert not events.Tags()["images"]
-    incumbent = [event.value for event in _incumbent(events)]
-    assert np.allclose(incumbent, np.minimum.accumulate(table["loss"]))
-    texts = events.Tensors("scaling/frontier/loss_over_cost/text_summary")
-    logged = max(texts, key=lambda event: event.step)
-    front = table[table["on_frontier"]].sort_values("cost")
-    points = [
-        f"({trial_id}, {loss:.4g}, {cost:.4g})"
-        for trial_id, loss, cost in zip(
-            front["trial_id"], front["loss"], front["cost"], strict=True
-        )
-    ]
-    assert logged.tensor_proto.string_val[0].decode() == ", ".join(points)
+    predictions = pd.read_csv(summary / "pre_train/predictions_over_cost.csv")
+    largest = table["cost"].max()
+    expected = [10 * largest, 100 * largest]
+    assert list(predictions["target_cost"]) == pytest.approx(expected)
+    assert {"loss", "n_params", "n_data", "width", "lr"} <= set(predictions)
+    accuracy = pd.read_csv(summary / "downstream/task_acc/predictions_over_cost.csv")
+    assert (accuracy["task_acc"] > 0.5).all()
 
 
 def _events(log_dir: Path) -> EventAccumulator:
@@ -119,12 +112,6 @@ def _frontiers(log_dir: Path) -> dict[int, str]:
     """The frontier of loss over cost at each step."""
     texts = _events(log_dir).Tensors("scaling/frontier/loss_over_cost/text_summary")
     return {event.step: event.tensor_proto.string_val[0].decode() for event in texts}
-
-
-def test_tensorboard_gets_each_run_once(tmp_path: Path) -> None:
-    root = tmp_path / "results"
-    _run(root, _scaling)
-    assert _incumbent_steps(root / "summary_tb") == [1, 2, 3, 4, 5, 6]
 
 
 def test_tensorboard_steps_stay_the_same(tmp_path: Path) -> None:
@@ -162,18 +149,19 @@ def test_tensorboard_is_fail_safe(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     root = tmp_path / "results"
-    log_dir = root / "summary_tb"
     _run(root, _scaling)
+    state = ExtrapolawState.create_or_load(path=root, load_only=True)
+    trials = list(state._trial_repo.get_valid_evaluated_trials().values())
+    log_dir = tmp_path / "tensorboard"
     with monkeypatch.context() as patch, caplog.at_level(logging.WARNING):
         patch.setattr(scaling_plots, "FileLocker", _BusyLocker)
-        _run(root, _scaling)
+        scaling_plots.log_to_tensorboard(trials, log_dir)
     assert "TensorBoard is busy" in caplog.text
-    assert _incumbent_steps(log_dir) == [1, 2, 3, 4, 5, 6]
 
     # With the lock free again, the missed runs are logged, each with its frontier
-    extrapolaw.analyze(root)
-    assert _incumbent_steps(log_dir) == list(range(1, 13))
-    assert sorted(_frontiers(log_dir)) == list(range(1, 13))
+    scaling_plots.log_to_tensorboard(trials, log_dir)
+    assert _incumbent_steps(log_dir) == [1, 2, 3, 4, 5, 6]
+    assert sorted(_frontiers(log_dir)) == [1, 2, 3, 4, 5, 6]
 
 
 def test_no_scaling_plots_without_a_positive_cost(tmp_path: Path) -> None:
@@ -181,5 +169,28 @@ def test_no_scaling_plots_without_a_positive_cost(tmp_path: Path) -> None:
     _run(root, _zero_cost)
     extrapolaw.analyze(root)
 
-    assert (root / "summary" / "incumbent_trajectory.png").exists()
-    assert not (root / "summary" / "scaling").exists()
+    assert (root / "summary" / "full.csv").exists()
+    assert not (root / "summary" / "pre_train").exists()
+
+
+def test_predict_saves_the_targets_and_the_convergence(tmp_path: Path) -> None:
+    root = tmp_path / "results"
+    _run(root, _scaling)
+
+    state = ExtrapolawState.create_or_load(path=root, load_only=True)
+    assert state.lock_and_get_optimizer_info()["derived"]["predictor"] == "power_law"
+
+    extrapolaw.predict(root, [1e14, 1e15], target_inference_costs=[1e6])
+    summary = root / "summary"
+    targets = json.loads((summary / "targets.json").read_text())
+    assert targets == {"cost": [1e14, 1e15], "inference_cost": [1e6]}
+    inference = pd.read_csv(summary / "pre_train/predictions_over_inference_cost.csv")
+    assert list(inference["target_inference_cost"]) == [1e6]
+    assert list(inference["n_data"]) == [1e6]
+    for name in ("loss_over_cost", "loss_over_inference_cost", "task_acc_over_cost"):
+        assert (summary / "convergence" / f"{name}.png").exists()
+    assert len(pd.read_csv(summary / "convergence/loss_over_cost.csv")) > 0
+
+    extrapolaw.analyze(root)
+    predictions = pd.read_csv(summary / "pre_train/predictions_over_cost.csv")
+    assert list(predictions["target_cost"]) == [1e14, 1e15]

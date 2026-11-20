@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from matplotlib.figure import Figure
 
@@ -13,7 +13,6 @@ from extrapolaw.optimizers.optimizer import Artifact, ArtifactType
 
 if TYPE_CHECKING:
     from extrapolaw.state.trial import Trial
-    from extrapolaw.status.summary import ResourceUsage
 
 
 def _objectives(trial: Trial) -> list[float]:
@@ -23,72 +22,6 @@ def _objectives(trial: Trial) -> list[float]:
     if isinstance(score, Sequence):
         return [float(s) for s in score]
     return [float(score)]
-
-
-def plot_incumbent_trajectory(
-    trials: Sequence[Trial],
-    cumulative_usage: Sequence[ResourceUsage],
-    incumbent_ids: Collection[str],
-) -> list[Artifact]:
-    """Plot every evaluated objective and the incumbent over the cumulative cost,
-    or over the evaluations if no cost was reported.
-
-    Args:
-        trials: The evaluated trials, in chronological order.
-        cumulative_usage: The usage of the run up to and including each trial.
-        incumbent_ids: The ids of the trials that became the incumbent.
-
-    Returns:
-        The figure and a CSV with one row per trial: its cumulative usage, its
-        objective, the incumbent's objective so far and whether it became the
-        incumbent.
-    """
-    use_cost = any(u.cost for u in cumulative_usage)
-    xs = [u.cost if use_cost else u.evaluations for u in cumulative_usage]
-    objectives = [_objectives(t)[0] for t in trials]
-
-    fig = Figure(figsize=(6, 4))
-    ax = fig.add_subplot()
-    ax.scatter(xs, objectives, s=12, alpha=0.4, color="tab:gray", label="Evaluated")
-    incumbents = [
-        (x, y)
-        for t, x, y in zip(trials, xs, objectives, strict=True)
-        if t.id in incumbent_ids
-    ]
-    incumbent_xs = [x for x, _ in incumbents] + [xs[-1]]
-    incumbent_ys = [y for _, y in incumbents]
-    ax.step(
-        incumbent_xs,
-        [*incumbent_ys, incumbent_ys[-1]],
-        where="post",
-        color="tab:blue",
-        label="Incumbent",
-    )
-    ax.set(
-        xlabel="Cumulative cost" if use_cost else "Evaluations",
-        ylabel="Objective to minimize",
-        title="Incumbent trajectory",
-    )
-    ax.legend()
-
-    rows: list[dict[str, Any]] = []
-    best = float("inf")
-    for trial, usage, objective in zip(trials, cumulative_usage, objectives, strict=True):
-        best = min(best, objective)
-        rows.append(
-            {
-                "trial_id": trial.id,
-                **usage.to_trajectory_dict(),
-                "objective_to_minimize": objective,
-                "incumbent_objective_to_minimize": best,
-                "is_incumbent": trial.id in incumbent_ids,
-            }
-        )
-
-    return [
-        Artifact("incumbent_trajectory", fig, ArtifactType.FIGURE),
-        Artifact("incumbent_trajectory", rows, ArtifactType.CSV),
-    ]
 
 
 def plot_pareto_front(

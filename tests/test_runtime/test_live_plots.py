@@ -33,18 +33,6 @@ def _run(root: Path, evaluate_pipeline: object, *, live_plots: bool) -> None:
     )
 
 
-def test_incumbent_trajectory_is_written(tmp_path: Path) -> None:
-    root = tmp_path / "results"
-    _run(root, _single_objective, live_plots=True)
-
-    assert (root / "summary" / "incumbent_trajectory.png").exists()
-    table = pd.read_csv(root / "summary" / "incumbent_trajectory.csv")
-    assert len(table) == 3
-    assert table["cumulative_cost"].tolist() == [1.0, 2.0, 3.0]
-    assert table["incumbent_objective_to_minimize"].is_monotonic_decreasing
-    assert table["is_incumbent"].iloc[0]
-
-
 def test_pareto_front_is_written(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _two_objectives, live_plots=True)
@@ -60,5 +48,4 @@ def test_no_plots_by_default(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _single_objective, live_plots=False)
 
-    assert not list((root / "summary").glob("*.png"))
-    assert not (root / "summary" / "incumbent_trajectory.csv").exists()
+    assert not list((root / "summary").rglob("*.png"))

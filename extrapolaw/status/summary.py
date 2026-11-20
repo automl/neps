@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass, field
@@ -10,21 +11,21 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from extrapolaw.optimizers.optimizer import Artifact, ArtifactType
-from extrapolaw.plot.generic_plots import plot_incumbent_trajectory, plot_pareto_front
-from extrapolaw.plot.scaling_plots import log_to_tensorboard, plot_scaling
-from extrapolaw.space.extrapolaw_spaces.extrapolaw_space import ExtrapolawCompatConverter
+from extrapolaw.plot.generic_plots import plot_pareto_front
+from extrapolaw.plot.scaling_plots import plot_scaling
+from extrapolaw.space.extrapolaw_spaces.extrapolaw_space import (
+    ExtrapolawCompatConverter,
+    convert_extrapolaw_to_classic_search_space,
+)
+from extrapolaw.space.extrapolaw_spaces.parameters import PipelineSpace
 from extrapolaw.state.extrapolaw_state import ExtrapolawState, _deserialize_optimizer_info
 from extrapolaw.state.trial import Trial
-from extrapolaw.status.status import (
-    _build_incumbent_content,
-    _build_optimal_set_content,
-    _initiate_summary_csv,
-    status,
-)
+from extrapolaw.status.status import _initiate_summary_csv, status
 from extrapolaw.utils.files import get_file_writer
 from extrapolaw.utils.pareto import dominates
 
 if TYPE_CHECKING:
+    from extrapolaw.space import SearchSpace
     from extrapolaw.state.extrapolaw_state import FileLocker
 
 logger = logging.getLogger(__name__)
@@ -212,26 +213,19 @@ class SummaryWriter:
 
     summary_dir: Path = field(init=False)
     _full_path: Path = field(init=False, repr=False)
-    _short_path: Path = field(init=False, repr=False)
     _locker: FileLocker = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.root_directory = Path(self.root_directory).absolute().resolve()
-        full_path, short_path, locker = _initiate_summary_csv(self.root_directory)
+        full_path, locker = _initiate_summary_csv(self.root_directory)
         self.summary_dir = full_path.parent
         self._full_path = full_path
-        self._short_path = short_path
         self._locker = locker
 
     @property
     def full_csv_path(self) -> Path:
         """The CSV with one row per trial."""
         return self._full_path
-
-    @property
-    def short_csv_path(self) -> Path:
-        """The CSV summarizing the run as a whole."""
-        return self._short_path
 
     @classmethod
     def from_directory(
@@ -256,27 +250,11 @@ class SummaryWriter:
             live_plots=live_plots,
         )
 
-    @property
-    def best_config_path(self) -> Path:
-        """The text file with the best config(s) of the run."""
-        return self.summary_dir / "best_config.txt"
-
-    @property
-    def trajectory_path(self) -> Path:
-        """The text file with the incumbent trajectory of the run."""
-        return self.summary_dir / "best_config_trajectory.txt"
-
     def touch(self) -> None:
         """Create the summary folder and its (empty) files."""
         self.summary_dir.mkdir(parents=True, exist_ok=True)
         with self._locker.lock():
-            for path in (
-                self._full_path,
-                self._short_path,
-                self.best_config_path,
-                self.trajectory_path,
-            ):
-                path.touch(exist_ok=True)
+            self._full_path.touch(exist_ok=True)
 
     def update(
         self,
@@ -299,17 +277,16 @@ class SummaryWriter:
 
         artifacts = self.collect(trials, final=final)
         self.write(artifacts)
-        log_to_tensorboard(list(trials.values()), self.root_directory / "summary_tb")
 
     def collect(
         self,
         trials: Mapping[str, Trial],
         *,
-        final: bool = False,
+        final: bool = False,  # noqa: ARG002
     ) -> list[Artifact]:
         """Turn the evaluated trials into the artifacts of the summary folder."""
         artifacts = self._csv_artifacts()
-        if not trials:
+        if not trials or not self.live_plots:
             return artifacts
 
         sorted_trials: list[Trial] = sorted(
@@ -318,54 +295,17 @@ class SummaryWriter:
                 t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
             ),
         )
-        is_mo = any(
-            isinstance(trial.report.objective_to_minimize, list)  # type: ignore[union-attr]
-            for trial in sorted_trials
-        )
-
-        # Rebuild a non-dominated frontier from the trials in chronological order.
-        incumbent: list[Trial] = []
         frontier: list[Trial] = []
-        trajectory_confs: dict[str, dict[str, float | int]] = {}
-        cumulative_usage = cumulative_resource_usage(sorted_trials, self.fidelity_name)
 
-        for evaluated_trial, usage in zip(sorted_trials, cumulative_usage, strict=True):
-            assert evaluated_trial.report is not None  # for mypy
-            new_trial_obj = evaluated_trial.report.objective_to_minimize
+        for trial in sorted_trials:
+            assert trial.report is not None
+            if not _is_dominated(trial.report.objective_to_minimize, frontier):
+                frontier = _prune_and_add_to_frontier(trial, frontier)
 
-            if not _is_dominated(new_trial_obj, frontier):
-                frontier = _prune_and_add_to_frontier(evaluated_trial, frontier)
-                if not is_mo:
-                    incumbent.append(evaluated_trial)
-                config_dict = {
-                    "score": new_trial_obj,
-                    "trial_id": evaluated_trial.id,
-                    "config": evaluated_trial.config,
-                }
-                if evaluated_trial.report.cost is not None:
-                    config_dict["cost"] = evaluated_trial.report.cost
-
-                config_dict.update(usage.to_trajectory_dict())
-                trajectory_confs[evaluated_trial.id] = config_dict
-
-        optimal_configs = [trajectory_confs[trial.id] for trial in frontier]
-        incumbent_configs = [trajectory_confs[trial.id] for trial in incumbent]
-
-        artifacts += self._trajectory_artifacts(
-            incumbent_configs=incumbent_configs,
-            optimal_configs=optimal_configs,
-            final_usage=cumulative_usage[-1] if final else None,
+        artifacts += self._plot_artifacts(
+            sorted_trials, pareto_ids={trial.id for trial in frontier}
         )
-
-        if self.live_plots:
-            artifacts += self._plot_artifacts(
-                sorted_trials,
-                cumulative_usage,
-                incumbent_ids={trial.id for trial in incumbent},
-                pareto_ids={trial.id for trial in frontier},
-            )
-            artifacts += self._optimizer_artifacts(trials)
-
+        artifacts += self._optimizer_artifacts(trials)
         return artifacts
 
     def write(self, artifacts: Sequence[Artifact]) -> None:
@@ -398,68 +338,29 @@ class SummaryWriter:
                     continue
 
     def _csv_artifacts(self) -> list[Artifact]:
-        """`full.csv` with every trial and `short.csv` with the run's summary."""
+        """`full.csv` with every trial."""
         try:
-            full_df, short = status(self.root_directory, print_summary=False)
+            full_df, _short = status(self.root_directory, print_summary=False)
         except Exception as e:  # noqa: BLE001
-            logger.error(f"Failed to build the summary CSVs: {e}")
+            logger.error(f"Failed to build the summary CSV: {e}")
             return []
 
         return [
             Artifact(
                 self._full_path.stem, full_df, ArtifactType.CSV, metadata={"index": True}
             ),
-            Artifact(
-                self._short_path.stem,
-                short.to_frame(),
-                ArtifactType.CSV,
-                metadata={"index": True},
-            ),
         ]
 
-    def _trajectory_artifacts(
-        self,
-        *,
-        incumbent_configs: list[dict],
-        optimal_configs: list[dict],
-        final_usage: ResourceUsage | None = None,
-    ) -> list[Artifact]:  # TODO: could be removed by enriching the incumbent csv.
-        """The incumbent trajectory and the final best config(s), as text."""
-        artifacts = []
-        if incumbent_configs:
-            artifacts.append(
-                Artifact(
-                    "best_config_trajectory",
-                    _build_incumbent_content(incumbent_configs),
-                    ArtifactType.TEXT,
-                )
-            )
-
-        if optimal_configs:
-            best_config_text = _build_optimal_set_content(optimal_configs)
-            if final_usage:
-                best_config_text += "\n" + "-" * 80
-                best_config_text += "\nFinal cumulative metrics (Assuming completed run):"
-                for metric, value in final_usage.to_trajectory_dict().items():
-                    best_config_text += f"\n{metric}: {value}"
-            artifacts.append(Artifact("best_config", best_config_text, ArtifactType.TEXT))
-
-        return artifacts
-
     def _plot_artifacts(
-        self,
-        trials: Sequence[Trial],
-        cumulative_usage: Sequence[ResourceUsage],
-        incumbent_ids: set[str],
-        pareto_ids: set[str],
+        self, trials: Sequence[Trial], pareto_ids: set[str]
     ) -> list[Artifact]:
         assert trials[0].report is not None  # for mypy
         n_objectives = len(_to_sequence(trials[0].report.objective_to_minimize))  # type: ignore[arg-type]
         try:
             if n_objectives == 1:
-                return plot_incumbent_trajectory(
-                    trials, cumulative_usage, incumbent_ids
-                ) + plot_scaling(trials)
+                return plot_scaling(
+                    trials, self._run_fit(), self._target_costs(), self._search_space()
+                )
             if n_objectives == 2:
                 return plot_pareto_front(trials, pareto_ids)
         except Exception as e:  # noqa: BLE001
@@ -468,6 +369,34 @@ class SummaryWriter:
 
         logger.debug("No summary plot for %d objectives.", n_objectives)
         return []
+
+    def _run_fit(self) -> str:
+        """The scaling law the run's optimizer names."""
+        try:
+            info = _deserialize_optimizer_info(
+                self.root_directory / "optimizer_info.yaml"
+            )
+        except Exception:  # noqa: BLE001
+            return "power_law"
+        return info.get("derived", {}).get("predictor", "power_law")
+
+    def _target_costs(self) -> dict[str, list[float]] | None:
+        """The target costs of the last `extrapolaw.predict()`, if any."""
+        path = self.summary_dir / "targets.json"
+        return json.loads(path.read_text()) if path.exists() else None
+
+    def _search_space(self) -> SearchSpace | None:
+        """The search space of the run, of the classic kind the scaling laws take."""
+        try:
+            state = ExtrapolawState.create_or_load(
+                path=self.root_directory, load_only=True
+            )
+            space = state.lock_and_get_search_space()
+            if isinstance(space, PipelineSpace):
+                return convert_extrapolaw_to_classic_search_space(space)
+        except Exception:  # noqa: BLE001
+            return None
+        return space
 
     def _optimizer_artifacts(self, trials: Mapping[str, Trial]) -> list[Artifact]:
         """Whatever the optimizer itself wants persisted, if it offers any."""

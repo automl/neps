@@ -82,6 +82,11 @@ def _make_info(
     optimizer_info = OptimizerInfo(name=name, info=_yaml_safe(dict(info)))
     if derived := getattr(optimizer, "derived_info", None):
         optimizer_info["derived"] = _yaml_safe(dict(derived))
+    predictor = getattr(optimizer, "predictor", None)
+    if predictor is not None:
+        derived_info = dict(optimizer_info.get("derived", {}))
+        derived_info["predictor"] = predictor
+        optimizer_info["derived"] = derived_info
     return optimizer_info
 
 

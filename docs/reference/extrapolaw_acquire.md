@@ -146,7 +146,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ### Live plots
 Pass `live_plots=True` to have Extrapolaw redraw the plots in `root_directory/summary/` after
-every evaluated trial: the incumbent trajectory, or the Pareto front for two objectives,
+every evaluated trial: the scaling plots, or the Pareto front for two objectives,
 plus anything your optimizer provides.
 
 ```python
@@ -256,9 +256,6 @@ provided to [`extrapolaw.acquire()`][extrapolaw.api.acquire].
     │   └── ...
     ├── summary
     │   ├── full.csv
-    │   ├── short.csv
-    │   ├── best_config_trajectory.txt
-    │   ├── best_config.txt
     │   └── ...                 # Plots, with live_plots=True or extrapolaw.analyze()
     ├── optimizer_info.yaml     # The optimizer's configuration
     ├── optimizer_state.pkl     # The optimizer's state, shared between workers

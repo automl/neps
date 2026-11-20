@@ -1,31 +1,47 @@
-"""Scaling plots, with the CSV of their points, saved to `summary/scaling/`."""
+"""Scaling plots and predictions, with the CSVs of their points.
+
+The pre-train loss goes to `summary/pre_train/` and each downstream performance to
+`summary/downstream/<metric>/`.
+"""
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Sequence
+import shutil
+import tempfile
+from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import portalocker as pl
 from matplotlib.figure import Figure
+from matplotlib.ticker import FuncFormatter
 
 from extrapolaw.optimizers.optimizer import Artifact, ArtifactType
 from extrapolaw.state.filebased import FileLocker
 from extrapolaw.utils.pareto import pareto_efficient
-from extrapolaw.utils.power_law import fit_power_law
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from matplotlib.axes import Axes
 
+    from extrapolaw.prediction import Target
+    from extrapolaw.space import SearchSpace
     from extrapolaw.state.trial import Trial
 
 logger = logging.getLogger(__name__)
 
 PARETO_COLOR = "#D55E00"
 DOMINATED_COLOR = "#B0B0B0"
+INK = "#2B2B2B"
+SECONDARY_INK = "#52514E"
+AXIS_COLOR = "#C3C2B7"
+GRID_COLOR = "#E6E5DF"
+EXTRAPOLATION_COLOR = "#F3F2EE"
+TARGET_COLORS = ["#86B6EF", "#6DA7EC", "#5598E7", "#3987E5", "#2A78D6", "#256ABF"]
 COLUMNS = ["trial_id", "cost", "loss", "on_frontier"]
+DEFAULT_TARGETS = [10, 100]
 TENSORBOARD_LOCK_TIMEOUT = 5.0
 """Seconds to wait for another worker logging to TensorBoard, before trying again at
 the next update."""
@@ -45,9 +61,36 @@ def _downstream(performances: dict[str, float]) -> dict[str, float]:
     return metrics
 
 
+def _own_units(metric: str, values: pd.Series) -> pd.Series:
+    """The values of a metric column, flipped back for accuracy-like metrics."""
+    return 1.0 - values if _is_higher_better(metric) else values
+
+
+def _name(metric: str) -> str:
+    """The name of a metric column in file names, e.g. `val_acc`."""
+    return metric.removeprefix("downstream/").replace(".", "_")
+
+
+def _label(metric: str) -> str:
+    """The axis label of a metric column."""
+    name = metric.removeprefix("downstream/")
+    if metric == "loss":
+        return "Loss"
+    return f"1 - {name}" if _is_higher_better(name) else name
+
+
 def _costs(table: pd.DataFrame) -> list[str]:
     """`cost`, and `inference_cost` if the runs report it."""
     return ["cost", "inference_cost"] if "inference_cost" in table.columns else ["cost"]
+
+
+def _targets(
+    table: pd.DataFrame, cost: str, targets: Mapping[str, Sequence[float]] | None
+) -> list[float]:
+    """The target costs given for `cost`, or `DEFAULT_TARGETS` times the largest."""
+    if targets and cost in targets:
+        return [float(target) for target in targets[cost]]
+    return [factor * float(table[cost].max()) for factor in DEFAULT_TARGETS]
 
 
 def _with_frontier(table: pd.DataFrame, cost: str, loss: str) -> pd.DataFrame:
@@ -59,7 +102,7 @@ def _with_frontier(table: pd.DataFrame, cost: str, loss: str) -> pd.DataFrame:
 def runs_table(trials: Sequence[Trial]) -> pd.DataFrame:
     """One row per successful trial with a positive cost: its cost, loss, whether it is
     on the Pareto frontier, the numbers of its config and `info_dict`, its inference
-    cost and its downstream performances.
+    cost, downstream performances, model size `n_params` and data `n_data`.
     """
     rows: list[dict] = []
     for trial in trials:
@@ -80,6 +123,8 @@ def runs_table(trials: Sequence[Trial]) -> pd.DataFrame:
         row["trial_id"] = trial.id
         row["cost"] = float(report.cost)
         row["loss"] = float(report.objective_to_minimize)  # type: ignore[arg-type]
+        row["n_params"] = report.n_params
+        row["n_data"] = report.n_data
         rows.append(row)
 
     table = pd.DataFrame(rows)
@@ -88,146 +133,225 @@ def runs_table(trials: Sequence[Trial]) -> pd.DataFrame:
     return table
 
 
-def plot_loss_over_cost(
-    table: pd.DataFrame, loss: str = "loss", cost: str = "cost"
-) -> list[Artifact]:
-    """Every run's loss over its cost, the Pareto frontier and a power law through it.
+def predict_over(
+    runs: pd.DataFrame,
+    metric: str,
+    cost: str,
+    law: str,
+    costs: Sequence[float],
+    targets: Sequence[Target],
+    space: SearchSpace | None = None,
+) -> pd.DataFrame:
+    """What the scaling law `law`, fitted on `metric` over `cost` of `runs`, predicts
+    for `targets` at each of `costs`: the metric, the model size and data, and with
+    the search space `space` the config. What it cannot predict is left out.
 
-    Args:
-        table: The runs, from `runs_table`.
-        loss: The column to plot: "loss", or a downstream metric, which then gets a
-            frontier of its own.
-        cost: The cost to plot over: "cost", or "inference_cost", which then gets
-            a frontier of its own.
+    Over the inference cost, the data is the most any run used, since more data does
+    not make a model more expensive to run.
     """
-    table = _with_frontier(table, cost, loss)
-    front = table[table["on_frontier"]].sort_values("cost")
-    others = table[~table["on_frontier"]]
+    from extrapolaw.prediction import Target, fit_and_predict, get_predictor_type
 
-    metric = loss.removeprefix("downstream/")
-    label = "Loss" if loss == "loss" else metric
-    if _is_higher_better(metric):
-        label = f"1 - {metric}"
+    rows = list(
+        zip(runs["n_params"], runs["n_data"], runs[metric], runs[cost], strict=True)
+    )
+    names = [] if space is None else list(space.searchables)
+    configs = runs.reindex(columns=names).to_dict("records")
+    predicted = pd.DataFrame({cost: costs})
+    for target in targets:
+        try:
+            predictions = fit_and_predict(
+                get_predictor_type(law),
+                [float(c) for c in costs],
+                targets=[target],
+                rows=rows,
+                configs=configs,
+                space=space,
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.debug(f"Could not fit '{law}' on {metric} over {cost}: {e}")
+            continue
+        if target == Target.LOSS:
+            predicted[metric] = [p.loss for p in predictions]
+        elif target == Target.COARSE:
+            predicted["n_params"] = [p.n_params for p in predictions]
+            predicted["n_data"] = [p.n_data for p in predictions]
+            if cost != "cost":
+                predicted["n_data"] = runs["n_data"].max()
+        else:
+            for name in names:
+                predicted[name] = [p.config[name] for p in predictions]  # type: ignore[index]
+    return predicted
+
+
+def _draw_fit(
+    ax: Axes,
+    fit: pd.DataFrame,
+    cost: str,
+    column: str,
+    largest_run: float,
+    label: str,
+) -> None:
+    """The fit of `column`, solid over the runs and dashed beyond the largest one, its
+    predictions at the target costs, and the extrapolation region shaded.
+    """
+    line = fit[~fit["target"]]
+    inside = line[line[cost] <= largest_run]
+    beyond = line[line[cost] >= inside[cost].max()]
+    targets = fit[fit["target"]]
+    ax.plot(inside[cost], inside[column], color=INK, linewidth=2, label=label)
+    ax.plot(beyond[cost], beyond[column], color=INK, linewidth=2, linestyle=(0, (4, 3)))
+    ax.scatter(
+        targets[cost],
+        targets[column],
+        s=90,
+        c=_target_colors(len(targets)),
+        edgecolors="white",
+        linewidths=1.5,
+        zorder=4,
+        label="Prediction",
+    )
+    ax.set(xscale="log", yscale="log")
+    xmin, xmax = ax.get_xlim()
+    ax.axvspan(
+        largest_run,
+        xmax,
+        color=EXTRAPOLATION_COLOR,
+        zorder=0,
+        label="Extrapolation region",
+    )
+    ax.set_xlim(xmin, xmax)
+
+
+def plot_loss_over_cost(
+    runs: pd.DataFrame, loss: str, cost: str, fit: pd.DataFrame, label: str
+) -> Figure:
+    """Every run's `loss` over its `cost`, their Pareto frontier, and the fit `label`
+    extended to the target costs, with its predictions there.
+    """
+    front = runs[runs["on_frontier"]]
     cost_label = cost.replace("_", " ")
 
-    fig = Figure(figsize=(6, 4))
+    fig = Figure(figsize=(6.4, 4.2))
     ax = fig.add_subplot()
     ax.scatter(
-        others[cost],
-        others[loss],
-        s=10,
+        runs[cost],
+        runs[loss],
+        s=16,
         color=DOMINATED_COLOR,
-        label="Dominated runs",
+        linewidths=0,
+        label="Runs",
     )
-    fit = fit_power_law(front[cost].to_numpy(), front[loss].to_numpy())
-    if fit is not None:
-        ax.plot(
-            front[cost],
-            10**fit.intercept * front[cost] ** fit.slope,
-            color="black",
-            linewidth=2,
-            label=f"Power-law fit (slope {fit.slope:.3f})",
-        )
     ax.scatter(
         front[cost],
         front[loss],
-        s=36,
+        s=44,
         color=PARETO_COLOR,
-        edgecolors="black",
-        linewidths=0.6,
+        edgecolors="white",
+        linewidths=1,
         zorder=3,
         label="Pareto frontier",
     )
-    ax.set(
-        xscale="log",
-        yscale="log",
-        xlabel=cost_label.capitalize(),
-        ylabel=label,
-        title=f"{label} over {cost_label}",
-    )
-    ax.grid(visible=True, alpha=0.3, linestyle="--")
-    ax.legend()
-
-    if loss == "loss":
-        name = f"scaling/loss_over_{cost}"
-    else:
-        name = f"scaling/downstream/{metric.replace('.', '_')}_over_{cost}"
-    return [
-        Artifact(name, fig, ArtifactType.FIGURE),
-        Artifact(name, table[["trial_id", cost, loss, "on_frontier"]], ArtifactType.CSV),
-    ]
+    if loss in fit:
+        _draw_fit(ax, fit, cost, loss, runs[cost].max(), label)
+        targets = fit[fit["target"]]
+        for x, y in zip(targets[cost], targets[loss], strict=True):
+            ax.annotate(
+                f"{y:.3g}",
+                (x, y),
+                textcoords="offset points",
+                xytext=(8, 6),
+                color=INK,
+                fontweight="bold",
+            )
+    ax.set(xscale="log", yscale="log")
+    _plain_log_labels(ax)
+    _style(ax, f"{_label(loss)} over {cost_label}", cost_label.capitalize(), _label(loss))
+    return fig
 
 
 def plot_parameter_over_cost(
-    table: pd.DataFrame, parameter: str, cost: str = "cost"
-) -> list[Artifact]:
-    """One parameter of every run over its cost, coloured by loss, with the runs on the
-    frontier of loss over this cost circled and a power law through them.
+    runs: pd.DataFrame, parameter: str, cost: str, fit: pd.DataFrame, label: str
+) -> Figure:
+    """One parameter of every run over its `cost`, coloured by loss, with the runs on
+    the Pareto frontier circled and what the fit `label` predicts for it, if it can.
     """
-    table = _with_frontier(table, cost, "loss")
-    front = table[table["on_frontier"]].sort_values(cost)
+    front = runs[runs["on_frontier"]]
     cost_label = cost.replace("_", " ")
 
-    fig = Figure(figsize=(7, 4))
+    fig = Figure(figsize=(7, 4.2))
     ax = fig.add_subplot()
-    points = ax.scatter(table[cost], table[parameter], c=table["loss"], s=50, alpha=0.7)
+    points = ax.scatter(runs[cost], runs[parameter], c=runs["loss"], s=30, zorder=2)
     ax.scatter(
         front[cost],
         front[parameter],
-        s=150,
+        s=110,
         facecolors="none",
-        edgecolors="black",
-        linewidths=2,
+        edgecolors=PARETO_COLOR,
+        linewidths=1.6,
+        zorder=3,
         label="Pareto frontier",
     )
-    fit = fit_power_law(front[cost].to_numpy(), front[parameter].to_numpy())
-    if fit is not None:
-        ax.plot(
-            front[cost],
-            10**fit.intercept * front[cost] ** fit.slope,
-            "r--",
-            linewidth=2.5,
-            label=f"Fit (slope {fit.slope:.3f})",
-        )
-    ax.set(
-        xscale="log",
-        yscale="log",
-        xlabel=cost_label.capitalize(),
-        ylabel=parameter,
-        title=f"{parameter} over {cost_label}",
-    )
-    ax.grid(visible=True, alpha=0.3, linestyle="--")
-    ax.legend()
+    if parameter in fit:
+        _draw_fit(ax, fit, cost, parameter, runs[cost].max(), label)
+    ax.set(xscale="log", yscale="log")
+    _style(ax, f"{parameter} over {cost_label}", cost_label.capitalize(), parameter)
     fig.colorbar(points, ax=ax, label="Loss")
-
-    name = f"scaling/parameters/{parameter.replace('.', '_')}_over_{cost}"
-    columns = ["trial_id", cost, parameter, "loss", "on_frontier"]
-    return [
-        Artifact(name, fig, ArtifactType.FIGURE),
-        Artifact(name, table[columns], ArtifactType.CSV),
-    ]
+    return fig
 
 
-def pareto_optimal_points(table: pd.DataFrame, trials: Sequence[Trial]) -> Artifact:
-    """The runs on the Pareto frontier, by cost, with their cost, loss and config."""
-    configs = {trial.id: dict(trial.config) for trial in trials}
-    front = table[table["on_frontier"]].sort_values("cost")
-    points = [
-        {
-            "trial_id": row.trial_id,
-            "cost": row.cost,
-            "loss": row.loss,
-            "config": configs[str(row.trial_id)],
-        }
-        for row in front.itertuples()
-    ]
-    return Artifact("scaling/pareto_optimal_points", points, ArtifactType.JSON)
-
-
-def plot_scaling(trials: Sequence[Trial]) -> list[Artifact]:
-    """All scaling plots, over the cost and, if reported, the inference cost, if any
-    successful run reports a cost.
+def _pareto(
+    runs: pd.DataFrame, metric: str, cost: str, configs: Mapping[str, dict]
+) -> pd.DataFrame:
+    """The runs on the Pareto frontier of `metric` over `cost`, by cost, with their
+    model size, data and config.
     """
+    front = runs[runs["on_frontier"]].sort_values(cost)
+    table = pd.DataFrame(
+        {
+            "trial_id": front["trial_id"],
+            cost: front[cost],
+            _name(metric): _own_units(metric, front[metric]),
+            "n_params": front["n_params"],
+            "n_data": front["n_data"],
+        }
+    )
+    config = pd.DataFrame([configs[i] for i in front["trial_id"]], index=front.index)
+    return table.join(config, rsuffix="_config").dropna(axis=1, how="all")
+
+
+def _predictions(fit: pd.DataFrame, metric: str, cost: str) -> pd.DataFrame:
+    """What the fit predicts at the target costs."""
+    table = fit[fit["target"]].drop(columns="target")
+    table[metric] = _own_units(metric, table[metric])
+    return table.rename(columns={cost: f"target_{cost}", metric: _name(metric)})
+
+
+def _tables(name: str, table: pd.DataFrame) -> list[Artifact]:
+    """`table` as a CSV, and aligned in a text file to read."""
+    text = table.to_string(index=False, float_format="{:.4g}".format)
+    return [
+        Artifact(name, table, ArtifactType.CSV),
+        Artifact(name, text + "\n", ArtifactType.TEXT),
+    ]
+
+
+def plot_scaling(
+    trials: Sequence[Trial],
+    predictor: str = "power_law",
+    targets: Mapping[str, Sequence[float]] | None = None,
+    space: SearchSpace | None = None,
+) -> list[Artifact]:
+    """The scaling plots and predictions of the loss and of each downstream metric,
+    over the cost and, if reported, the inference cost, if any successful run reports
+    a cost.
+
+    Over the cost, the fit is `predictor`, the scaling law of the run's optimizer, and
+    over the inference cost a power law, both for what `predictor` can predict. They
+    are extended to `targets`, the target costs by cost, `DEFAULT_TARGETS` times the
+    largest cost of the runs by default.
+    """
+    from extrapolaw.prediction import Target, get_predictor_type
+
     table = runs_table(trials)
     if table.empty:
         return []
@@ -245,13 +369,159 @@ def plot_scaling(trials: Sequence[Trial]) -> list[Artifact]:
             continue
         parameters.append(parameter)
 
-    artifacts = [pareto_optimal_points(table, trials)]
-    for cost in costs:
-        artifacts += plot_loss_over_cost(table, cost=cost)
-        for metric in downstream:
-            artifacts += plot_loss_over_cost(table, metric, cost)
-        for parameter in parameters:
-            artifacts += plot_parameter_over_cost(table, parameter, cost)
+    provides = [t for t in Target if t in get_predictor_type(predictor).provides]
+    configs = {trial.id: dict(trial.config) for trial in trials}
+    artifacts = []
+    for metric in ["loss", *downstream]:
+        folder = "pre_train" if metric == "loss" else metric.replace(".", "_")
+        for cost in costs:
+            runs = _with_frontier(table, cost, metric)
+            target_costs = _targets(table, cost, targets)
+            xs = list(np.geomspace(runs[cost].min(), max(target_costs), 60))
+            law = predictor if cost == "cost" else "power_law"
+            fit = predict_over(
+                runs, metric, cost, law, xs + target_costs, provides, space
+            )
+            fit["target"] = [False] * len(xs) + [True] * len(target_costs)
+            label = f"{law} fit"
+
+            name = f"{folder}/{_name(metric)}_over_{cost}"
+            figure = plot_loss_over_cost(runs, metric, cost, fit, label)
+            points = runs[["trial_id", cost, metric, "on_frontier"]]
+            artifacts += [
+                Artifact(name, figure, ArtifactType.FIGURE),
+                Artifact(name, points, ArtifactType.CSV),
+            ]
+            artifacts += _tables(
+                f"{folder}/pareto_over_{cost}", _pareto(runs, metric, cost, configs)
+            )
+            if metric in fit:
+                artifacts += _tables(
+                    f"{folder}/predictions_over_{cost}", _predictions(fit, metric, cost)
+                )
+            for parameter in parameters:
+                name = f"{folder}/parameters/{parameter.replace('.', '_')}_over_{cost}"
+                figure = plot_parameter_over_cost(runs, parameter, cost, fit, label)
+                columns = ["trial_id", cost, parameter, "loss", "on_frontier"]
+                artifacts += [
+                    Artifact(name, figure, ArtifactType.FIGURE),
+                    Artifact(name, runs[columns], ArtifactType.CSV),
+                ]
+    return artifacts
+
+
+def _power_of_ten(value: float) -> str:
+    """`value` as `10^13` or `3x10^13`, in matplotlib's math text."""
+    exponent = int(np.floor(np.log10(value)))
+    mantissa = round(value / 10**exponent, 1)
+    if mantissa == 1:
+        return f"$10^{{{exponent}}}$"
+    return f"${mantissa:g}\\times10^{{{exponent}}}$"
+
+
+def _plain_log_labels(ax: Axes) -> None:
+    """Label the log y axis with plain numbers, e.g. 2, 5, 10, instead of 2x10^0."""
+    low, high = ax.get_ylim()
+    shown = list(range(1, 10))
+    if high / low > 10:
+        shown = [1, 2, 5]
+    elif high / low > 3:
+        shown = [1, 2, 3, 5]
+
+    def label(value: float, _position: int) -> str:
+        mantissa = round(value / 10 ** np.floor(np.log10(value)))
+        return f"{value:g}" if mantissa in shown else ""
+
+    ax.yaxis.set_major_formatter(FuncFormatter(label))
+    ax.yaxis.set_minor_formatter(FuncFormatter(label))
+
+
+def _style(ax: Axes, title: str, xlabel: str, ylabel: str) -> None:
+    """Light axes and grid, so the data stands out."""
+    ax.set_title(title, loc="left", color=INK, fontsize=12, pad=10)
+    ax.set_xlabel(xlabel, color=SECONDARY_INK)
+    ax.set_ylabel(ylabel, color=SECONDARY_INK)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.spines[["left", "bottom"]].set_color(AXIS_COLOR)
+    ax.tick_params(which="both", color=AXIS_COLOR, labelcolor=SECONDARY_INK)
+    ax.grid(visible=True, which="major", color=GRID_COLOR, linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.legend(loc="best", frameon=False, fontsize=9, labelcolor=SECONDARY_INK)
+
+
+def _target_colors(n_targets: int) -> list[str]:
+    """A blue per target budget, darker for larger budgets."""
+    if n_targets == 1:
+        return [TARGET_COLORS[-2]]
+    steps = np.linspace(0, len(TARGET_COLORS) - 1, n_targets).round()
+    return [TARGET_COLORS[int(step)] for step in steps]
+
+
+def _plot_history(history: pd.DataFrame, metric: str, cost: str) -> Figure:
+    """The prediction at each target cost over the training cost spent so far."""
+    fig = Figure(figsize=(6.4, 4.2))
+    ax = fig.add_subplot()
+    targets = history[f"target_{cost}"].unique()
+    for target, color in zip(targets, _target_colors(len(targets)), strict=True):
+        rows = history[history[f"target_{cost}"] == target]
+        ax.plot(
+            rows["cost_spent"],
+            rows[metric],
+            color=color,
+            linewidth=2,
+            drawstyle="steps-post",
+            marker="o",
+            markersize=6,
+            markeredgecolor="white",
+            label=f"Target {_power_of_ten(target)}",
+        )
+    ax.set(xscale="log", yscale="log")
+    _plain_log_labels(ax)
+    title = f"Prediction convergence, {_label(metric)} over {cost.replace('_', ' ')}"
+    ylabel = "Predicted loss" if metric == "loss" else f"Predicted {_label(metric)}"
+    _style(ax, title, "Cumulative training cost", ylabel)
+    return fig
+
+
+def plot_convergence(
+    trials: Sequence[Trial],
+    predictor: str,
+    targets: Mapping[str, Sequence[float]] | None = None,
+) -> list[Artifact]:
+    """For the loss and each downstream metric, over each cost, the prediction at the
+    target costs as the runs finished, refitted at most 20 times, to see whether it has
+    settled. Saved to `convergence/`, with the fits of `plot_scaling`.
+    """
+    from extrapolaw.prediction import Target
+
+    finished = sorted(trials, key=lambda t: t.metadata.time_end or float("inf"))
+    table = runs_table(finished)
+    if table.empty:
+        return []
+
+    downstream = [c for c in table.columns if c.startswith("downstream/")]
+    artifacts = []
+    for metric in ["loss", *downstream]:
+        for cost in _costs(table):
+            target_costs = _targets(table, cost, targets)
+            law = predictor if cost == "cost" else "power_law"
+            history = []
+            for n in sorted({int(n) for n in np.linspace(3, len(table), 20)}):
+                runs = table.iloc[:n].dropna(subset=[metric, cost])
+                fit = predict_over(runs, metric, cost, law, target_costs, [Target.LOSS])
+                if metric in fit:
+                    fit["cost_spent"] = table["cost"].iloc[:n].sum()
+                    history.append(fit.rename(columns={cost: f"target_{cost}"}))
+            if not history:
+                continue
+
+            name = f"convergence/{_name(metric)}_over_{cost}"
+            history_table = pd.concat(history, ignore_index=True)
+            figure = _plot_history(history_table, metric, cost)
+            artifacts += [
+                Artifact(name, figure, ArtifactType.FIGURE),
+                Artifact(name, history_table, ArtifactType.CSV),
+            ]
     return artifacts
 
 
@@ -305,20 +575,23 @@ def _log_new_runs(table: pd.DataFrame, log_dir: Path) -> None:
 
     from torch.utils.tensorboard.writer import SummaryWriter
 
-    writer = SummaryWriter(log_dir=str(log_dir))
-    downstream = [c for c in table.columns if c.startswith("downstream/")]
-    new = table[is_new]
-    for i, trial_id in enumerate(new["trial_id"]):
-        logged.append(trial_id)
-        step = len(logged)
-        seen = pd.concat([table[~is_new], new.iloc[: i + 1]])
-        writer.add_scalar("scaling/incumbent/loss", seen["loss"].min(), step)
-        # Every step gets its frontiers, also when it is logged late
-        for cost in _costs(table):
-            for loss in ["loss", *downstream]:
-                tag = f"scaling/frontier/{loss}_over_{cost}"
-                writer.add_text(tag, _frontier_text(seen, cost, loss), step)
-    writer.close()
+    first_step = len(logged) + 1
+    with tempfile.TemporaryDirectory() as staging:
+        writer = SummaryWriter(log_dir=staging)
+        downstream = [c for c in table.columns if c.startswith("downstream/")]
+        new = table[is_new]
+        for i, trial_id in enumerate(new["trial_id"]):
+            logged.append(trial_id)
+            step = len(logged)
+            seen = pd.concat([table[~is_new], new.iloc[: i + 1]])
+            writer.add_scalar("scaling/incumbent/loss", seen["loss"].min(), step)
+            for cost in _costs(table):
+                for loss in ["loss", *downstream]:
+                    tag = f"scaling/frontier/{loss}_over_{cost}"
+                    writer.add_text(tag, _frontier_text(seen, cost, loss), step)
+        writer.close()
+        [event_file] = Path(staging).iterdir()
+        shutil.move(event_file, log_dir / f"events.out.tfevents.{first_step:010d}")
     logged_file.write_text("\n".join(logged))
 
 

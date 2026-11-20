@@ -28,7 +28,7 @@ from abc import abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, NotRequired, Protocol, TypedDict
+from typing import TYPE_CHECKING, Any, ClassVar, NotRequired, Protocol, TypedDict
 
 if TYPE_CHECKING:
     from extrapolaw.state.optimizer import BudgetInfo
@@ -204,6 +204,10 @@ class ScalingOptimizer:
 
     max_cost_per_config: float | None = None
     """Configurations estimated to cost more than this should not be sampled."""
+
+    predictor: ClassVar[str] = "power_law"
+    """The scaling law that `extrapolaw.predict()` and the scaling plots fit on the
+    runs of this optimizer: "power_law", "chinchilla3" or "gp_posterior"."""
 
     def set_cost_estimator(
         self,
