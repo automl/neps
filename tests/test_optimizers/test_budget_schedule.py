@@ -101,7 +101,7 @@ def test_space_expansion_levels_and_caps() -> None:
 
     # The target FLOPs of the IT-SCAN-JES acquisition does not stand in for it
     optimizer.max_cost_per_config = None
-    optimizer.target_flops = 1e6
+    optimizer.target_cost = 1e6
     with pytest.raises(ValueError, match="max_cost_per_config"):
         cap(1e6, is_initial_design=False)
 
@@ -178,7 +178,7 @@ def _run_modified_jes(schedule: str, n_trials: int = 5) -> None:
     torch.manual_seed(0)
     # The target 1e5 lies 10x beyond the max cost per config
     optimizer = _optimizer(
-        schedule, max_cost=1e4, acquisition_func_type="IT-SCAN-JES", target_flops=1e5
+        schedule, max_cost=1e4, acquisition_func_type="IT-SCAN-JES", target_cost=1e5
     )
     budget_info = BudgetInfo(worker_cost_to_spend=1e5)
     trials: dict[str, Trial] = {}
@@ -259,7 +259,7 @@ def test_acquisition_is_optimized_a_margin_below_the_cap(
         "left_budget_contraction",
         max_cost=1e4,
         acquisition_func_type="IT-SCAN-JES",
-        target_flops=1e5,
+        target_cost=1e5,
     )
     # A budget so large that `max_cost_per_config` is the cap of every round
     budget_info = BudgetInfo(worker_cost_to_spend=1e7)

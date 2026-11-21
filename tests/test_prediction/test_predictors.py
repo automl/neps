@@ -234,7 +234,7 @@ def test_predict_from_a_run(tmp_path: Path) -> None:
         data_parameter_name="n_data",
         best_loss_guess=TRUE_LAW.E * 1.5,
     )
-    assert [p.target_flops for p in predictions] == [1e20, 1e21]
+    assert [p.target_cost for p in predictions] == [1e20, 1e21]
     n_params, _n_data, _loss = chinchilla3.optimum(TRUE_LAW, 1e21)
     assert predictions[1].n_params == pytest.approx(n_params, rel=0.05)
 

@@ -694,7 +694,7 @@ def analyze(root_directory: str | Path) -> None:
 
 def predict(  # noqa: PLR0913
     root_directory: str | Path,
-    target_flops: float | Sequence[float] | None = None,
+    target_costs: float | Sequence[float] | None = None,
     *,
     target_inference_costs: float | Sequence[float] | None = None,
     predictor: str | PredictorTypes = "auto",
@@ -717,20 +717,20 @@ def predict(  # noqa: PLR0913
     ```python
     predictions = extrapolaw.predict(
         "results",
-        target_flops=[1e20, 1e21],
+        target_costs=[1e20, 1e21],
         predictor="chinchilla3",
         params_estimator=estimate_params,
         data_parameter_name="n_data",
     )
     for p in predictions:
-        print(p.target_flops, p.loss, p.n_params, p.n_data)
+        print(p.target_cost, p.loss, p.n_params, p.n_data)
     ```
 
     Args:
-        root_directory: Root directory of the Extrapolaw run. The flops of a trial are
+        root_directory: Root directory of the Extrapolaw run. The cost of a trial is
             the cost it reported, or what `cost_estimator` gives for it.
-        target_flops: The compute budget(s) to predict at, 10 and 100 times the
-            largest of the trials by default.
+        target_costs: The training cost(s) to predict at, 10 and 100 times the
+            largest of the trials by default. `"chinchilla3"` takes them as FLOPs.
         target_inference_costs: The inference cost(s) the saved predictions over the
             inference cost are at, 10 and 100 times the largest of the trials by
             default.
@@ -826,10 +826,10 @@ def predict(  # noqa: PLR0913
             " which predicting the full configuration needs."
         )
 
-    target_costs = _target_costs(rows, target_flops, target_inference_costs)
+    costs_by_kind = _target_costs(rows, target_costs, target_inference_costs)
     predictions = fit_and_predict(
         predictor_type,
-        target_costs["cost"],
+        costs_by_kind["cost"],
         targets=targets,
         rows=rows,
         configs=configs,
@@ -843,13 +843,13 @@ def predict(  # noqa: PLR0913
         cache_dir=None if cache_dir is None else Path(cache_dir),
         prior_mean=prior_mean,
     )
-    _save_predictions(root_directory, trials, predictor_type.value, target_costs, space)
+    _save_predictions(root_directory, trials, predictor_type.value, costs_by_kind, space)
     return predictions
 
 
 def _target_costs(
     rows: list,
-    target_flops: float | Sequence[float] | None,
+    training_costs: float | Sequence[float] | None,
     target_inference_costs: float | Sequence[float] | None,
 ) -> dict[str, list[float]]:
     """The target costs by cost: those given, and for the training cost otherwise 10
@@ -859,10 +859,10 @@ def _target_costs(
 
     from extrapolaw.plot.scaling_plots import DEFAULT_TARGETS
 
-    if target_flops is None:
+    if training_costs is None:
         largest = max((row[3] for row in rows if row[3] > 0), default=0.0)
-        target_flops = [factor * largest for factor in DEFAULT_TARGETS]
-    target_costs = {"cost": np.atleast_1d(target_flops).astype(float).tolist()}
+        training_costs = [factor * largest for factor in DEFAULT_TARGETS]
+    target_costs = {"cost": np.atleast_1d(training_costs).astype(float).tolist()}
     if target_inference_costs is not None:
         costs = np.atleast_1d(target_inference_costs).astype(float).tolist()
         target_costs["inference_cost"] = costs

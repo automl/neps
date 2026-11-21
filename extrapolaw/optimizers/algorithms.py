@@ -68,7 +68,7 @@ def _bo(  # noqa: C901, PLR0912
         "none", "space_expansion", "left_budget_contraction"
     ] = "none",
     prior_mean: Literal["power_law", "zero"] = "power_law",
-    target_flops: int | None = None,
+    target_cost: float | None = None,
 ) -> BayesianOptimization:
     """Initialise the BO loop.
 
@@ -99,7 +99,7 @@ def _bo(  # noqa: C901, PLR0912
             `BayesianOptimization.prior_mean`.
         budget_schedule: How the max cost of a sampled config follows the spent cost
             budget, see `BayesianOptimization.budget_schedule`.
-        target_flops: The FLOPs the `"IT-SCAN-JES"` acquisition samples the optima
+        target_cost: The cost the `"IT-SCAN-JES"` acquisition samples the optima
             around, which it needs.
 
     Raises:
@@ -164,7 +164,7 @@ def _bo(  # noqa: C901, PLR0912
         log_y=log_y,
         prior_mean=prior_mean,
         budget_schedule=budget_schedule,
-        target_flops=target_flops,
+        target_cost=target_cost,
     )
 
 
@@ -426,7 +426,7 @@ def bayesian_optimization(
         "none", "space_expansion", "left_budget_contraction"
     ] = "none",
     prior_mean: Literal["power_law", "zero"] = "power_law",
-    target_flops: int | None = None,
+    target_cost: float | None = None,
     sample_prior_first: bool = False,
 ) -> BayesianOptimization:
     """Models the relation between hyperparameters in your `pipeline_space`
@@ -489,7 +489,7 @@ def bayesian_optimization(
             budget, see `BayesianOptimization.budget_schedule`. Needs a
             `cost_estimator` and a cost budget given to `extrapolaw.acquire()`.
         sample_prior_first: Whether the first config is the center of the space.
-        target_flops: The FLOPs the `"IT-SCAN-JES"` acquisition samples the optima
+        target_cost: The cost the `"IT-SCAN-JES"` acquisition samples the optima
             around, which it needs.
     """
     if isinstance(pipeline_space, PipelineSpace):
@@ -542,7 +542,7 @@ def bayesian_optimization(
         log_y=log_y,
         prior_mean=prior_mean,
         budget_schedule=budget_schedule,
-        target_flops=target_flops,
+        target_cost=target_cost,
     )
 
 

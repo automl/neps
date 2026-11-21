@@ -89,7 +89,7 @@ Chinchilla law for the `chinchilla` optimizer, if the runs return `n_params` and
 
 #### Prediction plot
 
-`extrapolaw.predict(ROOT_DIRECTORY, target_flops)` also saves `summary/scaling/prediction.png`, with its CSVs: the fit extended to the target
+`extrapolaw.predict(ROOT_DIRECTORY, target_costs)` also saves `summary/scaling/prediction.png`, with its CSVs: the fit extended to the target
    budgets (left), and the predicted loss after each finished run (right).
 
 ## Live plots during a run

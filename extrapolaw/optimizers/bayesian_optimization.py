@@ -92,9 +92,9 @@ class BayesianOptimization(ScalingOptimizer):
 
     acquisition_func_type: Literal["EI", "IT-JES", "IT-MES", "IT-SCAN-JES"] = "EI"
     cost_estimator: CostEstimator | None = None
-    target_flops: int | None = None
-    """The FLOPs the `"IT-SCAN-JES"` acquisition samples the optima around, used by
-    it only. It may lie beyond `max_cost_per_config`, the max FLOPs per config, to
+    target_cost: float | None = None
+    """The cost the `"IT-SCAN-JES"` acquisition samples the optima around, used by
+    it only. It may lie beyond `max_cost_per_config`, the max cost per config, to
     extrapolate to."""
 
     log_y: bool = True
@@ -760,17 +760,17 @@ class BayesianOptimization(ScalingOptimizer):
                         encoder=encoder,
                     ),
                 )
-            target_flops = self.target_flops
-            if target_flops is None:
+            target_cost = self.target_cost
+            if target_cost is None:
                 raise ValueError(
-                    "The 'IT-SCAN-JES' acquisition needs `target_flops`, the FLOPs"
+                    "The 'IT-SCAN-JES' acquisition needs `target_cost`, the cost"
                     " it samples the optima around."
                 )
             assert cost_estimator is not None
             log_cost = LogCost(encoder, cost_estimator)
-            log10_target = math.log10(target_flops)
+            log10_target = math.log10(target_cost)
             distance = (log_cost.evaluate(raw_candidates) - log10_target).abs()
-            # Widen the window around the target FLOPs until it holds enough
+            # Widen the window around the target cost until it holds enough
             # candidates, starting at 2/3 to 1.5x the target
             for factor in (1.5, 3.0, 10.0):
                 in_window = distance < math.log10(factor)
@@ -778,13 +778,13 @@ class BayesianOptimization(ScalingOptimizer):
                     if factor > 1.5:
                         logger.warning(
                             "Too few candidates cost within 1.5x of the target"
-                            f" FLOPs {target_flops:e}, sampling the optima over"
+                            f" {target_cost:e}, sampling the optima over"
                             f" those within {factor}x."
                         )
                     break
             else:
                 logger.warning(
-                    "No window around the target FLOPs holds enough candidates,"
+                    "No window around the target cost holds enough candidates,"
                     " sampling the optima over all candidates."
                 )
                 in_window = torch.ones_like(in_window)

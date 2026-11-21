@@ -39,9 +39,9 @@ if TYPE_CHECKING:
 
 @dataclass
 class Prediction:
-    """The prediction at `target_flops`, the targets that were not asked are `None`."""
+    """The prediction at `target_cost`, the targets that were not asked are `None`."""
 
-    target_flops: float
+    target_cost: float
     loss: float | None = None
     loss_interval: tuple[float, float] | None = None
     """The `(lower, upper)` bounds of `loss`, if the predictor has them."""
@@ -137,7 +137,7 @@ def rows_from_trials(
 
 def fit_and_predict(  # noqa: PLR0913
     predictor_type: PredictorTypes,
-    target_flops: Sequence[float],
+    target_costs: Sequence[float],
     *,
     targets: Iterable[Target],
     rows: list[Row],
@@ -185,8 +185,8 @@ def fit_and_predict(  # noqa: PLR0913
         prior_mean=prior_mean,
     )
     predictions = []
-    for flops in target_flops:
-        prediction = Prediction(target_flops=float(flops), info={})
+    for cost in target_costs:
+        prediction = Prediction(target_cost=float(cost), info={})
         for target, fit in fits.items():
             _fill(prediction, predictor_type, target, fit, space, params_estimator)
         predictions.append(prediction)
@@ -257,7 +257,7 @@ def _fill(
     params_estimator: Callable[..., float] | None,
 ) -> None:
     """Predict `target` with `fit` at the budget of `prediction` and store it there."""
-    flops = prediction.target_flops
+    flops = prediction.target_cost
     assert prediction.info is not None
     is_gp = predictor_type == PredictorTypes.GP_POSTERIOR
     module: Any = {

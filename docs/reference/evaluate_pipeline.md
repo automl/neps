@@ -88,13 +88,13 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
 ```python
 from pathlib import Path
-import extrapolaw
 import os
 
+ROOT_DIRECTORY = Path("path/to/save/results")  # the same as passed to extrapolaw.acquire()
+
 def evaluate_pipeline(
-    pipeline_directory: Path,
-    pipeline_id: str,          # Extrapolaw injects this automatically
-    root_directory: Path,      # idem
+    pipeline_directory: Path,  # Extrapolaw injects this automatically
+    pipeline_id: str,          # idem
     learning_rate: float,
     optimizer: str,
 ):
@@ -110,8 +110,8 @@ python run_pipeline.py \
        --learning_rate {learning_rate} \
        --optimizer {optimizer} \
        --pipeline_id {pipeline_id} \
-       --root_dir {root_directory}
-""")
+       --root_dir {ROOT_DIRECTORY}
+"""
 
     # 2) submit and RETURN None (async)
     script_path = pipeline_directory / "submit.sh"
@@ -120,6 +120,10 @@ python run_pipeline.py \
 
     return None  # ⟵ signals async mode
 ```
+
+Extrapolaw injects only `pipeline_directory`, `previous_pipeline_directory` and
+`pipeline_id` (see [Extra injected arguments](#4-extra-injected-arguments)), so pass
+the root directory of the run to the job yourself.
 
 `run_pipeline.py` – executed on the compute node
 
@@ -143,9 +147,9 @@ try:
     }
 except Exception as e:
     result = {
-        "objective_to_minimize": val_loss,
-        "cost": wall_clock_cost,
-        "exception": e
+        "objective_to_minimize": None,
+        "cost": None,
+        "exception": e,
     }
 
 extrapolaw.save_pipeline_results(
@@ -156,6 +160,9 @@ extrapolaw.save_pipeline_results(
 ```
 
 * No worker idles while your job is in the queue ➜ better throughput.
+* The job must report `cost` itself: the `cost_estimator` passed to `extrapolaw.acquire()`
+  only fills in a missing cost for results returned by `evaluate_pipeline`, not for those
+  saved with `extrapolaw.save_pipeline_results()`.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
 
 ### 3.3 Live plots
@@ -188,7 +195,7 @@ jobs are done, call `extrapolaw.analyze(root_directory)`; see
 | ----------------------------- | ----------------------- | ---------------------------------------------------------- |
 | `pipeline_directory`          | always                  | per‑trial working dir (`…/trials/<id>/`)                   |
 | `previous_pipeline_directory` | always                  | reserved, always `None` with the built-in optimizers       |
-| `pipeline_id`                 | always                  | trial id string you pass to `save_evaluation_results`      |
+| `pipeline_id`                 | always                  | trial id string you pass to `save_pipeline_results`        |
 
 Use them to handle logging and result persistence.
 
