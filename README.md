@@ -135,7 +135,7 @@ if is_main_process():
     )
 ```
 
-See [the `evaluate_pipeline` reference](https://automl.github.io/extrapolaw/latest/reference/evaluate_pipeline/) for the full asynchronous workflow.
+See the [`evaluate_pipeline`](https://automl.github.io/extrapolaw/latest/reference/evaluate_pipeline/) reference for the full asynchronous workflow.
 
 ## Resources to Get Started
 
@@ -148,11 +148,11 @@ See [the `evaluate_pipeline` reference](https://automl.github.io/extrapolaw/late
 
 ### Documentation
 
-- [Getting started](https://automl.github.io/extrapolaw/latest/getting_started/)
-- [Reference](https://automl.github.io/extrapolaw/latest/reference/extrapolaw_acquire/): running Extrapolaw, search spaces, optimizers, and analysing runs
-- [Scaling optimizers](https://automl.github.io/extrapolaw/latest/reference/optimizers/#3-scaling-optimizers): cost-constrained search guided by scaling laws
-- [Algorithms](https://automl.github.io/extrapolaw/latest/reference/search_algorithms/landing_page_algo/)
-- [API](https://automl.github.io/extrapolaw/latest/api/extrapolaw/api/)
+- **[Getting started](https://automl.github.io/extrapolaw/latest/getting_started/)**
+- **[Reference](https://automl.github.io/extrapolaw/latest/reference/extrapolaw_acquire/):** running Extrapolaw, search spaces, optimizers, and analysing runs
+- **[Scaling optimizers](https://automl.github.io/extrapolaw/latest/reference/optimizers/#3-scaling-optimizers):** cost-constrained search guided by scaling laws
+- **[Algorithms](https://automl.github.io/extrapolaw/latest/reference/search_algorithms/landing_page_algo/)**
+- **[API](https://automl.github.io/extrapolaw/latest/api/extrapolaw/api/)**
 
 ## Contributing
 
