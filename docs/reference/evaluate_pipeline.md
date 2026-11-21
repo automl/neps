@@ -2,7 +2,7 @@
 
 > **TL;DR**
 > *Sync*: return a dict with at least the loss and the training cost ⟶ Extrapolaw records it automatically.
-> *Async*: return `None`, launch a job, and call `extrapolaw.save_pipeline_results()` when the job finishes.
+> *Async*: pass `is_async=True` to `extrapolaw.acquire()`, launch a job, and call `extrapolaw.save_pipeline_results()` when the job finishes.
 > *Plots*: pass `live_plots=True` to `extrapolaw.acquire()` (sync) or to `extrapolaw.save_pipeline_results()` (async) to redraw them after every result.
 
 ---
@@ -12,7 +12,7 @@
 | Allowed return  | When to use                                 | Minimal example                                  |
 | --------------- | ------------------------------------------- | ------------------------------------------------ |
 | **Dict**        | every evaluation                            | `{"objective_to_minimize": loss, "cost": flops}` |
-| **`None`**      | you launch the job elsewhere (SLURM, k8s …) | *see Async below*                                |
+| **`None`**      | you launch the job elsewhere (SLURM, k8s …); needs `is_async=True` | *see Async below*                  |
 | **Exception**   | the evaluation failed (raise or return it)  | `raise RuntimeError("diverged")`                 |
 
 A plain number is not enough for a scaling study, so any other value, a single
@@ -53,8 +53,8 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
 > **Live plots**  When `evaluate_pipeline` returns its result (sync), the worker records it
 > and refreshes `root_directory/summary/`. Pass `live_plots=True` to `extrapolaw.acquire()` to also
-> redraw the plots every time: the scaling plots, or the Pareto front for two
-> objectives, plus anything the optimizer provides. See
+> redraw the plots every time: the scaling plots, plus anything the optimizer
+> provides. See
 > [Analysing Runs](analyse.md#live-plots-during-a-run).
 
 ---
@@ -67,6 +67,8 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
    * **creates & submits** a job script.
    * returns `None` so the worker thread isn’t blocked.
+   * this is only allowed with `extrapolaw.acquire(..., is_async=True)`; without it,
+     returning `None` stops the run with a `ValueError`.
 2. **The submit script** or **the job** must call
 
    ```python
@@ -155,7 +157,6 @@ extrapolaw.save_pipeline_results(
 
 * No worker idles while your job is in the queue ➜ better throughput.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
-* Compatible with Successive‑Halving/ASHA — Extrapolaw just waits for `report.yaml`.
 
 ### 3.3 Live plots
 
@@ -171,7 +172,7 @@ extrapolaw.save_pipeline_results(
 )
 ```
 
-This refreshes the general plots (scaling plots or Pareto front) in
+This refreshes the general plots (the scaling plots) in
 `root_directory/summary/`. Optimizer-specific artifacts need the optimizer object, so
 they are only drawn by `extrapolaw.acquire(..., live_plots=True)`. To redraw everything once all
 jobs are done, call `extrapolaw.analyze(root_directory)`; see
@@ -186,17 +187,16 @@ jobs are done, call `extrapolaw.analyze(root_directory)`; see
 | name                          | provided when           | description                                                |
 | ----------------------------- | ----------------------- | ---------------------------------------------------------- |
 | `pipeline_directory`          | always                  | per‑trial working dir (`…/trials/<id>/`)                   |
-| `previous_pipeline_directory` | always                  | directory of the lower‑fidelity checkpoint. Can be `None`. |
+| `previous_pipeline_directory` | always                  | reserved, always `None` with the built-in optimizers       |
 | `pipeline_id`                 | always                  | trial id string you pass to `save_evaluation_results`      |
 
-Use them to handle warm‑starts, logging and result persistence.
+Use them to handle logging and result persistence.
 
 ---
 
 ## 5 Checklist
 
-* [x] Return scalar **or** dict **or** `None`.
+* [x] Return a dict, **or** `None` together with `is_async=True`.
 * [x] Include `cost` when using cost budgets.
 * [x] When returning `None`, make sure **exactly one** call to `extrapolaw.save_pipeline_results` happens.
 * [x] Save checkpoints and artefacts in `pipeline_directory`.
-* [x] Handle resume via `previous_pipeline_directory`.

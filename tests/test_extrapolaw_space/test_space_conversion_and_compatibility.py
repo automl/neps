@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 import extrapolaw
 from extrapolaw.optimizers import algorithms
 from extrapolaw.space.extrapolaw_spaces.extrapolaw_space import (
@@ -232,9 +230,7 @@ def test_extrapolaw_only_algorithms():
     """Test that Extrapolaw-only algorithms are correctly identified."""
     extrapolaw_only_algorithms = [
         algorithms.extrapolaw_random_search,
-        algorithms.extrapolaw_hyperband,
         algorithms.complex_random_search,
-        algorithms.extrapolaw_priorband,
     ]
 
     for algo in extrapolaw_only_algorithms:
@@ -249,8 +245,7 @@ def test_classic_and_both_algorithms():
     """Test that classic algorithms that work with both spaces are correctly identified."""
     both_compatible_algorithms = [
         algorithms.random_search,
-        algorithms.hyperband,
-        algorithms.priorband,
+        algorithms.grid_search,
     ]
 
     for algo in both_compatible_algorithms:
@@ -269,7 +264,6 @@ def test_algorithm_compatibility_with_string_names():
     # Test Extrapolaw-only algorithms
     extrapolaw_only_algorithms = [
         algorithms.extrapolaw_random_search,
-        algorithms.extrapolaw_hyperband,
         algorithms.complex_random_search,
     ]
 
@@ -283,7 +277,7 @@ def test_algorithm_compatibility_with_string_names():
     # Test classic/both algorithms
     classic_algorithms = [
         algorithms.random_search,
-        algorithms.hyperband,
+        algorithms.grid_search,
     ]
 
     for algo in classic_algorithms:
@@ -324,70 +318,6 @@ def test_auto_algorithm_compatibility():
     assert compatibility == "both"
 
 
-# ===== Test Extrapolaw hyperband specific functionality =====
-
-
-def test_extrapolaw_hyperband_requires_fidelity():
-    """Test that extrapolaw_hyperband requires fidelity parameters."""
-    # Space without fidelity should fail
-    space_no_fidelity = SimpleHPOSpace()
-
-    with pytest.raises((ValueError, AssertionError)):
-        algorithms.extrapolaw_hyperband(pipeline_space=space_no_fidelity)
-
-
-def test_extrapolaw_hyperband_accepts_fidelity_space():
-    """Test that extrapolaw_hyperband accepts spaces with fidelity."""
-    space_with_fidelity = SimpleHPOWithFidelitySpace()
-
-    # Should not raise an error
-    optimizer = algorithms.extrapolaw_hyperband(pipeline_space=space_with_fidelity)
-    assert optimizer is not None
-
-
-def test_extrapolaw_hyperband_rejects_classic_space():
-    """Test that extrapolaw_hyperband rejects classic SearchSpace."""
-    # Type system should prevent this at compile time
-    # Instead, test that type checking works as expected
-
-    # Create a proper Extrapolaw space that should work
-    class TestSpace(PipelineSpace):
-        x = Float(0.0, 1.0)
-        epochs = IntegerFidelity(1, 100)
-
-    space = TestSpace()
-
-    # This should work fine with proper Extrapolaw space
-    optimizer = algorithms.extrapolaw_hyperband(pipeline_space=space, eta=3)
-    assert optimizer is not None
-
-
-@pytest.mark.parametrize("eta", [2, 3, 4, 5])
-def test_extrapolaw_hyperband_eta_values(eta):
-    """Test extrapolaw_hyperband with different eta values."""
-    space = SimpleHPOWithFidelitySpace()
-    optimizer = algorithms.extrapolaw_hyperband(pipeline_space=space, eta=eta)
-    assert optimizer is not None
-
-
-@pytest.mark.parametrize("sampler", ["uniform", "prior"])
-def test_extrapolaw_hyperband_samplers(sampler):
-    """Test extrapolaw_hyperband with different samplers."""
-    space = SimpleHPOWithFidelitySpace()
-    optimizer = algorithms.extrapolaw_hyperband(pipeline_space=space, sampler=sampler)
-    assert optimizer is not None
-
-
-@pytest.mark.parametrize("sample_prior_first", [False, True, "highest_fidelity"])
-def test_extrapolaw_hyperband_sample_prior_first(sample_prior_first):
-    """Test extrapolaw_hyperband with different sample_prior_first options."""
-    space = SimpleHPOWithFidelitySpace()
-    optimizer = algorithms.extrapolaw_hyperband(
-        pipeline_space=space, sample_prior_first=sample_prior_first
-    )
-    assert optimizer is not None
-
-
 # ===== Test space compatibility with different optimizers =====
 
 
@@ -426,11 +356,7 @@ def test_fidelity_space_compatibility():
     """Test fidelity space compatibility with different optimizers."""
     space = SimpleHPOWithFidelitySpace()
 
-    # Should work with extrapolaw_hyperband (requires fidelity)
-    hyperband_optimizer = algorithms.extrapolaw_hyperband(pipeline_space=space)
-    assert hyperband_optimizer is not None
-
-    # Should also work with other Extrapolaw optimizers (but need to ignore fidelity)
+    # Works with Extrapolaw optimizers that ignore the fidelity
     random_optimizer = algorithms.extrapolaw_random_search(
         pipeline_space=space, ignore_fidelity=True
     )
@@ -440,9 +366,13 @@ def test_fidelity_space_compatibility():
     converted_space = convert_extrapolaw_to_classic_search_space(space)
     assert converted_space is not None
 
-    # Classic hyperband should work with converted space
-    classic_hyperband = algorithms.hyperband(pipeline_space=converted_space)
-    assert classic_hyperband is not None
+    # Classic random search should work with converted space
+    classic_random_search = algorithms.random_search(
+        pipeline_space=converted_space,
+        use_priors=True,
+        ignore_fidelity="highest_fidelity",
+    )
+    assert classic_random_search is not None
 
 
 # ===== Edge cases and error handling =====

@@ -23,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING:** Forked from NePS 0.17.0 and renamed the package `neps` → `extrapolaw` (PyPI package, import name, CLI, `EXTRAPOLAW_*` env vars, optimizer names, default result dirs, examples in `extrapolaw_examples/`).
 - `bayesian_optimization` passes the space's constants to `constraints_func`, like `random_search` does.
 - **BREAKING:** The summary no longer has `best_config.txt`, `best_config_trajectory.txt`, `short.csv` and the incumbent trajectory, and the scaling data is no longer logged to TensorBoard.
+- `optimizer="auto"` picks `bayesian_optimization` for a space without priors and fidelities, `random_search` otherwise (sampling from the priors), and `complex_random_search` for a space that cannot be converted to a classic one. A fidelity is set to its maximum as it's not used in any optimizer for now.
+
+### Removed
+- **BREAKING:** The HPO optimizers that scaling studies do not use: `successive_halving`, `hyperband`, `mo_hyperband`, `asha`, `moasha`, `async_hb`, `priorband`, `ifbo`, `pibo`, `primo`, `extrapolaw_hyperband`, `extrapolaw_priorband`, `extrapolaw_regularized_evolution` and `extrapolaw_local_and_incumbent`. `bayesian_optimization`, `random_search`, `grid_search`, `complex_random_search`, `extrapolaw_random_search`, `carbs` and `chinchilla` remain.
+- **BREAKING:** Multi-objective optimization. `objective_to_minimize` must be a single float, and `bayesian_optimization` no longer takes a `reference_point`.
+- **BREAKING:** `worker_fidelities_to_spend` and `total_fidelities_to_spend` of `extrapolaw.acquire()`, and the checkpoint helpers `load_checkpoint`, `save_checkpoint` and `load_lightning_checkpoint`.
+- **BREAKING:** `extrapolaw.plot()` and `python -m extrapolaw.plot`, the incumbent trajectory plots carried over from NePS.
+- The NePS tutorials, and the examples on expert priors, multi-fidelity, multi-objective, freeze-thaw and image segmentation HPO.
+- The `ifbo` and `seaborn` dependencies.
 
 Extrapolaw was forked from [NePS](https://github.com/automl/neps) 0.17.0. The earlier history is in [CHANGELOG_NEPS.md](CHANGELOG_NEPS.md).
 

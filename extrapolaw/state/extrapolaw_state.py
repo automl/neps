@@ -161,12 +161,10 @@ class TrialRepo:
             and self._is_valid_objective(trial.report.objective_to_minimize)
         }
 
-    def _is_valid_objective(self, objective: float | list[float] | None) -> bool:
+    def _is_valid_objective(self, objective: float | None) -> bool:
         """Check if an objective value is valid (not NaN)."""
         if objective is None:
             return False
-        if isinstance(objective, list | tuple):
-            return all(obj is not None and not np.isnan(obj) for obj in objective)
         return not np.isnan(objective)
 
     def latest(
@@ -539,16 +537,9 @@ class ExtrapolawState:  # noqa: PLW1641
             else:
                 previous_trial_location = None
 
-            id_str = sampled_config.id
-            config_name = f"{sampled_config.id}"
-            parts = id_str.split("_rung_")
-            if len(parts) == 2 and all(p.isdigit() for p in parts):
-                config_id, rung_id = map(int, parts)
-                config_name = f"{config_id}_rung_{rung_id}"
-
             trial = Trial.new(
                 trial_id=sampled_config.id,
-                location=str(self._trial_repo.directory / f"config_{config_name}"),
+                location=str(self._trial_repo.directory / f"config_{sampled_config.id}"),
                 config=sampled_config.config,
                 previous_trial=sampled_config.previous_config_id,
                 previous_trial_location=previous_trial_location,
@@ -616,13 +607,6 @@ class ExtrapolawState:  # noqa: PLW1641
         with self._optimizer_lock.lock():
             return _deserialize_optimizer_info(self._optimizer_info_path)
 
-    @property
-    def fidelity_name(self) -> str | None:
-        """The key a fidelity takes in a trial's config, if the space has one."""
-        derived = self._optimizer_info.get("derived") or {}
-        fidelity = derived.get("fidelity") or {}
-        return fidelity.get("name")
-
     def lock_and_get_search_space(self) -> SearchSpace | PipelineSpace | None:
         """Get the pipeline space, with the lock acquired.
 
@@ -658,14 +642,9 @@ class ExtrapolawState:  # noqa: PLW1641
         *,
         total_evaluations_to_spend: int | None,
         total_cost_to_spend: float | None,
-        total_fidelities_to_spend: int | float | None,
     ) -> None:
         """Update the global budgets stored for this run."""
-        if (
-            total_evaluations_to_spend is None
-            and total_cost_to_spend is None
-            and total_fidelities_to_spend is None
-        ):
+        if total_evaluations_to_spend is None and total_cost_to_spend is None:
             return
 
         with self._optimizer_lock.lock():
@@ -682,11 +661,6 @@ class ExtrapolawState:  # noqa: PLW1641
             if total_cost_to_spend is not None:
                 optimizer_state.budget.total_cost_to_spend = total_cost_to_spend
 
-            if total_fidelities_to_spend is not None:
-                optimizer_state.budget.total_fidelities_to_spend = (
-                    total_fidelities_to_spend
-                )
-
             with atomic_write(self._optimizer_state_path, "wb") as f:
                 pickle.dump(
                     optimizer_state,
@@ -696,12 +670,12 @@ class ExtrapolawState:  # noqa: PLW1641
 
     def lock_and_get_global_budgets(
         self,
-    ) -> tuple[int | None, float | None, int | float | None]:
+    ) -> tuple[int | None, float | None]:
         """Get the global budgets stored for this run."""
         optimizer_state = self.lock_and_get_optimizer_state()
 
         if optimizer_state.budget is None:
-            return None, None, None
+            return None, None
 
         return (
             getattr(
@@ -712,11 +686,6 @@ class ExtrapolawState:  # noqa: PLW1641
             getattr(
                 optimizer_state.budget,
                 "total_cost_to_spend",
-                None,
-            ),
-            getattr(
-                optimizer_state.budget,
-                "total_fidelities_to_spend",
                 None,
             ),
         )
@@ -948,18 +917,6 @@ class ExtrapolawState:  # noqa: PLW1641
                         f"\n   Loaded from {path}."
                         f"\nProvided: {optimizer_info}"
                     )
-
-                if (
-                    optimizer_info is not None
-                    and existing_info.get("derived", {}).get("fidelity") is None
-                    and optimizer_info.get("derived", {}).get("fidelity") is not None
-                ):
-                    fidelity = optimizer_info["derived"]["fidelity"]  # type: ignore
-                    existing_info.setdefault("derived", {})["fidelity"] = fidelity  # type: ignore
-                    try:
-                        serialize(existing_info, path=optimizer_info_path)
-                    except Exception as e:  # noqa: BLE001
-                        logger.debug(f"Could not backfill the fidelity name: {e}")
             with optimizer_state_path.open("rb") as f:
                 optimizer_state = pickle.load(f)  # noqa: S301
 

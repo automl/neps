@@ -1,14 +1,12 @@
 # Overview
 
-Looking for a guided walkthrough instead? Our interactive tutorials run in Google Colab: [Getting Started with HPO](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/1_getting_started_hpo.ipynb), [Defining Search Spaces](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/2_search_spaces.ipynb), and [Efficient Optimization](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/3_efficiency_techniques.ipynb).
-
 1. **Basic usage examples** demonstrate fundamental usage.
 Learn how to perform Hyperparameter Optimization (HPO) and analyze runs on a basic level.
 
 2. **Convenience examples** show tensorboard compatibility and its integration, SLURM-scripting and understand file management within the evaluate pipeline function used in Extrapolaw.
 
-3. **Efficiency examples** showcase how to enhance efficiency in Extrapolaw. Learn about expert priors, multi-fidelity, and parallelization to streamline your pipeline and optimize search processes.
+3. **Efficiency examples** show how to parallelize the evaluations, e.g. with PyTorch DDP and FSDP, natively or with PyTorch Lightning.
 
 4. **Experimental examples** tailored for Extrapolaw contributors. These examples provide insights and practices for experimental scenarios.
 
-5. **Real-world examples** demonstrate how to apply Extrapolaw to real-world problems.
+5. **Real-world examples** demonstrate how to apply Extrapolaw to real-world problems, such as scaling studies.

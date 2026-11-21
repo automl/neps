@@ -98,10 +98,8 @@ def evaluate_pipeline(lr=0.1, epoch=20):
 
 
 class HPOSpace(extrapolaw.PipelineSpace):
-    lr = extrapolaw.Float(
-        lower=0.001, upper=0.1, log=True, prior=0.01, prior_confidence="high"
-    )
-    epoch = extrapolaw.IntegerFidelity(lower=1, upper=3)
+    lr = extrapolaw.Float(lower=0.001, upper=0.1, log=True)
+    epoch = extrapolaw.Integer(lower=1, upper=3)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -109,5 +107,5 @@ extrapolaw.acquire(
     evaluate_pipeline=evaluate_pipeline,
     pipeline_space=HPOSpace(),
     root_directory="results/pytorch_lightning_ddp",
-    worker_fidelities_to_spend=5,
+    worker_evaluations_to_spend=5,
 )

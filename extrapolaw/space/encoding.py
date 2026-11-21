@@ -126,66 +126,6 @@ class CategoricalToIntegerTransformer(TensorTransformer[int]):
         return [self.choices[int(i)] for i in torch.round(x).tolist()]
 
 
-@dataclass
-class CategoricalToUnitNorm(TensorTransformer[float]):
-    """A transformer that encodes categorical values into a unit normalized tensor.
-
-    If there are `n` choices, the tensor will have `n` bins between `0` and `1`.
-    """
-
-    choices: Sequence[Any]
-
-    domain: Domain[float] = field(init=False)
-    _cat_int_domain: Domain[int] = field(init=False)
-    _lookup: dict[Any, int] | None = field(init=False)
-
-    def __post_init__(self) -> None:
-        self.domain = Domain.floating(
-            0.0,
-            1.0,
-            bins=len(self.choices),
-            is_categorical=True,
-        )
-        self._cat_int_domain = Domain.indices(len(self.choices), is_categorical=True)
-        try:
-            self._lookup = {c: i for i, c in enumerate(self.choices)}
-        except TypeError:
-            self._lookup = None
-
-    @override
-    def encode(
-        self,
-        x: Sequence[Any],
-        *,
-        out: torch.Tensor | None = None,
-        dtype: torch.dtype | None = None,
-        device: torch.device | None = None,
-    ) -> torch.Tensor:
-        if dtype is None:
-            dtype = torch.int if out is None else out.dtype
-
-        values = (
-            [self._lookup[c] for c in x]
-            if self._lookup
-            else [self.choices.index(c) for c in x]
-        )
-        integers = torch.tensor(values, dtype=torch.int64, device=device)
-        binned_floats = self.domain.cast(
-            integers,
-            frm=self._cat_int_domain,
-            dtype=dtype,
-        )
-        if out is not None:
-            return out.copy_(binned_floats)
-
-        return binned_floats
-
-    @override
-    def decode(self, x: torch.Tensor) -> list[Any]:
-        x = self._cat_int_domain.cast(x, frm=self.domain)
-        return [self.choices[int(i)] for i in torch.round(x).tolist()]
-
-
 # TODO: Maybe add a shift argument, could be useful to have `0` as midpoint
 # and `-0.5` as lower bound with `0.5` as upper bound.
 @dataclass

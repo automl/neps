@@ -21,7 +21,7 @@ def evaluate_pipeline(learning_rate: float, epochs: int) -> dict:
 
 class ExamplePipeline(extrapolaw.PipelineSpace):
     learning_rate = extrapolaw.Float(1e-3, 1e-1, log=True)
-    epochs = extrapolaw.IntegerFidelity(10, 100)
+    epochs = extrapolaw.Integer(10, 100)
 
 extrapolaw.acquire(
     evaluate_pipeline=evaluate_pipeline, # (1)!
@@ -47,8 +47,7 @@ See the following for more:
 ## Budget, how long to run?
 To define a budget, provide `total_evaluations_to_spend=` to [`extrapolaw.acquire()`][extrapolaw.api.acquire],
 to specify the number of evaluations after which the whole study (across all workers) stops,
-and/or `total_cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline,
-and/or `total_fidelities_to_spend=` for multi-fidelity optimization, to specify the total fidelity to spend.
+and/or `total_cost_to_spend=` to specify a cost threshold for your own custom cost metric, such as time, energy, or monetary, as returned by each evaluation of the pipeline.
 
 Each of these also has a `worker_` variant (e.g. `worker_evaluations_to_spend=`) that limits only what a single `extrapolaw.acquire()` call/worker does.
 
@@ -146,8 +145,7 @@ Please refer to Python's [logging documentation](https://docs.python.org/3/libra
 
 ### Live plots
 Pass `live_plots=True` to have Extrapolaw redraw the plots in `root_directory/summary/` after
-every evaluated trial: the scaling plots, or the Pareto front for two objectives,
-plus anything your optimizer provides.
+every evaluated trial: the scaling plots, plus anything your optimizer provides.
 
 ```python
 extrapolaw.acquire(..., live_plots=True)
@@ -249,7 +247,7 @@ provided to [`extrapolaw.acquire()`][extrapolaw.api.acquire].
     ```
     root_directory
     ├── configs
-    │   ├── config_1            # Could also be config_1_rung_0 for multi-fidelity
+    │   ├── config_1
     │   │   ├── config.yaml     # The configuration
     │   │   ├── report.yaml     # The results of this run, if any
     │   │   └── metadata.json   # Metadata about this run, such as state and times
@@ -272,10 +270,6 @@ Extrapolaw utilizes the file-system and locks as a means of communication for im
 As a result, you can start multiple [`extrapolaw.acquire()`][extrapolaw.api.acquire] from different processes however you like
 and they will synchronize, **as long as they share the same `root_directory=`**.
 Any new workers that come online will automatically pick up work and work together to until the budget is exhausted.
-
-!!! tip "Interactive tutorial"
-
-    The Parallelization section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/3_efficiency_techniques.ipynb) runs a single worker and then three parallel workers sharing one `root_directory`.
 
 === "Worker script"
 
@@ -365,10 +359,7 @@ Once cleaned, you can restart the optimization and workers will pick up from the
 For more details on the clean command, see the [Cleaning Up Trials documentation](./clean.md).
 
 ## Selecting an Optimizer
-By default Extrapolaw intelligently selects the most appropriate optimizer based on your defined configurations in `pipeline_space=`, one of the arguments to [`extrapolaw.acquire()`][extrapolaw.api.acquire].
-
-The characteristics of your search space, as represented in the `pipeline_space=`, play a crucial role in determining which optimizer Extrapolaw will choose.
-This automatic selection process ensures that the optimizer aligns with the specific requirements and nuances of your search space, thereby optimizing the effectiveness of the hyperparameter and/or architecture optimization.
+By default Extrapolaw selects the optimizer based on your `pipeline_space=`, one of the arguments to [`extrapolaw.acquire()`][extrapolaw.api.acquire]: `bayesian_optimization` for a space without priors and fidelities, and `random_search` otherwise, see [automatic optimizer selection](optimizers.md#21-automatic-optimizer-selection).
 
 You can also manually select a specific or custom optimizer that better matches your specific needs.
 For more information about the available optimizers and how to customize your own, refer [here](../reference/optimizers.md).

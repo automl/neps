@@ -18,7 +18,7 @@ from extrapolaw.optimizers import OptimizerInfo, load_optimizer
 from extrapolaw.space import HPOFloat, HPOInteger, SearchSpace
 from extrapolaw.space.extrapolaw_spaces.parameters import (
     Float,
-    IntegerFidelity,
+    Integer,
     PipelineSpace,
 )
 from extrapolaw.state import BudgetInfo, ExtrapolawState, OptimizationState, SeedSnapshot
@@ -26,9 +26,7 @@ from extrapolaw.state import BudgetInfo, ExtrapolawState, OptimizationState, See
 
 @pytest.fixture
 def space() -> SearchSpace:
-    return SearchSpace(
-        {"x": HPOFloat(0, 1), "epochs": HPOInteger(1, 27, is_fidelity=True)}
-    )
+    return SearchSpace({"x": HPOFloat(0, 1), "y": HPOInteger(1, 27)})
 
 
 def _create_or_load(path: Path, info: OptimizerInfo) -> ExtrapolawState:
@@ -61,8 +59,13 @@ class _CallableOptimizer:
 
 
 def test_partial_records_defaults(space: SearchSpace) -> None:
-    _, from_partial = load_optimizer(partial(algorithms.hyperband, eta=4), space)  # type: ignore
-    _, from_string = load_optimizer(("hyperband", {"eta": 4}), space)
+    _, from_partial = load_optimizer(
+        partial(algorithms.bayesian_optimization, initial_design_size=4),  # type: ignore
+        space,
+    )
+    _, from_string = load_optimizer(
+        ("bayesian_optimization", {"initial_design_size": 4}), space
+    )
     assert from_partial == from_string
 
 
@@ -104,12 +107,21 @@ def test_resume_accepts_settings_not_recorded_on_disk(
     tmp_path: Path, space: SearchSpace
 ) -> None:
     root = tmp_path / "run"
-    _create_or_load(root, OptimizerInfo(name="hyperband", info={"eta": 4}))
+    _create_or_load(
+        root,
+        OptimizerInfo(name="bayesian_optimization", info={"initial_design_size": 4}),
+    )
 
-    _, same = load_optimizer(partial(algorithms.hyperband, eta=4), space)  # type: ignore
+    _, same = load_optimizer(
+        partial(algorithms.bayesian_optimization, initial_design_size=4),  # type: ignore
+        space,
+    )
     _create_or_load(root, same)
 
-    _, different = load_optimizer(partial(algorithms.hyperband, eta=5), space)  # type: ignore
+    _, different = load_optimizer(
+        partial(algorithms.bayesian_optimization, initial_design_size=5),  # type: ignore
+        space,
+    )
     with pytest.raises(ExtrapolawError, match="optimizer info on disk does not match"):
         _create_or_load(root, different)
 
@@ -117,7 +129,7 @@ def test_resume_accepts_settings_not_recorded_on_disk(
 def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> None:
     class _PipelineSpace(PipelineSpace):
         x = Float(0, 1)
-        epochs = IntegerFidelity(1, 27)
+        epochs = Integer(1, 27)
 
     root = tmp_path / "run"
     _create_or_load(root, OptimizerInfo(name="<lambda>", info={}))
@@ -129,19 +141,3 @@ def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> N
             root_directory=root,
             worker_evaluations_to_spend=1,
         )
-
-
-def test_bracket_optimizer_records_rung_layout(
-    tmp_path: Path, space: SearchSpace
-) -> None:
-    _, info = load_optimizer("hyperband", space)
-    derived = info["derived"]
-    assert derived["bracket_type"] == "hyperband"
-    assert derived["fidelity"] == {"name": "epochs", "lower": 1, "upper": 27}
-    assert derived["rung_to_fidelity"] == {0: 1, 1: 3, 2: 9, 3: 27}
-    assert len(derived["bracket_layouts"]) == 4
-
-    root = tmp_path / "run"
-    _create_or_load(root, info)
-    assert extrapolaw.load_optimizer_info(root) == info
-    _create_or_load(root, info)  # `derived` is not compared when resuming

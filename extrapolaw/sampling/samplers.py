@@ -7,14 +7,13 @@ do not necessarily have an easily definable pdf.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Mapping
+from dataclasses import dataclass
 from functools import reduce
 from typing import TYPE_CHECKING, Any
 from typing_extensions import override
 
 import torch
-from more_itertools import all_equal
 
 from extrapolaw.space import ConfigEncoder, Domain
 
@@ -121,18 +120,6 @@ class Sampler(ABC):
 
         return Uniform(ndim=ndim)
 
-    @classmethod
-    def borders(cls, ndim: int) -> BorderSampler:
-        """Create a border sampler.
-
-        Args:
-            ndim: The number of dimensions to sample.
-
-        Returns:
-            A border sampler.
-        """
-        return BorderSampler(ndim=ndim)
-
 
 # Technically this could be a prior with a uniform distribution
 @dataclass
@@ -195,178 +182,3 @@ class Sobol(Sampler):
             x = x.view(*n, self.ncols)
 
         return Domain.translate(x, frm=Domain.unit_float(), to=to)
-
-
-@dataclass
-class WeightedSampler(Sampler):
-    """A sampler that samples from a weighted combination of samplers."""
-
-    samplers: Sequence[Sampler]
-    """The samplers to sample from."""
-
-    weights: Sequence[float]
-    """The weights for each sampler."""
-
-    sampler_probabilities: torch.Tensor = field(init=False, repr=False)
-    """The probabilities for each sampler. Normalized weights."""
-
-    def __post_init__(self) -> None:
-        if len(self.samplers) < 2:
-            raise ValueError(
-                f"At least two samplers must be given. Got {len(self.samplers)}"
-            )
-
-        probs = torch.as_tensor(self.weights, dtype=torch.float64)
-        if probs.ndim != 1:
-            raise ValueError("Weights must be a 1D.")
-
-        if len(self.samplers) != len(probs):
-            raise ValueError("The number of samplers and weights must be the same.")
-
-        ncols = [sampler.ncols for sampler in self.samplers]
-        if not all_equal(ncols):
-            raise ValueError(
-                f"All samplers must have the same number of columns. Got {ncols}."
-            )
-
-        self._ncols = ncols[0]
-        self.sampler_probabilities = probs / probs.sum()
-
-    @property
-    @override
-    def ncols(self) -> int:
-        return self._ncols
-
-    @override
-    def sample(
-        self,
-        n: int | torch.Size,
-        *,
-        to: Domain | list[Domain] | ConfigEncoder,
-        seed: torch.Generator | None = None,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> torch.Tensor:
-        if dtype is None:
-            match to:
-                case Domain():
-                    dtype = to.preffered_dtype
-                case ConfigEncoder():
-                    dtype = (
-                        torch.float64
-                        if any(d.preffered_dtype.is_floating_point for d in to.domains)
-                        else torch.int64
-                    )
-                case _:
-                    dtype = (
-                        torch.float64
-                        if any(d.preffered_dtype.is_floating_point for d in to)
-                        else torch.int64
-                    )
-
-        if seed is not None:
-            raise NotImplementedError("Seeding is not yet implemented.")
-
-        # Calculate the total number of samples required
-        if isinstance(n, int):
-            total_samples = n
-            output_shape = (n, self.ncols)
-        else:
-            total_samples = reduce(lambda x, y: x * y, n)
-            output_shape = (*n, self.ncols)
-
-        # Randomly select which sampler to sample from for each of the total_samples
-        chosen_samplers = torch.empty((total_samples,), device=device, dtype=torch.int64)
-        chosen_samplers = torch.multinomial(
-            self.sampler_probabilities,
-            total_samples,
-            replacement=True,
-            generator=seed,
-            out=chosen_samplers,
-        )
-
-        # Create an empty tensor to hold all samples
-        output_samples = torch.empty(
-            (total_samples, self.ncols),
-            device=device,
-            dtype=dtype,
-        )
-
-        # Loop through each sampler and its associated indices
-        for i, sampler in enumerate(self.samplers):
-            # Find indices where the chosen sampler is i
-            _i = torch.tensor(i, dtype=torch.int64, device=device)
-            indices = torch.where(chosen_samplers == _i)[0]
-
-            if len(indices) > 0:
-                # Sample from the sampler for the required number of indices
-                samples_from_sampler = sampler.sample(
-                    len(indices),
-                    to=to,
-                    seed=seed,
-                    device=device,
-                    dtype=dtype,
-                )
-                output_samples[indices] = samples_from_sampler
-
-        # Reshape to the output shape including ncols dimension
-        return output_samples.view(output_shape)
-
-
-@dataclass
-class BorderSampler(Sampler):
-    """A sampler that samples from the border of a hypercube."""
-
-    ndim: int
-
-    @property
-    @override
-    def ncols(self) -> int:
-        return self.ndim
-
-    @property
-    def n_possible(self) -> int:
-        """The amount of possible border configurations."""
-        return int(2**self.ndim)
-
-    @override
-    def sample(
-        self,
-        n: int | torch.Size,
-        *,
-        to: Domain | list[Domain] | ConfigEncoder,
-        seed: torch.Generator | None = None,
-        device: torch.device | None = None,
-        dtype: torch.dtype | None = None,
-    ) -> torch.Tensor:
-        dtype = dtype or torch.float64
-
-        _arange = torch.arange(self.n_possible, device=device, dtype=torch.int32)
-        # Calculate the total number of samples required
-        if isinstance(n, int):
-            total_samples = min(n, self.n_possible)
-            output_shape = (total_samples, self.ncols)
-        else:
-            total_samples = reduce(lambda x, y: x * y, n)
-            if total_samples > self.n_possible:
-                raise ValueError(
-                    f"The shape of samples requested (={n}) is more than the number of "
-                    f"possible border configurations (={self.n_possible})."
-                )
-            output_shape = (*n, self.ncols)
-
-        if self.n_possible <= total_samples:
-            configs = _arange
-        else:
-            # Otherwise, we take a random sample of the 2**n possible border configs
-            rand_ix = torch.randperm(self.n_possible, generator=seed, device=device)[
-                :total_samples
-            ]
-            configs = _arange[rand_ix]
-
-        # https://stackoverflow.com/a/63546308/5332072
-        bit_masks = 2 ** _arange[: self.ndim]
-        configs = configs.unsqueeze(1).bitwise_and(bit_masks).ne(0).to(dtype)
-        # Reshape to the output shape including ncols dimension
-        configs = configs.view(output_shape)
-        return Domain.translate(configs, frm=Domain.unit_float(), to=to)

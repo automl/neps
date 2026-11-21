@@ -29,8 +29,8 @@ class UserResultDict(TypedDict, total=False):
     If an exception is provided, we count the trial as having failed.
     """
 
-    objective_to_minimize: float | Sequence[float] | None
-    """The objective value to minimize, single or multi-objective"""
+    objective_to_minimize: float | None
+    """The objective value to minimize, e.g. the loss."""
 
     cost: float | None
     """The training cost of the evaluation, e.g. its FLOPs. Required, unless a
@@ -53,15 +53,8 @@ class UserResultDict(TypedDict, total=False):
     exception: Exception | None
     """The exception that occured."""
 
-    learning_curve: Sequence[float] | Sequence[Sequence[float]] | None
-    """The learning curve for this configuration.
-
-    If a `Sequence[float]` is provided, it is assumed to be a single objective
-    learning curve.
-
-    Otherwise a `Sequence[Sequence[float]]` is assumed to be a multiobjective
-    learning curve.
-    """
+    learning_curve: Sequence[float] | None
+    """The learning curve for this configuration."""
 
     info_dict: Mapping[str, Any] | None
     """Extra information that will be stored with the trials result."""
@@ -85,9 +78,9 @@ class UserResult:
     possibilities.
     """
 
-    objective_to_minimize: float | list[float] | None = None
+    objective_to_minimize: float | None = None
     cost: float | None = None
-    learning_curve: list[float] | list[list[float]] | None = None
+    learning_curve: list[float] | None = None
     extra: dict[str, Any] = field(default_factory=dict)
     exception: Exception | None = None
     inference_cost: float | None = None
@@ -111,18 +104,14 @@ class UserResult:
             # We just have to do some annoying things to ensure everything here
             # is then serializable.
             match self.objective_to_minimize:
-                case Sequence():
-                    self.objective_to_minimize = [
-                        float(v) for v in self.objective_to_minimize
-                    ]
                 case np.number() | float() | int():
                     self.objective_to_minimize = float(self.objective_to_minimize)
                 case None:
                     pass
                 case _:
                     raise ValueError(
-                        "The 'objective_to_minimize' should be either a float,"
-                        f" a sequence of floats or None. Got {self.objective_to_minimize}"
+                        "The 'objective_to_minimize' should be either a float or None."
+                        f" Got {self.objective_to_minimize}"
                     )
 
             match self.cost:
@@ -136,21 +125,14 @@ class UserResult:
                     )
 
             match self.learning_curve:
-                # Multi-objective
-                case Sequence() if isinstance(self.learning_curve[0], Sequence):
-                    self.learning_curve = [
-                        [float(v) for v in moo]  # type: ignore
-                        for moo in self.learning_curve
-                    ]
                 case Sequence():
-                    self.learning_curve = [float(v) for v in self.learning_curve]  # type: ignore
+                    self.learning_curve = [float(v) for v in self.learning_curve]
                 case None:
                     pass
                 case _:
                     raise ValueError(
-                        "The 'learning_curve' should be either a sequence of floats,"
-                        " a sequence of sequences of floats or None."
-                        f" Got {self.learning_curve}"
+                        "The 'learning_curve' should be either a sequence of floats or"
+                        f" None. Got {self.learning_curve}"
                     )
 
             match self.exception:
@@ -218,8 +200,6 @@ class UserResult:
             raise ValueError(f"Failed to parse the result {self}.") from e
 
     # This function is damn annoying as there's many ways to return things in Extrapolaw
-    # I'm sorry for the type signature but we can parse at many possibilities and
-    # provide defaults for multi-objective, single objective and such...
     # The mess her is for parsing so that the rest of the code base can rely on it
     # being clean.
     @classmethod
@@ -227,19 +207,16 @@ class UserResult:
         cls,
         user_result: EvaluatePipelineReturn,
         *,
-        default_objective_to_minimize_value: float | list[float] | None,
+        default_objective_to_minimize_value: float | None,
         default_cost_value: float | None = None,
-        default_learning_curve: (
-            Literal["objective_to_minimize"]
-            | list[float]  # Single obj curve
-            | list[list[float]]  # Multi obj curve
-            | None
-        ) = None,
+        default_learning_curve: Literal["objective_to_minimize"]
+        | list[float]
+        | None = None,
     ) -> UserResult:
         """Parse the return type a user can provide from `evaluate_pipeline`."""
-        objective_to_minimize: float | list[float] | None
+        objective_to_minimize: float | None
         cost: float | None
-        learning_curve: list[float] | list[list[float]] | None
+        learning_curve: list[float] | None
         extra_info: dict[str, Any]
         exception: Exception | None
 
@@ -295,11 +272,15 @@ class UserResult:
                     case int() | float() | np.number():
                         objective_to_minimize = float(popped_obj)
                     case Sequence():
-                        objective_to_minimize = [float(v) for v in popped_obj]
+                        raise ValueError(
+                            "Multi-objective optimization is not supported, the"
+                            " 'objective_to_minimize' should be a single float."
+                            f" Got {popped_obj}"
+                        )
                     case _:
                         raise ValueError(
-                            "The 'objective_to_minimize' should be either a float,"
-                            f" a sequence of floats or None. Got {popped_obj}"
+                            "The 'objective_to_minimize' should be either a float or"
+                            f" None. Got {popped_obj}"
                         )
 
                 popped_cost = _result.pop("cost", default_cost_value)
@@ -325,9 +306,6 @@ class UserResult:
                 popped_curve = _result.pop("learning_curve", None)
                 match popped_curve:
                     case Sequence():
-                        # Easiest case, just use it and assume it's correctly shaped.
-                        # TODO: Could check the learning curve is 2d if multiobjective
-                        # objective # was provided.
                         learning_curve = list(popped_curve)
                     case None:
                         # If no learning curve, see what to do with the default
@@ -350,9 +328,8 @@ class UserResult:
                                 )
                     case _:
                         raise ValueError(
-                            "The 'learning_curve' should be either a sequence of floats,"
-                            " a sequence of sequences of floats or None."
-                            f" Got {popped_curve}"
+                            "The 'learning_curve' should be either a sequence of floats"
+                            f" or None. Got {popped_curve}"
                         )
 
                 popped_extra_info = _result.pop("info_dict", {})

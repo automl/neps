@@ -1,53 +1,24 @@
 # Algorithms
 
-Algorithms are the search strategies determining what configurations to evaluate next. In Extrapolaw, we provide a variety of pre-implemented algorithms and offer the possibility to implement custom algorithms. This chapter gives an overview of the different algorithms available in Extrapolaw and practical tips for their usage.
-
-We distinguish between algorithms that use different types of information and strategies to guide the search process:
+Algorithms are the search strategies determining what configurations to evaluate next. In Extrapolaw, we provide a few pre-implemented algorithms for scaling studies and offer the possibility to implement custom algorithms. This chapter gives an overview of the algorithms available in Extrapolaw.
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../search_algorithms/multifidelity.md) | [Priors](../search_algorithms/prior.md) | Model-based | [Extrapolaw-ready](../extrapolaw_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
+| Algorithm         | [Fidelity](#fidelities) | [Priors](#priors) | Model-based | [Extrapolaw-ready](../extrapolaw_spaces.md#3-constructing-architecture-spaces) | Scaling-aware |
 | :- | :------------: | :----: | :---------: | :-----------------: | :---------------: |
 | `Grid Search`|[️️✖️*][extrapolaw.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
 | `Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.random_search]|[✔️*][extrapolaw.optimizers.algorithms.random_search]|❌|✅|❌|
-| `Complex Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.complex_random_search]|[✔️*][extrapolaw.optimizers.algorithms.complex_random_search]|❌|✅|❌|
-| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][extrapolaw.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
-| [`Successive Halving`](../search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][extrapolaw.optimizers.algorithms.successive_halving]|❌|✅|❌|
-| [`ASHA`](../search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][extrapolaw.optimizers.algorithms.asha]|❌|✅|❌|
-| [`Hyperband`](../search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][extrapolaw.optimizers.algorithms.hyperband]|❌|✅|❌|
-| [`Asynch HB`](../search_algorithms/multifidelity.md)|✅|[✔️*][extrapolaw.optimizers.algorithms.async_hb]|❌|✅|❌|
-| [`IfBO`](../search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][extrapolaw.optimizers.algorithms.ifbo]|✅|❌|❌|
-| [`PiBO`](../search_algorithms/prior.md#1-pibo)|[️️✖️*][extrapolaw.optimizers.algorithms.pibo]|✅|✅|❌|❌|
-| [`PriorBand`](../search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
-| [`PriMO`](../search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
+| `Complex Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.complex_random_search]|❌|❌|✅|❌|
+| [`Bayesian Optimization`](../search_algorithms/bayesian_optimization.md)|[️️✖️*][extrapolaw.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|[✔️*][extrapolaw.optimizers.algorithms.bayesian_optimization]|
+| [`CARBS`](../optimizers.md#31-carbs)|❌|[✔️*][extrapolaw.optimizers.algorithms.carbs]|✅|❌|✅|
+| [`Chinchilla`](../optimizers.md#32-chinchilla-guided-scaling)|❌|❌|❌|❌|✅|
 
-## What is Multi-Fidelity Optimization?
+Scaling-aware optimizers use the [`cost_estimator`](../extrapolaw_acquire.md#scaling-studies-estimating-the-cost-of-a-configuration) of the run, see [scaling optimizers](../optimizers.md#3-scaling-optimizers).
 
-Multi-Fidelity (MF) optimization leverages the idea of running an AutoML problem on a small scale, which is cheaper and faster, and then using this information to train full-scale models. The _low-fidelity_ runs could be on a smaller dataset, a smaller model, or for shorter training times. MF-algorithms then infer which configurations are likely to perform well on the full problem, before investing larger compute amounts.
+## Fidelities
 
-!!! tip "Advantages of Multi-Fidelity"
+A fidelity parameter, e.g. the number of epochs, can be declared with `IntegerFidelity` or `FloatFidelity`. None of the optimizers uses it to evaluate cheaper versions of a configuration. Grid search, random search and bayesian optimization take `ignore_fidelity`: `"highest_fidelity"` always sets it to its maximum, and `True` treats it like any other parameter.
 
-    - **Parallelization**: MF-algorithms can use the information from many parallel low-fidelity runs to guide the search in the few high-fidelity runs.
-    - **Exploration**: By using low-fidelity runs, the optimizer can explore more of the search space.
+## Priors
 
-!!! warning "Disadvantages of Multi-Fidelity"
-
-    - **Variance**: The performance of a configuration on a low-fidelity run might not correlate well with its performance on a high-fidelity run. This can result in misguided decisions.
-
-We present a collection of MF-algorithms [here](./multifidelity.md) and algorithms that combine MF with priors [here](./multifidelity_prior.md).
-
-## What are Priors?
-
-Priors are used when there exists some information about the search space, that can be used to guide the optimization process. This information could come from expert domain knowledge or previous experiments. A Prior is provided in the form of a distribution over one dimension of the search space, with a `mean` (the suspected optimum) and a `confidence level`, or `variance`. We discuss how Priors can be included in your Extrapolaw-search space [here](../../reference/extrapolaw_spaces.md#1-constructing-hyperparameter-spaces).
-
-!!! tip "Advantages of using Priors"
-
-    - **Less compute**: By providing a Prior, the optimizer can focus on the most promising regions of the search space, potentially saving a lot of compute.
-    - **More exploitation**: By focusing on these regions, the optimizer might find a better final solution.
-
-!!! warning "Disadvantages of using Priors"
-
-    - **Less exploration**: By focusing on these regions, the optimizer _might_ miss out on other regions that could potentially be better.
-    - **Bad priors**: If the Prior is not a good representation of the search space, the optimizer might deliver suboptimal results, compared to a search without Priors. The optimizers we provide in Extrapolaw are specifically designed to handle bad priors, but they still slow down the search process.
-
-We present a collection of algorithms that use Priors [here](./prior.md) and algorithms that combine priors with Multi-Fidelity [here](./multifidelity_prior.md).
+A prior is a value of a parameter that is expected to work well, with a `prior_confidence`. We discuss how priors can be included in your search space [here](../../reference/extrapolaw_spaces.md#1-constructing-hyperparameter-spaces). [`random_search`][extrapolaw.optimizers.algorithms.random_search] samples around them with `use_priors=True`, and [`carbs`][extrapolaw.optimizers.algorithms.carbs] starts its search from them. The other optimizers do not use them.

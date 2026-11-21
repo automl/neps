@@ -1308,22 +1308,12 @@ def convert_classic_to_extrapolaw_search_space(
 
 
 ONLY_CLASSIC_ALGORITHMS_NAMES = [
-    "asha",
     "bayesian_optimization",
-    "ifbo",
-    "mo_hyperband",
-    "primo",
-    "async_hb",
-    "successive_halving",
-    "moasha",
-    "pibo",
     "carbs",
     "chinchilla",
 ]
 CLASSIC_AND_EXTRAPOLAW_ALGORITHMS_NAMES = [
     "random_search",
-    "priorband",
-    "hyperband",
     "grid_search",
 ]
 
@@ -1332,15 +1322,7 @@ CLASSIC_AND_EXTRAPOLAW_ALGORITHMS_NAMES = [
 def _get_only_classic_algorithms_functions() -> list[Callable]:
     """Get the list of classic-only algorithm functions lazily."""
     return [
-        algorithms.asha,
         algorithms.bayesian_optimization,
-        algorithms.ifbo,
-        algorithms.mo_hyperband,
-        algorithms.primo,
-        algorithms.async_hb,
-        algorithms.successive_halving,
-        algorithms.moasha,
-        algorithms.pibo,
         algorithms.carbs,
         algorithms.chinchilla,
     ]
@@ -1350,8 +1332,6 @@ def _get_classic_and_extrapolaw_algorithms_functions() -> list[Callable]:
     """Get the list of classic and Extrapolaw algorithm functions lazily."""
     return [
         algorithms.random_search,
-        algorithms.priorband,
-        algorithms.hyperband,
         algorithms.grid_search,
     ]
 

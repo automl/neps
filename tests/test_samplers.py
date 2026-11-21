@@ -4,12 +4,10 @@ import torch
 from pytest_cases import parametrize
 
 from extrapolaw.sampling import (
-    BorderSampler,
     Prior,
     Sampler,
     Sobol,
     Uniform,
-    WeightedSampler,
 )
 from extrapolaw.space import Domain
 
@@ -25,14 +23,9 @@ def _make_centered_prior(ndim: int) -> Prior:
     "sampler",
     [
         Sobol(ndim=3),
-        BorderSampler(ndim=3),
         Uniform(ndim=3),
         # Convenence method for making a distribution around center points
         _make_centered_prior(ndim=3),
-        WeightedSampler(
-            [Uniform(ndim=3), _make_centered_prior(3), Sobol(ndim=3)],
-            weights=torch.tensor([0.5, 0.25, 0.25]).tolist(),
-        ),
     ],
 )
 def test_sampler_samples_into_domain(sampler: Sampler) -> None:

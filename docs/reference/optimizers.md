@@ -2,68 +2,35 @@
 
 ## 1 What optimizer works best for my problem?
 
-The best optimizers utilizes all information available in the search space to guide the optimization process. Besides a fully black-box search, there are two sources of information an optimizer can draw from: using small scale proxies ([Multi-Fidelity](#11-multi-fidelity-mf)) and intuition ([Priors](#12-priors)).
+For a scaling study, the [scaling optimizers](#3-scaling-optimizers) build the scaling law into the search: [`chinchilla`](#32-chinchilla-guided-scaling) splits the compute between model size and data, and [`carbs`](#31-carbs) searches along the pareto front of objective and cost. To sample a space without assumptions on how it scales, use `random_search` or `grid_search`, and `bayesian_optimization` to find good configurations with fewer evaluations.
 
-### 1.1 Multi-Fidelity (MF)
-
-Multi-Fidelity uses small scale version of the problem, which run cheaper and faster. This could mean training models for a shorter time, using only a subset of the training data, or a smaller model entirely. From these *low fidelity* runs, MF-algorithms can infer which configurations are likely to perform well on the full problem.
-
-It is defined using the `is_fidelity` parameter in the `pipeline_space` definition.
-
-```python
-pipeline_space = {
-    "epoch": extrapolaw.Integer(lower=1, upper=100, is_fidelity=True),
-    # epoch will be available as fidelity to the optimizer
-}
-```
-
-For a more detailed explanation of Multi-Fidelity and a list of Extrapolaw-optimizers using MF please refer [here](../reference/search_algorithms/multifidelity.md).
-
-### 1.2 Priors
-
-Optimization with Priors is used, when there already exists an intuition for what region or specific value of a hyperparameter _could_ work well. By providing this intuition as Prior (knowledge) to the optimizer, it can prioritize these most promising regions of the search space, potentially saving a lot of compute.
-
-It is defined using the `prior` parameter in the `pipeline_space` definition.
-
-```python
-pipeline_space = {
-    "alpha": extrapolaw.Float(lower=0.1, upper=1.0, prior=0.4, prior_confidence="high"),
-    # alpha will have a prior pointing towards 0.4 with high confidence
-}
-```
-
-For a more detailed explanation of Priors and a list of Extrapolaw-optimizers using Priors please refer [here](../reference/search_algorithms/prior.md).
+Fidelity parameters and priors in the search space are optional, see [fidelities](../reference/search_algorithms/landing_page_algo.md#fidelities) and [priors](../reference/search_algorithms/landing_page_algo.md#priors) for the optimizers that use them.
 
 ## 2 Extrapolaw Optimizer Selection
 
 ### 2.1 Automatic Optimizer Selection
 
-Extrapolaw provides a multitude of optimizers from the literature, the [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on each of them. This chapter focusses on how to select them when using Extrapolaw.
+The [algorithms](../reference/search_algorithms/landing_page_algo.md) section goes into detail on each optimizer. This chapter focusses on how to select them when using Extrapolaw.
 
 ✅ = supported/necessary, ❌ = not supported, ✔️* = optional, click for details, ✖️\* ignorable, click for details
 
-| Algorithm         | [Multi-Fidelity](../reference/search_algorithms/multifidelity.md) | [Priors](../reference/search_algorithms/prior.md) | Model-based | [Extrapolaw-ready](../reference/extrapolaw_spaces.md#3-constructing-architecture-spaces) | Multi-Objective |
-| :- | :------------: | :----: | :---------: | :-----------------: | :---------------: |
-| `Grid Search`|[️️✖️*][extrapolaw.optimizers.algorithms.grid_search]|❌|❌|✅|❌|
-| `Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.random_search]|[✔️*][extrapolaw.optimizers.algorithms.random_search]|❌|✅|❌|
-| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][extrapolaw.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|❌|
-| [`Successive Halving`](../reference/search_algorithms/multifidelity.md#1-successive-halfing)|✅|[✔️*][extrapolaw.optimizers.algorithms.successive_halving]|❌|✅|❌|
-| [`ASHA`](../reference/search_algorithms/multifidelity.md#asynchronous-successive-halving)|✅|[✔️*][extrapolaw.optimizers.algorithms.asha]|❌|✅|❌|
-| [`Hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)|✅|[✔️*][extrapolaw.optimizers.algorithms.hyperband]|❌|✅|❌|
-| [`Asynch HB`](../reference/search_algorithms/multifidelity.md)|✅|[✔️*][extrapolaw.optimizers.algorithms.async_hb]|❌|✅|❌|
-| [`IfBO`](../reference/search_algorithms/multifidelity.md#3-in-context-freeze-thaw-bayesian-optimization)|✅|[✔️*][extrapolaw.optimizers.algorithms.ifbo]|✅|❌|❌|
-| [`PiBO`](../reference/search_algorithms/prior.md#1-pibo)|[️️✖️*][extrapolaw.optimizers.algorithms.pibo]|✅|✅|❌|❌|
-| [`PriorBand`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)|✅|✅|✅|✅|❌|
-| [`PriMO`](../reference/search_algorithms/multi_objective.md/#primo-prior-informed-multi-objective-optimizer)|✅|✅|❌|❌|✅|
+| Algorithm         | [Fidelity](../reference/search_algorithms/landing_page_algo.md#fidelities) | [Priors](../reference/search_algorithms/landing_page_algo.md#priors) | Model-based | [Extrapolaw-ready](../reference/extrapolaw_spaces.md#3-constructing-architecture-spaces) |
+| :- | :------------: | :----: | :---------: | :-----------------: |
+| `Grid Search`|[️️✖️*][extrapolaw.optimizers.algorithms.grid_search]|❌|❌|✅|
+| `Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.random_search]|[✔️*][extrapolaw.optimizers.algorithms.random_search]|❌|✅|
+| `Complex Random Search`|[️️✖️*][extrapolaw.optimizers.algorithms.complex_random_search]|❌|❌|✅|
+| [`Bayesian Optimization`](../reference/search_algorithms/bayesian_optimization.md)|[️️✖️*][extrapolaw.optimizers.algorithms.bayesian_optimization]|❌|✅|❌|
+| [`CARBS`](#31-carbs)|❌|[✔️*][extrapolaw.optimizers.algorithms.carbs]|✅|❌|
+| [`Chinchilla`](#32-chinchilla-guided-scaling)|❌|❌|❌|❌|
 
 If you prefer not to specify a particular optimizer for your AutoML task, you can simply pass `"auto"` or `None`
-for the extrapolaw optimizer. This provides a hassle-free way to get started quickly, as Extrapolaw will automatically choose the best optimizer based on the characteristics of your search
-space:
+for the extrapolaw optimizer. Extrapolaw then chooses the optimizer based on your search space:
 
-- If it has fidelity: [`hyperband`](../reference/search_algorithms/multifidelity.md#2-hyperband)
-- If it has both fidelity and a prior: [`priorband`](../reference/search_algorithms/multifidelity_prior.md#1-priorband)
-- If it has a prior: [`pibo`](../reference/search_algorithms/prior.md#1-pibo)
-- If it has neither: [`bayesian_optimization`](../reference/search_algorithms/bayesian_optimization.md)
+- If it has neither a fidelity nor a prior: [`bayesian_optimization`](../reference/search_algorithms/bayesian_optimization.md)
+- Otherwise: [`random_search`][extrapolaw.optimizers.algorithms.random_search], sampling around the priors, if there are any
+- If it cannot be converted to a classic search space, e.g. because it has an `Operation`: [`complex_random_search`][extrapolaw.optimizers.algorithms.complex_random_search]
+
+A fidelity is always set to its maximum.
 
 For example, running the following format, without specifying a optimizer will choose an optimizer depending on
 the `pipeline_space` passed.
@@ -80,7 +47,7 @@ extrapolaw.acquire(
 
 ### 2.2 Choosing one of Extrapolaw Optimizers
 
-We have also prepared some optimizers with specific hyperparameters that we believe can generalize well to most AutoML tasks and use cases. The available optimizers are imported via the `extrapolaw.algorithms` module.
+The available optimizers are imported via the `extrapolaw.algorithms` module.
 You can use either the optimizer name or the optimizer class itself as the optimizer argument.
 
 ```python
@@ -95,10 +62,6 @@ extrapolaw.acquire(
 ```
 
 For a list of available optimizers, please refer [here](./search_algorithms/landing_page_algo.md).
-
-!!! tip "Interactive tutorial"
-
-    The Optimizer Selection section of the [Efficient Optimization tutorial](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/3_efficiency_techniques.ipynb) lists all built-in optimizers with their default hyperparameters and runs several of them on the same task.
 
 ### 2.3 Hyperparameter Overrides
 

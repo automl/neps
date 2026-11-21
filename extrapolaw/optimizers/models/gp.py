@@ -44,13 +44,11 @@ from extrapolaw.exceptions import ConstraintViolationError
 from extrapolaw.optimizers.acquisition import (
     WrappedAcquisition,
     cost_cooled_acq,
-    pibo_acquisition,
 )
 from extrapolaw.space.encoding import CategoricalToIntegerTransformer, ConfigEncoder
 from extrapolaw.utils.common import disable_warnings
 
 if TYPE_CHECKING:
-    from extrapolaw.sampling.priors import Prior
     from extrapolaw.space.parameters import Parameter
     from extrapolaw.state.trial import Trial
 
@@ -658,7 +656,7 @@ def encode_trials_for_gp(
         The encoded data and the encoder
     """
     train_configs: list[Mapping[str, Any]] = []
-    train_losses: list[float] | list[Sequence[float]] = []
+    train_losses: list[float] = []
     train_costs: list[float] = []
     pending_configs: list[Mapping[str, Any]] = []
 
@@ -710,8 +708,6 @@ def fit_and_acquire_from_gp(
     x_train: torch.Tensor,
     encoder: ConfigEncoder,
     acquisition: AcquisitionFunction,
-    prior: Prior | None = None,
-    pibo_exp_term: float | None = None,
     cost_gp: SingleTaskGP | None = None,
     costs: torch.Tensor | None = None,
     cost_percentage_used: float | None = None,
@@ -742,10 +738,6 @@ def fit_and_acquire_from_gp(
             A good default is `qLogNoisyExpectedImprovement` which can
             handle pending configurations gracefully without fantasization.
 
-        prior: The prior to use over configurations. If this is provided, the
-            acquisition function will be further weighted using the piBO acquisition.
-        pibo_exp_term: The exponential term for the piBO acquisition. If `None` is
-            provided, one will be estimated.
         costs: The costs of evaluating the configurations. If this is provided,
             then a secondary GP will be used to estimate the cost of a given
             configuration and factor into the weighting during the acquisiton of a new
@@ -773,19 +765,6 @@ def fit_and_acquire_from_gp(
     """
     if seed is not None:
         raise NotImplementedError("Seed is not implemented yet for gps")
-
-    if prior:
-        if pibo_exp_term is None:
-            raise ValueError(
-                "If providing a prior, you must provide the `pibo_exp_term`."
-            )
-
-        acquisition = pibo_acquisition(
-            acquisition,
-            prior=prior,
-            prior_exponent=pibo_exp_term,
-            x_domain=encoder.domains,
-        )
 
     if costs is not None:
         if cost_percentage_used is None:

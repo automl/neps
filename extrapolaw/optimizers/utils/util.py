@@ -5,8 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-import pandas as pd
-
 
 def get_trial_config_unique_key(
     config: Mapping[str, Any], fid_name: str | None = None
@@ -33,34 +31,6 @@ def get_trial_config_unique_key(
     )
 
 
-def get_config_key_to_id_mapping(
-    table: pd.DataFrame, fid_name: str
-) -> dict[tuple[tuple[str, Any], ...], int]:
-    """
-    Map each unique trial configuration (excluding fidelity) to its highest config ID.
-
-    Args:
-        table: DataFrame with trial configurations and IDs.
-        fid_name: Name of the fidelity parameter to exclude.
-
-    Returns:
-        Dictionary mapping unique config keys to their highest config ID.
-
-    Raises:
-        TypeError: If table is not a pandas DataFrame.
-    """
-    if not isinstance(table, pd.DataFrame):
-        raise TypeError("table must be a pandas DataFrame.")
-    config_to_id = {}
-    for idx, row in table.iterrows():
-        config_id = idx[0]
-        config = row["config"]
-        config_key = get_trial_config_unique_key(config, fid_name)
-        # we always want to keep the highest config_id for a given config_key
-        config_to_id[config_key] = config_id
-    return config_to_id
-
-
 def _get_max_trial_id(trials: Mapping[str, Any]) -> int | None:
     """Get the maximum numeric trial ID from the trials mapping.
     Args:
@@ -74,7 +44,7 @@ def _get_max_trial_id(trials: Mapping[str, Any]) -> int | None:
     max_id = 0
     for trial_id in trials:
         try:
-            # For hierarchical IDs like "1_rung_2", extract the base ID
+            # For IDs with a suffix like "1_2", extract the base ID
             parts = trial_id.split("_")
             base_id = int(parts[0])
             max_id = max(max_id, base_id)

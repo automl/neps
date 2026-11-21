@@ -1,8 +1,6 @@
-"""Extrapolaw: A framework for Neural Architecture Search and Hyperparameter Optimization.
-This module provides a unified interface for defining search spaces, running optimizers,
-and visualizing results. It includes various optimizers, search space definitions,
-and plotting utilities, making it easy to experiment with different configurations
-and algorithms.
+"""Extrapolaw: A framework for scaling studies of deep learning pipelines.
+This module provides a unified interface for defining search spaces, running optimizers
+under a compute budget, and fitting and plotting the scaling laws of the results.
 """
 
 import logging
@@ -21,7 +19,6 @@ from extrapolaw.api import (
 from extrapolaw.optimizers import algorithms
 from extrapolaw.optimizers.ask_and_tell import AskAndTell
 from extrapolaw.optimizers.optimizer import SampledConfig
-from extrapolaw.plot.plot import plot
 from extrapolaw.plot.tensorboard_eval import tblogger
 from extrapolaw.space import SearchSpace
 from extrapolaw.space.extrapolaw_spaces.parameters import (
@@ -74,7 +71,6 @@ __all__ = [
     "load_config",
     "load_optimizer_info",
     "load_pipeline_space",
-    "plot",
     "predict",
     "save_pipeline_results",
     "status",

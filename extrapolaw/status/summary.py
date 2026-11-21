@@ -6,15 +6,13 @@ import inspect
 import json
 import logging
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from extrapolaw.optimizers.optimizer import Artifact, ArtifactType
-from extrapolaw.plot.generic_plots import plot_pareto_front
 from extrapolaw.plot.scaling_plots import plot_scaling
 from extrapolaw.space.extrapolaw_spaces.extrapolaw_space import (
-    ExtrapolawCompatConverter,
     convert_extrapolaw_to_classic_search_space,
 )
 from extrapolaw.space.extrapolaw_spaces.parameters import PipelineSpace
@@ -22,7 +20,6 @@ from extrapolaw.state.extrapolaw_state import ExtrapolawState, _deserialize_opti
 from extrapolaw.state.trial import Trial
 from extrapolaw.status.status import _initiate_summary_csv, status
 from extrapolaw.utils.files import get_file_writer
-from extrapolaw.utils.pareto import dominates
 
 if TYPE_CHECKING:
     from extrapolaw.space import SearchSpace
@@ -37,57 +34,18 @@ class ResourceUsage:
 
     evaluations: int = 0
     cost: float = 0.0
-    fidelities: float = 0.0
     time: float = 0.0
 
     def __iadd__(self, other: ResourceUsage) -> ResourceUsage:
         """Allows syntax: usage += other_usage."""
         self.evaluations += other.evaluations
         self.cost += other.cost
-        self.fidelities += other.fidelities
         self.time += other.time
         return self
-
-    def to_trajectory_dict(self) -> dict[str, float | int]:
-        """Converts usage to the dictionary keys expected by the trajectory file."""
-        return {
-            "cumulative_evaluations": self.evaluations,
-            "cumulative_cost": self.cost,
-            "cumulative_fidelities": self.fidelities,
-            "cumulative_time": self.time,
-        }
-
-
-def fidelity_name_of(space: Any) -> str | None:
-    """The name a fidelity takes in a trial's config, if `space` has one."""
-    if space is None:
-        return None
-    if getattr(space, "fidelity_attrs", None):
-        name = next(iter(space.fidelity_attrs.keys()))
-        return f"{ExtrapolawCompatConverter._ENVIRONMENT_PREFIX}{name}"
-    if getattr(space, "fidelities", None):
-        return str(next(iter(space.fidelities.keys())))
-    return None
-
-
-def resolve_fidelity_name(optimizer: Any, space: Any = None) -> str | None:
-    """Find the fidelity name from an optimizer, falling back to `space`."""
-    candidates = (
-        getattr(optimizer, "space", None),
-        getattr(optimizer, "pipeline_space", None),
-        getattr(optimizer, "_pipeline", None),
-        space,
-    )
-    for candidate in candidates:
-        name = fidelity_name_of(candidate)
-        if name is not None:
-            return name
-    return None
 
 
 def calculate_total_resource_usage(
     trials: Mapping[str, Trial],
-    fidelity_name: str | None = None,
     subset_worker_id: str | None = None,
     *,
     include_in_progress: bool = False,
@@ -96,7 +54,6 @@ def calculate_total_resource_usage(
 
     Args:
         trials: Dictionary of trials to calculate from.
-        fidelity_name: The key a fidelity takes in a trial's config, if any.
         subset_worker_id: If provided, only calculates for
             trials evaluated by this worker ID.
         include_in_progress: Whether to include incomplete trials.
@@ -130,64 +87,7 @@ def calculate_total_resource_usage(
         ):
             usage.time += trial.metadata.time_end - trial.metadata.time_started
 
-        if (
-            fidelity_name
-            and fidelity_name in trial.config
-            and trial.config[fidelity_name] is not None
-        ):
-            usage.fidelities += trial.config[fidelity_name]
-
     return usage
-
-
-def cumulative_resource_usage(
-    trials: Sequence[Trial],
-    fidelity_name: str | None = None,
-) -> list[ResourceUsage]:
-    """Calculates the running resource usage over `trials`, in the given order."""
-    running = ResourceUsage()
-    cumulative = []
-    for trial in trials:
-        running += calculate_total_resource_usage({trial.id: trial}, fidelity_name)
-        cumulative.append(ResourceUsage(**asdict(running)))
-    return cumulative
-
-
-def _to_sequence(score: float | Sequence[float]) -> list[float]:
-    if isinstance(score, Sequence):
-        return [float(x) for x in score]
-    return [float(score)]
-
-
-def _is_dominated(candidate: float | Sequence[float], frontier: list[Trial]) -> bool:
-    cand_seq = _to_sequence(candidate)
-
-    for t in frontier:
-        if t.report is None:
-            continue
-        f_seq = _to_sequence(t.report.objective_to_minimize)
-        if len(f_seq) != len(cand_seq):
-            continue
-        if dominates(f_seq, cand_seq):
-            return True
-    return False
-
-
-def _prune_and_add_to_frontier(candidate: Trial, frontier: list[Trial]) -> list[Trial]:
-    if candidate.report is None:
-        return frontier
-
-    cand_seq = _to_sequence(candidate.report.objective_to_minimize)
-    new_frontier: list[Trial] = []
-    for t in frontier:
-        if t.report is None:
-            continue
-        f_seq = _to_sequence(t.report.objective_to_minimize)
-        if len(f_seq) == len(cand_seq) and dominates(cand_seq, f_seq):
-            continue
-        new_frontier.append(t)
-    new_frontier.append(candidate)
-    return new_frontier
 
 
 @dataclass
@@ -201,9 +101,6 @@ class SummaryWriter:
 
     root_directory: Path
     """The root directory of the run."""
-
-    fidelity_name: str | None = None
-    """The key a fidelity takes in a trial's config, if the space has one."""
 
     live_plots: bool = False
     """Whether to also produce the plots and the optimizer's own artifacts."""
@@ -235,20 +132,7 @@ class SummaryWriter:
         live_plots: bool = False,
     ) -> SummaryWriter:
         """Build a writer for an existing run."""
-        root_directory = Path(root_directory)
-        fidelity_name = None
-        try:
-            info = _deserialize_optimizer_info(root_directory / "optimizer_info.yaml")
-            derived = info.get("derived") or {}
-            fidelity_name = (derived.get("fidelity") or {}).get("name")
-        except Exception as e:  # noqa: BLE001
-            logger.debug(f"Could not read the fidelity name from the run: {e}")
-
-        return cls(
-            root_directory=root_directory,
-            fidelity_name=fidelity_name,
-            live_plots=live_plots,
-        )
+        return cls(root_directory=Path(root_directory), live_plots=live_plots)
 
     def touch(self) -> None:
         """Create the summary folder and its (empty) files."""
@@ -295,16 +179,7 @@ class SummaryWriter:
                 t.metadata.time_sampled if t.metadata.time_sampled else float("inf")
             ),
         )
-        frontier: list[Trial] = []
-
-        for trial in sorted_trials:
-            assert trial.report is not None
-            if not _is_dominated(trial.report.objective_to_minimize, frontier):
-                frontier = _prune_and_add_to_frontier(trial, frontier)
-
-        artifacts += self._plot_artifacts(
-            sorted_trials, pareto_ids={trial.id for trial in frontier}
-        )
+        artifacts += self._plot_artifacts(sorted_trials)
         artifacts += self._optimizer_artifacts(trials)
         return artifacts
 
@@ -351,24 +226,14 @@ class SummaryWriter:
             ),
         ]
 
-    def _plot_artifacts(
-        self, trials: Sequence[Trial], pareto_ids: set[str]
-    ) -> list[Artifact]:
-        assert trials[0].report is not None  # for mypy
-        n_objectives = len(_to_sequence(trials[0].report.objective_to_minimize))  # type: ignore[arg-type]
+    def _plot_artifacts(self, trials: Sequence[Trial]) -> list[Artifact]:
         try:
-            if n_objectives == 1:
-                return plot_scaling(
-                    trials, self._run_fit(), self._target_costs(), self._search_space()
-                )
-            if n_objectives == 2:
-                return plot_pareto_front(trials, pareto_ids)
+            return plot_scaling(
+                trials, self._run_fit(), self._target_costs(), self._search_space()
+            )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to create the summary plot: {e}")
             return []
-
-        logger.debug("No summary plot for %d objectives.", n_objectives)
-        return []
 
     def _run_fit(self) -> str:
         """The scaling law the run's optimizer names."""

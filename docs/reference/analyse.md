@@ -3,11 +3,6 @@
 Everything Extrapolaw knows about a run lives on disk, in the `root_directory` you gave to
 [`extrapolaw.acquire()`][extrapolaw.api.acquire]. There are a few ways to look at it:
 
-!!! tip "Interactive tutorial"
-
-    The [Getting Started with HPO tutorial](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/1_getting_started_hpo.ipynb) inspects a real run and visualizes using TensorBoard.
-
-
 | You want to...                                                                  | Use                                                   |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | See how many trials are pending, running, done or crashed, and the best so far | [`extrapolaw.status`](#trial-status-extrapolawstatus)            |
@@ -49,7 +44,7 @@ best configuration found so far. It only reads the run; it does not write any fi
 ## Plots and reports: `extrapolaw.analyze`
 
 [`extrapolaw.analyze()`][extrapolaw.api.analyze] rebuilds the `summary` folder of a run from what is
-on disk: the CSVs, the best-config text files and the plots. It does not evaluate
+on disk: the CSVs and the plots. It does not evaluate
 anything, so you can call it
 
 - after a run has finished, in particular one that ran without `live_plots=True`;
@@ -66,37 +61,12 @@ extrapolaw.analyze("ROOT_DIRECTORY")
 
 ### Which plots?
 
-What Extrapolaw draws depends on how many objectives your `evaluate_pipeline` returns. Every
-figure comes with a CSV of the exact points it shows, so you can re-plot them your own way.
-
-| Objectives | Files in `summary/`                                    | Plot                                          |
-| ---------- | ------------------------------------------------------ | --------------------------------------------- |
-| 1          | `incumbent_trajectory.png`, `incumbent_trajectory.csv` | [Incumbent trajectory](#incumbent-trajectory) |
-| 2          | `pareto_front.png`, `pareto_front.csv`                 | [Pareto front](#pareto-front)                 |
-| 3 or more  | none                                                   | `best_config.txt` still lists the Pareto set  |
-
-Single-objective runs that report a `cost` also get [scaling plots](#scaling-plots).
-
-#### Incumbent trajectory
-
-Every evaluated objective (grey) and the best one found so far (blue), against the
-cumulative cost, or against the number of evaluations if `evaluate_pipeline` never
-reported a cost.
-
-![Incumbent trajectory](../doc_images/analyse/incumbent_trajectory.png)
-
-
-#### Pareto front
-
-Both objectives of every trial against each other (grey), with the non-dominated trials
-joined up (red).
-
-![Pareto front](../doc_images/analyse/pareto_front.png)
-
+Every figure comes with a CSV of the exact points it shows, so you can re-plot them your
+own way.
 
 #### Scaling plots
 
-If the runs return a positive `cost`, Extrapolaw also draws scaling plots in
+If the runs return a positive `cost`, Extrapolaw draws scaling plots in
 `summary/scaling/`, each with a CSV of its points. All of them use log-log axes and
 mark the Pareto frontier: the runs with the best result for their cost.
 
@@ -142,18 +112,13 @@ with reports on the run.
 ```
 ROOT_DIRECTORY
 ├── configs
-│   ├── config_1                        # config_1_rung_0, ... for multi-fidelity
+│   ├── config_1
 │   │   ├── config.yaml                 # The configuration
 │   │   ├── metadata.json               # Its state, worker and timings
 │   │   └── report.yaml                 # Its result, once evaluated
 │   └── ...
 ├── summary
 │   ├── full.csv                        # One row per trial
-│   ├── short.csv                       # The run as a whole
-│   ├── best_config.txt                 # The incumbent, or the Pareto set
-│   ├── best_config_trajectory.txt      # Every config that became the incumbent
-│   ├── incumbent_trajectory.{png,csv}  # 1 objective, with plots on
-│   ├── pareto_front.{png,csv}          # 2 objectives, with plots on
 │   └── scaling/                        # Scaling plots, if the runs report a cost
 ├── summary_tb/                         # Scaling data for TensorBoard
 ├── optimizer_info.yaml                 # The optimizer's configuration
@@ -162,8 +127,7 @@ ROOT_DIRECTORY
 ```
 
 `full.csv` has every trial's hyperparameters, together with whatever result and cost
-`evaluate_pipeline` returned. `best_config_trajectory.txt` logs the incumbent trajectory
-(single objective only) and `best_config.txt` records the current incumbent(s).
+`evaluate_pipeline` returned.
 
 
 # TensorBoard integration

@@ -50,8 +50,8 @@ class OptimizerInfo(TypedDict):
     """
 
     derived: NotRequired[Mapping[str, Any]]
-    """Values the optimizer computed from its settings, e.g. the rung layout of
-    multi-fidelity optimizers. Informational only, not compared when resuming a run.
+    """Values the optimizer computed from its settings, e.g. the scaling law it fits.
+    Informational only, not compared when resuming a run.
     """
 
 

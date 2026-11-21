@@ -220,14 +220,12 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     class HPOSpace(extrapolaw.PipelineSpace):
-        lr = extrapolaw.Float(
-            lower=0.0001, upper=0.1, log=True, prior=0.01, prior_confidence="high"
-        )
-        epoch = extrapolaw.IntegerFidelity(lower=1, upper=3)
+        lr = extrapolaw.Float(lower=0.0001, upper=0.1, log=True)
+        epoch = extrapolaw.Integer(lower=1, upper=3)
 
     extrapolaw.acquire(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=HPOSpace(),
         root_directory="results/pytorch_fsdp",
-        worker_fidelities_to_spend=20,
+        worker_evaluations_to_spend=20,
     )

@@ -47,10 +47,10 @@ def test_async_happy_path_changes_state(extrapolaw_state: ExtrapolawState) -> No
         worker_evaluations_to_spend=2,
         include_in_progress_evaluations_towards_maximum=True,
         worker_cost_to_spend=1,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
+        is_async=True,
     )
 
     callback_holder: list[callable] = []
@@ -117,10 +117,10 @@ def test_async_save_updates_the_whole_summary(extrapolaw_state: ExtrapolawState)
         worker_evaluations_to_spend=1,
         include_in_progress_evaluations_towards_maximum=True,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
+        is_async=True,
     )
 
     callback_holder: list[callable] = []
@@ -151,6 +151,31 @@ def test_async_save_updates_the_whole_summary(extrapolaw_state: ExtrapolawState)
     assert "0.3" in full
 
 
+def test_returning_none_without_async_raises(
+    extrapolaw_state: ExtrapolawState,
+) -> None:
+    """Returning None is only allowed when the worker runs in async mode."""
+    settings = WorkerSettings(
+        on_error=OnErrorPossibilities.IGNORE,
+        default_report_values=DefaultReportValues(),
+        worker_evaluations_to_spend=1,
+        include_in_progress_evaluations_towards_maximum=True,
+        worker_cost_to_spend=None,
+        max_evaluation_time_total_seconds=None,
+        max_wallclock_time_seconds=None,
+        batch_size=None,
+    )
+
+    worker = DefaultWorker.new(
+        state=extrapolaw_state,
+        optimizer=random_search(ASpace()),
+        evaluation_fn=lambda *_, **__: None,
+        settings=settings,
+    )
+    with pytest.raises(ValueError, match="returned None"):
+        worker.run()
+
+
 def test_analyze_rebuilds_the_summary(extrapolaw_state: ExtrapolawState) -> None:
     """`analyze` rebuilds the whole summary folder, plots included, from disk."""
     settings = WorkerSettings(
@@ -159,7 +184,6 @@ def test_analyze_rebuilds_the_summary(extrapolaw_state: ExtrapolawState) -> None
         worker_evaluations_to_spend=3,
         include_in_progress_evaluations_towards_maximum=True,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,

@@ -103,13 +103,6 @@ class Prior(Sampler):
         """
         return torch.exp(self.log_pdf(x, frm=frm))
 
-    def pdf_configs(self, x: list[dict[str, Any]], *, frm: ConfigEncoder) -> torch.Tensor:
-        """Compute the pdf of values in `x` under a prior.
-
-        See [`log_pdf()`][extrapolaw.sampling.Prior.log_pdf] for details on shapes.
-        """
-        return self.pdf(frm.encode(x), frm=frm)
-
     @classmethod
     def uniform(cls, ncols: int) -> Uniform:
         """Create a uniform prior for a given list of domains.
@@ -124,7 +117,6 @@ class Prior(Sampler):
         cls,
         parameters: Mapping[str, HPOCategorical | HPOFloat | HPOInteger],
         *,
-        center_values: Mapping[str, Any] | None = None,
         confidence_values: Mapping[str, float] | None = None,
     ) -> CenteredPrior:
         """Create a prior distribution from dict of parameters.
@@ -136,8 +128,6 @@ class Prior(Sampler):
 
                 Any parameters that do not have a `.prior` will be covered by
                 a uniform distribution.
-            center_values: Any values that should be used instead of the
-                parameter's `.prior`.
             confidence_values: Any additional values that should be
                 used for determining the strength of the prior. Values should
                 be between 0 and 1. Overwrites whatever is set by default in
@@ -148,7 +138,6 @@ class Prior(Sampler):
         """
         _mapping = PRIOR_CONFIDENCE_MAPPING
 
-        center_values = center_values or {}
         confidence_values = confidence_values or {}
         domains: list[Domain] = []
         centers: list[tuple[Any, float] | None] = []
@@ -156,7 +145,7 @@ class Prior(Sampler):
         for name, hp in parameters.items():
             domains.append(hp.domain)
 
-            default = center_values.get(name, hp.prior)
+            default = hp.prior
             if default is None:
                 centers.append(None)
                 continue

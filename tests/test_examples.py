@@ -35,7 +35,7 @@ ci_examples_scripts = [examples_folder / f"{example}.py" for example in ci_examp
 @pytest.mark.core_examples
 @pytest.mark.parametrize("example", core_examples_scripts, ids=core_examples)
 def test_core_examples(example):
-    if example.name == "run_analysis.py":
+    if example.name == "2_run_analysis.py":
         # Run hyperparameters example to have something to analyse
         runpy.run_path(str(core_examples_scripts[0]), run_name="__main__")
 

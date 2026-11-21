@@ -56,13 +56,12 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
     *,
     root_directory: str | Path = "extrapolaw_results",
     overwrite_root_directory: bool = False,
+    is_async: bool = False,
     continue_until_max_evaluation_completed: bool = False,
     worker_evaluations_to_spend: int | None = None,
     total_evaluations_to_spend: int | None = None,
     worker_cost_to_spend: int | float | None = None,
     total_cost_to_spend: int | float | None = None,
-    worker_fidelities_to_spend: int | float | None = None,
-    total_fidelities_to_spend: int | float | None = None,
     ignore_errors: bool = False,
     objective_value_on_error: float | None = None,
     cost_value_on_error: float | None = None,
@@ -211,8 +210,17 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
         overwrite_root_directory: If true, delete the working directory at the start of
             the run. This is, e.g., useful when debugging a evaluate_pipeline function.
 
+        is_async: If true, the optimizer will not wait for the results from evaluation_pipeline before asking for new configurations.
+            ??? note "tradeoff of async mode"
+            This is useful when you have multiple workers running in parallel,
+            and you don't want to wait in the main thread for the results of
+            the evaluation_pipeline before asking for new configurations.
+            This can speed up the optimization process, but it also means that
+            the optimizer will not have access to the results of previous evaluations
+            when asking for new configurations (Tradeoff: parallelism vs exploiting previous pipelines).
+
         worker_evaluations_to_spend: Number of evaluations this specific call/worker should do.
-            ??? note "Limitation on Async mode"
+            ??? note "Constraints on async mode"
                 Currently, there is no specific number to control number of parallel evaluations running with
                 the same worker, so in case you want to limit the number of parallel evaluations,
                 it's crucial to limit the `worker_evaluations_to_spend` accordingly.
@@ -232,12 +240,6 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
         total_cost_to_spend: Maximum accumulated cost across all workers sharing the
             same Extrapolaw run. Once this total is reached, no worker will start a new
             evaluation.
-
-        worker_fidelities_to_spend: accumulated fidelity spent in case of multi-fidelity after which to terminate.
-
-        total_fidelities_to_spend: Maximum accumulated fidelity across all workers
-            sharing the same Extrapolaw run. Once this total is reached, no worker will start
-            a new evaluation.
 
         ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
             an error. Error configs still count towards worker and global evaluation budgets, when set.
@@ -290,7 +292,7 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
                 We advise to only use this if:
 
-                * You are using a `#!python "ifbo"` or `#!python "bayesian_optimization"`.
+                * You are using `#!python "bayesian_optimization"`.
                 * You have a fast to evaluate `evaluate_pipeline`
                 * You have a significant amount of workers available, relative to the
                 time it takes to evaluate a single configuration.
@@ -340,9 +342,9 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
             ```python
             extrapolaw.acquire(
                 ...,
-                optimizer=("priorband",
+                optimizer=("bayesian_optimization",
                     {
-                        "sample_prior_first": True,
+                        "initial_design_size": 5,
                     }
                 )
             )
@@ -440,7 +442,6 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
 
     stored_total_evaluations_to_spend = None
     stored_total_cost_to_spend = None
-    stored_total_fidelities_to_spend = None
 
     if is_continuing_run:
         state = ExtrapolawState.create_or_load(
@@ -451,13 +452,11 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
         (
             stored_total_evaluations_to_spend,
             stored_total_cost_to_spend,
-            stored_total_fidelities_to_spend,
         ) = state.lock_and_get_global_budgets()
 
     controling_params = {
         "worker_evaluations_to_spend": worker_evaluations_to_spend,
         "worker_cost_to_spend": worker_cost_to_spend,
-        "worker_fidelities_to_spend": worker_fidelities_to_spend,
         "total_evaluations_to_spend": (
             total_evaluations_to_spend
             if total_evaluations_to_spend is not None
@@ -467,11 +466,6 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
             total_cost_to_spend
             if total_cost_to_spend is not None
             else stored_total_cost_to_spend
-        ),
-        "total_fidelities_to_spend": (
-            total_fidelities_to_spend
-            if total_fidelities_to_spend is not None
-            else stored_total_fidelities_to_spend
         ),
     }
     if all(x is None for x in controling_params.values()):
@@ -543,7 +537,7 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
         raise ValueError(
             f"The provided optimizer {optimizer} is not compatible with this complex"
             " search space. Please use one that is, such as 'random_search',"
-            " 'hyperband', 'priorband', or 'complex_random_search'."
+            " 'grid_search' or 'complex_random_search'."
         )
 
     # Log the search space after conversion
@@ -587,11 +581,10 @@ def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
         evaluation_fn=_eval,  # type: ignore
         optimizer=_optimizer_ask,
         optimizer_info=_optimizer_info,
+        is_async=is_async,
         worker_cost_to_spend=worker_cost_to_spend,
         total_evaluations_to_spend=total_evaluations_to_spend,
         total_cost_to_spend=total_cost_to_spend,
-        worker_fidelities_to_spend=worker_fidelities_to_spend,
-        total_fidelities_to_spend=total_fidelities_to_spend,
         optimization_dir=Path(root_directory),
         worker_evaluations_to_spend=worker_evaluations_to_spend,
         continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
@@ -1007,7 +1000,7 @@ def import_trials(  # noqa: C901
         raise ValueError(
             f"The provided optimizer {optimizer} is not compatible with this complex"
             " pipeline space. Please use one that is, such as 'random_search',"
-            " 'hyperband', 'priorband', or 'complex_random_search'."
+            " 'grid_search' or 'complex_random_search'."
         )
 
     optimizer_ask, optimizer_info = load_optimizer(optimizer, space)
@@ -1263,7 +1256,6 @@ def load_config(  # noqa: C901, PLR0912, PLR0915
         if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
             if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
                 # Extract trial_id from path like "configs/config_1"
-                # or "configs/config_1_rung_0"
                 trial_id = str_path.removesuffix("/").split("/")[-1]
             else:
                 if config_id is None:

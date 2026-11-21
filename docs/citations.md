@@ -25,34 +25,6 @@ year = {2026}
 
 ## Citation of Papers
 
-### πBO
-
-If you have used [πBO](https://openreview.net/forum?id=FegbkY6WDg) as the optimizer, please use the bibtex below:
-
-```bibtex
-@inproceedings{hvarfner2022pibo,
-title = {$\pi${BO}: Augmenting Acquisition Functions with User Beliefs for Bayesian Optimization},
-author = {Carl Hvarfner and Danny Stoll and Artur Souza and Marius Lindauer and Frank Hutter and Luigi Nardi},
-year = {2022},
-booktitle = {Tenth International Conference on Learning Representations (ICLR 2022)},
-keywords = {}
-}
-```
-
-### PriorBand
-
-If you have used [PriorBand](https://openreview.net/forum?id=uoiwugtpCH) as the optimizer, please use the bibtex below:
-
-```bibtex
-@inproceedings{mallik2023priorband,
-title = {PriorBand: Practical Hyperparameter Optimization in the Age of Deep Learning},
-author = {Neeratyoy Mallik and Eddie Bergman and Carl Hvarfner and Danny Stoll and Maciej Janowski and Marius Lindauer and Luigi Nardi and Frank Hutter},
-year = {2023},
-booktitle = {Thirty-seventh Conference on Neural Information Processing Systems (NeurIPS 2023)},
-keywords = {}
-}
-```
-
 ### Hierarchichal NAS with Context-free Grammars
 
 If you have used the context-free grammar search space and the graph kernels implemented in Extrapolaw (formerly NePS) for the paper [Hierarchical NAS](https://openreview.net/forum?id=Hpt1i5j6wh), please use the bibtex below:
@@ -63,34 +35,6 @@ title = {Construction of Hierarchical Neural Architecture Search Spaces based on
 author = {Simon Schrodi and Danny Stoll and Binxin Ru and Rhea Sanjay Sukthanker and Thomas Brox and Frank Hutter},
 year = {2023},
 booktitle = {Thirty-seventh Conference on Neural Information Processing Systems (NeurIPS 2023)},
-keywords = {}
-}
-```
-
-### ifBO
-
-If you have used [ifBO](https://openreview.net/forum?id=VyoY3Wh9Wd) as the optimizer, please use the bibtex below:
-
-```bibtex
-@inproceedings{rakotoarison2024ifbo,
-title = {In-Context Freeze-Thaw Bayesian Optimization for Hyperparameter Optimization},
-author = {Herilalaina Rakotoarison and Steven Adriaensen and Neeratyoy Mallik and Samir Garibov and Eddie Bergman and Frank Hutter},
-year = {2024},
-booktitle = {Forty-first International Conference on Machine Learning (ICML 2024)},
-keywords = {}
-}
-```
-
-### PriMO
-
-If you have used [PriMO](https://openreview.net/forum?id=AJ80vHwGTn) as the optimizer, please use the bibtex below:
-
-```bibtex
-@inproceedings{basu2025primo,
-title = {Multi-objective Hyperparameter Optimization in the Age of Deep Learning},
-author = {Soham Basu and Danny Stoll},
-year = {2025},
-booktitle = {Fourth International Conference on Automated Machine Learning (AutoML 2025 Non-Archival Track)},
 keywords = {}
 }
 ```

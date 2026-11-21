@@ -1,7 +1,7 @@
 """Samples configs for the OpenCLIP search space but never trains anything.
 
-`evaluate_pipeline` returning `None` tells Extrapolaw "this trial is being handled
-asynchronously"
+`evaluate_pipeline` returning `None` together with `is_async=True` tells Extrapolaw
+"this trial is being handled asynchronously"
 """
 
 import logging
@@ -45,6 +45,7 @@ if __name__ == "__main__":
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=HPOSpace(),
         root_directory=ROOT_DIRECTORY,
+        is_async=True,
         optimizer=(
             "random_search",
             {"ignore_fidelity": "highest_fidelity", "use_priors": True},

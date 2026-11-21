@@ -350,31 +350,6 @@ def test_operation_demo(optimizer, tmp_path):
 # ===== Extended tests for newer Extrapolaw features =====
 
 
-# Test extrapolaw_hyperband with various PipelineSpaces
-@pytest.mark.parametrize(
-    "optimizer",
-    [
-        algorithms.extrapolaw_hyperband,
-    ],
-)
-def test_extrapolaw_hyperband_with_fidelity_demo(optimizer, tmp_path):
-    """Test extrapolaw_hyperband with a fidelity space."""
-    pipeline_space = DemoHyperparameterWithFidelitySpace()
-    root_directory = (
-        tmp_path / f"extrapolaw_hyperband_fidelity_demo__{optimizer.__name__}"
-    )
-
-    extrapolaw.acquire(
-        evaluate_pipeline=hyperparameter_pipeline_to_optimize,
-        pipeline_space=pipeline_space,
-        optimizer=optimizer,
-        root_directory=root_directory,
-        worker_fidelities_to_spend=15,  # Use worker_fidelities_to_spend for multi-fidelity optimizers
-        overwrite_root_directory=True,
-    )
-    extrapolaw.status(root_directory, print_summary=True)
-
-
 # Test PipelineSpace dynamic methods (add, remove, add_prior)
 def test_pipeline_space_dynamic_methods():
     """Test PipelineSpace add, remove, and add_prior methods."""
@@ -466,7 +441,6 @@ def test_algorithm_compatibility():
     # Test Extrapolaw-only algorithms
     extrapolaw_only_algorithms = [
         algorithms.extrapolaw_random_search,
-        algorithms.extrapolaw_hyperband,
         algorithms.complex_random_search,
     ]
 
@@ -480,7 +454,7 @@ def test_algorithm_compatibility():
     # Test classic algorithms that should work with both
     both_compatible_algorithms = [
         algorithms.random_search,
-        algorithms.hyperband,
+        algorithms.grid_search,
     ]
 
     for algo in both_compatible_algorithms:

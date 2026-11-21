@@ -20,123 +20,43 @@ if torch.cuda.is_available():
     torch.cuda.manual_seed_all(seed)
 
 
-def get_evaluate_pipeline_func(optimizer):
-    match optimizer:
-        case "primo":
-
-            def evaluate_pipeline_MO(float1, float2, **kwargs):
-                objective_to_minimize = [float1 - 0.3, float2 - 3.6]
-                return {"objective_to_minimize": objective_to_minimize, "cost": 1.0}
-
-            evaluate_pipeline = evaluate_pipeline_MO
-
-        case "ifbo":
-
-            def evaluate_pipeline_IFBO(float1, float2, categorical, integer1, integer2):
-                objective_to_minimize = abs(float1) / abs(
-                    float(np.sum([float1, float2, int(categorical), integer1, integer2]))
-                )
-                return {"objective_to_minimize": objective_to_minimize, "cost": 1.0}
-
-            evaluate_pipeline = evaluate_pipeline_IFBO
-
-        case _:
-
-            def evaluate_pipeline_default(
-                float1, float2, categorical, integer1, integer2
-            ):
-                objective_to_minimize = -float(
-                    np.sum([float1, float2, int(categorical), integer1, integer2])
-                )
-                return {"objective_to_minimize": objective_to_minimize, "cost": 1.0}
-
-            evaluate_pipeline = evaluate_pipeline_default
-
-    return evaluate_pipeline
+def evaluate_pipeline(float1, float2, categorical, integer1, integer2):
+    objective_to_minimize = -float(
+        np.sum([float1, float2, int(categorical), integer1, integer2])
+    )
+    return {"objective_to_minimize": objective_to_minimize, "cost": 1.0}
 
 
-def get_evaluated_trials(optimizer) -> list[tuple[dict[str, Any], UserResultDict]]:
-    # Common config used by multiple optimizers
-    classic_base_config = {
-        "float1": 0.5417078469603526,
-        "float2": 3.3333333333333335,
-        "categorical": 1,
-        "integer1": 0,
-        "integer2": 1000,
-    }
-    extrapolaw_base_config = {
-        "ENVIRONMENT__float2": 1,
-        "SAMPLING__Resolvable.categorical::categorical__2": 0,
-        "SAMPLING__Resolvable.float1::float__0_1_False": 0.5,
-        "SAMPLING__Resolvable.integer1::integer__0_1_False": 1,
-        "SAMPLING__Resolvable.integer2::integer__1_1000_True": 5,
-    }
-    base_result = UserResultDict(objective_to_minimize=-1011.5417078469603, cost=1.0)
-
-    # Mapping of optimizers to their evaluated trials
-    trials_map = {
-        "asha": [(classic_base_config, base_result)],
-        "successive_halving": [(classic_base_config, base_result)],
-        "priorband": [(classic_base_config, base_result)],
-        "primo": [
-            (
-                classic_base_config,
-                UserResultDict(
-                    objective_to_minimize=[0.5417078469603, 3.3333333333333335],
-                    cost=1.0,
-                ),
-            ),
-            (
-                {**classic_base_config, "float2": 3.6},
-                UserResultDict(objective_to_minimize=[0.2417078469603, 3.6], cost=1.0),
-            ),
-        ],
-        "ifbo": [
-            (classic_base_config, UserResultDict(objective_to_minimize=0.5417078469603, cost=1.0)),
-            (
-                {**classic_base_config, "float2": 3.6},
-                UserResultDict(objective_to_minimize=0.2417078469603, cost=1.0),
-            ),
-        ],
-        "hyperband": [
-            (classic_base_config, base_result),
-            (
-                {
-                    "float1": 0.5417078469603526,
-                    "categorical": 1,
-                    "integer1": 0,
-                    "integer2": 800,
-                },
-                base_result,
-            ),
-        ],
-        "bayesian_optimization": [
-            (
-                {
-                    "float1": 0.5884444338738143,
-                    "float2": 3.3333333333333335,
-                    "categorical": 0,
-                    "integer1": 0,
-                    "integer2": 1000,
-                },
-                {"objective_to_minimize": -1011.5417078469603, "cost": 1.0},
-            ),
-        ],
-        "async_hb": [(classic_base_config, base_result)],
-        "extrapolaw_hyperband": [(extrapolaw_base_config, base_result)],
-        "extrapolaw_priorband": [(extrapolaw_base_config, base_result)],
-    }
-
-    if optimizer not in trials_map:
-        raise ValueError(f"Unknown optimizer: {optimizer}")
-
-    return trials_map[optimizer]
+def get_evaluated_trials() -> list[tuple[dict[str, Any], UserResultDict]]:
+    """Trials evaluated in some other setup."""
+    return [
+        (
+            {
+                "float1": 0.5417078469603526,
+                "float2": 3.3333333333333335,
+                "categorical": 1,
+                "integer1": 0,
+                "integer2": 1000,
+            },
+            UserResultDict(objective_to_minimize=-1005.8750411802937, cost=1.0),
+        ),
+        (
+            {
+                "float1": 0.5884444338738143,
+                "float2": 3.6,
+                "categorical": 0,
+                "integer1": 0,
+                "integer2": 800,
+            },
+            UserResultDict(objective_to_minimize=-804.1884444338738, cost=1.0),
+        ),
+    ]
 
 
 def run_import_trials(optimizer):
     class ExampleSpace(extrapolaw.PipelineSpace):
         float1 = extrapolaw.Float(lower=0, upper=1)
-        float2 = extrapolaw.FloatFidelity(lower=1, upper=10)
+        float2 = extrapolaw.Float(lower=1, upper=10)
         categorical = extrapolaw.Categorical(choices=[0, 1])
         integer1 = extrapolaw.Integer(lower=0, upper=1)
         integer2 = extrapolaw.Integer(lower=1, upper=1000, log=True)
@@ -147,11 +67,11 @@ def run_import_trials(optimizer):
 
     # here we write something
     extrapolaw.acquire(
-        evaluate_pipeline=get_evaluate_pipeline_func(optimizer=optimizer),
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=ExampleSpace(),
         root_directory=f"results/trial_import/initial_results_{optimizer}",
         overwrite_root_directory=True,
-        worker_fidelities_to_spend=5,
+        worker_evaluations_to_spend=5,
         worker_id=f"worker_{optimizer}-{socket.gethostname()}-{os.getpid()}",
         optimizer=optimizer,
     )
@@ -174,13 +94,13 @@ def run_import_trials(optimizer):
     )
 
     logging.info(
-        f"{'-' * 80} Importing {len(get_evaluated_trials(optimizer))} trials for optimizer"
+        f"{'-' * 80} Importing {len(get_evaluated_trials())} trials for optimizer"
         f" {optimizer}. {'-' * 80}"
     )
 
     # import some trials evaluated in some other setup
     extrapolaw.import_trials(
-        evaluated_trials=get_evaluated_trials(optimizer),
+        evaluated_trials=get_evaluated_trials(),
         root_directory=f"results/trial_import/results_{optimizer}",
         pipeline_space=ExampleSpace(),
         optimizer=optimizer,
@@ -189,10 +109,10 @@ def run_import_trials(optimizer):
     logging.info(f"{'-' * 80} Running after import for optimizer {optimizer}. {'-' * 80}")
 
     extrapolaw.acquire(
-        evaluate_pipeline=get_evaluate_pipeline_func(optimizer=optimizer),
+        evaluate_pipeline=evaluate_pipeline,
         pipeline_space=ExampleSpace(),
         root_directory=f"results/trial_import/results_{optimizer}",
-        worker_fidelities_to_spend=10,
+        worker_evaluations_to_spend=10,
         worker_id=f"worker_{optimizer}_resume-{socket.gethostname()}-{os.getpid()}",
         optimizer=optimizer,
     )
@@ -204,18 +124,7 @@ if __name__ == "__main__":
         "--optimizer",
         type=str,
         required=True,
-        choices=[
-            "asha",
-            "successive_halving",
-            "priorband",
-            "primo",
-            "ifbo",
-            "hyperband",
-            "bayesian_optimization",
-            "async_hb",
-            "extrapolaw_hyperband",
-            "extrapolaw_priorband",
-        ],
+        choices=["random_search", "bayesian_optimization"],
         help="Optimizer to test.",
     )
     args = parser.parse_args()

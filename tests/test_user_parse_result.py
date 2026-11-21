@@ -70,30 +70,6 @@ EXCEPTION = Exception("")
             d(lc="objective_to_minimize"),
             UserResult(objective_to_minimize=1.0, cost=2.0, learning_curve=[1.0]),
         ),
-        # Multiobjective
-        (
-            {"objective_to_minimize": [1.0, 2.0], "cost": 2.0},
-            d(),
-            UserResult(objective_to_minimize=[1.0, 2.0], cost=2.0),
-        ),
-        (
-            {"objective_to_minimize": [1.0, 2.0]},
-            d(cost=2.0, lc=[5.0, 6.0]),
-            UserResult(
-                objective_to_minimize=[1.0, 2.0],
-                cost=2.0,
-                learning_curve=[5.0, 6.0],
-            ),
-        ),
-        (
-            {"objective_to_minimize": [1.0, 2.0], "cost": 2.0},
-            d(lc="objective_to_minimize"),
-            UserResult(
-                objective_to_minimize=[1.0, 2.0],
-                cost=2.0,
-                learning_curve=[[1.0, 2.0]],
-            ),
-        ),
         # Exception
         (
             {"exception": EXCEPTION},
@@ -128,21 +104,6 @@ EXCEPTION = Exception("")
                 cost=2.0,
                 learning_curve=[5.0],
                 exception=EXCEPTION,
-            ),
-        ),
-        (
-            {
-                "objective_to_minimize": [1.0, 2.0],
-                "cost": 2.0,
-                "learning_curve": None,
-                "exception": None,
-            },
-            d(lc="objective_to_minimize"),
-            UserResult(
-                objective_to_minimize=[1.0, 2.0],
-                cost=2.0,
-                learning_curve=[[1.0, 2.0]],
-                exception=None,
             ),
         ),
         (
@@ -199,6 +160,8 @@ def test_user_result_parse_success(
         ({"objective_to_minimize": 1.0, "cost": None}, d()),
         # Bad values
         ({"objective_to_minimize": object()}, d()),
+        # Multi-objective is not supported
+        ({"objective_to_minimize": [1.0, 2.0], "cost": 2.0}, d()),
         ({"objective_to_minimize": 1.0, "cost": object()}, d()),
         ({"objective_to_minimize": 1.0, "learning_curve": object()}, d()),
         ({"objective_to_minimize": 1.0, "info_dict": object()}, d()),

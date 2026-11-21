@@ -78,78 +78,34 @@ def case_search_space_fid_with_prior() -> PipelineSpace:
     return SpaceFidPrior()
 
 
-# See issue #121
-JUST_SKIP = [
-    "multifidelity_tpe",
-]
-
 # There's no programattic way to check if a class requires or
 # doesnt support a fidelity/prior.
 # See issue #118, #119, #120
 # For now, keep these lists up to date manually and xfail the tests
 # that require a fidelity/prior.
-REQUIRES_FIDELITY = [
-    "successive_halving",
-    "asha",
-    "hyperband",
-    "async_hb",
-    "ifbo",
-    "priorband",
-    "moasha",
-    "mo_hyperband",
-    "extrapolaw_priorband",
-    "extrapolaw_hyperband",
-]
 NO_DEFAULT_FIDELITY_SUPPORT = [
     "random_search",
     "grid_search",
     "bayesian_optimization",
-    "pibo",
     "extrapolaw_random_search",
     "complex_random_search",
-    "extrapolaw_regularized_evolution",
 ]
 NO_DEFAULT_PRIOR_SUPPORT = [
     "grid_search",
     "bayesian_optimization",
-    "ifbo",
-    "successive_halving",
-    "asha",
-    "hyperband",
-    "async_hb",
     "random_search",
-    "moasha",
-    "mo_hyperband",
     "extrapolaw_random_search",
     "complex_random_search",
-    "extrapolaw_regularized_evolution",
-]
-REQUIRES_PRIOR = [
-    "pibo",
-    "priorband",
-]
-
-REQUIRES_FIDELITY_MO = [
-    "moasha",
-    "mo_hyperband",
-]
-
-REQUIRES_MO_PRIOR = [
-    "primo",
 ]
 
 REQUIRES_EXTRAPOLAW_SPACE = [
-    "extrapolaw_priorband",
     "extrapolaw_random_search",
     "complex_random_search",
-    "extrapolaw_hyperband",
-    "extrapolaw_regularized_evolution",
-    "extrapolaw_local_and_incumbent",
 ]
 
 # Chinchilla needs a data parameter, a `params_estimator` and a `cost_estimator`,
 # see tests/test_optimizers/test_chinchilla.py
-REQUIRES_ADDTIONAL_SETUP = ["extrapolaw_local_and_incumbent", "chinchilla"]
+REQUIRES_ADDTIONAL_SETUP = ["chinchilla"]
 
 # Every search space case here has a categorical, see tests/test_optimizers/test_carbs.py
 NO_CATEGORICAL_SUPPORT = ["carbs"]
@@ -161,9 +117,6 @@ NO_CATEGORICAL_SUPPORT = ["carbs"]
 def optimizer_and_key_and_search_space(
     key: str, search_space: PipelineSpace
 ) -> tuple[AskFunction, str, PipelineSpace | SearchSpace]:
-    if key in JUST_SKIP:
-        pytest.xfail(f"{key} is not instantiable")
-
     if key in NO_CATEGORICAL_SUPPORT:
         pytest.xfail(f"{key} does not support categoricals")
 
@@ -172,18 +125,6 @@ def optimizer_and_key_and_search_space(
 
     if search_space.fidelity_attrs and key in NO_DEFAULT_FIDELITY_SUPPORT:
         pytest.xfail(f"{key} crashed with a fidelity")
-
-    if key in REQUIRES_FIDELITY and not search_space.fidelity_attrs:
-        pytest.xfail(f"{key} requires a fidelity parameter")
-
-    if key in REQUIRES_PRIOR and not search_space.has_priors():
-        pytest.xfail(f"{key} requires a prior")
-
-    if key in REQUIRES_FIDELITY_MO and not search_space.fidelity_attrs:
-        pytest.xfail(f"Multi-objective optimizer {key} requires a fidelity parameter")
-
-    if key in REQUIRES_MO_PRIOR:
-        pytest.xfail("No tests defined for PriMO yet")
 
     if key in REQUIRES_ADDTIONAL_SETUP:
         pytest.xfail(f"{key} requires additional setup not implemented in this test")
@@ -325,15 +266,12 @@ def test_optimizers_work_roughly(
         AskFunction, str, PipelineSpace | SearchSpace
     ],
 ) -> None:
-    opt, key, _search_space = optimizer_and_key_and_search_space
+    opt, _key, _search_space = optimizer_and_key_and_search_space
     ask_and_tell = AskAndTell(opt)
 
     for _ in range(20):
         trial = ask_and_tell.ask()
-        if key in REQUIRES_FIDELITY_MO:
-            ask_and_tell.tell(trial, {"objective_to_minimize": [1.0, 2.0], "cost": 1.0})
-        else:
-            ask_and_tell.tell(trial, {"objective_to_minimize": 1.0, "cost": 1.0})
+        ask_and_tell.tell(trial, {"objective_to_minimize": 1.0, "cost": 1.0})
 
 
 @fixture

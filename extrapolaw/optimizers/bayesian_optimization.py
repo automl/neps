@@ -9,14 +9,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
 import matplotlib.pyplot as plt
-import numpy as np
 import torch
 from botorch.acquisition import LinearMCObjective
 from botorch.acquisition.logei import qLogNoisyExpectedImprovement
-from botorch.acquisition.multi_objective.logei import (
-    qLogNoisyExpectedHypervolumeImprovement,
-)
-from botorch.models.transforms.outcome import Standardize
 from botorch.utils.sampling import draw_sobol_samples
 
 from extrapolaw.exceptions import BudgetExhaustedError, ConstraintViolationError
@@ -43,7 +38,6 @@ from extrapolaw.space.extrapolaw_spaces.parameters import PipelineSpace
 if TYPE_CHECKING:
     from botorch.models import SingleTaskGP
 
-    from extrapolaw.sampling import Prior
     from extrapolaw.space import ConfigEncoder, SearchSpace
     from extrapolaw.state import BudgetInfo, Trial
     from extrapolaw.state.pipeline_eval import UserResultDict
@@ -58,36 +52,6 @@ INITIAL_DESIGN_OVERSAMPLING_FACTOR = 40
 ACQUISITION_COST_MARGIN = 1e-3
 
 
-def _pibo_exp_term(
-    n_sampled_already: int,
-    ndims: int,
-    initial_design_size: int,
-) -> float:
-    # pibo paper
-    # https://arxiv.org/pdf/2204.11051
-    #
-    # they use some constant determined from max problem budget. seems impractical,
-    # given we might not know the final budget (i.e. imagine you iteratively increase
-    # the budget as you go along).
-    #
-    # instead, we base it on the fact that in lower dimensions, we don't to rely
-    # on the prior for too long as the amount of space you need to cover around the
-    # prior is fairly low. effectively, since the gp needs little samples to
-    # model pretty effectively in low dimension, we can derive the utility from
-    # the prior pretty quickly.
-    #
-    # however, for high dimensional settings, we want to rely longer on the prior
-    # for longer as the number of samples needed to model the area around the prior
-    # is much larger, and deriving the utility will take longer.
-    #
-    # in the end, we would like some curve going from 1->0 as n->inf, where `n` is
-    # the number of samples we have done so far.
-    # the easiest function that does this is `exp(-n)`, with some discounting of `n`
-    # dependant on the number of dimensions.
-    n_bo_samples = n_sampled_already - initial_design_size
-    return math.exp(-n_bo_samples / ndims)
-
-
 @dataclass
 class BayesianOptimization(ScalingOptimizer):
     """Uses `botorch` as an engine for doing bayesian optimiziation."""
@@ -97,9 +61,6 @@ class BayesianOptimization(ScalingOptimizer):
 
     encoder: ConfigEncoder
     """The encoder to use for encoding and decoding configurations."""
-
-    prior: Prior | None
-    """The prior to use for sampling configurations and inferring their likelihood."""
 
     sample_prior_first: bool
     """Whether to sample the prior configuration first."""
@@ -112,9 +73,6 @@ class BayesianOptimization(ScalingOptimizer):
 
     device: torch.device | None
     """The device to use for the optimization."""
-
-    reference_point: tuple[float, ...] | None = None
-    """The reference point to use for the multi-objective optimization."""
 
     num_restarts: int = 20
     """The number of restarts to use when optimizing the acquisition function.
@@ -570,7 +528,7 @@ class BayesianOptimization(ScalingOptimizer):
                     sample_prior_first=self.sample_prior_first
                     if n_sampled == 0
                     else False,
-                    sampler=self.prior if self.prior is not None else "uniform",
+                    sampler="uniform",
                     seed=None,  # TODO: Seeding, but need to avoid repeating configs
                     sample_size=self.n_initial_design,
                     constraints_func=constraints_func,
@@ -629,326 +587,245 @@ class BayesianOptimization(ScalingOptimizer):
                 raise ValueError("Cost budget must be set if using cost")
             cost_percent = budget_info.used_cost_budget / budget_info.worker_cost_to_spend
 
-        # If we should use the prior, weight the acquisition function by
-        # the probability of it being sampled from the prior.
-        pibo_exp_term = None
-        prior = None
-        if self.prior:
-            pibo_exp_term = _pibo_exp_term(
-                len(trials), encoder.ndim, self.n_initial_design
-            )
-            # If the exp term is insignificant, skip prior acq. weighting
-            prior = None if pibo_exp_term < 1e-4 else self.prior
-
         n_to_acquire = n_to_sample - len(sampled_configs)
 
-        num_objectives = None
-        for trial in trials.values():
-            if trial.report is not None:
-                match trial.report.objective_to_minimize:
-                    case None:
-                        continue
-                    case Sequence():
-                        if num_objectives is None:
-                            num_objectives = len(trial.report.objective_to_minimize)
-                        assert (
-                            len(trial.report.objective_to_minimize) == num_objectives
-                        ), "All trials must have the same number of objectives."
-                    case float():
-                        if num_objectives is None:
-                            num_objectives = 1
-                        assert num_objectives == 1, (
-                            "All trials must have the same number of objectives."
-                        )
-                    case _:
-                        raise TypeError(
-                            "Objective to minimize must be a float or a sequence "
-                            "of floats."
-                        )
-
-        # Sanity check, but this shouldn't happen in the first place since we
-        # check `n_evaluated < self.n_initial_design` above.
-        assert num_objectives is not None, (
-            "Either no trials have been completed or"
-            " No trials reports have objective values."
-        )
-
-        if num_objectives > 1:
-            gp = make_default_single_obj_gp(
+        if self.prior_mean == "zero":
+            gp = make_single_obj_gp(
                 x=data.x,
                 y=data.y,
                 encoder=encoder,
-                y_transform=Standardize(m=data.y.shape[-1]),
+                prior_mean="zero",
+                log_y=self.log_y,
             )
-            if self.reference_point is not None:
-                assert len(self.reference_point) == num_objectives, (
-                    "Reference point must have the same number of objectives as the"
-                    " trials."
-                )
-                ref_point = torch.tensor(
-                    self.reference_point,
-                    dtype=data.x.dtype,
-                    device=data.x.device,
+        elif cost_estimator is None:
+            logger.warning(
+                "No cost estimator, the GP falls back to a constant prior mean"
+                " instead of the power law in the cost."
+            )
+            gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
+        else:
+            # Fit a power law to determine GP mean prior
+            from extrapolaw.utils.power_law import fit_power_law_mean_params
+
+            completed = [
+                (trial.config, trial.report.objective_to_minimize)
+                for trial in trials.values()
+                if trial.report is not None
+                and trial.report.objective_to_minimize is not None
+            ]
+            mean_params = fit_power_law_mean_params(
+                [config for config, _ in completed],
+                [objective for _, objective in completed],
+                cost_estimator,
+            )
+            if mean_params.fit is not None:
+                logger.info(
+                    f"Fitted power law: slope={mean_params.slope:.4f}, "
+                    f"intercept={mean_params.intercept:.4f}, "
+                    f"r²={mean_params.fit.r_squared:.4f}, "
+                    f"n={mean_params.fit.num_points}"
                 )
             else:
-                ref_point = torch.tensor(
-                    _get_reference_point(data.y.numpy()),
-                    dtype=data.x.dtype,
-                    device=data.x.device,
+                logger.warning(
+                    "Insufficient data for power law fit "
+                    f"({len(mean_params.flops)} trials). "
+                    f"Using default slope={mean_params.slope}, "
+                    f"intercept={mean_params.intercept}."
                 )
-            acquisition = qLogNoisyExpectedHypervolumeImprovement(
+
+            gp = make_single_obj_gp(
+                x=data.x,
+                y=data.y,
+                encoder=encoder,
+                prior_mean="power_law",
+                cost_estimator=cost_estimator,
+                min_cost=mean_params.min_flops,
+                mean_slope=mean_params.slope,
+                mean_bias=mean_params.intercept,
+                log_y=self.log_y,
+            )
+        from botorch.fit import fit_gpytorch_mll
+        from gpytorch import ExactMarginalLogLikelihood
+
+        fit_gpytorch_mll(ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp))
+
+        if self.acquisition_func_type == "EI":
+            acquisition = qLogNoisyExpectedImprovement(
                 model=gp,
-                ref_point=ref_point,
                 X_baseline=data.x,
+                # Unfortunatly, there's no option to indicate that we minimize
+                # the AcqFunction so we need to do some kind of transformation.
+                # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
+                objective=LinearMCObjective(weights=torch.tensor([-1.0])),
                 X_pending=data.x_pending,
                 prune_baseline=True,
             )
-        else:
-            if self.prior_mean == "zero":
-                gp = make_single_obj_gp(
-                    x=data.x,
-                    y=data.y,
-                    encoder=encoder,
-                    prior_mean="zero",
-                    log_y=self.log_y,
-                )
-            elif cost_estimator is None:
-                logger.warning(
-                    "No cost estimator, the GP falls back to a constant prior mean"
-                    " instead of the power law in the cost."
-                )
-                gp = make_default_single_obj_gp(x=data.x, y=data.y, encoder=encoder)
-            else:
-                # Fit a power law to determine GP mean prior
-                from extrapolaw.utils.power_law import fit_power_law_mean_params
+        elif self.acquisition_func_type == "IT-JES":
+            from botorch.acquisition.joint_entropy_search import qJointEntropySearch
+            from botorch.acquisition.utils import get_optimal_samples
 
-                completed = [
-                    (trial.config, trial.report.objective_to_minimize)
-                    for trial in trials.values()
-                    if trial.report is not None
-                    and trial.report.objective_to_minimize is not None
-                ]
-                mean_params = fit_power_law_mean_params(
-                    [config for config, _ in completed],
-                    [objective for _, objective in completed],
-                    cost_estimator,
-                )
-                if mean_params.fit is not None:
-                    logger.info(
-                        f"Fitted power law: slope={mean_params.slope:.4f}, "
-                        f"intercept={mean_params.intercept:.4f}, "
-                        f"r²={mean_params.fit.r_squared:.4f}, "
-                        f"n={mean_params.fit.num_points}"
-                    )
-                else:
-                    logger.warning(
-                        "Insufficient data for power law fit "
-                        f"({len(mean_params.flops)} trials). "
-                        f"Using default slope={mean_params.slope}, "
-                        f"intercept={mean_params.intercept}."
-                    )
-
-                gp = make_single_obj_gp(
-                    x=data.x,
-                    y=data.y,
-                    encoder=encoder,
-                    prior_mean="power_law",
-                    cost_estimator=cost_estimator,
-                    min_cost=mean_params.min_flops,
-                    mean_slope=mean_params.slope,
-                    mean_bias=mean_params.intercept,
-                    log_y=self.log_y,
-                )
-            from botorch.fit import fit_gpytorch_mll
-            from gpytorch import ExactMarginalLogLikelihood
-
-            fit_gpytorch_mll(
-                ExactMarginalLogLikelihood(likelihood=gp.likelihood, model=gp)
+            lower = [domain.lower for domain in encoder.domains]
+            upper = [domain.upper for domain in encoder.domains]
+            bounds = torch.tensor(
+                [lower, upper], dtype=torch.float64, device=data.x.device
             )
 
-            if self.acquisition_func_type == "EI":
-                acquisition = qLogNoisyExpectedImprovement(
-                    model=gp,
-                    X_baseline=data.x,
-                    # Unfortunatly, there's no option to indicate that we minimize
-                    # the AcqFunction so we need to do some kind of transformation.
-                    # https://github.com/pytorch/botorch/issues/2316#issuecomment-2085964607
-                    objective=LinearMCObjective(weights=torch.tensor([-1.0])),
-                    X_pending=data.x_pending,
-                    prune_baseline=True,
+            if encoded_constraints_func is None:
+                optimal_inputs, optimal_outputs = get_optimal_samples(
+                    model=gp, bounds=bounds, num_optima=4, maximize=False
                 )
-            elif self.acquisition_func_type == "IT-JES":
-                from botorch.acquisition.joint_entropy_search import qJointEntropySearch
-                from botorch.acquisition.utils import get_optimal_samples
-
-                lower = [domain.lower for domain in encoder.domains]
-                upper = [domain.upper for domain in encoder.domains]
-                bounds = torch.tensor(
-                    [lower, upper], dtype=torch.float64, device=data.x.device
-                )
-
-                if encoded_constraints_func is None:
-                    optimal_inputs, optimal_outputs = get_optimal_samples(
-                        model=gp, bounds=bounds, num_optima=4, maximize=False
-                    )
-                else:
-                    # `get_optimal_samples` can't handle the constraints, so we
-                    # sample the optima over a feasible candidate set instead
-                    candidate_set = _feasible_candidates(
-                        draw_sobol_samples(bounds=bounds, n=2048, q=1).squeeze(1),
-                        encoded_constraints_func,
-                    )
-                    optimal_inputs, optimal_outputs = _sample_optima(
-                        gp, candidate_set, num_optima=4
-                    )
-
-                # Check for NaN/inf in optimal samples and fallback to EI if found
-                if (
-                    torch.isnan(optimal_inputs).any()
-                    or torch.isinf(optimal_inputs).any()
-                    or torch.isnan(optimal_outputs).any()
-                    or torch.isinf(optimal_outputs).any()
-                ):
-                    raise ValueError(
-                        "NaN/Inf detected in optimal_samples from get_optimal_samples. "
-                    )
-
-                acquisition = qJointEntropySearch(
-                    model=gp,
-                    optimal_inputs=optimal_inputs,
-                    optimal_outputs=optimal_outputs,
-                    condition_noiseless=True,
-                    estimation_type="MC",
-                    num_samples=128,
-                    X_pending=None,
-                    maximize=False,
-                )
-            elif self.acquisition_func_type == "IT-MES":
-                from botorch.acquisition.max_value_entropy_search import (
-                    qLowerBoundMaxValueEntropy,
-                )
-
-                lower = [domain.lower for domain in encoder.domains]
-                upper = [domain.upper for domain in encoder.domains]
-                bounds = torch.tensor(
-                    [lower, upper], dtype=torch.float64, device=data.x.device
-                )
-
-                candidate_set = (
-                    draw_sobol_samples(bounds=bounds, n=512, q=1)
-                    .squeeze(1)
-                    .to(dtype=torch.float64)
-                )
+            else:
+                # `get_optimal_samples` can't handle the constraints, so we
+                # sample the optima over a feasible candidate set instead
                 candidate_set = _feasible_candidates(
-                    candidate_set, encoded_constraints_func
+                    draw_sobol_samples(bounds=bounds, n=2048, q=1).squeeze(1),
+                    encoded_constraints_func,
                 )
-
-                acquisition = qLowerBoundMaxValueEntropy(
-                    model=gp,
-                    candidate_set=candidate_set,
-                    maximize=False,
-                )
-            elif self.acquisition_func_type == "IT-SCAN-JES":
-                from extrapolaw.optimizers.acquisition.information_theoretic import (
-                    CostWeightedModifiedJES,
-                )
-
-                lower = [domain.lower for domain in encoder.domains]
-                upper = [domain.upper for domain in encoder.domains]
-                bounds = torch.tensor(
-                    [lower, upper], dtype=torch.float64, device=data.x.device
-                )
-
-                # Build a candidate set restricted to configs near C_target. The optima
-                # at the target are never evaluated, so the pool only keeps the user
-                # constraint, not the cap of the budget schedule or
-                # `max_cost_per_config`, which the target usually lies beyond. The
-                # acquisition itself is still optimized under both.
-                raw_candidates = (
-                    draw_sobol_samples(bounds=bounds, n=2048, q=1)
-                    .squeeze(1)
-                    .to(dtype=torch.float64)
-                )
-                user_constraint = self.constraints_func
-                if user_constraint is not None:
-                    constants = {**self.space.constants, **fidelity_upper}
-                    raw_candidates = _feasible_candidates(
-                        raw_candidates,
-                        encode_constraints_func(
-                            lambda config: user_constraint({**constants, **config}),
-                            encoder=encoder,
-                        ),
-                    )
-                target_flops = self.target_flops
-                if target_flops is None:
-                    raise ValueError(
-                        "The 'IT-SCAN-JES' acquisition needs `target_flops`, the FLOPs"
-                        " it samples the optima around."
-                    )
-                assert cost_estimator is not None
-                log_cost = LogCost(encoder, cost_estimator)
-                log10_target = math.log10(target_flops)
-                distance = (log_cost.evaluate(raw_candidates) - log10_target).abs()
-                # Widen the window around the target FLOPs until it holds enough
-                # candidates, starting at 2/3 to 1.5x the target
-                for factor in (1.5, 3.0, 10.0):
-                    in_window = distance < math.log10(factor)
-                    if in_window.sum() >= 4:
-                        if factor > 1.5:
-                            logger.warning(
-                                "Too few candidates cost within 1.5x of the target"
-                                f" FLOPs {target_flops:e}, sampling the optima over"
-                                f" those within {factor}x."
-                            )
-                        break
-                else:
-                    logger.warning(
-                        "No window around the target FLOPs holds enough candidates,"
-                        " sampling the optima over all candidates."
-                    )
-                    in_window = torch.ones_like(in_window)
-                candidate_set = raw_candidates[in_window]
-
-                # Sample S posterior paths over the C_target-filtered candidate set
-                # and take the argmin of each path to get fantasy optima at C_target.
                 optimal_inputs, optimal_outputs = _sample_optima(
                     gp, candidate_set, num_optima=4
                 )
 
-                if (
-                    torch.isnan(optimal_inputs).any()
-                    or torch.isnan(optimal_outputs).any()
-                ):
-                    raise ValueError("NaN in modified-JES optimal samples")
+            # Check for NaN/inf in optimal samples and fallback to EI if found
+            if (
+                torch.isnan(optimal_inputs).any()
+                or torch.isinf(optimal_inputs).any()
+                or torch.isnan(optimal_outputs).any()
+                or torch.isinf(optimal_outputs).any()
+            ):
+                raise ValueError(
+                    "NaN/Inf detected in optimal_samples from get_optimal_samples. "
+                )
 
-                # Fixed bounds for the normalized cost term, so it doesn't move with
-                # the costs observed so far. The lower one is the cheapest config of the
-                # space, not the cheapest the schedule samples: cheaper configs stay
-                # feasible after the initial design, and below the lower bound the cost
-                # term clamps to its epsilon, which would favour all of them alike
-                if cost_bounds is None:
-                    top_cost = self.max_cost_per_config or float(
-                        10 ** log_cost.evaluate(raw_candidates).max()
-                    )
-                else:
-                    top_cost = cost_bounds[1]
-                lowest_log_cost = torch.cat(
-                    [log_cost.evaluate(bounds[:1]), log_cost.evaluate(raw_candidates)]
-                ).min()
-                cost_bounds = (float(10**lowest_log_cost), top_cost)
-                acquisition = CostWeightedModifiedJES(
-                    model=gp,
-                    optimal_inputs=optimal_inputs,
-                    optimal_outputs=optimal_outputs,
-                    log_cost=log_cost,
-                    c_min_log=math.log10(cost_bounds[0]),
-                    c_max_log=math.log10(cost_bounds[1]),
+            acquisition = qJointEntropySearch(
+                model=gp,
+                optimal_inputs=optimal_inputs,
+                optimal_outputs=optimal_outputs,
+                condition_noiseless=True,
+                estimation_type="MC",
+                num_samples=128,
+                X_pending=None,
+                maximize=False,
+            )
+        elif self.acquisition_func_type == "IT-MES":
+            from botorch.acquisition.max_value_entropy_search import (
+                qLowerBoundMaxValueEntropy,
+            )
+
+            lower = [domain.lower for domain in encoder.domains]
+            upper = [domain.upper for domain in encoder.domains]
+            bounds = torch.tensor(
+                [lower, upper], dtype=torch.float64, device=data.x.device
+            )
+
+            candidate_set = (
+                draw_sobol_samples(bounds=bounds, n=512, q=1)
+                .squeeze(1)
+                .to(dtype=torch.float64)
+            )
+            candidate_set = _feasible_candidates(candidate_set, encoded_constraints_func)
+
+            acquisition = qLowerBoundMaxValueEntropy(
+                model=gp,
+                candidate_set=candidate_set,
+                maximize=False,
+            )
+        elif self.acquisition_func_type == "IT-SCAN-JES":
+            from extrapolaw.optimizers.acquisition.information_theoretic import (
+                CostWeightedModifiedJES,
+            )
+
+            lower = [domain.lower for domain in encoder.domains]
+            upper = [domain.upper for domain in encoder.domains]
+            bounds = torch.tensor(
+                [lower, upper], dtype=torch.float64, device=data.x.device
+            )
+
+            # Build a candidate set restricted to configs near C_target. The optima
+            # at the target are never evaluated, so the pool only keeps the user
+            # constraint, not the cap of the budget schedule or
+            # `max_cost_per_config`, which the target usually lies beyond. The
+            # acquisition itself is still optimized under both.
+            raw_candidates = (
+                draw_sobol_samples(bounds=bounds, n=2048, q=1)
+                .squeeze(1)
+                .to(dtype=torch.float64)
+            )
+            user_constraint = self.constraints_func
+            if user_constraint is not None:
+                constants = {**self.space.constants, **fidelity_upper}
+                raw_candidates = _feasible_candidates(
+                    raw_candidates,
+                    encode_constraints_func(
+                        lambda config: user_constraint({**constants, **config}),
+                        encoder=encoder,
+                    ),
+                )
+            target_flops = self.target_flops
+            if target_flops is None:
+                raise ValueError(
+                    "The 'IT-SCAN-JES' acquisition needs `target_flops`, the FLOPs"
+                    " it samples the optima around."
+                )
+            assert cost_estimator is not None
+            log_cost = LogCost(encoder, cost_estimator)
+            log10_target = math.log10(target_flops)
+            distance = (log_cost.evaluate(raw_candidates) - log10_target).abs()
+            # Widen the window around the target FLOPs until it holds enough
+            # candidates, starting at 2/3 to 1.5x the target
+            for factor in (1.5, 3.0, 10.0):
+                in_window = distance < math.log10(factor)
+                if in_window.sum() >= 4:
+                    if factor > 1.5:
+                        logger.warning(
+                            "Too few candidates cost within 1.5x of the target"
+                            f" FLOPs {target_flops:e}, sampling the optima over"
+                            f" those within {factor}x."
+                        )
+                    break
+            else:
+                logger.warning(
+                    "No window around the target FLOPs holds enough candidates,"
+                    " sampling the optima over all candidates."
+                )
+                in_window = torch.ones_like(in_window)
+            candidate_set = raw_candidates[in_window]
+
+            # Sample S posterior paths over the C_target-filtered candidate set
+            # and take the argmin of each path to get fantasy optima at C_target.
+            optimal_inputs, optimal_outputs = _sample_optima(
+                gp, candidate_set, num_optima=4
+            )
+
+            if torch.isnan(optimal_inputs).any() or torch.isnan(optimal_outputs).any():
+                raise ValueError("NaN in modified-JES optimal samples")
+
+            # Fixed bounds for the normalized cost term, so it doesn't move with
+            # the costs observed so far. The lower one is the cheapest config of the
+            # space, not the cheapest the schedule samples: cheaper configs stay
+            # feasible after the initial design, and below the lower bound the cost
+            # term clamps to its epsilon, which would favour all of them alike
+            if cost_bounds is None:
+                top_cost = self.max_cost_per_config or float(
+                    10 ** log_cost.evaluate(raw_candidates).max()
                 )
             else:
-                raise NotImplementedError(
-                    "Acquisition function not supported for single objective "
-                    "optimization."
-                )
+                top_cost = cost_bounds[1]
+            lowest_log_cost = torch.cat(
+                [log_cost.evaluate(bounds[:1]), log_cost.evaluate(raw_candidates)]
+            ).min()
+            cost_bounds = (float(10**lowest_log_cost), top_cost)
+            acquisition = CostWeightedModifiedJES(
+                model=gp,
+                optimal_inputs=optimal_inputs,
+                optimal_outputs=optimal_outputs,
+                log_cost=log_cost,
+                c_min_log=math.log10(cost_bounds[0]),
+                c_max_log=math.log10(cost_bounds[1]),
+            )
+        else:
+            raise NotImplementedError(
+                "Acquisition function not supported for single objective optimization."
+            )
 
         # Prepare acq_options with constraints if provided
         acq_opts = {}
@@ -968,9 +845,7 @@ class BayesianOptimization(ScalingOptimizer):
             x_train=data.x,
             encoder=encoder,
             acquisition=acquisition,
-            prior=prior,
             n_candidates_required=n_to_acquire,
-            pibo_exp_term=pibo_exp_term,
             costs=data.cost
             if (
                 self.cost_aware is not False
@@ -1087,10 +962,3 @@ def _sample_optima(
     optimal_inputs = candidate_set[best_idxs]  # (S, D)
     optimal_outputs = samples[torch.arange(num_optima), best_idxs].unsqueeze(-1)  # (S, 1)
     return optimal_inputs, optimal_outputs
-
-
-def _get_reference_point(loss_vals: np.ndarray) -> np.ndarray:
-    """Get the reference point from the completed Trials."""
-    eps = 1e-4
-    worst_point = np.max(loss_vals, axis=0)
-    return worst_point * (1 + eps)

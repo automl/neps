@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from portalocker import portalocker
 
@@ -54,7 +54,6 @@ from extrapolaw.status.summary import (
     ResourceUsage,
     SummaryWriter,
     calculate_total_resource_usage,
-    resolve_fidelity_name,
 )
 from extrapolaw.utils.common import gc_disabled
 
@@ -156,8 +155,7 @@ def _set_global_trial(trial: Trial) -> Iterator[None]:
             "A trial was already set to run in this process, yet some other trial was"
             " attempted to be set as the global trial in progress."
             " We assume that each process will only ever have one trial running at a time"
-            " to allow functionality like `extrapolaw.get_in_progress_trial()`,"
-            " `load_checkpoint()` and `save_checkpoint()` to work."
+            " to allow functionality like `extrapolaw.get_in_progress_trial()` to work."
             "\n\nThis is most likely a bug and should be reported to Extrapolaw!"
         )
     _CURRENTLY_RUNNING_TRIAL_IN_PROCESS = trial
@@ -293,14 +291,9 @@ class DefaultWorker:
         return False
 
     @cached_property
-    def _fidelity_name(self) -> str | None:
-        return self.state.fidelity_name or resolve_fidelity_name(self.optimizer)
-
-    @cached_property
     def _summary_writer(self) -> SummaryWriter:
         return SummaryWriter(
             root_directory=Path(self.state.path),
-            fidelity_name=self._fidelity_name,
             live_plots=self.settings.live_plots,
             optimizer=self.optimizer,
         )
@@ -322,12 +315,11 @@ class DefaultWorker:
         """
         return calculate_total_resource_usage(
             trials,
-            self._fidelity_name,
             subset_worker_id,
             include_in_progress=include_in_progress,
         )
 
-    def _check_global_stopping_criterion(  # noqa: C901, PLR0912
+    def _check_global_stopping_criterion(  # noqa: C901
         self,
         trials: Mapping[str, Trial],
         log_status: bool = False,  # noqa: FBT001, FBT002
@@ -351,11 +343,6 @@ class DefaultWorker:
         )
         total_cost_to_spend = (
             getattr(budget_info, "total_cost_to_spend", None)
-            if budget_info is not None
-            else None
-        )
-        total_fidelities_to_spend = (
-            getattr(budget_info, "total_fidelities_to_spend", None)
             if budget_info is not None
             else None
         )
@@ -387,20 +374,6 @@ class DefaultWorker:
                     f" {worker_resource_usage.evaluations}/"
                     f"{self.settings.worker_evaluations_to_spend}"
                     f" ({eval_percentage}%)"
-                )
-            if self.settings.worker_fidelities_to_spend:
-                fidelity_percentage = int(
-                    (
-                        worker_resource_usage.fidelities
-                        / self.settings.worker_fidelities_to_spend
-                    )
-                    * 100
-                )
-                budget_info_parts.append(
-                    "Fidelities:"
-                    f" {worker_resource_usage.fidelities}/"
-                    f"{self.settings.worker_fidelities_to_spend}"
-                    f" ({fidelity_percentage}%)"
                 )
             if self.settings.worker_cost_to_spend:
                 cost_percentage = int(
@@ -440,18 +413,6 @@ class DefaultWorker:
                 "Worker has reached the maximum number of evaluations it is allowed"
                 f" to do as given by `{self.settings.worker_evaluations_to_spend=}`."
                 "\nTo allow more evaluations, increase this value or use a different"
-                " stopping criterion."
-            )
-
-        if (
-            self.settings.worker_fidelities_to_spend is not None
-            and worker_resource_usage.fidelities
-            >= self.settings.worker_fidelities_to_spend
-        ):
-            return_string = (
-                "The total number of fidelity evaluations has reached the maximum"
-                f" allowed of `{self.settings.worker_fidelities_to_spend=}`."
-                " To allow more evaluations, increase this value or use a different"
                 " stopping criterion."
             )
 
@@ -501,16 +462,6 @@ class DefaultWorker:
                 f" The total cost spent is '{global_resource_usage.cost}'."
             )
 
-        if (
-            total_fidelities_to_spend is not None
-            and global_resource_usage.fidelities >= total_fidelities_to_spend
-        ):
-            return_string = (
-                "All workers together have reached the maximum fidelity allowed as"
-                f" given by `total_fidelities_to_spend={total_fidelities_to_spend}`."
-                f" The total fidelity spent is '{global_resource_usage.fidelities}'."
-            )
-
         return (return_string, global_resource_usage)
 
     @property
@@ -521,7 +472,6 @@ class DefaultWorker:
         return (
             self.settings.worker_evaluations_to_spend is not None
             or self.settings.worker_cost_to_spend is not None
-            or self.settings.worker_fidelities_to_spend is not None
             or self.settings.max_evaluation_time_total_seconds is not None
             or (
                 budget_info is not None
@@ -535,12 +485,6 @@ class DefaultWorker:
                     or getattr(
                         budget_info,
                         "total_cost_to_spend",
-                        None,
-                    )
-                    is not None
-                    or getattr(
-                        budget_info,
-                        "total_fidelities_to_spend",
                         None,
                     )
                     is not None
@@ -779,12 +723,18 @@ class DefaultWorker:
                 )
 
             if report is None:
-                logger.info(
-                    "Worker '%s' evaluated trial: %s async task detected.",
-                    self.worker_id,
-                    evaluated_trial.id,
+                if self.settings.is_async:
+                    logger.info(
+                        "Worker '%s' launched trial '%s' asynchronously.",
+                        self.worker_id,
+                        evaluated_trial.id,
+                    )
+                    continue
+                raise ValueError(
+                    f"The evaluation of trial '{evaluated_trial.id}' returned None."
+                    " Return a result, or set `is_async=True` in `extrapolaw.acquire`"
+                    " if the evaluation reports its result later."
                 )
-                continue
 
             logger.info(
                 "Worker '%s' evaluated trial: %s as %s.",
@@ -954,26 +904,6 @@ def _launch_ddp_runtime(
             prev_trial = current_trial
 
 
-def _derived_info_with_fidelity_name(
-    optimizer_info: OptimizerInfo,
-    *,
-    optimizer: AskFunction,
-    pipeline_space: SearchSpace | PipelineSpace,
-) -> dict[str, Any]:
-    """The `derived` info to persist, backfilling a resolved fidelity name.
-
-    Bracket-based optimizers already compute a richer `derived["fidelity"]` (with
-    bounds) via their `derived_info`; for any other optimizer we fall back to
-    resolving just the fidelity's config key from the space.
-    """
-    derived = dict(optimizer_info.get("derived") or {})
-    if "fidelity" not in derived:
-        resolved_fidelity_name = resolve_fidelity_name(optimizer, pipeline_space)
-        if resolved_fidelity_name is not None:
-            derived["fidelity"] = {"name": resolved_fidelity_name}
-    return derived
-
-
 # TODO: This should be done directly in `api.acquire` at some point to make it clearer at
 # an entryy point how the worker is set up to run if someone reads the entry point code.
 def _launch_runtime(  # noqa: PLR0913
@@ -983,6 +913,7 @@ def _launch_runtime(  # noqa: PLR0913
     optimizer_info: OptimizerInfo,
     optimization_dir: Path,
     pipeline_space: SearchSpace | PipelineSpace,
+    is_async: bool = False,
     worker_cost_to_spend: float | None,
     total_evaluations_to_spend: int | None,
     total_cost_to_spend: float | None,
@@ -992,8 +923,6 @@ def _launch_runtime(  # noqa: PLR0913
     continue_until_max_evaluation_completed: bool,
     overwrite_optimization_dir: bool,
     worker_evaluations_to_spend: int | None,
-    worker_fidelities_to_spend: int | float | None,
-    total_fidelities_to_spend: int | float | None,
     sample_batch_size: int | None,
     worker_id: str | None = None,
     live_plots: bool = False,
@@ -1012,12 +941,7 @@ def _launch_runtime(  # noqa: PLR0913
         )
         return
 
-    # Resolved once, here, and persisted with the optimizer info: everything that
-    # summarizes the run later (including `extrapolaw.save_pipeline_results`, which has
-    # no optimizer at hand) reads it back off disk instead of re-deriving it.
-    derived = _derived_info_with_fidelity_name(
-        optimizer_info, optimizer=optimizer, pipeline_space=pipeline_space
-    )
+    derived = dict(optimizer_info.get("derived") or {})
     optimizer_info = OptimizerInfo(
         name=optimizer_info["name"],
         info=optimizer_info["info"],
@@ -1045,11 +969,9 @@ def _launch_runtime(  # noqa: PLR0913
                             worker_cost_to_spend=worker_cost_to_spend,
                             used_cost_budget=0,
                             worker_evaluations_to_spend=worker_evaluations_to_spend,
-                            worker_fidelities_to_spend=worker_fidelities_to_spend,
                             used_evaluations=0,
                             total_evaluations_to_spend=total_evaluations_to_spend,
                             total_cost_to_spend=total_cost_to_spend,
-                            total_fidelities_to_spend=total_fidelities_to_spend,
                         )
                     ),
                     shared_state=None,  # TODO: Unused for the time being...
@@ -1078,7 +1000,6 @@ def _launch_runtime(  # noqa: PLR0913
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=total_evaluations_to_spend,
         total_cost_to_spend=total_cost_to_spend,
-        total_fidelities_to_spend=total_fidelities_to_spend,
     )
 
     settings = WorkerSettings(
@@ -1090,7 +1011,6 @@ def _launch_runtime(  # noqa: PLR0913
         batch_size=sample_batch_size,
         default_report_values=default_report_values,
         worker_evaluations_to_spend=worker_evaluations_to_spend,
-        worker_fidelities_to_spend=worker_fidelities_to_spend,
         include_in_progress_evaluations_towards_maximum=(
             not continue_until_max_evaluation_completed
         ),
@@ -1098,6 +1018,7 @@ def _launch_runtime(  # noqa: PLR0913
         max_evaluation_time_total_seconds=None,  # TODO: User can't specify yet
         max_wallclock_time_seconds=None,  # TODO: User can't specify yet
         live_plots=live_plots,
+        is_async=is_async,
     )
 
     # HACK: Due to nfs file-systems, locking with the default `flock()` is not reliable.

@@ -58,9 +58,9 @@ class MetaData:
 class Report:  # noqa: PLW1641
     """A failed report of the evaluation of a configuration."""
 
-    objective_to_minimize: float | list[float] | None
+    objective_to_minimize: float | None
     cost: float | None
-    learning_curve: list[float] | list[list[float]] | None
+    learning_curve: list[float] | None
     extra: Mapping[str, Any]
     err: Exception | None
     tb: str | None
@@ -217,9 +217,9 @@ class Trial:
         *,
         report_as: Literal["success", "failed", "crashed"],
         time_end: float,
-        objective_to_minimize: float | list[float] | None,
+        objective_to_minimize: float | None,
         cost: float | None,
-        learning_curve: list[float] | list[list[float]] | None,
+        learning_curve: list[float] | None,
         err: Exception | None,
         tb: str | None,
         extra: dict[str, Any] | None,

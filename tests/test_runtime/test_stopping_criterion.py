@@ -6,10 +6,9 @@ from pathlib import Path
 from pytest_cases import fixture
 
 from extrapolaw.exceptions import BudgetExhaustedError
-from extrapolaw.optimizers.algorithms import asha, random_search
+from extrapolaw.optimizers.algorithms import random_search
 from extrapolaw.optimizers.optimizer import OptimizerInfo
 from extrapolaw.runtime import DefaultWorker
-from extrapolaw.space import HPOFloat, HPOInteger, SearchSpace
 from extrapolaw.space.extrapolaw_spaces.parameters import Float, PipelineSpace
 from extrapolaw.state import (
     DefaultReportValues,
@@ -52,7 +51,6 @@ def test_evaluations_to_spend_stopping_criterion(
         worker_evaluations_to_spend=3,  # <- Highlight
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,  # <- cost to spend will not be checked
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -120,7 +118,6 @@ def test_total_evaluations_to_spend_stopping_criterion(
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
@@ -128,7 +125,6 @@ def test_total_evaluations_to_spend_stopping_criterion(
         worker_evaluations_to_spend=3,
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -191,7 +187,6 @@ def test_total_cost_to_spend_stopping_criterion(
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=6,
-        total_fidelities_to_spend=None,
     )
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
@@ -199,7 +194,6 @@ def test_total_cost_to_spend_stopping_criterion(
         worker_evaluations_to_spend=2,
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -259,90 +253,10 @@ def test_total_cost_to_spend_stopping_criterion(
     assert len(extrapolaw_state.lock_and_get_errors()) == 0
 
 
-def test_total_fidelities_to_spend_stopping_criterion(
-    extrapolaw_state: ExtrapolawState,
-) -> None:
-    optimizer = asha(
-        pipeline_space=SearchSpace(
-            {
-                "a": HPOFloat(0, 1),
-                "b": HPOInteger(2, 10, is_fidelity=True),
-            }
-        )
-    )
-
-    settings = WorkerSettings(
-        on_error=OnErrorPossibilities.IGNORE,
-        default_report_values=DefaultReportValues(),
-        worker_evaluations_to_spend=1,
-        include_in_progress_evaluations_towards_maximum=False,
-        worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
-        max_evaluation_time_total_seconds=None,
-        max_wallclock_time_seconds=None,
-        batch_size=None,
-    )
-
-    extrapolaw_state.lock_and_update_global_budgets(
-        total_evaluations_to_spend=None,
-        total_cost_to_spend=None,
-        total_fidelities_to_spend=11,
-    )
-
-    def eval_function(*args, **kwargs) -> dict:
-        return {"objective_to_minimize": 1.0, "cost": 1.0}
-
-    def total_fidelity_spent() -> float:
-        return sum(
-            trial.config["b"]
-            for trial in extrapolaw_state.lock_and_read_trials().values()
-            if trial.report is not None
-        )
-
-    worker = DefaultWorker.new(
-        state=extrapolaw_state,
-        optimizer=optimizer,
-        evaluation_fn=eval_function,
-        settings=settings,
-    )
-    worker.run()
-
-    # One evaluation can spend at most fidelity 10,
-    # so the first worker cannot exhaust a budget of 11.
-    assert total_fidelity_spent() < 11
-
-    # Safety limit: if global fidelity stopping breaks,
-    # this prevents the test from running forever.
-    settings.worker_evaluations_to_spend = 10
-
-    new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
-        optimizer=optimizer,
-        evaluation_fn=eval_function,
-        settings=settings,
-    )
-    new_worker.run()
-
-    assert total_fidelity_spent() >= 11
-
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
-    assert (
-        sum(
-            1
-            for trial in trials
-            if trial.metadata.evaluating_worker_id == new_worker.worker_id
-        )
-        < 10
-    )
-
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
-
-
 def test_global_budget_can_be_updated(extrapolaw_state: ExtrapolawState) -> None:
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
 
     optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
@@ -352,7 +266,6 @@ def test_global_budget_can_be_updated(extrapolaw_state: ExtrapolawState) -> None
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=10,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
 
     optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
@@ -363,7 +276,6 @@ def test_global_budget_can_be_updated(extrapolaw_state: ExtrapolawState) -> None
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
 
     optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
@@ -389,7 +301,6 @@ def test_worker_uses_updated_global_budget(
         worker_evaluations_to_spend=10,
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -398,7 +309,6 @@ def test_worker_uses_updated_global_budget(
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
 
     worker = DefaultWorker.new(
@@ -412,7 +322,6 @@ def test_worker_uses_updated_global_budget(
     extrapolaw_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=1,
         total_cost_to_spend=None,
-        total_fidelities_to_spend=None,
     )
 
     worker.run()
@@ -442,7 +351,6 @@ def test_multiple_criteria_set(
         worker_evaluations_to_spend=5,  # <- Highlight
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=3,  # <- Highlight
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -513,7 +421,6 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         worker_evaluations_to_spend=2,  # <- Highlight, only 2 maximum evaluations allowed
         include_in_progress_evaluations_towards_maximum=True,  # <- inprogress trial
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -579,7 +486,6 @@ def test_worker_wallclock_time(extrapolaw_state: ExtrapolawState) -> None:
         worker_evaluations_to_spend=1000,  # Safety limit
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=1,  # <- highlight, 1 second
         batch_size=None,
@@ -620,7 +526,6 @@ def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
         worker_evaluations_to_spend=100,  # Safety limit
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=0.5,
         max_wallclock_time_seconds=None,
         batch_size=None,
@@ -664,88 +569,6 @@ def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
     assert len(extrapolaw_state.lock_and_get_errors()) == 0
 
 
-def test_fidelity_to_spend(extrapolaw_state: ExtrapolawState) -> None:
-    optimizer = asha(
-        pipeline_space=SearchSpace(
-            {"a": HPOFloat(0, 1), "b": HPOInteger(2, 10, is_fidelity=True)}
-        )
-    )
-    settings = WorkerSettings(
-        on_error=OnErrorPossibilities.IGNORE,
-        default_report_values=DefaultReportValues(),
-        worker_evaluations_to_spend=10,  # Safety limit
-        include_in_progress_evaluations_towards_maximum=False,
-        worker_cost_to_spend=None,
-        worker_fidelities_to_spend=2,  # this is the min fidelity used in an evaluation
-        max_evaluation_time_total_seconds=None,
-        max_wallclock_time_seconds=None,
-        batch_size=None,
-    )
-
-    def eval_function(*args, **kwargs) -> dict:
-        time.sleep(0.6)
-        return {"objective_to_minimize": 1.0, "cost": 1.0}
-
-    worker = DefaultWorker.new(
-        state=extrapolaw_state,
-        optimizer=optimizer,
-        evaluation_fn=eval_function,
-        settings=settings,
-        worker_id="dummy",
-    )
-    worker.run()
-
-    trials1 = list(extrapolaw_state.lock_and_read_trials().values())
-    assert (
-        sum(
-            1
-            for trial in trials1
-            if trial.metadata.evaluating_worker_id == worker.worker_id
-        )
-        == 1
-    )
-
-    assert (
-        10
-        >= sum(
-            trial.config.get("b")
-            for trial in trials1
-            if trial.metadata.evaluating_worker_id == worker.worker_id
-        )
-        >= 2
-    )
-
-    assert (
-        extrapolaw_state.lock_and_get_next_pending_trial() is None
-    )  # should have no pending trials to be picked up
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
-
-    # New worker should also run some trials more trials
-    settings.worker_fidelities_to_spend = 4  # now only 2 fidelity matters
-    new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
-        optimizer=optimizer,
-        evaluation_fn=eval_function,
-        settings=settings,
-        worker_id="dummy2",
-    )
-    new_worker.run()
-    trials2 = list(extrapolaw_state.lock_and_read_trials().values())
-    assert (
-        13
-        >= sum(
-            trial.config.get("b")
-            for trial in trials2
-            if trial.metadata.evaluating_worker_id == new_worker.worker_id
-        )
-        >= 4
-    )
-    assert (
-        extrapolaw_state.lock_and_get_next_pending_trial() is None
-    )  # should have no pending trials to be picked up
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
-
-
 def test_budget_exhausted_optimizer_stops_the_worker_without_retrying(
     extrapolaw_state: ExtrapolawState,
 ) -> None:
@@ -768,7 +591,6 @@ def test_budget_exhausted_optimizer_stops_the_worker_without_retrying(
         worker_evaluations_to_spend=None,
         include_in_progress_evaluations_towards_maximum=False,
         worker_cost_to_spend=None,
-        worker_fidelities_to_spend=None,
         max_evaluation_time_total_seconds=None,
         max_wallclock_time_seconds=None,
         batch_size=None,

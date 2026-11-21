@@ -111,20 +111,6 @@ class WorkerSettings:
     indefinitely or until another stopping criterion is met.
     """
 
-    worker_fidelities_to_spend: int | float | None
-    """The maximum cumulative fidelity this worker can spend.
-
-    Once this fidelity total is reached, the worker will stop evaluating
-    new configurations.
-
-    To control whether currently evaluating configurations are included in this
-    total, see
-    [`include_in_progress_evaluations_towards_maximum`][extrapolaw.state.settings.WorkerSettings.include_in_progress_evaluations_towards_maximum].
-
-    If `None`, there is no limit and worker will continue to evaluate
-    indefinitely.
-    """
-
     max_evaluation_time_total_seconds: float | None
     """The maximum time allowed for evaluation duration in total.
     This is the cumulative time reported by user for evaluation durations.
@@ -158,4 +144,13 @@ class WorkerSettings:
     live_plots: bool = False
     """Whether to refresh the summary plots and optimizer artifacts after every
     evaluated trial.
+    """
+
+    is_async: bool = False
+    """Whether the evaluation function only launches the evaluation and reports
+    the result later.
+
+    If `True`, the evaluation function may return `None`. The worker then leaves
+    the trial as evaluating and moves on to the next one. If `False`, returning
+    `None` is an error.
     """

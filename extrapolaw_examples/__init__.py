@@ -8,27 +8,26 @@ all_main_examples = {  # Used for printing in python -m extrapolaw_examples
     ],
     "convenience": [
         "create_and_import_custom_config",
-        "import_trial",
+        "import_trials",
         "logging_additional_info",
         "extrapolaw_tblogger_tutorial",
-        "running_on_slurm_scripts",
-        "extrapolaw_x_lightning",
         "running_on_slurm_scripts",
         "working_directory_per_pipeline",
     ],
     "efficiency": [
-        "expert_priors_for_hyperparameters",
-        "multi_fidelity",
-        "multi_fidelity_and_expert_priors",
         "pytorch_native_ddp",
+        "pytorch_native_fsdp",
         "pytorch_lightning_ddp",
+        "pytorch_lightning_fsdp",
     ],
     "async_evaluation": [
         "submit",
     ],
     "experimental": [
         "ask_and_tell_example",
-        "freeze_thaw",
+    ],
+    "real_world": [
+        "tabpfn_scan_bench",
     ],
 }
 
@@ -38,9 +37,6 @@ core_examples = [  # Run locally and on github actions
     "basic_usage/3_architecture_search",
     "basic_usage/4_architecture_and_hyperparameters",
     "basic_usage/5_optimizer_search",
-    "efficiency/multi_fidelity",
-    "efficiency/expert_priors_for_hyperparameters",
-    "efficiency/multi_fidelity_and_expert_priors",
 ]
 
 ci_examples = [  # Run on github actions

@@ -126,8 +126,9 @@ def _load_optimizer_from_string(
     *,
     optimizer_kwargs: Mapping[str, Any] | None = None,
 ) -> tuple[AskFunction, OptimizerInfo]:
+    auto_kwargs: dict[str, Any] = {}
     if optimizer == "auto":
-        _optimizer = determine_optimizer_automatically(space)
+        _optimizer, auto_kwargs = determine_optimizer_automatically(space)
     else:
         _optimizer = optimizer
 
@@ -140,10 +141,7 @@ def _load_optimizer_from_string(
         )
 
     keywords = extract_keyword_defaults(optimizer_build)
-    optimizer_kwargs = optimizer_kwargs or {}
-    optimizer_kwargs = dict(optimizer_kwargs)  # Make mutable copy
-    if _optimizer == "primo":
-        optimizer_kwargs["prior_centers"] = optimizer_kwargs.get("prior_centers", {})
+    optimizer_kwargs = {**auto_kwargs, **(optimizer_kwargs or {})}
     opt = optimizer_build(space, **optimizer_kwargs)  # type: ignore
     info = _make_info(_optimizer, {**keywords, **optimizer_kwargs}, opt)
     return opt, info

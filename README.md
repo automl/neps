@@ -5,12 +5,12 @@
 [![License](https://img.shields.io/pypi/l/extrapolaw?color=informational)](LICENSE)
 [![Tests](https://github.com/automl/extrapolaw/actions/workflows/tests.yaml/badge.svg)](https://github.com/automl/extrapolaw/actions)
 
-Extrapolaw is a tool for finding the best architectural and hyperparameter choices of deep learning pipelines, and for analysing how those choices behave as you scale models, data, and compute.
-Use it for hyperparameter optimization (HPO), neural architecture search (NAS), or any other design choice in your pipeline, from a single GPU to a multi-node cluster or even multiple clusters.
+Extrapolaw is a tool for scaling studies of deep learning pipelines: it searches how architectural and hyperparameter choices behave as you scale models, data, and compute, and fits scaling laws to predict the best choices at larger scales.
+Use it from a single GPU to a multi-node cluster or even multiple clusters.
 
 Extrapolaw brings together [years of our algorithmic advances](https://github.com/automl/extrapolaw/blob/master/docs/citations.md) (e.g., in NeurIPS, ICML, or ICLR) with a runtime tailored to large scale models. Extrapolaw is actively maintained and used to run on many different clusters, tuning even billion-parameter scale models with many concurrent trials.
 
-To learn about Extrapolaw, check out [the documentation](https://automl.github.io/extrapolaw/latest/), [our examples](extrapolaw_examples/), or our [Colab tutorials](#tutorials).
+To learn about Extrapolaw, check out [the documentation](https://automl.github.io/extrapolaw/latest/) or [our examples](extrapolaw_examples/).
 
 ## Why Extrapolaw
 
@@ -25,18 +25,17 @@ To learn about Extrapolaw, check out [the documentation](https://automl.github.i
 - **Zero-effort to run many concurrent models:** start more workers on the same machine or in a multi-node setup. As long as they share the results directory, they coordinate on their own, with no server to set up.
 - **Live monitoring and interventions:** follow a run with `extrapolaw.status`, live plots, or [TensorBoard](https://automl.github.io/extrapolaw/latest/reference/analyse/#visualizing-results), and steer it without starting over: add workers, extend the budget, re-run failed trials, or import tuning results from anywhere (even cross-cluster).
 
-### Efficient tuning algorithms
+### Search algorithms
 
-- **Low-fidelity evaluations:** principled use of cheap evaluations, such as fewer epochs or less data, to rule out bad configurations early.
-- **Expert knowledge and prior studies:** use your intuition as priors, and results from earlier studies, when you have them.
+- **Expert knowledge and prior studies:** use your intuition as priors, and import results from earlier studies, when you have them.
 - **Model-based search:** strategies such as Bayesian optimization choose promising configurations smartly instead of sampling blindly.
 - **[Scaling optimizers](https://automl.github.io/extrapolaw/latest/reference/optimizers/#3-scaling-optimizers):** grounded scaling-law prescriptions, adapted to budget-aware search.
 
 ### Generally applicable
 
 - **Any design space:** hyperparameters, architectures, resource allocation, or any component of the pipeline.
-- **Any scaling dimension:** use epochs, dataset size, model size, or any other quantity as the fidelity.
-- **Any and multiple objective:** optimize pre-training loss, downstream tasks, resource usage, or several of them at once.
+- **Any scaling dimension:** scale model size, dataset size, or any other quantity that sets the compute (`is_compute_scaling=True`).
+- **Downstream tasks:** follow how downstream performances scale next to the pre-training loss.
 
 ## Installation
 
@@ -109,25 +108,10 @@ To also fit scaling laws on top of the cost constraints, use one of the [scaling
 
 ## Resources to Get Started
 
-### Tutorials
-
-Interactive notebooks that run in Google Colab:
-
-| Tutorial | What it covers | Run |
-|----------|----------------|-----|
-| **1. Getting Started with HPO** | Basic HPO workflow, synthetic functions, and deep learning tasks | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/1_getting_started_hpo.ipynb) |
-| **2. Defining Search Spaces** | Parameter types, fidelity parameters, and `PipelineSpace` classes | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/2_search_spaces.ipynb) |
-| **3. Efficient Optimization** | Multi-fidelity optimization, expert priors, optimizer selection, and parallelization | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/3_efficiency_techniques.ipynb) |
-| **4. Multi-Objective Optimization** | Multi-objective optimization with PriMO, including per-objective expert priors | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/4_multi_objective.ipynb) |
-
-To run them locally instead, see the [tutorials folder](tutorials/).
-
 ### Examples
 
 - **[Hyperparameter optimization](extrapolaw_examples/basic_usage/1_hyperparameters.py):** the essentials of HPO with Extrapolaw.
-- **[Multi-fidelity optimization](extrapolaw_examples/efficiency/multi_fidelity.py):** speed up tuning with cheap, low-fidelity evaluations.
-- **[Multi-objective optimization](extrapolaw_examples/efficiency/multi_objective.py):** optimize competing objectives with PriMO, using expert priors and multi-fidelity.
-- **[Expert priors](extrapolaw_examples/efficiency/expert_priors_for_hyperparameters.py):** use what you already know to focus the search.
+- **[Scaling study of TabPFN](extrapolaw_examples/real_world/tabpfn_scan_bench.py):** a random search under a FLOP budget, with the scaling law fitted and extrapolated.
 - **[Custom runtime with AskAndTell](extrapolaw_examples/experimental/ask_and_tell_example.py):** use Extrapolaw optimizers and state with your own evaluation loop.
 - **[All examples](extrapolaw_examples/):** more use cases and advanced configurations.
 

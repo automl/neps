@@ -1,17 +1,8 @@
-"""Pareto dominance, where every objective is minimized."""
+"""Pareto efficiency, where every objective is minimized."""
 
 from __future__ import annotations
 
-from collections.abc import Sequence
-
 import numpy as np
-
-
-def dominates(a: Sequence[float], b: Sequence[float]) -> bool:
-    """Whether `a` is at least as good as `b` in every objective and better in one."""
-    return all(ai <= bi for ai, bi in zip(a, b, strict=True)) and any(
-        ai < bi for ai, bi in zip(a, b, strict=True)
-    )
 
 
 def pareto_efficient(X: np.ndarray) -> np.ndarray:

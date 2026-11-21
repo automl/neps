@@ -21,9 +21,9 @@ pip install extrapolaw
         some_parameter = extrapolaw.Float(lower=0.0, upper=1.0)       # float
         another_parameter = extrapolaw.Integer(lower=0, upper=10)     # integer
         optimizer = extrapolaw.Categorical(choices=("sgd", "adam"))           # categorical
-        epoch = extrapolaw.IntegerFidelity(lower=1, upper=100)
+        epoch = extrapolaw.Integer(lower=1, upper=100)
         learning_rate = extrapolaw.Float(lower=1e-5, upper=1, log=True)
-        alpha = extrapolaw.Float(lower=0.1, upper=1.0, prior=0.99, prior_confidence="high")
+        alpha = extrapolaw.Float(lower=0.1, upper=1.0)
     ```
 
 1. **Define an `evaluate_pipeline()` function**:
@@ -56,25 +56,13 @@ The [reference](reference/extrapolaw_acquire.md) section provides detailed infor
 4. How to define the [`evaluate_pipeline()` function](reference/evaluate_pipeline.md).
 5. How to [analyze](reference/analyse.md) the optimization runs.
 
-!!! tip "Interactive tutorials"
-
-    Or try Extrapolaw hands-on with our tutorials:
-
-    1. [Getting Started with HPO](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/1_getting_started_hpo.ipynb): the basic Extrapolaw workflow, from a synthetic function to a deep learning task
-    2. [Defining Search Spaces](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/2_search_spaces.ipynb): parameter types, fidelity parameters, priors, and `PipelineSpace` classes
-    3. [Efficient Optimization](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/3_efficiency_techniques.ipynb): multi-fidelity optimization, expert priors, optimizer selection, and parallelization
-    4. [Multi-Objective Optimization](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/4_multi_objective.ipynb): Multi-objective optimization with PriMO, including per-objective expert priors
-
-Or discover the features of Extrapolaw through these practical examples:
+Discover the features of Extrapolaw through these practical examples:
 
 * **[Hyperparameter Optimization (HPO)](examples/basic_usage/1_hyperparameters.md)**:
 Learn the essentials of hyperparameter optimization with Extrapolaw.
 
-* **[Multi-Fidelity Optimization](examples/efficiency/multi_fidelity.md)**:
-Understand how to leverage multi-fidelity optimization for efficient model tuning.
-
-* **[Utilizing Expert Priors for Hyperparameters](examples/efficiency/expert_priors_for_hyperparameters.md)**:
-Learn how to incorporate expert priors for more efficient hyperparameter selection.
+* **[Scaling Study of TabPFN](examples/real_world/tabpfn_scan_bench.md)**:
+Learn how to run a scaling study under a FLOP budget, and fit and extrapolate its scaling law.
 
 * **[Benefiting Extrapolaw State and Optimizers with custom runtime](examples/experimental/ask_and_tell_example.md)**:
 Learn how to use AskAndTell, an advanced tool for leveraging optimizers and states while enabling a custom runtime for trial execution.

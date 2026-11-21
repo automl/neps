@@ -2,10 +2,6 @@
 
 **Extrapolaw Spaces** provide a powerful framework for defining and optimizing complex search spaces across the entire pipeline, including [hyperparameters](#1-constructing-hyperparameter-spaces), [architecture search](#3-constructing-architecture-spaces) and [more](#4-constructing-complex-spaces).
 
-!!! tip "Interactive tutorial"
-
-    The [Defining Search Spaces tutorial](https://colab.research.google.com/github/automl/extrapolaw/blob/master/tutorials/2_search_spaces.ipynb) walks through parameter types, fidelity parameters, priors, `PipelineSpace` classes, and conditional spaces built with `.resample()`.
-
 ## 1. Constructing Hyperparameter Spaces
 
 **Extrapolaw spaces** include all the necessary components to define a Hyperparameter Optimization (HPO) search space like:
@@ -39,9 +35,9 @@ class MySpace(extrapolaw.PipelineSpace):
 
     For more details on how to use the `extrapolaw.acquire()` function, see the [Extrapolaw Run Reference](../reference/extrapolaw_acquire.md).
 
-### Using cheap approximation, providing a [**Fidelity**](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) Parameter
+### Providing a [**Fidelity**](../reference/search_algorithms/landing_page_algo.md#fidelities) Parameter
 
-You can use [`extrapolaw.IntegerFidelity`][extrapolaw.space.extrapolaw_spaces.parameters.IntegerFidelity] or [`extrapolaw.FloatFidelity`][extrapolaw.space.extrapolaw_spaces.parameters.FloatFidelity] to employ multi-fidelity optimization strategies, which can significantly speed up the optimization process by evaluating configurations at different fidelities (e.g., training for fewer epochs):
+You can use [`extrapolaw.IntegerFidelity`][extrapolaw.space.extrapolaw_spaces.parameters.IntegerFidelity] or [`extrapolaw.FloatFidelity`][extrapolaw.space.extrapolaw_spaces.parameters.FloatFidelity] to mark a parameter that sets how much is spent on an evaluation, e.g. the number of epochs. The optimizers set it to its maximum or treat it like any other parameter, see `ignore_fidelity`:
 
 ```python
 # Convenient syntax (recommended)
@@ -52,9 +48,9 @@ subset_ratio = extrapolaw.FloatFidelity(lower=0.1, upper=1.0)
 epochs = extrapolaw.IntegerFidelity(1, 16)
 ```
 
-For more details on how to use fidelity parameters, see the [Multi-Fidelity](../reference/search_algorithms/landing_page_algo.md#what-is-multi-fidelity-optimization) section.
+For more details on how the optimizers use fidelity parameters, see the [Fidelities](../reference/search_algorithms/landing_page_algo.md#fidelities) section.
 
-### Using your knowledge, providing a [**Prior**](../reference/search_algorithms/landing_page_algo.md#what-are-priors)
+### Using your knowledge, providing a [**Prior**](../reference/search_algorithms/landing_page_algo.md#priors)
 
 You can provide **your knowledge about where a good value for this parameter lies** by indicating a `prior=`. You can also specify a `prior_confidence=` to indicate how strongly you want Extrapolaw to focus on these, one of either `"low"`, `"medium"`, or `"high"`:
 
@@ -63,7 +59,7 @@ You can provide **your knowledge about where a good value for this parameter lie
 cat_with_prior = extrapolaw.Categorical(choices=("A", "B", "C"), prior=0, prior_confidence="high")
 ```
 
-For more details on how to use priors, see the [Priors](../reference/search_algorithms/landing_page_algo.md#what-are-priors) section.
+For more details on the optimizers that use priors, see the [Priors](../reference/search_algorithms/landing_page_algo.md#priors) section.
 
 !!! info "Adding and removing parameters from **Extrapolaw Spaces**"
 
@@ -150,7 +146,7 @@ def evaluate_pipeline(
 
     - [`Random Search`][extrapolaw.optimizers.algorithms.random_search], which can sample the space uniformly at random
     - [`Complex Random Search`][extrapolaw.optimizers.algorithms.complex_random_search], which can sample the space uniformly at random, using priors and mutating previously sampled configurations
-    - [`PriorBand`][extrapolaw.optimizers.algorithms.priorband], which uses [multi-fidelity](./search_algorithms/multifidelity.md) and the prior knowledge encoded in the Extrapolaw space
+    - [`Grid Search`][extrapolaw.optimizers.algorithms.grid_search], for spaces whose only structural choice is a top-level `Categorical`
 
 ## 4. Constructing Complex Spaces
 

@@ -1,24 +1,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from extrapolaw.utils.pareto import dominates, pareto_efficient
-
-
-@pytest.mark.parametrize(
-    ("a", "b", "expected"),
-    [
-        ([1.0, 1.0], [2.0, 2.0], True),
-        ([1.0, 2.0], [1.0, 3.0], True),
-        ([1.0, 2.0], [1.0, 2.0], False),  # Equal, so not better in any objective
-        ([1.0, 3.0], [2.0, 2.0], False),  # A trade-off
-        ([2.0], [1.0], False),
-        ([1.0], [2.0], True),
-    ],
-)
-def test_dominates(a: list[float], b: list[float], expected: bool) -> None:
-    assert dominates(a, b) is expected
+from extrapolaw.utils.pareto import pareto_efficient
 
 
 def test_pareto_efficient() -> None:

@@ -56,5 +56,6 @@ extrapolaw.acquire(
     evaluate_pipeline=evaluate_pipeline_via_slurm,
     pipeline_space=ExampleSpace(),
     root_directory="results/async_evaluation",
+    is_async=True,
     worker_evaluations_to_spend=2,
 )

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import contextlib
 import itertools
-from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from pprint import pformat
@@ -36,15 +35,10 @@ class Summary:
     """Summary of the current state of an extrapolaw run."""
 
     by_state: dict[State, list[Trial]]
-    # No support for multiobjective yet
     best: tuple[Trial, float] | None
-    is_multiobjective: bool
     running: list[Trial] = field(init=False)
 
     def __post_init__(self) -> None:
-        if self.is_multiobjective:
-            assert self.best is None
-
         self.running = self.by_state[State.EVALUATING]
 
     @property
@@ -123,9 +117,7 @@ class Summary:
         """Number of trials that are pending."""
         return len(self.by_state[State.PENDING])
 
-    def formatted(  # noqa: PLR0912
-        self, pipeline_space: PipelineSpace | SearchSpace | None = None
-    ) -> str:
+    def formatted(self, pipeline_space: PipelineSpace | SearchSpace | None = None) -> str:
         """Return a formatted string of the summary.
 
         Args:
@@ -143,10 +135,7 @@ class Summary:
         )
 
         if self.best is None:
-            if self.is_multiobjective:
-                best_summary = "Multiobjective summary not supported yet for best yet."
-            else:
-                best_summary = "No best found yet."
+            best_summary = "No best found yet."
         else:
             best_trial, best_objective_to_minimize = self.best
 
@@ -237,12 +226,11 @@ class Summary:
 
     @classmethod
     def from_trials(cls, trials: dict[str, Trial]) -> Summary:
-        """Summarize a mapping of trials into (by_state, is_multiobjective, best).
+        """Summarize a mapping of trials into (by_state, best).
 
         This extracts the core loop from `Summary.from_directory` so callers that
         already have a `trials` mapping can reuse the logic without re-reading state.
         """
-        is_multiobjective: bool = False
         best: tuple[Trial, float] | None = None
         by_state: dict[State, list[Trial]] = {s: [] for s in State}
 
@@ -255,16 +243,13 @@ class Summary:
                 match objective_to_minimize:
                     case None:
                         pass
-                    case float() | int() | np.number() if not is_multiobjective:
+                    case float() | int() | np.number():
                         if best is None or objective_to_minimize < best[1]:
                             best = (trial, objective_to_minimize)
-                    case Sequence():
-                        is_multiobjective = True
-                        best = None
                     case _:
                         raise RuntimeError("Unexpected type for objective_to_minimize")
 
-        return cls(by_state=by_state, best=best, is_multiobjective=is_multiobjective)
+        return cls(by_state=by_state, best=best)
 
 
 def status(
@@ -311,10 +296,6 @@ def status(
     short.index.name = "summary"
     short.index = short.index.astype(str)
     assert isinstance(short, pd.Series)
-
-    # Not implemented for hypervolume -_-
-    if summary.is_multiobjective:
-        return df, short
 
     if "objective_to_minimize" not in df.columns:
         short["best_objective_to_minimize"] = None

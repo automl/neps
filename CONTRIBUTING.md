@@ -211,10 +211,6 @@ To publish the documentation run
 mike deploy 0.5.1 latest -p
 ```
 
-## Tutorials
-
-See [tutorials README](./tutorials/README.md).
-
 ## Releasing a New Version
 
 There are five steps to releasing a new version of extrapolaw:

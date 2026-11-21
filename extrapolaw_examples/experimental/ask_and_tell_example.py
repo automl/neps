@@ -7,9 +7,8 @@ and results are reported back to the optimizer. This is particularly useful when
 
 ## Aim of This File
 
-The goal of this script is to run a **successive halving** optimization process with 3 rungs. The first rung will evaluate
-9 trials in parallel. The trials are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used
-to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate Extrapolaw
+The goal of this script is to run a **random search** over 27 trials, evaluating 9 trials in parallel. The trials
+are managed manually using the `AskAndTell` interface, and the SLURM scheduler is used to execute the trials. This setup demonstrates how to efficiently manage parallel trial execution and integrate Extrapolaw
 with external job schedulers.
 
 ## How to Use This Script
@@ -18,7 +17,7 @@ with external job schedulers.
    The search space is defined using `extrapolaw.PipelineSpace`.
 
 2. **Initialize the Optimizer**:
-   We use the `hyperband` algorithm from Extrapolaw to optimize the search space. The optimizer is wrapped with
+   We use the `random_search` algorithm from Extrapolaw to optimize the search space. The optimizer is wrapped with
    the `AskAndTell` interface to enable manual control of the evaluation loop.
 
 3. **Submit Jobs**:
@@ -33,14 +32,15 @@ with external job schedulers.
    - The `main` function manages the optimization process:
      - It launches initial jobs based on the number of parallel trials specified.
      - It monitors the status of active jobs, retrieves results, and submits new trials as needed.
-     - The loop continues until all trials are completed.
+     - The loop continues until `--n-trials` trials are completed.
 
 6. **Run the Script**:
    - Use the command line to run the script:
      ```bash
-     python ask_and_tell_example.py --parallel 9 --results-dir results
+     python ask_and_tell_example.py --parallel 9 --n-trials 27 --results-dir results
      ```
-   - `--parallel`: Specifies the number of trials to evaluate in parallel initially.
+   - `--parallel`: Specifies the number of trials to evaluate in parallel.
+   - `--n-trials`: Specifies the total number of trials to evaluate.
    - `--results-dir`: Specifies the directory where results will be saved.
 
 ## Key Features Demonstrated
@@ -107,23 +107,23 @@ def train_worker(trial_file):
         json.dump({"loss": loss}, f)
 
 
-def main(parallel: int, results_dir: Path):
+def main(parallel: int, n_trials: int, results_dir: Path):
     class MySpace(extrapolaw.PipelineSpace):
-        a = extrapolaw.IntegerFidelity(1, 13)
+        a = extrapolaw.Integer(1, 13)
         b = extrapolaw.Float(1, 5)
 
     space = MySpace()
-    opt = extrapolaw.algorithms.extrapolaw_hyperband(space, eta=3)
+    opt = extrapolaw.algorithms.random_search(space)
     ask_tell = AskAndTell(opt)
 
     results_dir.mkdir(exist_ok=True, parents=True)
     active = {}
+    n_asked = 0
 
     # launch initial jobs
-    for _ in range(parallel):
+    for _ in range(min(parallel, n_trials)):
         trial = ask_tell.ask()
-        if trial is None:
-            break
+        n_asked += 1
         trial_file = results_dir / f"trial_{trial.id}.json"
         with open(trial_file, "w") as f:
             json.dump({"id": trial.id, "config": trial.config}, f)
@@ -140,8 +140,9 @@ def main(parallel: int, results_dir: Path):
                     trial, {"objective_to_minimize": result["loss"], "cost": 1.0}
                 )
                 del active[job_id]
-                new_trial = ask_tell.ask()
-                if new_trial:
+                if n_asked < n_trials:
+                    new_trial = ask_tell.ask()
+                    n_asked += 1
                     new_file = results_dir / f"trial_{new_trial.id}.json"
                     json.dump(
                         {"id": new_trial.id, "config": new_trial.config},
@@ -163,10 +164,16 @@ if __name__ == "__main__":
         help="Number of trials to evaluate in parallel initially",
     )
     parser.add_argument(
+        "--n-trials",
+        type=int,
+        default=27,
+        help="Total number of trials to evaluate",
+    )
+    parser.add_argument(
         "--results-dir",
         type=Path,
         default=Path("results/ask_and_tell"),
         help="Path to save the results inside",
     )
     args = parser.parse_args()
-    main(args.parallel, args.results_dir)
+    main(args.parallel, args.n_trials, args.results_dir)
