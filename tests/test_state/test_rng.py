@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 import torch
 
-from extrapolaw.state.seed_snapshot import SeedSnapshot
+from scalefm.state.seed_snapshot import SeedSnapshot
 
 
 @pytest.mark.parametrize(

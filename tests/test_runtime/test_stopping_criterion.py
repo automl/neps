@@ -5,16 +5,16 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from extrapolaw.exceptions import BudgetExhaustedError
-from extrapolaw.optimizers.algorithms import random_search
-from extrapolaw.optimizers.optimizer import OptimizerInfo
-from extrapolaw.runtime import DefaultWorker
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, PipelineSpace
-from extrapolaw.state import (
+from scalefm.exceptions import BudgetExhaustedError
+from scalefm.optimizers.algorithms import random_search
+from scalefm.optimizers.optimizer import OptimizerInfo
+from scalefm.runtime import DefaultWorker
+from scalefm.space.scalefm_spaces.parameters import Float, PipelineSpace
+from scalefm.state import (
     DefaultReportValues,
-    ExtrapolawState,
     OnErrorPossibilities,
     OptimizationState,
+    ScaleFMState,
     SeedSnapshot,
     Trial,
     WorkerSettings,
@@ -22,12 +22,12 @@ from extrapolaw.state import (
 
 
 @fixture
-def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
+def scalefm_state(tmp_path: Path) -> ScaleFMState:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
-    return ExtrapolawState.create_or_load(
-        path=tmp_path / "extrapolaw_state",
+    return ScaleFMState.create_or_load(
+        path=tmp_path / "scalefm_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
@@ -39,7 +39,7 @@ def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
 
 
 def test_evaluations_to_spend_stopping_criterion(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -60,14 +60,14 @@ def test_evaluations_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 3.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -77,10 +77,10 @@ def test_evaluations_to_spend_stopping_criterion(
         )
         == 3
     )
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     for _, trial in trials.items():
         assert trial.metadata.state == Trial.State.SUCCESS
         assert trial.report is not None
@@ -89,7 +89,7 @@ def test_evaluations_to_spend_stopping_criterion(
 
     # New worker also runs for another 3 evaluations
     new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -99,23 +99,23 @@ def test_evaluations_to_spend_stopping_criterion(
     assert (
         sum(
             1
-            for trial in list(extrapolaw_state.lock_and_read_trials().values())
+            for trial in list(scalefm_state.lock_and_read_trials().values())
             if trial.metadata.evaluating_worker_id == new_worker.worker_id
         )
         == 3
     )
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
 
 def test_total_evaluations_to_spend_stopping_criterion(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
     optimizer = random_search(pipeline_space=TestSpace())
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
     )
@@ -134,14 +134,14 @@ def test_total_evaluations_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -156,14 +156,14 @@ def test_total_evaluations_to_spend_stopping_criterion(
     settings.worker_evaluations_to_spend = 10
 
     new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert len(trials) == 5
     assert (
@@ -174,17 +174,17 @@ def test_total_evaluations_to_spend_stopping_criterion(
         )
         == 2
     )
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
 
 def test_total_cost_to_spend_stopping_criterion(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
     optimizer = random_search(pipeline_space=TestSpace())
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=6,
     )
@@ -203,14 +203,14 @@ def test_total_cost_to_spend_stopping_criterion(
         return {"objective_to_minimize": 1.0, "cost": 2.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert len(trials) == 2
     assert (
@@ -224,14 +224,14 @@ def test_total_cost_to_spend_stopping_criterion(
 
     settings.worker_evaluations_to_spend = 10
     new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert len(trials) == 3
     assert (
@@ -250,35 +250,35 @@ def test_total_cost_to_spend_stopping_criterion(
         )
         == 1
     )
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
 
-def test_global_budget_can_be_updated(extrapolaw_state: ExtrapolawState) -> None:
-    extrapolaw_state.lock_and_update_global_budgets(
+def test_global_budget_can_be_updated(scalefm_state: ScaleFMState) -> None:
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
     )
 
-    optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
+    optimizer_state = scalefm_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 5
 
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=10,
         total_cost_to_spend=None,
     )
 
-    optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
+    optimizer_state = scalefm_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 10
 
     # Passing None means "do not change the stored global budget".
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=None,
         total_cost_to_spend=None,
     )
 
-    optimizer_state = extrapolaw_state.lock_and_get_optimizer_state()
+    optimizer_state = scalefm_state.lock_and_get_optimizer_state()
     assert optimizer_state.budget is not None
     assert optimizer_state.budget.total_evaluations_to_spend == 10
 
@@ -288,7 +288,7 @@ def eval_function(*_args, **_kwargs) -> dict:
 
 
 def test_worker_uses_updated_global_budget(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -306,27 +306,27 @@ def test_worker_uses_updated_global_budget(
         batch_size=None,
     )
 
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=5,
         total_cost_to_spend=None,
     )
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
 
     # Change the shared budget after the worker has already been created.
-    extrapolaw_state.lock_and_update_global_budgets(
+    scalefm_state.lock_and_update_global_budgets(
         total_evaluations_to_spend=1,
         total_cost_to_spend=None,
     )
 
     worker.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
 
     assert (
         sum(
@@ -339,7 +339,7 @@ def test_worker_uses_updated_global_budget(
 
 
 def test_multiple_criteria_set(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -360,7 +360,7 @@ def test_multiple_criteria_set(
         return {"objective_to_minimize": 1.0, "cost": 2.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -368,7 +368,7 @@ def test_multiple_criteria_set(
     worker.run()
 
     # The worker_cost_to_spend criterion should stop the worker first after 3 evaluations
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -377,8 +377,8 @@ def test_multiple_criteria_set(
         )
         == 2
     )  # til the worker_cost_to_spend is reached
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
     assert len(trials) == 2
     for trial in trials:
@@ -389,13 +389,13 @@ def test_multiple_criteria_set(
 
     settings.worker_cost_to_spend = 100  # now only worker_evaluations_to_spend matters
     new_worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     new_worker.run()
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
     assert (
         sum(
             1
@@ -404,12 +404,12 @@ def test_multiple_criteria_set(
         )
         == 5
     )
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
 
 def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -431,22 +431,22 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
 
     worker = DefaultWorker.new(
         worker_id="test",
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
 
     # We put in one trial as being inprogress
-    pending_trial = extrapolaw_state.lock_and_sample_trial(
+    pending_trial = scalefm_state.lock_and_sample_trial(
         optimizer, worker_id=worker.worker_id
     )
     pending_trial.set_evaluating(time_started=0.0, worker_id=worker.worker_id)
-    extrapolaw_state.put_updated_trial(pending_trial)
+    scalefm_state.put_updated_trial(pending_trial)
 
     worker.run()
 
-    trials_dict = extrapolaw_state.lock_and_read_trials()
+    trials_dict = scalefm_state.lock_and_read_trials()
     trials = list(trials_dict.values())
     assert len(trials) == 2  # only one more trial should have been evaluated
     assert (
@@ -458,9 +458,9 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
         == 2
     )
     assert (
-        extrapolaw_state.lock_and_get_next_pending_trial() is None
+        scalefm_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
     the_pending_trial = trials_dict[pending_trial.id]
     assert the_pending_trial == pending_trial
@@ -475,7 +475,7 @@ def test_include_in_progress_evaluations_towards_maximum_with_work_eval_count(
     assert the_completed_trial.report.objective_to_minimize == 1.0
 
 
-def test_worker_wallclock_time(extrapolaw_state: ExtrapolawState) -> None:
+def test_worker_wallclock_time(scalefm_state: ScaleFMState) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
@@ -495,7 +495,7 @@ def test_worker_wallclock_time(extrapolaw_state: ExtrapolawState) -> None:
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -505,17 +505,17 @@ def test_worker_wallclock_time(extrapolaw_state: ExtrapolawState) -> None:
     worker.run()
     time_end = time.monotonic()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
     assert len(trials) > 0  # should have done some evaluations
     assert time_end - time_start >= 1.0  # should have run for at least 1 second
     assert (
-        extrapolaw_state.lock_and_get_next_pending_trial() is None
+        scalefm_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
-    len(extrapolaw_state.lock_and_read_trials())
+    assert len(scalefm_state.lock_and_get_errors()) == 0
+    len(scalefm_state.lock_and_read_trials())
 
 
-def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
+def test_max_worker_evaluation_time(scalefm_state: ScaleFMState) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
@@ -536,7 +536,7 @@ def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -544,7 +544,7 @@ def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
     )
     worker.run()
 
-    trials = extrapolaw_state.lock_and_read_trials().values()
+    trials = scalefm_state.lock_and_read_trials().values()
     assert (
         sum(
             1
@@ -564,13 +564,13 @@ def test_max_worker_evaluation_time(extrapolaw_state: ExtrapolawState) -> None:
     )  # some margin for time spent for the last evaluation that went over the limit.
 
     assert (
-        extrapolaw_state.lock_and_get_next_pending_trial() is None
+        scalefm_state.lock_and_get_next_pending_trial() is None
     )  # should have no pending trials to be picked up
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
 
 def test_budget_exhausted_optimizer_stops_the_worker_without_retrying(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -600,7 +600,7 @@ def test_budget_exhausted_optimizer_stops_the_worker_without_retrying(
         return {"objective_to_minimize": 1.0, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -608,4 +608,4 @@ def test_budget_exhausted_optimizer_stops_the_worker_without_retrying(
     worker.run()
 
     assert calls == 3
-    assert len(extrapolaw_state.lock_and_read_trials()) == 2
+    assert len(scalefm_state.lock_and_read_trials()) == 2

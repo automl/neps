@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from extrapolaw.state.pipeline_eval import EvaluatePipelineReturn, UserResult
+from scalefm.state.pipeline_eval import EvaluatePipelineReturn, UserResult
 
 
 def d(obj: Any = None, cost: Any = None, lc: Any = None) -> dict:
@@ -54,6 +54,20 @@ EXCEPTION = Exception("")
             {"objective_to_minimize": np.float64(4.5), "cost": 2},
             d(),
             UserResult(objective_to_minimize=4.5, cost=2.0),
+        ),
+        # A learning curve as (n_data, flops, loss) rows, as Chinchilla approach 1 reads
+        (
+            {
+                "objective_to_minimize": 1.0,
+                "cost": 2.0,
+                "learning_curve": [(10, 1.0, np.float64(2.0)), (20, 2.0, 1.0)],
+            },
+            d(),
+            UserResult(
+                objective_to_minimize=1.0,
+                cost=2.0,
+                learning_curve=[[10.0, 1.0, 2.0], [20.0, 2.0, 1.0]],
+            ),
         ),
         (
             {"objective_to_minimize": float("inf"), "cost": 2.0},

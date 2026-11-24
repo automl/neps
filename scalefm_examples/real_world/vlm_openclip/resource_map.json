@@ -1,0 +1,23 @@
+[
+  {
+    "name": "small",
+    "max_n_params": 15000000,
+    "partition": "CHANGE_ME__SMALL_PARTITION",
+    "gpus": 1,
+    "mem": "16G"
+  },
+  {
+    "name": "medium",
+    "max_n_params": 50000000,
+    "partition": "CHANGE_ME__MEDIUM_PARTITION",
+    "gpus": 1,
+    "mem": "32G"
+  },
+  {
+    "name": "large",
+    "max_n_params": null,
+    "partition": "CHANGE_ME__LARGE_PARTITION",
+    "gpus": 4,
+    "mem": "128G"
+  }
+]

@@ -1,7 +1,7 @@
-site_name: Extrapolaw
+site_name: ScaleFM
 docs_dir: docs
-repo_url: https://github.com/automl/extrapolaw
-repo_name: automl/extrapolaw
+repo_url: https://github.com/automl/scalefm
+repo_name: automl/scalefm
 edit_uri: ""
 
 theme:
@@ -53,7 +53,7 @@ markdown_extensions:
       repo_url_shortener: true
       repo_url_shorthand: true
       user: automl
-      repo: extrapolaw
+      repo: scalefm
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.snippets
@@ -92,7 +92,7 @@ plugins:
       enable_inventory: true
       handlers:
         python:
-          paths: [extrapolaw]
+          paths: [scalefm]
           # Extra objects which allow for linking to external docs
           inventories:
             - 'https://docs.python.org/3/objects.inv'
@@ -138,8 +138,8 @@ nav:
   - Home: 'index.md'
   - Getting Started: 'getting_started.md'
   - Reference:
-    - Acquire: 'reference/extrapolaw_acquire.md'
-    - Extrapolaw Spaces: 'reference/extrapolaw_spaces.md'
+    - Acquire: 'reference/scalefm_acquire.md'
+    - ScaleFM Spaces: 'reference/scalefm_spaces.md'
     - The Evaluate Function: 'reference/evaluate_pipeline.md'
     - Analysing Runs: 'reference/analyse.md'
     - Optimizer: 'reference/optimizers.md'

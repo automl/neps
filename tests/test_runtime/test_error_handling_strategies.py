@@ -7,16 +7,16 @@ from pathlib import Path
 import pytest
 from pytest_cases import fixture, parametrize
 
-from extrapolaw.exceptions import WorkerRaiseError
-from extrapolaw.optimizers import OptimizerInfo
-from extrapolaw.optimizers.algorithms import random_search
-from extrapolaw.runtime import DefaultWorker
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, PipelineSpace
-from extrapolaw.state import (
+from scalefm.exceptions import WorkerRaiseError
+from scalefm.optimizers import OptimizerInfo
+from scalefm.optimizers.algorithms import random_search
+from scalefm.runtime import DefaultWorker
+from scalefm.space.scalefm_spaces.parameters import Float, PipelineSpace
+from scalefm.state import (
     DefaultReportValues,
-    ExtrapolawState,
     OnErrorPossibilities,
     OptimizationState,
+    ScaleFMState,
     SeedSnapshot,
     Trial,
     WorkerSettings,
@@ -24,12 +24,12 @@ from extrapolaw.state import (
 
 
 @fixture
-def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
+def scalefm_state(tmp_path: Path) -> ScaleFMState:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
-    return ExtrapolawState.create_or_load(
-        path=tmp_path / "extrapolaw_state",
+    return ScaleFMState.create_or_load(
+        path=tmp_path / "scalefm_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None,
@@ -45,7 +45,7 @@ def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
     [OnErrorPossibilities.RAISE_ANY_ERROR, OnErrorPossibilities.RAISE_WORKER_ERROR],
 )
 def test_worker_raises_when_error_in_self(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
     on_error: OnErrorPossibilities,
 ) -> None:
     class TestSpace(PipelineSpace):
@@ -67,7 +67,7 @@ def test_worker_raises_when_error_in_self(
         raise ValueError("This is an error")
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
@@ -75,7 +75,7 @@ def test_worker_raises_when_error_in_self(
     with pytest.raises(WorkerRaiseError):
         worker.run()
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     n_crashed = sum(
         trial.metadata.state == Trial.State.CRASHED is not None
         for trial in trials.values()
@@ -83,12 +83,12 @@ def test_worker_raises_when_error_in_self(
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 1
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 1
 
 
 def test_worker_raises_when_error_in_other_worker(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -109,13 +109,13 @@ def test_worker_raises_when_error_in_other_worker(
         raise ValueError("This is an error")
 
     worker1 = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
     )
     worker2 = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
@@ -130,7 +130,7 @@ def test_worker_raises_when_error_in_other_worker(
     with pytest.raises(WorkerRaiseError):
         worker2.run()
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     n_crashed = sum(
         trial.metadata.state == Trial.State.CRASHED is not None
         for trial in trials.values()
@@ -138,8 +138,8 @@ def test_worker_raises_when_error_in_other_worker(
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 1
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 1
 
 
 @pytest.mark.parametrize(
@@ -147,7 +147,7 @@ def test_worker_raises_when_error_in_other_worker(
     [OnErrorPossibilities.IGNORE, OnErrorPossibilities.RAISE_WORKER_ERROR],
 )
 def test_worker_does_not_raise_when_error_in_other_worker(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
     on_error: OnErrorPossibilities,
 ) -> None:
     class TestSpace(PipelineSpace):
@@ -177,13 +177,13 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     evaler = _Eval(do_raise=True)
 
     worker1 = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
     )
     worker2 = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=evaler,
         settings=settings,
@@ -194,7 +194,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     with contextlib.suppress(WorkerRaiseError):
         worker1.run()
 
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
     assert (
         sum(1 for t in trials if t.metadata.evaluating_worker_id == worker1.worker_id)
         == 1
@@ -203,7 +203,7 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     # Worker2 should run successfully
     evaler.do_raise = False
     worker2.run()
-    trials = list(extrapolaw_state.lock_and_read_trials().values())
+    trials = list(scalefm_state.lock_and_read_trials().values())
     assert (
         sum(1 for t in trials if t.metadata.evaluating_worker_id == worker2.worker_id)
         == 1
@@ -219,5 +219,5 @@ def test_worker_does_not_raise_when_error_in_other_worker(
     assert n_crashed == 1
     assert len(trials) == 2
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 1
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 1

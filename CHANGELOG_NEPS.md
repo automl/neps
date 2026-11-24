@@ -1,6 +1,6 @@
 # Changelog (upstream NePS)
 
-This is the history of [NePS](https://github.com/automl/neps) up to version 0.17.0, from which Extrapolaw was forked. It is kept for provenance and is no longer updated. See [CHANGELOG.md](CHANGELOG.md) for Extrapolaw.
+This is the history of [NePS](https://github.com/automl/neps) up to version 0.17.0, from which ScaleFM was forked. It is kept for provenance and is no longer updated. See [CHANGELOG.md](CHANGELOG.md) for ScaleFM.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 

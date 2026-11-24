@@ -6,7 +6,7 @@ import runpy
 from pathlib import Path
 
 import pytest
-from extrapolaw_examples import ci_examples, core_examples
+from scalefm_examples import ci_examples
 
 
 @pytest.fixture(autouse=True)
@@ -27,23 +27,11 @@ def no_logs_gte_error(caplog):
     assert not errors
 
 
-examples_folder = Path(__file__, "..", "..", "extrapolaw_examples").resolve()
-core_examples_scripts = [examples_folder / f"{example}.py" for example in core_examples]
+examples_folder = Path(__file__, "..", "..", "scalefm_examples").resolve()
 ci_examples_scripts = [examples_folder / f"{example}.py" for example in ci_examples]
-
-
-@pytest.mark.core_examples
-@pytest.mark.parametrize("example", core_examples_scripts, ids=core_examples)
-def test_core_examples(example):
-    if example.name == "2_run_analysis.py":
-        # Run hyperparameters example to have something to analyse
-        runpy.run_path(str(core_examples_scripts[0]), run_name="__main__")
-
-    else:
-        runpy.run_path(str(example), run_name="__main__")
 
 
 @pytest.mark.ci_examples
 @pytest.mark.parametrize("example", ci_examples_scripts, ids=ci_examples)
 def test_ci_examples(example):
-    test_core_examples(example)
+    runpy.run_path(str(example), run_name="__main__")

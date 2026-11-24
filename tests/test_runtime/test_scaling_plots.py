@@ -13,10 +13,10 @@ import portalocker as pl
 import pytest
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
-import extrapolaw
-from extrapolaw.plot import scaling_plots
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, Integer, PipelineSpace
-from extrapolaw.state.extrapolaw_state import ExtrapolawState
+import scalefm
+from scalefm.plot import scaling_plots
+from scalefm.space.scalefm_spaces.parameters import Float, Integer, PipelineSpace
+from scalefm.state.scalefm_state import ScaleFMState
 
 
 class _Space(PipelineSpace):
@@ -42,7 +42,7 @@ def _zero_cost(width: int, lr: float) -> dict:
 
 
 def _run(root: Path, evaluate_pipeline: object) -> None:
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=evaluate_pipeline,  # type: ignore[arg-type]
         pipeline_space=_Space(),
         root_directory=root,
@@ -57,7 +57,7 @@ def test_scaling_plots_are_written(tmp_path: Path) -> None:
     summary = root / "summary"
     assert not (summary / "pre_train").exists()
 
-    extrapolaw.analyze(root)
+    scalefm.analyze(root)
     for name in (
         "pre_train/loss_over_cost",
         "pre_train/loss_over_inference_cost",
@@ -117,7 +117,7 @@ def _frontiers(log_dir: Path) -> dict[int, str]:
 def test_tensorboard_steps_stay_the_same(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _scaling)
-    state = ExtrapolawState.create_or_load(path=root, load_only=True)
+    state = ScaleFMState.create_or_load(path=root, load_only=True)
     trials = list(state._trial_repo.get_valid_evaluated_trials().values())
     first = min(trials, key=lambda trial: trial.metadata.time_end or 0.0)
     log_dir = tmp_path / "tensorboard"
@@ -150,7 +150,7 @@ def test_tensorboard_is_fail_safe(
 ) -> None:
     root = tmp_path / "results"
     _run(root, _scaling)
-    state = ExtrapolawState.create_or_load(path=root, load_only=True)
+    state = ScaleFMState.create_or_load(path=root, load_only=True)
     trials = list(state._trial_repo.get_valid_evaluated_trials().values())
     log_dir = tmp_path / "tensorboard"
     with monkeypatch.context() as patch, caplog.at_level(logging.WARNING):
@@ -167,7 +167,7 @@ def test_tensorboard_is_fail_safe(
 def test_no_scaling_plots_without_a_positive_cost(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _zero_cost)
-    extrapolaw.analyze(root)
+    scalefm.analyze(root)
 
     assert (root / "summary" / "full.csv").exists()
     assert not (root / "summary" / "pre_train").exists()
@@ -177,10 +177,10 @@ def test_predict_saves_the_targets_and_the_convergence(tmp_path: Path) -> None:
     root = tmp_path / "results"
     _run(root, _scaling)
 
-    state = ExtrapolawState.create_or_load(path=root, load_only=True)
+    state = ScaleFMState.create_or_load(path=root, load_only=True)
     assert state.lock_and_get_optimizer_info()["derived"]["predictor"] == "power_law"
 
-    extrapolaw.predict(root, [1e14, 1e15], target_inference_costs=[1e6])
+    scalefm.predict(root, [1e14, 1e15], target_inference_costs=[1e6])
     summary = root / "summary"
     targets = json.loads((summary / "targets.json").read_text())
     assert targets == {"cost": [1e14, 1e15], "inference_cost": [1e6]}
@@ -191,6 +191,6 @@ def test_predict_saves_the_targets_and_the_convergence(tmp_path: Path) -> None:
         assert (summary / "convergence" / f"{name}.png").exists()
     assert len(pd.read_csv(summary / "convergence/loss_over_cost.csv")) > 0
 
-    extrapolaw.analyze(root)
+    scalefm.analyze(root)
     predictions = pd.read_csv(summary / "pre_train/predictions_over_cost.csv")
     assert list(predictions["target_cost"]) == [1e14, 1e15]

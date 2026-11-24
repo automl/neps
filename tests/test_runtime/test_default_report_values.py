@@ -4,15 +4,15 @@ from pathlib import Path
 
 from pytest_cases import fixture
 
-from extrapolaw.optimizers import OptimizerInfo
-from extrapolaw.optimizers.algorithms import random_search
-from extrapolaw.runtime import DefaultWorker
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, PipelineSpace
-from extrapolaw.state import (
+from scalefm.optimizers import OptimizerInfo
+from scalefm.optimizers.algorithms import random_search
+from scalefm.runtime import DefaultWorker
+from scalefm.space.scalefm_spaces.parameters import Float, PipelineSpace
+from scalefm.state import (
     DefaultReportValues,
-    ExtrapolawState,
     OnErrorPossibilities,
     OptimizationState,
+    ScaleFMState,
     SeedSnapshot,
     Trial,
     WorkerSettings,
@@ -20,12 +20,12 @@ from extrapolaw.state import (
 
 
 @fixture
-def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
+def scalefm_state(tmp_path: Path) -> ScaleFMState:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
 
-    return ExtrapolawState.create_or_load(
-        path=tmp_path / "extrapolaw_state",
+    return ScaleFMState.create_or_load(
+        path=tmp_path / "scalefm_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
@@ -35,7 +35,7 @@ def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
 
 
 def test_default_values_on_error(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -60,14 +60,14 @@ def test_default_values_on_error(
         raise ValueError("This is an error")
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     n_crashed = sum(
         trial.metadata.state == Trial.State.CRASHED is not None
         for trial in trials.values()
@@ -75,8 +75,8 @@ def test_default_values_on_error(
     assert len(trials) == 1
     assert n_crashed == 1
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 1
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 1
 
     trial = trials.popitem()[1]
     assert trial.metadata.state == Trial.State.CRASHED
@@ -87,7 +87,7 @@ def test_default_values_on_error(
 
 
 def test_default_values_on_not_specified(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -111,14 +111,14 @@ def test_default_values_on_not_specified(
         return {"objective_to_minimize": 1.0}  # The cost is the default
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     n_sucess = sum(
         trial.metadata.state == Trial.State.SUCCESS is not None
         for trial in trials.values()
@@ -126,8 +126,8 @@ def test_default_values_on_not_specified(
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
     assert trial.metadata.state == Trial.State.SUCCESS
@@ -137,7 +137,7 @@ def test_default_values_on_not_specified(
 
 
 def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_value(
-    extrapolaw_state: ExtrapolawState,
+    scalefm_state: ScaleFMState,
 ) -> None:
     class TestSpace(PipelineSpace):
         a = Float(0, 1)
@@ -162,14 +162,14 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
         return {"objective_to_minimize": LOSS, "cost": 1.0}
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         optimizer=optimizer,
         evaluation_fn=eval_function,
         settings=settings,
     )
     worker.run()
 
-    trials = extrapolaw_state.lock_and_read_trials()
+    trials = scalefm_state.lock_and_read_trials()
     n_sucess = sum(
         trial.metadata.state == Trial.State.SUCCESS is not None
         for trial in trials.values()
@@ -177,8 +177,8 @@ def test_default_value_objective_to_minimize_curve_take_objective_to_minimize_va
     assert len(trials) == 1
     assert n_sucess == 1
 
-    assert extrapolaw_state.lock_and_get_next_pending_trial() is None
-    assert len(extrapolaw_state.lock_and_get_errors()) == 0
+    assert scalefm_state.lock_and_get_next_pending_trial() is None
+    assert len(scalefm_state.lock_and_get_errors()) == 0
 
     trial = trials.popitem()[1]
     assert trial.metadata.state == Trial.State.SUCCESS

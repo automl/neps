@@ -1,6 +1,6 @@
 """Tests for search space validation and error handling.
 
-This file focuses on high-level integration tests through extrapolaw.acquire():
+This file focuses on high-level integration tests through scalefm.acquire():
 - Strict validation (errors on mismatched search spaces)
 - Auto-loading from disk
 - Error handling when search space is missing
@@ -16,11 +16,11 @@ from pathlib import Path
 
 import pytest
 
-import extrapolaw
-from extrapolaw.exceptions import ExtrapolawError
-from extrapolaw.space import SearchSpace
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, Integer, PipelineSpace
-from extrapolaw.state import ExtrapolawState
+import scalefm
+from scalefm.exceptions import ScaleFMError
+from scalefm.space import SearchSpace
+from scalefm.space.scalefm_spaces.parameters import Float, Integer, PipelineSpace
+from scalefm.state import ScaleFMState
 
 
 class Space1(PipelineSpace):
@@ -54,7 +54,7 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
     root_dir = tmp_path / "test_error"
 
     # Create initial state with TestSpace1
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -62,9 +62,9 @@ def test_error_on_mismatched_search_space(tmp_path: Path):
         worker_evaluations_to_spend=1,
     )
 
-    # Try to continue with TestSpace2 - should raise ExtrapolawError
-    with pytest.raises(ExtrapolawError, match="pipeline space on disk does not match"):
-        extrapolaw.acquire(
+    # Try to continue with TestSpace2 - should raise ScaleFMError
+    with pytest.raises(ScaleFMError, match="pipeline space on disk does not match"):
+        scalefm.acquire(
             evaluate_pipeline=eval_fn2,
             pipeline_space=Space2(),
             optimizer="random_search",
@@ -78,7 +78,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     root_dir = tmp_path / "test_no_space"
 
     # Create initial state with TestSpace1
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -87,7 +87,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     )
 
     # Continue WITHOUT providing pipeline_space - should load from disk
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         # pipeline_space not provided!
         optimizer="random_search",
@@ -96,7 +96,7 @@ def test_success_without_search_space_when_on_disk(tmp_path: Path):
     )
 
     # Verify we have at least 2 evaluations (continuation worked)
-    df, _summary = extrapolaw.status(str(root_dir), print_summary=False)
+    df, _summary = scalefm.status(str(root_dir), print_summary=False)
     assert len(df) >= 2, f"Should have at least 2 evaluations, got {len(df)}"
 
 
@@ -106,7 +106,7 @@ def test_error_when_no_space_provided_and_none_on_disk(tmp_path: Path):
 
     # Try to run WITHOUT providing pipeline_space and with no existing run
     with pytest.raises(ValueError, match="pipeline_space is required"):
-        extrapolaw.acquire(
+        scalefm.acquire(
             evaluate_pipeline=eval_fn1,
             # pipeline_space not provided and root_dir doesn't exist!
             optimizer="random_search",
@@ -120,7 +120,7 @@ def test_load_only_does_not_validate(tmp_path: Path, caplog):
     root_dir = tmp_path / "test_load_only"
 
     # Create initial state
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -130,7 +130,7 @@ def test_load_only_does_not_validate(tmp_path: Path, caplog):
 
     # Load with load_only - should not error or warn about validation
     with caplog.at_level(logging.WARNING):
-        state = ExtrapolawState.create_or_load(
+        state = ScaleFMState.create_or_load(
             path=root_dir,
             load_only=True,
         )
@@ -150,7 +150,7 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
     root_dir = tmp_path / "test_load_config_error"
 
     # Create run with TestSpace1
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -168,8 +168,8 @@ def test_load_config_with_wrong_space_raises_error(tmp_path: Path):
     config_path = configs[0] / "config.yaml"
 
     # Try to load with wrong pipeline_space - should raise error
-    with pytest.raises(ExtrapolawError, match="pipeline_space provided does not match"):
-        extrapolaw.load_config(config_path=config_path, pipeline_space=Space2())
+    with pytest.raises(ScaleFMError, match="pipeline_space provided does not match"):
+        scalefm.load_config(config_path=config_path, pipeline_space=Space2())
 
 
 def test_load_config_without_space_auto_loads(tmp_path: Path):
@@ -177,7 +177,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
     root_dir = tmp_path / "test_load_config_auto"
 
     # Create run
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -195,7 +195,7 @@ def test_load_config_without_space_auto_loads(tmp_path: Path):
     config_path = configs[0] / "config.yaml"
 
     # Load config without providing space - should auto-load from disk
-    config = extrapolaw.load_config(config_path=config_path)
+    config = scalefm.load_config(config_path=config_path)
 
     assert "x" in config, "Should have x parameter"
 
@@ -205,7 +205,7 @@ def test_ddp_runtime_loads_search_space(tmp_path: Path):
     root_dir = tmp_path / "test_ddp"
 
     # Create initial state with search space
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -214,11 +214,11 @@ def test_ddp_runtime_loads_search_space(tmp_path: Path):
     )
 
     # Simulate DDP path - just load_only (DDP doesn't create state)
-    state = ExtrapolawState.create_or_load(path=root_dir, load_only=True)
+    state = ScaleFMState.create_or_load(path=root_dir, load_only=True)
     loaded_space = state.lock_and_get_search_space()
 
     assert loaded_space is not None, "DDP should be able to load search space"
-    # Extrapolaw converts PipelineSpace to SearchSpace internally
+    # ScaleFM converts PipelineSpace to SearchSpace internally
     assert isinstance(loaded_space, PipelineSpace | SearchSpace), "Should load correctly"
 
 
@@ -227,7 +227,7 @@ def test_status_without_space_works(tmp_path: Path):
     root_dir = tmp_path / "test_status_auto"
 
     # Create a run
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -236,7 +236,7 @@ def test_status_without_space_works(tmp_path: Path):
     )
 
     # Status without pipeline_space - should work
-    df, _summary = extrapolaw.status(str(root_dir), print_summary=False)
+    df, _summary = scalefm.status(str(root_dir), print_summary=False)
     assert len(df) > 0, "Should have results"
 
 
@@ -245,7 +245,7 @@ def test_status_handles_missing_search_space_gracefully(tmp_path: Path):
     root_dir = tmp_path / "test_status_missing"
 
     # Create a run
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=eval_fn1,
         pipeline_space=Space1(),
         optimizer="random_search",
@@ -259,5 +259,5 @@ def test_status_handles_missing_search_space_gracefully(tmp_path: Path):
         search_space_file.unlink()
 
     # Status with print_summary=False should work even without search space
-    df, _summary = extrapolaw.status(str(root_dir), print_summary=False)
+    df, _summary = scalefm.status(str(root_dir), print_summary=False)
     assert len(df) > 0, "Should still get results"

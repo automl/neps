@@ -1,5 +1,5 @@
-"""One Extrapolaw worker of a scaling-study setting, in its own Slurm job on its own GPU.
-Calls `extrapolaw.acquire` on the setting's shared root directory for its share of the
+"""One ScaleFM worker of a scaling-study setting, in its own Slurm job on its own GPU.
+Calls `scalefm.acquire` on the setting's shared root directory for its share of the
 sweep.
 """
 
@@ -12,17 +12,17 @@ from pathlib import Path
 
 from train import evaluate
 
-import extrapolaw
+import scalefm
 
-# How long a follower waits for the first worker to create the Extrapolaw state.
+# How long a follower waits for the first worker to create the ScaleFM state.
 STATE_WAIT_TIMEOUT_SEC = 900
 STATE_POLL_SEC = 2
 
 
-class HPOSpace(extrapolaw.PipelineSpace):
-    lr = extrapolaw.Categorical(choices=(3e-4, 1e-3))
-    wd = extrapolaw.Categorical(choices=(1e-5, 1e-4))
-    batch_size = extrapolaw.Categorical(choices=(256, 512))
+class HPOSpace(scalefm.PipelineSpace):
+    lr = scalefm.Categorical(choices=(3e-4, 1e-3))
+    wd = scalefm.Categorical(choices=(1e-5, 1e-4))
+    batch_size = scalefm.Categorical(choices=(256, 512))
 
     vision_width = 256
     vision_layers = 6
@@ -32,9 +32,9 @@ class HPOSpace(extrapolaw.PipelineSpace):
 
 
 def wait_for_state(root_dir: Path) -> None:
-    """Block until the first worker has finished creating the Extrapolaw state.
+    """Block until the first worker has finished creating the ScaleFM state.
 
-    `ExtrapolawState.create_or_load` deliberately does not lock the creation path, so
+    `ScaleFMState.create_or_load` deliberately does not lock the creation path, so
     two workers reaching it at once can read a half-written state. Only the
     first worker of a setting creates it; the rest wait here. `pipeline_space.pkl`
     is the last file creation writes, so its presence means the state is complete.
@@ -45,7 +45,7 @@ def wait_for_state(root_dir: Path) -> None:
         if time.time() > deadline:
             raise TimeoutError(
                 f"{marker} did not appear within {STATE_WAIT_TIMEOUT_SEC}s. The first "
-                "worker of this setting never created the Extrapolaw state -- check its"
+                "worker of this setting never created the ScaleFM state -- check its"
                 " log."
             )
         time.sleep(STATE_POLL_SEC)
@@ -71,7 +71,7 @@ def main():
             **config,
         )
 
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=HPOSpace(),
         root_directory=args.root_dir,

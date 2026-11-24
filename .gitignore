@@ -27,7 +27,7 @@ site/*
 
 # Results
 results
-extrapolaw_examples/results
+scalefm_examples/results
 tests_tmpdir
 usage_example
 lightning_logs
@@ -40,6 +40,7 @@ jahs_bench_data/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+!tutorials/*.ipynb
 
 # MacOS
 *.DS_Store

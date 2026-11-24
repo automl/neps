@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from extrapolaw.space import (
+from scalefm.space import (
     HPOCategorical,
     HPOConstant,
     HPOFloat,

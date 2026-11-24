@@ -1,32 +1,32 @@
 # Analysing Runs
 
-Everything Extrapolaw knows about a run lives on disk, in the `root_directory` you gave to
-[`extrapolaw.acquire()`][extrapolaw.api.acquire]. There are a few ways to look at it:
+Everything ScaleFM knows about a run lives on disk, in the `root_directory` you gave to
+[`scalefm.acquire()`][scalefm.api.acquire]. There are a few ways to look at it:
 
 | You want to...                                                                  | Use                                                   |
 | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| See how many trials are pending, running, done or crashed, and the best so far | [`extrapolaw.status`](#trial-status-extrapolawstatus)            |
-| Get plots and CSV/text reports of the whole run, at any time                    | [`extrapolaw.analyze`](#plots-and-reports-extrapolawanalyze)     |
+| See how many trials are pending, running, done or crashed, and the best so far | [`scalefm.status`](#trial-status-scalefmstatus)            |
+| Get plots and CSV/text reports of the whole run, at any time                    | [`scalefm.analyze`](#plots-and-reports-scalefmanalyze)     |
 | Have those plots kept up to date while the run is going                         | [`live_plots=True`](#live-plots-during-a-run)         |
 | Follow per-epoch metrics from inside your training loop                         | [TensorBoard](#tensorboard-integration)               |
 
-## Trial status: `extrapolaw.status`
+## Trial status: `scalefm.status`
 
-`extrapolaw.status` tells you where a run stands: how many trials are in each state, and the
+`scalefm.status` tells you where a run stands: how many trials are in each state, and the
 best configuration found so far. It only reads the run; it does not write any files.
 
 === "CLI"
 
     ```bash
-    python -m extrapolaw.status ROOT_DIRECTORY
+    python -m scalefm.status ROOT_DIRECTORY
     ```
 
 === "Python"
 
     ```python
-    import extrapolaw
+    import scalefm
 
-    full_df, short = extrapolaw.status("ROOT_DIRECTORY", print_summary=True)
+    full_df, short = scalefm.status("ROOT_DIRECTORY", print_summary=True)
     ```
 
     `full_df` has one row per trial (its config, report and metadata) and `short`
@@ -38,12 +38,12 @@ best configuration found so far. It only reads the run; it does not write any fi
     To show the status repeatedly, on unix systems you can use
 
     ```bash
-    watch --interval 30 python -m extrapolaw.status ROOT_DIRECTORY
+    watch --interval 30 python -m scalefm.status ROOT_DIRECTORY
     ```
 
-## Plots and reports: `extrapolaw.analyze`
+## Plots and reports: `scalefm.analyze`
 
-[`extrapolaw.analyze()`][extrapolaw.api.analyze] rebuilds the `summary` folder of a run from what is
+[`scalefm.analyze()`][scalefm.api.analyze] rebuilds the `summary` folder of a run from what is
 on disk: the CSVs and the plots. It does not evaluate
 anything, so you can call it
 
@@ -54,9 +54,9 @@ anything, so you can call it
   [importing trials](import_trials.md).
 
 ```python
-import extrapolaw
+import scalefm
 
-extrapolaw.analyze("ROOT_DIRECTORY")
+scalefm.analyze("ROOT_DIRECTORY")
 ```
 
 ### Which plots?
@@ -66,7 +66,7 @@ own way.
 
 #### Scaling plots
 
-If the runs return a positive `cost`, Extrapolaw draws scaling plots in
+If the runs return a positive `cost`, ScaleFM draws scaling plots in
 `summary/scaling/`, each with a CSV of its points. All of them use log-log axes and
 mark the Pareto frontier: the runs with the best result for their cost.
 
@@ -85,28 +85,28 @@ containing `_acc` or `recall`) are plotted as `1 - value`. See
 
 The fit on `loss_over_cost` is the scaling law the run's optimizer names. The
 Chinchilla law for the `chinchilla` optimizer, if the runs return `n_params` and
-`n_data`, and a power law otherwise. `extrapolaw.predict()` uses the same one.
+`n_data`, and a power law otherwise. `scalefm.predict()` uses the same one.
 
 #### Prediction plot
 
-`extrapolaw.predict(ROOT_DIRECTORY, target_costs)` also saves `summary/scaling/prediction.png`, with its CSVs: the fit extended to the target
+`scalefm.predict(ROOT_DIRECTORY, target_costs)` also saves `summary/scaling/prediction.png`, with its CSVs: the fit extended to the target
    budgets (left), and the predicted loss after each finished run (right).
 
 ## Live plots during a run
 
 Pass `live_plots=True` to have the plots
 redrawn after every evaluated trial as well. Where to pass it depends on how your
-trials are evaluated: via `extrapolaw.acquire()` or `extrapolaw.save_pipeline_results()` (see [the evaluate function](evaluate_pipeline.md)).
+trials are evaluated: via `scalefm.acquire()` or `scalefm.save_pipeline_results()` (see [the evaluate function](evaluate_pipeline.md)).
 
 !!! warning "Overhead"
 
     Each refresh reads every trial and redraws the figures, so it gets slower as the run
     grows. Next to a training job of a few minutes this is negligible, but for many cheap
-    evaluations, leave `live_plots` off and call `extrapolaw.analyze()` when you want to look.
+    evaluations, leave `live_plots` off and call `scalefm.analyze()` when you want to look.
 
 ## What's on disk?
 
-Extrapolaw keeps several human-readable files in the `ROOT_DIRECTORY`, and a `summary` folder
+ScaleFM keeps several human-readable files in the `ROOT_DIRECTORY`, and a `summary` folder
 with reports on the run.
 
 ```
@@ -135,7 +135,7 @@ ROOT_DIRECTORY
 
 ### Scaling data
 
-For runs that report a `cost`, Extrapolaw logs to `ROOT_DIRECTORY/summary_tb` after
+For runs that report a `cost`, ScaleFM logs to `ROOT_DIRECTORY/summary_tb` after
 every evaluation, with or without `live_plots`, one step per run:
 
 - `scaling/incumbent/loss`: the best loss so far;
@@ -153,24 +153,24 @@ tensorboard --logdir ROOT_DIRECTORY/summary_tb --samples_per_plugin text=0
 
 ### Logging your own metrics
 
-In Extrapolaw we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
+In ScaleFM we replaced the traditional TensorBoard `SummaryWriter` with the `ConfigWriter` to streamline the logging process. This integration enhances the ability to visualize and diagnose hyperparameter optimization workflows, providing detailed insights into metrics and configurations during training.
 
 ### Overview of ConfigWriter
 
-The `ConfigWriter` serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the Extrapolaw, enabling better visualization and analysis of model performance during hyperparameter searches.
+The `ConfigWriter` serves as a versatile and efficient tool for logging various training metrics and hyperparameter configurations. It seamlessly integrates with the ScaleFM, enabling better visualization and analysis of model performance during hyperparameter searches.
 
 To enable live logging of the incumbent trajectory, use the `write_summary_incumbent` argument when initializing `ConfigWriter`.
 
-If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the `extrapolaw.tblogger.WriteIncumbent()` function in their run pipeline
+If a user only wishes to log the incumbent and does not want a specific writer for each configuration (i.e., no other logging in the run pipeline), they should simply trigger the `scalefm.tblogger.WriteIncumbent()` function in their run pipeline
 
 ### Example Usage
 
 Below is an example implementation of the `ConfigWriter` for logging metrics during the training process:
 
 ```python
-import extrapolaw
-# Substitute the TensorBoard SummaryWriter with ConfigWriter from Extrapolaw
-writer = extrapolaw.tblogger.ConfigWriter(write_summary_incumbent=True)
+import scalefm
+# Substitute the TensorBoard SummaryWriter with ConfigWriter from ScaleFM
+writer = scalefm.tblogger.ConfigWriter(write_summary_incumbent=True)
 
 for i in range(max_epochs):
     objective_to_minimize = training(

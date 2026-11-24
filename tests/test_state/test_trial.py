@@ -4,7 +4,7 @@ import os
 
 import numpy as np
 
-from extrapolaw.state import Trial
+from scalefm.state import Trial
 
 
 def test_trial_creation() -> None:

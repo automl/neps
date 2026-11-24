@@ -9,14 +9,14 @@ from botorch.acquisition.objective import LinearMCObjective
 from botorch.fit import fit_gpytorch_mll
 from gpytorch import ExactMarginalLogLikelihood
 
-from extrapolaw.optimizers.models.gp import (
+from scalefm.optimizers.models.gp import (
     LogCost,
     PowerLawMean,
     make_default_single_obj_gp,
     optimize_acq,
 )
-from extrapolaw.space import ConfigEncoder, HPOFloat
-from extrapolaw.utils.power_law import fit_power_law_mean_params
+from scalefm.space import ConfigEncoder, HPOFloat
+from scalefm.utils.power_law import fit_power_law_mean_params
 
 
 def _cost(n_params: float, n_data: float) -> float:

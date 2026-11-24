@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from extrapolaw.space import ConfigEncoder, HPOCategorical, HPOFloat, HPOInteger
+from scalefm.space import ConfigEncoder, HPOCategorical, HPOFloat, HPOInteger
 
 
 def test_config_encoder_pdist_calculation() -> None:

@@ -1,11 +1,11 @@
-"""Tests for `extrapolaw.acquire(..., live_plots=True)`."""
+"""Tests for `scalefm.acquire(..., live_plots=True)`."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-import extrapolaw
-from extrapolaw.space.extrapolaw_spaces.parameters import Float, PipelineSpace
+import scalefm
+from scalefm.space.scalefm_spaces.parameters import Float, PipelineSpace
 
 
 class _Space(PipelineSpace):
@@ -17,7 +17,7 @@ def _single_objective(x: float) -> dict:
 
 
 def _run(root: Path, evaluate_pipeline: object, *, live_plots: bool) -> None:
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=evaluate_pipeline,  # type: ignore[arg-type]
         pipeline_space=_Space(),
         root_directory=root,

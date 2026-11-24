@@ -9,18 +9,18 @@ import torch
 from botorch.models import SingleTaskGP
 from gpytorch.means import ZeroMean
 
-from extrapolaw.exceptions import BudgetExhaustedError
-from extrapolaw.optimizers import bayesian_optimization as bo_module
-from extrapolaw.optimizers.acquisition import information_theoretic
-from extrapolaw.optimizers.acquisition.information_theoretic import (
+from scalefm.exceptions import BudgetExhaustedError
+from scalefm.optimizers import bayesian_optimization as bo_module
+from scalefm.optimizers.acquisition import information_theoretic
+from scalefm.optimizers.acquisition.information_theoretic import (
     CostWeightedModifiedJES,
 )
-from extrapolaw.optimizers.algorithms import bayesian_optimization
-from extrapolaw.optimizers.models.gp import LogCost, PowerLawMean
-from extrapolaw.optimizers.optimizer import SampledConfig
-from extrapolaw.space import HPOFloat, HPOInteger, SearchSpace
-from extrapolaw.space.encoding import ConfigEncoder
-from extrapolaw.state import BudgetInfo, Trial
+from scalefm.optimizers.algorithms import bayesian_optimization
+from scalefm.optimizers.models.gp import LogCost, PowerLawMean
+from scalefm.optimizers.optimizer import SampledConfig
+from scalefm.space import HPOFloat, HPOInteger, SearchSpace
+from scalefm.space.encoding import ConfigEncoder
+from scalefm.state import BudgetInfo, Trial
 
 
 def _space(lower: int = 1, upper: int = 1000) -> SearchSpace:
@@ -166,6 +166,12 @@ def test_infeasible_level_moves_to_the_next() -> None:
     sampled = optimizer({}, BudgetInfo(worker_cost_to_spend=3200))
     # Level 1 allows 3200 / 4 = 800, clamped at 400
     assert 121 <= _cost(**sampled.config) <= 400
+
+
+def test_unknown_schedule_is_rejected() -> None:
+    # It would otherwise mix the two schedules and fail mid-run
+    with pytest.raises(ValueError, match="Unknown budget_schedule 'left_budget'"):
+        _optimizer("left_budget")
 
 
 def test_schedule_needs_a_budget() -> None:
@@ -331,3 +337,18 @@ def test_prior_mean_keeps_the_schedule(
 
     assert gps
     assert all(type(gp.mean_module) is mean_type and gp.log_y for gp in gps)
+
+
+@pytest.mark.parametrize(
+    ("acquisition", "predictor"), [("EI", "power_law"), ("IT-SCAN-JES", "gp_posterior")]
+)
+def test_scan_predicts_with_its_gp(acquisition: str, predictor: str) -> None:
+    from scalefm.optimizers import _make_info
+
+    optimizer = bayesian_optimization(
+        _space(), acquisition_func_type=acquisition, target_cost=10**6
+    )
+    assert optimizer.predictor == predictor
+    # `scalefm.predict(predictor="auto")` reads it from the saved optimizer info
+    info = _make_info("bayesian_optimization", {}, optimizer)
+    assert info["derived"]["predictor"] == predictor

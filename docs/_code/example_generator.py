@@ -10,9 +10,9 @@ import mkdocs_gen_files
 
 logger = logging.getLogger(__name__)
 
-SRCDIR = Path("extrapolaw").absolute().resolve()
+SRCDIR = Path("scalefm").absolute().resolve()
 ROOT = SRCDIR.parent
-EXAMPLE_FOLDER = ROOT / "extrapolaw_examples"
+EXAMPLE_FOLDER = ROOT / "scalefm_examples"
 TAB = "    "
 
 if not SRCDIR.exists():

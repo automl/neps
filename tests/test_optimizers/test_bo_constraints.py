@@ -5,23 +5,23 @@ import time
 import pytest
 import torch
 
-from extrapolaw.optimizers.algorithms import bayesian_optimization
-from extrapolaw.optimizers.models.gp import (
+from scalefm.optimizers.algorithms import bayesian_optimization
+from scalefm.optimizers.models.gp import (
     INFEASIBLE_CONSTRAINT_VALUE,
     encode_constraints_func,
     make_ic_generator,
 )
-from extrapolaw.optimizers.optimizer import SampledConfig
-from extrapolaw.optimizers.utils.initial_design import make_initial_design
-from extrapolaw.space import (
+from scalefm.optimizers.optimizer import SampledConfig
+from scalefm.optimizers.utils.initial_design import make_initial_design
+from scalefm.space import (
     HPOCategorical,
     HPOConstant,
     HPOFloat,
     HPOInteger,
     SearchSpace,
 )
-from extrapolaw.space.encoding import ConfigEncoder
-from extrapolaw.state import Trial
+from scalefm.space.encoding import ConfigEncoder
+from scalefm.state import Trial
 
 
 def _trial(sampled: SampledConfig, objective: float) -> Trial:

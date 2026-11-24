@@ -3,13 +3,13 @@ from __future__ import annotations
 import torch
 from pytest_cases import parametrize
 
-from extrapolaw.sampling import (
+from scalefm.sampling import (
     Prior,
     Sampler,
     Sobol,
     Uniform,
 )
-from extrapolaw.space import Domain
+from scalefm.space import Domain
 
 
 def _make_centered_prior(ndim: int) -> Prior:

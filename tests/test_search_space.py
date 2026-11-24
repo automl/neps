@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from extrapolaw.space import SearchSpace
-from extrapolaw.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
+from scalefm.space import SearchSpace
+from scalefm.space.parameters import HPOCategorical, HPOConstant, HPOFloat, HPOInteger
 
 
 def test_search_space_orders_parameters_by_name():
@@ -18,9 +18,7 @@ def test_search_space_orders_parameters_by_name():
 
 def test_multipe_fidelities_raises_error():
     # We should allow this at some point, but until we do, raise an error
-    with pytest.raises(
-        ValueError, match="extrapolaw only supports one fidelity parameter"
-    ):
+    with pytest.raises(ValueError, match="scalefm only supports one fidelity parameter"):
         SearchSpace(
             {
                 "a": HPOFloat(0, 1, is_fidelity=True),

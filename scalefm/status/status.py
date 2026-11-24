@@ -1,0 +1,342 @@
+"""Functions to get the status of a run and save the status to CSV files.
+
+This module provides utilities for monitoring ScaleFM optimization runs.
+"""
+
+# ruff: noqa: T201
+from __future__ import annotations
+
+import contextlib
+import itertools
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from pprint import pformat
+from typing import TYPE_CHECKING
+
+import numpy as np
+import pandas as pd
+
+from scalefm.space.scalefm_spaces import scalefm_space
+from scalefm.space.scalefm_spaces.sampling import OnlyPredefinedValuesSampler
+from scalefm.space.scalefm_spaces.scalefm_space import (
+    PipelineSpace,
+    ScaleFMCompatConverter,
+)
+from scalefm.space.scalefm_spaces.string_formatter import format_value
+from scalefm.state.scalefm_state import FileLocker, ScaleFMState
+from scalefm.state.trial import State, Trial
+
+if TYPE_CHECKING:
+    from scalefm.space.search_space import SearchSpace
+
+
+@dataclass
+class Summary:
+    """Summary of the current state of an scalefm run."""
+
+    by_state: dict[State, list[Trial]]
+    best: tuple[Trial, float] | None
+    running: list[Trial] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.running = self.by_state[State.EVALUATING]
+
+    @property
+    def num_errors(self) -> int:
+        """Number of trials that have errored."""
+        return len(self.by_state[State.CRASHED])
+
+    def df(self) -> pd.DataFrame:
+        """Convert the summary into a dataframe."""
+        trials = sorted(
+            itertools.chain(*self.by_state.values()),
+            key=lambda t: t.metadata.time_sampled,
+        )
+        if len(trials) == 0:
+            return pd.DataFrame()
+
+        # Config dataframe, config columns prefixed with `config.`
+        config_df = (
+            pd.DataFrame.from_records([trial.config for trial in trials])
+            .rename(columns=lambda name: f"config.{name}")
+            .convert_dtypes()
+        )
+
+        # Report dataframe
+        report_df = pd.DataFrame.from_records(
+            [asdict(t.report) if t.report is not None else {} for t in trials]
+        ).convert_dtypes()
+
+        extra_df = pd.DataFrame()
+        # We pop out the user extra column to flatten it
+        if "extra" in report_df.columns:
+            extra_column = report_df.pop("extra")
+            extra_df = pd.json_normalize(extra_column).rename(  # type: ignore
+                columns=lambda name: f"extra.{name}"
+            )
+        downstream_df = pd.DataFrame()
+        # The same for the downstream performances, one column per metric
+        if "downstream_performances" in report_df.columns:
+            downstream_column = report_df.pop("downstream_performances")
+            downstream_df = pd.DataFrame.from_records(
+                [v if isinstance(v, dict) else {} for v in downstream_column]
+            ).rename(columns=lambda name: f"downstream_performances.{name}")
+
+        # Metadata dataframe
+        metadata_df = pd.DataFrame.from_records(
+            [asdict(t.metadata) for t in trials]
+        ).convert_dtypes()
+        combined_df = pd.concat(
+            [config_df, extra_df, downstream_df, report_df, metadata_df], axis="columns"
+        )
+        if combined_df.empty:
+            return combined_df
+        return combined_df.set_index("id").dropna(how="all", axis="columns")
+
+    def completed(self) -> list[Trial]:
+        """Return all trials which are in a completed state."""
+        return list(
+            itertools.chain(
+                self.by_state[State.SUCCESS],
+                self.by_state[State.FAILED],
+                self.by_state[State.CRASHED],
+            )
+        )
+
+    @property
+    def num_evaluated(self) -> int:
+        """Number of trials that have been evaluated."""
+        return (
+            len(self.by_state[State.SUCCESS])
+            + len(self.by_state[State.FAILED])
+            + len(self.by_state[State.CRASHED])
+        )
+
+    @property
+    def num_pending(self) -> int:
+        """Number of trials that are pending."""
+        return len(self.by_state[State.PENDING])
+
+    def formatted(self, pipeline_space: PipelineSpace | SearchSpace | None = None) -> str:
+        """Return a formatted string of the summary.
+
+        Args:
+            pipeline_space: Optional PipelineSpace for the run. If provided, it is used
+                to format the best config in a more readable way. This is typically
+                auto-loaded from disk by the status() function.
+
+        Returns:
+            A formatted string of the summary.
+        """
+        state_summary = "\n".join(
+            f"    {state.name.lower()}: {len(trials)}"
+            for state, trials in self.by_state.items()
+            if len(trials) > 0
+        )
+
+        if self.best is None:
+            best_summary = "No best found yet."
+        else:
+            best_trial, best_objective_to_minimize = self.best
+
+            # Format config based on whether pipeline_space_variables is provided
+
+            best_summary = (
+                f"# Best Found (config {best_trial.metadata.id}):"
+                "\n"
+                f"\n    objective_to_minimize: {best_objective_to_minimize}\n    config: "
+            )
+            if not pipeline_space:
+                # Pretty-print dict configs with proper indentation
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
+            elif isinstance(pipeline_space, PipelineSpace):
+                # Only PipelineSpace supports pretty formatting - SearchSpace doesn't
+                best_config_resolve = ScaleFMCompatConverter().from_scalefm_config(
+                    best_trial.config
+                )
+                pipeline_configs = []
+                variables = list(pipeline_space.get_attrs().keys()) + list(
+                    pipeline_space.fidelity_attrs.keys()
+                )
+                resolved_pipeline = scalefm_space.resolve(
+                    pipeline_space,
+                    OnlyPredefinedValuesSampler(best_config_resolve.predefined_samplings),
+                    environment_values=best_config_resolve.environment_values,
+                )[0]
+
+                for variable in variables:
+                    operation = getattr(resolved_pipeline, variable)
+                    pipeline_configs.append(format_value(operation))
+
+                for n_pipeline, pipeline_config in enumerate(pipeline_configs):
+                    formatted_config = str(pipeline_config)
+                    variable_name = variables[n_pipeline]
+
+                    # Multi-line configs: put on new line with proper indentation
+                    # Single-line configs: inline after variable name
+                    if "\n" in formatted_config:
+                        indented_config = "\n          ".join(
+                            formatted_config.split("\n")
+                        )
+                        best_summary += (
+                            f"\n        {variable_name}:\n          {indented_config}"
+                        )
+                    else:
+                        best_summary += f"\n        {variable_name}: {formatted_config}"
+            else:
+                # SearchSpace or other space type - pretty-print the dict
+                config_str = pformat(
+                    best_trial.config, indent=2, width=80, sort_dicts=False
+                )
+                # Add indentation to each line for alignment
+                indented_config = "\n        ".join(config_str.split("\n"))
+                best_summary += f"\n        {indented_config}"
+
+            best_summary += f"\n    path: {best_trial.metadata.location}"
+
+            assert best_trial.report is not None
+            if best_trial.report.cost is not None:
+                best_summary += f"\n    cost: {best_trial.report.cost}"
+            if len(best_trial.report.extra) > 0:
+                best_summary += f"\n    extra: {best_trial.report.extra}"
+
+        return f"# Configs: {self.num_evaluated}\n\n{state_summary}\n\n{best_summary}"
+
+    @classmethod
+    def from_directory(cls, root_directory: str | Path) -> Summary:
+        """Create a summary from an scalefm run directory."""
+        root_directory = Path(root_directory)
+        # NOTE: We don't lock the shared state since we are just reading and don't need to
+        # make decisions based on the state
+        from scalefm.runtime import get_workers_scalefm_state
+
+        try:
+            shared_state = get_workers_scalefm_state()
+        except RuntimeError:
+            shared_state = None
+        # The worker's state is reused only for its own run, a process that ran
+        # `acquire` before can still summarize any other run
+        if shared_state is None or shared_state.path != root_directory.resolve():
+            shared_state = ScaleFMState.create_or_load(root_directory, load_only=True)
+
+        trials = shared_state.lock_and_read_trials()
+
+        return cls.from_trials(trials)
+
+    @classmethod
+    def from_trials(cls, trials: dict[str, Trial]) -> Summary:
+        """Summarize a mapping of trials into (by_state, best).
+
+        This extracts the core loop from `Summary.from_directory` so callers that
+        already have a `trials` mapping can reuse the logic without re-reading state.
+        """
+        best: tuple[Trial, float] | None = None
+        by_state: dict[State, list[Trial]] = {s: [] for s in State}
+
+        for trial in trials.values():
+            state = trial.metadata.state
+            by_state[state].append(trial)
+
+            if trial.report is not None:
+                objective_to_minimize = trial.report.objective_to_minimize
+                match objective_to_minimize:
+                    case None:
+                        pass
+                    case float() | int() | np.number():
+                        if best is None or objective_to_minimize < best[1]:
+                            best = (trial, objective_to_minimize)
+                    case _:
+                        raise RuntimeError("Unexpected type for objective_to_minimize")
+
+        return cls(by_state=by_state, best=best)
+
+
+def status(
+    root_directory: str | Path,
+    *,
+    print_summary: bool = False,
+) -> tuple[pd.DataFrame, pd.Series]:
+    """Print status information of an scalefm run and return results.
+
+    Args:
+        root_directory: The root directory given to scalefm.acquire.
+        print_summary: If true, print a summary of the current run state.
+
+    Returns:
+        Dataframe of full results and short summary series.
+    """
+    root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk for pretty printing
+    pipeline_space = None
+    if print_summary:
+        from scalefm.api import load_pipeline_space
+
+        with contextlib.suppress(FileNotFoundError, ValueError):
+            pipeline_space = load_pipeline_space(root_directory)
+            # Note: pipeline_space can still be None if it wasn't saved, which is fine
+
+    summary = Summary.from_directory(root_directory)
+
+    if print_summary:
+        print(summary.formatted(pipeline_space=pipeline_space))
+
+    df = summary.df()
+
+    if len(df) == 0:
+        return df, pd.Series()
+
+    short = (
+        df.groupby("state")
+        .size()
+        .rename(lambda name: f"num_{name.replace('State.', '').lower()}")
+    )
+    short.name = "value"
+    short.index.name = "summary"
+    short.index = short.index.astype(str)
+    assert isinstance(short, pd.Series)
+
+    if "objective_to_minimize" not in df.columns:
+        short["best_objective_to_minimize"] = None
+        short["best_config_id"] = None
+        return df, short
+
+    idx_min = df["objective_to_minimize"].idxmin()
+    row = df.loc[idx_min]
+    assert isinstance(row, pd.Series)
+    short["best_objective_to_minimize"] = row["objective_to_minimize"]
+    short["best_config_id"] = row.name
+
+    row = row.loc[row.index.str.startswith("config.")]
+    row.index = row.index.str.replace("config.", "")  # type: ignore
+    short = pd.concat([short, row])  # type: ignore
+    assert isinstance(short, pd.Series)
+    return df, short
+
+
+def _initiate_summary_csv(root_directory: str | Path) -> tuple[Path, FileLocker]:
+    """Initializes a summary CSV and an associated locker for file access control.
+
+    Args:
+        root_directory: The root directory where the summary CSV directory,
+            containing CSV files and a locker for file access control, will be created.
+
+    Returns:
+        A tuple containing the file path of the trials CSV and a locker file.
+
+    The locker is used for file access control to ensure data integrity in a
+    multi-threaded or multi-process environment.
+    """
+    root_directory = Path(root_directory).absolute().resolve()
+    summary_path = root_directory / "summary"
+    summary_path.mkdir(parents=True, exist_ok=True)
+
+    full_path = summary_path / "full.csv"
+    summary_locker = FileLocker(summary_path / ".summary.lock", poll=0.1, timeout=10)
+
+    return (full_path, summary_locker)

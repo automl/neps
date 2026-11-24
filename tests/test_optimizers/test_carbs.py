@@ -7,18 +7,18 @@ import pytest
 
 pytest.importorskip("carbs")
 
-from extrapolaw.optimizers import load_optimizer
-from extrapolaw.optimizers.algorithms import carbs
-from extrapolaw.optimizers.optimizer import SampledConfig, ScalingOptimizer
-from extrapolaw.space import (
+from scalefm.optimizers import load_optimizer
+from scalefm.optimizers.algorithms import carbs
+from scalefm.optimizers.optimizer import SampledConfig, ScalingOptimizer
+from scalefm.space import (
     HPOCategorical,
     HPOConstant,
     HPOFloat,
     HPOInteger,
     SearchSpace,
 )
-from extrapolaw.state import Trial
-from extrapolaw.utils.cost_estimator import CostEstimator
+from scalefm.state import Trial
+from scalefm.utils.cost_estimator import CostEstimator
 
 
 def _space() -> SearchSpace:

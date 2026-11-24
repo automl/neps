@@ -5,22 +5,22 @@ from pathlib import Path
 
 import pytest
 
-import extrapolaw
-from extrapolaw.optimizers import load_optimizer
-from extrapolaw.optimizers.algorithms import grid_search, random_search
-from extrapolaw.space import HPOCategorical, HPOFloat, HPOInteger, SearchSpace
-from extrapolaw.state import ExtrapolawState
-from extrapolaw.utils.cost_estimator import CostEstimator
+import scalefm
+from scalefm.optimizers import load_optimizer
+from scalefm.optimizers.algorithms import grid_search, random_search
+from scalefm.space import HPOCategorical, HPOFloat, HPOInteger, SearchSpace
+from scalefm.state import ScaleFMState
+from scalefm.utils.cost_estimator import CostEstimator
 
 
-class Space(extrapolaw.PipelineSpace):
-    width = extrapolaw.Categorical(choices=(64, 128, 256))
-    lr = extrapolaw.Float(1e-4, 1e-1, log=True)
+class Space(scalefm.PipelineSpace):
+    width = scalefm.Categorical(choices=(64, 128, 256))
+    lr = scalefm.Float(1e-4, 1e-1, log=True)
     dataset = "toy"
 
 
 def _costs(root: Path) -> dict[str, float]:
-    trials = ExtrapolawState.create_or_load(root, load_only=True).lock_and_read_trials()
+    trials = ScaleFMState.create_or_load(root, load_only=True).lock_and_read_trials()
     return {t.id: t.report.cost for t in trials.values() if t.report is not None}
 
 
@@ -28,7 +28,7 @@ def test_estimated_cost_is_reported_and_spent(tmp_path: Path) -> None:
     def evaluate_pipeline(width: int, lr: float, dataset: str) -> dict:
         return {"objective_to_minimize": lr, "cost": width}
 
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=Space(),
         root_directory=tmp_path / "run",
@@ -53,7 +53,7 @@ def test_reported_cost_is_kept(tmp_path: Path) -> None:
         assert pipeline_directory.exists()
         return {"objective_to_minimize": lr, "cost": 1.0 if width == 64 else None}
 
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=evaluate_pipeline,
         pipeline_space=Space(),
         root_directory=tmp_path / "run",
@@ -66,7 +66,7 @@ def test_reported_cost_is_kept(tmp_path: Path) -> None:
 
 def test_invalid_arguments(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="requires a `cost_estimator`"):
-        extrapolaw.acquire(
+        scalefm.acquire(
             evaluate_pipeline=lambda **_: 1.0,
             pipeline_space=Space(),
             root_directory=tmp_path / "run",
@@ -76,7 +76,7 @@ def test_invalid_arguments(tmp_path: Path) -> None:
     table = tmp_path / "costs.json"
     table.write_text(json.dumps([{"config": {"depth": 1}, "cost": 1.0}]))
     with pytest.raises(ValueError, match="not in the pipeline space"):
-        extrapolaw.acquire(
+        scalefm.acquire(
             evaluate_pipeline=lambda **_: 1.0,
             pipeline_space=Space(),
             root_directory=tmp_path / "run",
@@ -111,11 +111,11 @@ def test_max_cost_per_config_constrains_random_and_grid_search() -> None:
 
 
 def test_bayesian_optimization_without_cost_estimator(tmp_path: Path) -> None:
-    class FloatSpace(extrapolaw.PipelineSpace):
-        x = extrapolaw.Float(0.0, 1.0)
-        y = extrapolaw.Float(0.0, 1.0)
+    class FloatSpace(scalefm.PipelineSpace):
+        x = scalefm.Float(0.0, 1.0)
+        y = scalefm.Float(0.0, 1.0)
 
-    extrapolaw.acquire(
+    scalefm.acquire(
         evaluate_pipeline=lambda x, y: {
             "objective_to_minimize": (x - 0.3) ** 2 + y,
             "cost": 1.0,

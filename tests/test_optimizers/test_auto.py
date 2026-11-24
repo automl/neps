@@ -4,11 +4,11 @@ from typing import Any
 
 import pytest
 
-from extrapolaw.optimizers import load_optimizer
-from extrapolaw.optimizers.algorithms import determine_optimizer_automatically
-from extrapolaw.optimizers.ask_and_tell import AskAndTell
-from extrapolaw.space import HPOFloat, HPOInteger, SearchSpace
-from extrapolaw.space.extrapolaw_spaces.parameters import (
+from scalefm.optimizers import load_optimizer
+from scalefm.optimizers.algorithms import determine_optimizer_automatically
+from scalefm.optimizers.ask_and_tell import AskAndTell
+from scalefm.space import HPOFloat, HPOInteger, SearchSpace
+from scalefm.space.scalefm_spaces.parameters import (
     Float,
     IntegerFidelity,
     PipelineSpace,

@@ -6,7 +6,7 @@ import pytest
 import torch
 from pytest_cases import parametrize
 
-from extrapolaw.space import Domain
+from scalefm.space import Domain
 
 T = torch.tensor
 

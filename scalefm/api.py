@@ -1,0 +1,1502 @@
+"""API for the scalefm package."""
+
+from __future__ import annotations
+
+import functools
+import logging
+import shutil
+import warnings
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Concatenate, Literal
+
+import yaml
+
+from scalefm.normalization import _normalize_imported_config
+from scalefm.optimizers import (
+    AskFunction,
+    OptimizerChoice,
+    OptimizerInfo,
+    load_optimizer,
+)
+from scalefm.optimizers.algorithms import PredefinedOptimizers
+from scalefm.runtime import _launch_runtime, _save_results
+from scalefm.space.parsing import convert_to_space
+from scalefm.space.scalefm_spaces.parameters import Operation, PipelineSpace
+from scalefm.space.scalefm_spaces.scalefm_space import (
+    adjust_evaluation_pipeline_for_scalefm_space,
+    check_scalefm_space_compatibility,
+    convert_classic_to_scalefm_search_space,
+    convert_operation_to_callable,
+    convert_scalefm_to_classic_search_space,
+    resolve,
+)
+from scalefm.space.scalefm_spaces.string_formatter import format_value
+from scalefm.state import OptimizationState, ScaleFMState, SeedSnapshot
+from scalefm.status.summary import SummaryWriter
+from scalefm.utils.common import dynamic_load_object
+from scalefm.utils.cost_estimator import CostEstimator
+from scalefm.validation import _validate_imported_config, _validate_imported_result
+
+if TYPE_CHECKING:
+    from ConfigSpace import ConfigurationSpace
+
+    from scalefm.optimizers.algorithms import CustomOptimizer
+    from scalefm.plot.scaling_plots import Estimators
+    from scalefm.prediction import Prediction, PredictorTypes, Target
+    from scalefm.space import SearchSpace
+    from scalefm.state.pipeline_eval import EvaluatePipelineReturn, UserResultDict
+    from scalefm.state.trial import Trial
+
+logger = logging.getLogger(__name__)
+
+
+def acquire(  # noqa: C901, PLR0912, PLR0913, PLR0915
+    evaluate_pipeline: Callable[..., EvaluatePipelineReturn] | str | None = None,
+    pipeline_space: ConfigurationSpace | PipelineSpace | None = None,
+    *,
+    root_directory: str | Path = "scalefm_results",
+    overwrite_root_directory: bool = False,
+    is_async: bool = False,
+    continue_until_max_evaluation_completed: bool = False,
+    worker_evaluations_to_spend: int | None = None,
+    total_evaluations_to_spend: int | None = None,
+    worker_cost_to_spend: int | float | None = None,
+    total_cost_to_spend: int | float | None = None,
+    ignore_errors: bool = False,
+    objective_value_on_error: float | None = None,
+    cost_value_on_error: float | None = None,
+    cost_estimator: Callable[..., float] | str | Path | None = None,
+    max_cost_per_config: float | None = None,
+    sample_batch_size: int | None = None,
+    worker_id: str | None = None,
+    live_plots: bool = False,
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "random_search",
+) -> None:
+    """Run the optimization.
+
+    !!! tip "Parallelization"
+
+        To run with multiple processes or machines, execute the script that
+        calls `scalefm.acquire()` multiple times. They will keep in sync using
+        the file-sytem, requiring that `root_directory` be shared between them.
+
+
+    ```python
+    import scalefm
+    import logging
+
+    logging.basicConfig(level=logging.INFO)
+
+    def evaluate_pipeline(some_parameter: float) -> float:
+        validation_error = -some_parameter
+        return validation_error
+
+    class MySpace(PipelineSpace):
+        dataset = "mnist"               # constant
+        nlayers = scalefm.Integer(2,10)    # integer
+        alpha = scalefm.Float(0.1, 1.0)    # float
+        optimizer = scalefm.Categorical(   # categorical
+            ("adam", "sgd", "rmsprop")
+        )
+        learning_rate = scalefm.Float(     # log spaced float
+            lower=1e-5, upper=1, log=True
+        )
+        epochs =                        # fidelity integer
+            scalefm.IntegerFidelity(1, 100)
+        batch_size = scalefm.Integer(      # integer with a prior
+            lower=32,
+            upper=512,
+            prior=128,
+            prior_confidence="medium"
+        )
+
+    scalefm.acquire(
+        evaluate_pipeline=evaluate_pipeline,
+        pipeline_space=MySpace(),
+        root_directory="usage_example",
+        worker_evaluations_to_spend=5,
+    )
+    ```
+
+    Args:
+        evaluate_pipeline: The objective function to minimize. This will be called
+            with a configuration from the `pipeline_space=` that you define.
+
+            The function should return a `dict` with the following keys:
+
+                ```python
+                {
+                    "objective_to_minimize": float,  # The thing to minimize (required)
+                    "cost": float,  # The training cost, e.g. FLOPs (required, unless `cost_estimator` gives it)
+                    "inference_cost": float,  # The cost of using the model once (optional)
+                    "n_params": float,  # The model size (optional)
+                    "n_data": float,  # The amount of training data, e.g. tokens (optional)
+                    "downstream_performances": dict,  # Name to value (optional)
+                    "info_dict": dict,  # Any additional information you want to store, should be YAML serializable
+                }
+                ```
+            With a `cost_estimator`, returning just the loss as a `float` also works.
+
+            ??? note "`str` usage for dynamic imports"
+
+                If a string, it should be in the format `"/path/to/:function"`.
+                to specify the function to call. You may also directly provide
+                an mode to import, e.g., `"my.module.something:evaluate_pipeline"`.
+
+            Leave it `None` with `is_async=True`, which only samples configurations.
+
+        pipeline_space: The pipeline space to minimize over.
+
+            !!! tip "Optional for continuing runs"
+
+                This parameter is **required** for the first run but **optional** when
+                continuing an existing optimization. If not provided, ScaleFM will
+                automatically load the pipeline space from `root_directory/pipeline_space.pkl`.
+
+                When provided for a continuing run, ScaleFM will validate that it matches
+                the one saved on disk to prevent inconsistencies.
+
+            This most direct way to specify the pipeline space is as follows:
+
+            ```python
+            class MySpace(PipelineSpace):
+                nlayers = scalefm.Integer(2,10)    # integer
+                alpha = scalefm.Float(0.1, 1.0)    # float
+                optimizer = scalefm.Categorical(   # categorical
+                    ("adam", "sgd", "rmsprop")
+                )
+                learning_rate = scalefm.Float(     # log spaced float
+                    lower=1e-5, upper=1, log=True
+                )
+                epochs =                        # fidelity integer
+                    scalefm.IntegerFidelity(1, 100)
+                batch_size = scalefm.Integer(      # integer with a prior
+                    lower=32,
+                    upper=512,
+                    prior=128,
+                    prior_confidence="medium"
+                )
+
+            scalefm.acquire(
+                pipeline_space=MySpace()
+            )
+            ```
+
+            You can also directly instantiate any of the parameters
+            defined by [`Parameter`][scalefm.space.parameters.Parameter]
+            and provide them directly.
+
+            Some important properties you can set on parameters are:
+
+            * `prior=`: If you have a good idea about what a good setting
+                for a parameter may be, you can set this as the prior for
+                a parameter. You specify this along with `prior_confidence`
+                to assign a `"low"`, `"medium"`, or `"high"`confidence to the prior.
+
+            !!! note "ConfigSpace support"
+
+                You may also use a `ConfigurationSpace` object from the
+                `ConfigSpace` library.
+
+        root_directory: The directory to save progress to.
+
+        overwrite_root_directory: If true, delete the working directory at the start of
+            the run. This is, e.g., useful when debugging a evaluate_pipeline function.
+
+        is_async: If true, only sample configurations, without evaluating them. Each
+            one is written to `root_directory/configs/config_<id>/config.yaml` and
+            left pending; launch a job for it yourself (e.g. with Slurm), and report
+            its result from the job with
+            [`scalefm.save_pipeline_results()`][scalefm.api.save_pipeline_results].
+            Requires `evaluate_pipeline=None`.
+            ??? note "tradeoff of async mode"
+                This can speed up the optimization process, but it also means that
+                the optimizer will not have access to the results of previous evaluations
+                when asking for new configurations (Tradeoff: parallelism vs exploiting previous pipelines).
+
+        worker_evaluations_to_spend: Number of evaluations this specific call/worker should do.
+            ??? note "Constraints on async mode"
+                Currently, there is no specific number to control number of parallel evaluations running with
+                the same worker, so in case you want to limit the number of parallel evaluations,
+                it's crucial to limit the `worker_evaluations_to_spend` accordingly.
+
+        continue_until_max_evaluation_completed:
+            If true, stop only after worker_evaluations_to_spend have fully completed. In other words,
+            pipelines that are still running do not count toward the stopping criterion.
+
+        worker_cost_to_spend: No new evaluations will start when this cost is exceeded. Requires
+            returning a cost in the evaluate_pipeline function, e.g.,
+            `return dict(loss=loss, cost=cost)`.
+
+        total_evaluations_to_spend: Maximum number of evaluations across all workers
+            sharing the same ScaleFM run. Once this total is reached, no worker will start
+            a new evaluation.
+
+        total_cost_to_spend: Maximum accumulated cost across all workers sharing the
+            same ScaleFM run. Once this total is reached, no worker will start a new
+            evaluation.
+
+        ignore_errors: Ignore hyperparameter settings that threw an error and do not raise
+            an error. Error configs still count towards worker and global evaluation budgets, when set.
+        objective_value_on_error: Setting this and cost_value_on_error to any float will
+            supress any error and will use given objective_to_minimize value instead. default: None
+        cost_value_on_error: Setting this and objective_value_on_error to any float will
+            supress any error and will use given cost value instead. default: None
+
+        cost_estimator: Estimates the cost of a configuration, e.g. its FLOPs, for
+            scaling studies. Either a function called as `cost_estimator(**config)`,
+            which is only passed the parameters it names if it has no `**kwargs`,
+            or the path to a JSON table for a finite space:
+
+            ```json
+            [
+              {"config": {"width": 256, "layers": 6}, "cost": 1.2e9},
+              {"config": {"width": 512, "layers": 6}, "cost": 4.7e9}
+            ]
+            ```
+
+            The table is indexed by the parameters in `"config"`, usually the ones
+            marked with `is_compute_scaling=True`, and needs a record for every
+            combination of their values.
+
+            The estimate is used as the `cost` of an evaluation if
+            `evaluate_pipeline` does not report one, such that
+            `total_cost_to_spend` works without doing so, and is given to the
+            optimizers that make use of it, such as `#!python "carbs"`,
+            `#!python "chinchilla"`, `#!python "bayesian_optimization"`,
+            `#!python "random_search"` and `#!python "grid_search"`.
+
+            Every worker of a run has to pass the same `cost_estimator`.
+
+        max_cost_per_config: Do not sample configurations with an estimated cost
+            above this value. Requires `cost_estimator`.
+
+        sample_batch_size:
+            The number of samples to ask for in a single call to the optimizer.
+
+            ??? tip "When to use this?"
+
+                This is only useful in scenarios where you have many workers
+                available, and the optimizers sample time prevents full
+                worker utilization, as can happen with Bayesian optimizers.
+
+                In this case, the currently active worker will first
+                check if there are any new configurations to evaluate,
+                and if not, generate `sample_batch_size` new configurations
+                that the proceeding workers will then pick up and evaluate.
+
+                We advise to only use this if:
+
+                * You are using `#!python "bayesian_optimization"`.
+                * You have a fast to evaluate `evaluate_pipeline`
+                * You have a significant amount of workers available, relative to the
+                time it takes to evaluate a single configuration.
+
+            ??? warning "Downsides of batching"
+
+                The primary downside of batched optimization is that
+                the next `sample_batch_size` configurations will not
+                be able to take into account the results of any new
+                evaluations, even if they were to come in relatively
+                quickly.
+
+        live_plots: If `True`, refresh the plots in the `summary` folder after every
+            evaluated trial: the scaling plots, or the Pareto front for two
+            objectives, plus any artifacts the optimizer provides. Off by default, as plotting adds overhead to every evaluation.
+
+        worker_id: An optional string to identify the worker (run instance).
+            If not provided, a `worker_id` will be automatically generated using the pattern:
+            `worker_<N>`, where `<N>` is a unique integer for each worker and increments with each new worker.
+            A list of all workers created so far is stored in
+            `root_directory/optimizer_state.pkl` under the attribute `worker_ids`.
+
+            ??? tip "Why specify a `worker_id`?"
+                Specifying a `worker_id` is useful for tracking which worker performed specific tasks
+                in the results. For example, when debugging or running on a cluster, you can include
+                the process ID and machine name in the `worker_id` for better traceability.
+
+            ??? warning "Duplication of `worker_id`"
+                Ensure that each worker has a unique `worker_id`. If a duplicate `worker_id` is detected,
+                the optimization process will be stopped with an error to prevent overwriting the results
+                of other workers.
+
+        optimizer: Which optimizer to use.
+
+            Not sure which to use? Leave this at its default, `"random_search"`.
+            With `"auto"`, scalefm chooses the optimizer based on the pipeline
+            space given, or, when continuing a run, uses the optimizer it was
+            started with.
+
+            ??? note "Available optimizers"
+
+                See the [optimizers documentation](../../reference/search_algorithms/landing_page_algo.md) for a list of available optimizers.
+
+            With any optimizer choice, you also may provide some additional parameters to the optimizers.
+            We do not recommend this unless you are familiar with the optimizer you are using. You
+            may also specify an optimizer as a dictionary for supporting reading in serialized yaml
+            formats:
+
+            ```python
+            scalefm.acquire(
+                ...,
+                optimizer=("bayesian_optimization",
+                    {
+                        "initial_design_size": 5,
+                    }
+                )
+            )
+            ```
+
+            ??? tip "Own optimzier"
+
+                Lastly, you may also provide your own optimizer which must satisfy
+                the [`AskFunction`][scalefm.optimizers.optimizer.AskFunction] signature.
+
+                ```python
+                class MyOpt:
+
+                    def __init__(self, space: SearchSpace):
+                        ...
+
+                    def __call__(
+                        self,
+                        trials: Mapping[str, Trial],
+                        budget_info: BudgetInfo | None,
+                        n: int | None = None,
+                    ) -> SampledConfig | list[SampledConfig]:
+                        # Sample a new configuration.
+                        #
+                        # Args:
+                        #   trials: All of the trials that are known about.
+                        #   budget_info: information about the budget constraints.
+                        #
+                        # Returns:
+                        #   The sampled configuration(s)
+
+
+                scalefm.acquire(
+                    ...,
+                    optimizer=MyOpt,
+                )
+                ```
+
+                This is mainly meant for internal development but allows you to use the ScaleFM
+                runtime to run your optimizer.
+
+    """  # noqa: E501
+    valid_pipeline_space_types: tuple[type, ...]
+    try:
+        from ConfigSpace import ConfigurationSpace as _ConfigurationSpace
+
+        valid_pipeline_space_types = (PipelineSpace, _ConfigurationSpace)
+    except ImportError:
+        valid_pipeline_space_types = (PipelineSpace,)
+
+    if pipeline_space is not None and not any(
+        isinstance(pipeline_space, t) for t in valid_pipeline_space_types
+    ):
+        raise ValueError(
+            "`pipeline_space` must be a `PipelineSpace` (or a `ConfigurationSpace`"
+            " from the `ConfigSpace` package), got"
+            f" {type(pipeline_space).__name__!r}. Passing a classic `SearchSpace` or"
+            " `dict` is no longer supported; please define your pipeline_space as a"
+            " `PipelineSpace` subclass instead, e.g.:\n\n```python\nclass"
+            " MySpace(PipelineSpace):\n    ...\n```\n"
+        )
+
+    if is_async and evaluate_pipeline is not None:
+        raise ValueError(
+            "With `is_async=True`, `acquire` only samples configurations, so"
+            " `evaluate_pipeline` must be None. Launch a job for every sampled"
+            " configuration (in `root_directory/configs/config_<id>/config.yaml`)"
+            " and report its result with `scalefm.save_pipeline_results`."
+        )
+    if not is_async and evaluate_pipeline is None:
+        raise ValueError(
+            "`evaluate_pipeline` is required, unless `is_async=True`, which only"
+            " samples configurations."
+        )
+
+    # Try to load pipeline_space from disk if not provided
+    if pipeline_space is None:
+        root_path = Path(root_directory)
+        if root_path.exists() and not overwrite_root_directory:
+            try:
+                pipeline_space = load_pipeline_space(root_path)
+                logger.info(
+                    "Loaded pipeline space from disk. Continuing optimization with "
+                    f"existing pipeline space from {root_path}"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                # If loading fails, we'll error below
+                logger.debug(f"Could not load pipeline space from disk: {e}")
+
+        # If still None, raise error
+        if pipeline_space is None:
+            raise ValueError(
+                "pipeline_space is required for the first run. For continuing an"
+                " existing run, the pipeline space will be loaded from disk. No existing"
+                f" pipeline space found at: {root_directory}"
+            )
+
+    if max_cost_per_config is not None and cost_estimator is None:
+        raise ValueError("`max_cost_per_config` requires a `cost_estimator`.")
+    _cost_estimator = (
+        CostEstimator.from_user(cost_estimator) if cost_estimator is not None else None
+    )
+
+    # Check if we're continuing an existing run and should load the optimizer from disk
+    root_path = Path(root_directory)
+    optimizer_info_path = root_path / "optimizer_info.yaml"
+    is_continuing_run = optimizer_info_path.exists() and not overwrite_root_directory
+
+    stored_total_evaluations_to_spend = None
+    stored_total_cost_to_spend = None
+
+    if is_continuing_run:
+        state = ScaleFMState.create_or_load(
+            path=root_path,
+            load_only=True,
+        )
+
+        (
+            stored_total_evaluations_to_spend,
+            stored_total_cost_to_spend,
+        ) = state.lock_and_get_global_budgets()
+
+    controling_params = {
+        "worker_evaluations_to_spend": worker_evaluations_to_spend,
+        "worker_cost_to_spend": worker_cost_to_spend,
+        "total_evaluations_to_spend": (
+            total_evaluations_to_spend
+            if total_evaluations_to_spend is not None
+            else stored_total_evaluations_to_spend
+        ),
+        "total_cost_to_spend": (
+            total_cost_to_spend
+            if total_cost_to_spend is not None
+            else stored_total_cost_to_spend
+        ),
+    }
+    if all(x is None for x in controling_params.values()):
+        warnings.warn(
+            "None of the following were set, this will run indefinitely until the worker"
+            " process is stopped."
+            f"{', '.join(list(controling_params.keys()))}.",
+            UserWarning,
+            stacklevel=2,
+        )
+
+    logger.info(f"Starting scalefm.acquire using root directory {root_directory}")
+
+    # If continuing a run and optimizer is "auto" (default), load existing optimizer
+    # with its parameters
+    if is_continuing_run and optimizer == "auto":
+        try:
+            existing_optimizer_info = load_optimizer_info(root_path)
+            if existing_optimizer_info["name"] not in PredefinedOptimizers:
+                raise ValueError(
+                    f"The run in '{root_path}' was started with the custom optimizer"
+                    f" '{existing_optimizer_info['name']}', which cannot be rebuilt"
+                    " from optimizer_info.yaml. Pass the same `optimizer` to"
+                    " `scalefm.acquire` to continue it."
+                )
+            logger.info(
+                "Continuing optimization with existing optimizer: "
+                f"{existing_optimizer_info['name']}"
+            )
+            # Use the existing optimizer with its original parameters
+            optimizer = (
+                existing_optimizer_info["name"],
+                existing_optimizer_info["info"],
+            )  # type: ignore
+        except (FileNotFoundError, KeyError) as e:
+            # No existing optimizer found or invalid format, proceed with auto
+            logger.debug(f"Could not load existing optimizer info: {e}")
+
+    # Check if the pipeline_space only contains basic HPO parameters.
+    # If yes, we convert it to a classic SearchSpace, to use with the old optimizers.
+    # If no, we use adjust_evaluation_pipeline_for_scalefm_space to convert the
+    # pipeline_space and only use the new ScaleFM optimizers.
+
+    # If the optimizer is not an ScaleFM algorithm, try to convert the pipeline_space
+
+    scalefm_classic_space_compatibility = check_scalefm_space_compatibility(optimizer)
+    if scalefm_classic_space_compatibility in ["both", "classic"] and isinstance(
+        pipeline_space, PipelineSpace
+    ):
+        converted_space = convert_scalefm_to_classic_search_space(pipeline_space)
+        if converted_space:
+            pipeline_space = converted_space
+    space = convert_to_space(pipeline_space)
+
+    if scalefm_classic_space_compatibility == "scalefm" and not isinstance(
+        space, PipelineSpace
+    ):
+        space = convert_classic_to_scalefm_search_space(space)
+
+    # Optimizer check, if the search space is a Pipeline and the optimizer is not an
+    # ScaleFM
+    # algorithm, we raise an error, as the optimizer is not compatible.
+    if (
+        isinstance(space, PipelineSpace)
+        and scalefm_classic_space_compatibility == "classic"
+    ):
+        raise ValueError(
+            f"The provided optimizer {optimizer} is not compatible with this complex"
+            " search space. Please use one that is, such as 'random_search',"
+            " 'grid_search' or 'complex_random_search'."
+        )
+
+    # Log the search space after conversion
+    logger.info(str(space))
+
+    if _cost_estimator is not None:
+        if isinstance(space, PipelineSpace):
+            _cost_estimator.validate(space.get_attrs(), space.get_compute_scaling_params)
+        else:
+            _cost_estimator.validate(space.elements, space.arch_params)
+
+    _optimizer_ask, _optimizer_info = load_optimizer(
+        optimizer=optimizer,
+        space=space,
+        cost_estimator=_cost_estimator,
+        max_cost_per_config=max_cost_per_config,
+    )
+
+    _eval: Callable
+    if evaluate_pipeline is None:  # `is_async`: the configs are evaluated elsewhere
+        _eval = _sample_only
+    elif isinstance(evaluate_pipeline, str):
+        module, funcname = evaluate_pipeline.rsplit(":", 1)
+        eval_pipeline = dynamic_load_object(module, funcname)
+        if not callable(eval_pipeline):
+            raise ValueError(
+                f"'{funcname}' in module '{module}' is not a callable function."
+            )
+        _eval = eval_pipeline
+    elif callable(evaluate_pipeline):
+        _eval = evaluate_pipeline
+    else:
+        raise ValueError(
+            "evaluate_pipeline must be a callable or a string in the format"
+            "'module:function'."
+        )
+    if _cost_estimator is not None and evaluate_pipeline is not None:
+        _eval = _with_estimated_cost(_eval, _cost_estimator)
+    if isinstance(space, PipelineSpace):
+        _eval = adjust_evaluation_pipeline_for_scalefm_space(_eval, space)
+
+    _launch_runtime(
+        evaluation_fn=_eval,  # type: ignore
+        optimizer=_optimizer_ask,
+        optimizer_info=_optimizer_info,
+        is_async=is_async,
+        worker_cost_to_spend=worker_cost_to_spend,
+        total_evaluations_to_spend=total_evaluations_to_spend,
+        total_cost_to_spend=total_cost_to_spend,
+        optimization_dir=Path(root_directory),
+        worker_evaluations_to_spend=worker_evaluations_to_spend,
+        continue_until_max_evaluation_completed=continue_until_max_evaluation_completed,
+        objective_value_on_error=objective_value_on_error,
+        cost_value_on_error=cost_value_on_error,
+        ignore_errors=ignore_errors,
+        overwrite_optimization_dir=overwrite_root_directory,
+        sample_batch_size=sample_batch_size,
+        worker_id=worker_id,
+        pipeline_space=pipeline_space,
+        live_plots=live_plots,
+    )
+
+    root_directory = Path(root_directory)
+    SummaryWriter.from_directory(root_directory, live_plots=live_plots).update(final=True)
+    summary_dir = root_directory / "summary"
+    logger.info(
+        "The summary folder has been created, with full.csv (all runs) and the plots."
+        f"\nYou can find summary folder at: {summary_dir}."
+    )
+
+
+def _sample_only(**_: Any) -> Any:
+    """The evaluation of `acquire(..., is_async=True)`: nothing, the configuration
+    stays pending until a job reports its result with `save_pipeline_results`.
+    """
+    return
+
+
+def _with_estimated_cost(
+    evaluate_pipeline: Callable[..., Any], cost_estimator: CostEstimator
+) -> Callable[..., Any]:
+    """Report the estimated cost for evaluations that do not report a cost."""
+    injected = ("pipeline_directory", "previous_pipeline_directory", "pipeline_id")
+
+    @functools.wraps(evaluate_pipeline)
+    def _evaluate(**kwargs: Any) -> Any:
+        result = evaluate_pipeline(**kwargs)
+        config = {k: v for k, v in kwargs.items() if k not in injected}
+        try:
+            cost = cost_estimator(**config)
+        except Exception as e:  # noqa: BLE001
+            logger.warning(
+                f"Cost estimator raised an exception for config {config}: {e}. "
+                "Returning the result without adding a cost."
+            )
+            return result
+        match result:
+            case bool():
+                return result
+            case dict() if result.get("cost") is None:
+                return {**result, "cost": cost}
+            case int() | float():
+                return {"objective_to_minimize": result, "cost": cost}
+            case _:
+                return result
+
+    return _evaluate
+
+
+def save_pipeline_results(
+    user_result: dict,
+    pipeline_id: str,
+    root_directory: str | Path,
+    *,
+    live_plots: bool = False,
+) -> None:
+    """Persist the outcome of one pipeline evaluation.
+
+    Args:
+        user_result (dict): Dictionary returned by evaluate_pipeline. Must
+            contain keys required by _save_results (e.g. "cost",
+            "objective_to_minimize", optional "learning_curve", "exception",
+            "info_dict").
+        pipeline_id (str): Unique identifier of the pipeline/trial whose
+            result is being stored. Used to locate the corresponding
+            scalefm.core.trial.Trial object inside the optimisation state.
+        root_directory (str | Path): Root directory of the ScaleFM run (contains
+            optimizer_info.yaml and configs/ folder).
+        live_plots (bool): Whether to also refresh the summary plots.
+
+    """
+    root_directory = Path(root_directory)
+    _save_results(
+        user_result=user_result,
+        trial_id=pipeline_id,
+        root_directory=root_directory,
+    )
+
+    summary = SummaryWriter.from_directory(root_directory, live_plots=live_plots)
+    summary.touch()
+    summary.update()
+    logger.info(
+        "The summary has been updated with this result."
+        f"\nYou can find it at: {summary.summary_dir}."
+    )
+
+
+def analyze(root_directory: str | Path) -> None:
+    """Rebuilds the trial evaluation summaries
+    including the best-config text files, the plots and the optimizer's
+    own artifacts, without evaluating anything.
+
+    Args:
+        root_directory: Root directory of the ScaleFM run
+    """
+    root_directory = Path(root_directory)
+    if not root_directory.is_dir():
+        raise FileNotFoundError(f"No ScaleFM run found at {root_directory}.")
+
+    summary = SummaryWriter.from_directory(root_directory, live_plots=True)
+    summary.update(final=True)
+    logger.info(f"The summary has been refreshed at: {summary.summary_dir}.")
+
+
+def predict(
+    root_directory: str | Path,
+    target_costs: float | Sequence[float] | None = None,
+    *,
+    target_inference_costs: float | Sequence[float] | None = None,
+    predictor: str | PredictorTypes = "auto",
+    targets: Iterable[Target] | None = None,
+    params_estimator: Callable[..., float] | None = None,
+    cost_estimator: Callable[..., float] | None = None,
+    seed: int = 0,
+    cache_dir: str | Path | None = None,
+) -> list[Prediction]:
+    """Extrapolate the evaluated trials of a run to larger compute budgets.
+
+    The predictor is fitted once per target on the trials, then queried at every
+    budget. The target costs are saved to `summary/targets.json`, with the scaling
+    plots and predictions at them and how the predictions converged.
+
+    ```python
+    predictions = scalefm.predict(
+        "results",
+        target_costs=[1e20, 1e21],
+        predictor="chinchilla3",
+    )
+    for p in predictions:
+        print(p.target_cost, p.loss, p.n_params, p.n_data)
+    ```
+
+    Args:
+        root_directory: Root directory of the ScaleFM run. The cost of a trial is
+            the cost it reported, or what `cost_estimator` gives for it.
+        target_costs: The training cost(s) to predict at, 10 and 100 times the
+            largest of the trials by default. `"chinchilla3"` takes them as FLOPs.
+        target_inference_costs: The inference cost(s) the saved predictions over the
+            inference cost are at, 10 and 100 times the largest of the trials by
+            default.
+        predictor: A [`PredictorTypes`][scalefm.prediction.PredictorTypes] or its
+            name (`"power_law"`, `"chinchilla3"`, `"gp_posterior"`), or `"auto"` for
+            the one the run's optimizer names: `"chinchilla3"` for Chinchilla,
+            `"gp_posterior"` for ScAn, which needs `cost_estimator`, and
+            `"power_law"` otherwise.
+        targets: The [`Target`][scalefm.prediction.Target]s to predict. By default
+            whatever the predictor provides, without `COARSE` when not every trial
+            reported `n_params` and `n_data`.
+        params_estimator: Called as `params_estimator(**config)` by `"gp_posterior"`
+            for the model size of the config it predicts, which `COARSE` needs.
+        cost_estimator: Called as `cost_estimator(**config)` by `"gp_posterior"` for
+            the cost of the configs it considers, which it needs.
+        seed: Seed of the `"gp_posterior"` candidate pool.
+        cache_dir: Where `"gp_posterior"` checkpoints its fit and predictions.
+
+    Returns:
+        One [`Prediction`][scalefm.prediction.Prediction] per target budget.
+    """
+    from scalefm.plot.scaling_plots import Estimators
+    from scalefm.prediction import (
+        fit_and_predict,
+        get_predictor_type,
+        rows_from_trials,
+    )
+    from scalefm.space.scalefm_spaces.scalefm_space import (
+        convert_scalefm_to_classic_search_space,
+    )
+
+    root_directory = Path(root_directory)
+    try:
+        state = ScaleFMState.create_or_load(path=root_directory, load_only=True)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"No ScaleFM run found at {root_directory}.") from e
+
+    params_estimator = _estimator(params_estimator)
+    cost_estimator = _estimator(cost_estimator)
+    optimizer_info = state.lock_and_get_optimizer_info()
+
+    if predictor == "auto":
+        predictor = optimizer_info.get("derived", {}).get("predictor", "power_law")
+
+    predictor_type = get_predictor_type(predictor)
+    # The GP posterior models the trials with the prior mean of the GP that acquired
+    # them, the power law in the cost unless the optimizer recorded another
+    prior_mean = optimizer_info.get("info", {}).get("prior_mean", "power_law")
+    if prior_mean not in ("power_law", "zero"):
+        prior_mean = "power_law"
+
+    trials = list(state.lock_and_read_trials().values())
+    rows, curves, configs = rows_from_trials(trials)
+    targets = _targets(predictor_type, targets, rows, params_estimator)
+
+    space: SearchSpace | None = None
+    # if Target.FULL in targets or predictor_type == PredictorTypes.GP_POSTERIOR:
+    saved_space = state.lock_and_get_search_space()
+    if isinstance(saved_space, PipelineSpace):
+        space = convert_scalefm_to_classic_search_space(saved_space)
+    else:
+        space = saved_space
+    if space is None:
+        raise ValueError(
+            f"No search space of a classic HPO kind saved at {root_directory},"
+            " which predicting the full configuration needs."
+        )
+
+    costs_by_kind = _target_costs(rows, target_costs, target_inference_costs)
+    predictions = fit_and_predict(
+        predictor_type,
+        costs_by_kind["cost"],
+        targets=targets,
+        rows=rows,
+        configs=configs,
+        learning_curve_rows=curves,
+        space=space,
+        params_estimator=params_estimator,
+        cost_estimator=cost_estimator,
+        seed=seed,
+        cache_dir=None if cache_dir is None else Path(cache_dir),
+        prior_mean=prior_mean,
+    )
+    _save_predictions(
+        root_directory,
+        trials,
+        predictor_type.value,
+        costs_by_kind,
+        space,
+        Estimators(params=params_estimator, cost=cost_estimator),
+    )
+    return predictions
+
+
+def _estimator(fn: Callable[..., float] | None) -> CostEstimator | None:
+    """`fn(**config)` as a `CostEstimator`, which passes it only what it names."""
+    return None if fn is None else CostEstimator.from_callable(fn)
+
+
+def _targets(
+    predictor_type: PredictorTypes,
+    targets: Iterable[Target] | None,
+    rows: list,
+    params_estimator: Callable[..., float] | None,
+) -> list[Target]:
+    """The targets to predict, `targets` or by default whatever `predictor_type`
+    provides. Raises if they need the `n_params` and `n_data` that not every trial
+    reported.
+    """
+    import numpy as np
+
+    from scalefm.prediction import PredictorTypes, Target
+
+    is_gp = predictor_type == PredictorTypes.GP_POSTERIOR
+    missing = sum(not (np.isfinite(r[0]) and np.isfinite(r[1])) for r in rows)
+    if targets is None:
+        has_coarse = params_estimator is not None if is_gp else missing == 0
+        targets = [
+            t
+            for t in Target
+            if t in predictor_type.provides and (t != Target.COARSE or has_coarse)
+        ]
+    targets = list(targets)
+    # Every fit but the GP posterior's is on the model size and data of the trials
+    needs_scale = not is_gp and (
+        predictor_type == PredictorTypes.CHINCHILLA3 or Target.COARSE in targets
+    )
+    if needs_scale and missing:
+        raise ValueError(
+            f"'{predictor_type.value}' needs the model size and data of every trial,"
+            f" but {missing} of the {len(rows)} successful trials have no `n_params`"
+            " or `n_data` at the top level of their report.yaml. Return them from"
+            " `evaluate_pipeline`."
+        )
+    return targets
+
+
+def _target_costs(
+    rows: list,
+    training_costs: float | Sequence[float] | None,
+    target_inference_costs: float | Sequence[float] | None,
+) -> dict[str, list[float]]:
+    """The target costs by cost: those given, and for the training cost otherwise 10
+    and 100 times the largest of the rows.
+    """
+    import numpy as np
+
+    from scalefm.plot.scaling_plots import DEFAULT_TARGETS
+
+    if training_costs is None:
+        largest = max((row[3] for row in rows if row[3] > 0), default=0.0)
+        training_costs = [factor * largest for factor in DEFAULT_TARGETS]
+    target_costs = {"cost": np.atleast_1d(training_costs).astype(float).tolist()}
+    if target_inference_costs is not None:
+        costs = np.atleast_1d(target_inference_costs).astype(float).tolist()
+        target_costs["inference_cost"] = costs
+    return target_costs
+
+
+def _save_predictions(
+    root_directory: Path,
+    trials: list[Trial],
+    predictor: str,
+    target_costs: dict[str, list[float]],
+    space: SearchSpace | None,
+    estimators: Estimators | None = None,
+) -> None:
+    """Save `target_costs` to `summary/targets.json`, and the scaling plots,
+    predictions and convergence at them. The GP posterior plots need the cost
+    estimator of `estimators`.
+    """
+    from scalefm.optimizers.optimizer import Artifact, ArtifactType
+    from scalefm.plot.scaling_plots import plot_convergence, plot_scaling
+
+    try:
+        artifacts = [Artifact("targets", target_costs, ArtifactType.JSON)]
+        artifacts += plot_scaling(trials, predictor, target_costs, space, estimators)
+        artifacts += plot_convergence(trials, predictor, target_costs, space, estimators)
+        SummaryWriter(root_directory=root_directory).write(artifacts)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not save the predictions: {e}")
+
+
+def import_trials(  # noqa: C901
+    evaluated_trials: Sequence[tuple[Mapping[str, Any], UserResultDict],],
+    root_directory: Path | str,
+    pipeline_space: SearchSpace | dict | PipelineSpace | None = None,
+    overwrite_root_directory: bool = False,  # noqa: FBT001, FBT002
+    optimizer: (
+        OptimizerChoice
+        | Mapping[str, Any]
+        | tuple[OptimizerChoice, Mapping[str, Any]]
+        | Callable[Concatenate[SearchSpace, ...], AskFunction]  # Hack, while we transit
+        | Callable[Concatenate[PipelineSpace, ...], AskFunction]  # from SearchSpace to
+        | Callable[Concatenate[SearchSpace | PipelineSpace, ...], AskFunction]  # Pipeline
+        | CustomOptimizer
+        | Literal["auto"]
+    ) = "auto",
+) -> None:
+    """Import externally evaluated trials into the optimization state.
+
+    This function allows you to add trials that have already been
+    evaluated outside of ScaleFM into the current optimization run.
+    It validates and normalizes the provided configurations,
+    removes duplicates, and updates the optimization state accordingly.
+
+    Args:
+        evaluated_trials (Sequence[tuple[Mapping[str, Any], UserResultDict]]):
+            A sequence of tuples, each containing a configuration dictionary
+            and its corresponding result.
+        root_directory (Path or str): The root directory of the ScaleFM run.
+        pipeline_space (SearchSpace | dict | PipelineSpace | None): The pipeline space
+            used for the optimization. If None, will attempt to load from the
+            root_directory. If provided and a pipeline space exists on disk, they
+            will be validated to match.
+        overwrite_root_directory (bool, optional): If True, overwrite the existing
+            root directory. Defaults to False.
+        optimizer: The optimizer to use for importing trials.
+            Can be a string, mapping, tuple, callable, or CustomOptimizer.
+            Defaults to "auto".
+
+    Returns:
+        None
+
+    Raises:
+        ValueError: If any configuration or result is invalid, or if pipeline_space
+            cannot be determined (neither provided nor found on disk).
+        FileNotFoundError: If the root directory does not exist.
+        Exception: For unexpected errors during trial import.
+
+    Example:
+        >>> import scalefm
+        >>> from scalefm.state.pipeline_eval import UserResultDict
+        >>> pipeline_space = scalefm.SearchSpace({...})
+        >>> evaluated_trials = [
+        ...     ({"param1": 0.5, "param2": 10},
+        ...     UserResultDict(objective_to_minimize=-5.0)),
+        ... ]
+        >>> scalefm.import_trials(evaluated_trials, "my_results", pipeline_space)
+    """
+    if isinstance(root_directory, str):
+        root_directory = Path(root_directory)
+
+    # Try to load pipeline_space from disk if not provided
+    if pipeline_space is None:
+        if root_directory.exists() and not overwrite_root_directory:
+            try:
+                pipeline_space = load_pipeline_space(root_directory)
+                logger.info(
+                    "Loaded pipeline space from disk. Importing trials with "
+                    f"existing pipeline space from {root_directory}"
+                )
+            except (FileNotFoundError, ValueError) as e:
+                # If loading fails, we'll error below
+                logger.debug(f"Could not load pipeline space from disk: {e}")
+
+        # If still None, raise error
+        if pipeline_space is None:
+            raise ValueError(
+                "pipeline_space is required when importing trials to a new run. "
+                "For importing to an existing run, the pipeline space will be loaded "
+                f"from disk. No existing pipeline space found at: {root_directory}"
+            )
+    # Note: If pipeline_space is provided, it will be validated against the one on disk
+    # by ScaleFMState.create_or_load() after necessary conversions are applied
+
+    scalefm_classic_space_compatibility = check_scalefm_space_compatibility(optimizer)
+    if scalefm_classic_space_compatibility in ["both", "classic"] and isinstance(
+        pipeline_space, PipelineSpace
+    ):
+        converted_space = convert_scalefm_to_classic_search_space(pipeline_space)
+        if converted_space:
+            pipeline_space = converted_space
+    space = convert_to_space(pipeline_space)
+
+    if scalefm_classic_space_compatibility == "scalefm" and not isinstance(
+        space, PipelineSpace
+    ):
+        space = convert_classic_to_scalefm_search_space(space)
+
+    # Optimizer check, if the pipeline space is a Pipeline and the optimizer is not an
+    # ScaleFM
+    # algorithm, we raise an error, as the optimizer is not compatible.
+    if (
+        isinstance(space, PipelineSpace)
+        and scalefm_classic_space_compatibility == "classic"
+    ):
+        raise ValueError(
+            f"The provided optimizer {optimizer} is not compatible with this complex"
+            " pipeline space. Please use one that is, such as 'random_search',"
+            " 'grid_search' or 'complex_random_search'."
+        )
+
+    optimizer_ask, optimizer_info = load_optimizer(optimizer, space)
+
+    if overwrite_root_directory and root_directory.exists():
+        logger.info(
+            f"Overwriting root directory '{root_directory}' as"
+            " `overwrite_root_directory=True`."
+        )
+        shutil.rmtree(root_directory)
+
+    state = ScaleFMState.create_or_load(
+        root_directory,
+        optimizer_info=optimizer_info,
+        optimizer_state=OptimizationState(
+            budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
+        ),
+        pipeline_space=space,
+    )
+
+    normalized_trials = []
+    for config, result in evaluated_trials:
+        _validate_imported_config(space, config)
+        _validate_imported_result(result)
+        normalized_config = _normalize_imported_config(space, config)
+        normalized_trials.append((normalized_config, result))
+
+    with state._trial_lock.lock():
+        state_trials = state._trial_repo.latest()
+        # remove duplicates
+        existing_configs = [
+            tuple(sorted(t.config.items())) for t in state_trials.values()
+        ]
+        num_before_dedup = len(normalized_trials)
+        normalized_trials = [
+            t
+            for t in normalized_trials
+            if tuple(sorted(t[0].items())) not in existing_configs
+        ]
+        num_duplicates = num_before_dedup - len(normalized_trials)
+        if num_duplicates > 0:
+            logger.info(
+                f"Skipped {num_duplicates} duplicate trial(s) (already exist in state)."
+            )
+
+        imported_trials = optimizer_ask.import_trials(
+            external_evaluations=normalized_trials,
+            trials=state_trials,
+        )
+    # create Trial objects and add to state
+    state.lock_and_import_trials(imported_trials, worker_id="external")
+
+
+def create_config(  # noqa: C901
+    pipeline_space: PipelineSpace | None = None,
+    root_directory: Path | str | None = None,
+) -> tuple[Mapping[str, Any], dict[str, Any]]:
+    """Create a configuration by prompting the user for input.
+
+    Args:
+        pipeline_space: The pipeline space to create a configuration for.
+            If None, will attempt to load from
+            `root_directory/pipeline_space.pkl` if `root_directory` is
+            provided.
+        root_directory: The root directory to load the pipeline space from
+            if `pipeline_space` is None.
+
+    Returns:
+        A tuple containing the created configuration dictionary and the
+        sampled pipeline.
+    """
+    from scalefm.space.scalefm_spaces.sampling import IOSampler
+    from scalefm.space.scalefm_spaces.scalefm_space import (
+        ScaleFMCompatConverter,
+    )
+
+    # Try to load pipeline_space from disk if path is provided
+    if root_directory:
+        try:
+            loaded_space = load_pipeline_space(root_directory)
+        except (FileNotFoundError, ValueError) as e:
+            # If loading fails, we'll error below
+            raise ValueError(
+                f"Could not load pipeline space from disk at {root_directory}: {e}"
+            ) from e
+        # Validate loaded space is a PipelineSpace
+        if not isinstance(loaded_space, PipelineSpace):
+            raise ValueError(
+                "create_config only supports PipelineSpace. The loaded space "
+                f"from {root_directory} is not a PipelineSpace."
+            )
+
+        if pipeline_space is None:
+            pipeline_space = loaded_space
+        else:
+            # Validate provided pipeline_space is a PipelineSpace
+            if not isinstance(pipeline_space, PipelineSpace):
+                raise ValueError(
+                    "create_config only supports PipelineSpace. The provided "
+                    "pipeline_space is not a PipelineSpace."
+                )
+
+            # Validate provided pipeline_space matches loaded one
+            import pickle
+
+            if pickle.dumps(loaded_space) != pickle.dumps(pipeline_space):
+                raise ValueError(
+                    "The pipeline_space provided does not match the one saved on"
+                    " disk.\nPipeline space location:"
+                    f" {Path(root_directory) / 'pipeline_space.pkl'}\nPlease either:\n"
+                    "  1. Don't provide pipeline_space (it will be loaded automatically),"
+                    " or\n  2. Provide the same pipeline_space that was used in"
+                    " scalefm.acquire()"
+                )
+    elif pipeline_space is None:
+        raise ValueError(
+            "pipeline_space or root_directory is required when creating a configuration."
+        )
+
+    resolved_pipeline, resolution_context = resolve(
+        pipeline_space, domain_sampler=IOSampler()
+    )
+
+    # Print the resolved pipeline
+
+    pipeline_dict = dict(**resolved_pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = format_value(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return ScaleFMCompatConverter.to_scalefm_config(resolution_context), pipeline_dict
+
+
+def load_config(  # noqa: C901, PLR0912, PLR0915
+    pipeline_space: PipelineSpace | SearchSpace | None = None,
+    config: dict[str, Any] | None = None,
+    config_path: Path | str | None = None,
+    config_id: str | None = None,
+) -> dict[str, Any]:
+    """Load a configuration from an scalefm config file.
+
+    Args:
+        pipeline_space: The pipeline space used to generate the configuration.
+            If None, will attempt to load from the ScaleFMState directory.
+        config: Optional configuration dictionary to return directly.
+        config_path: Path to the scalefm config file.
+        config_id: Optional config id to load, when only giving results folder.
+
+    Returns:
+        The loaded configuration as a dictionary.
+
+    Raises:
+        ValueError: If pipeline_space is not provided and cannot be loaded from disk.
+    """
+    from scalefm.space.scalefm_spaces.sampling import OnlyPredefinedValuesSampler
+    from scalefm.space.scalefm_spaces.scalefm_space import (
+        ScaleFMCompatConverter,
+    )
+
+    if config is None:
+        if config_path is None:
+            raise ValueError("Either config or config_path must be provided.")
+        # Try to load pipeline_space from ScaleFMState if not provided
+        state = None  # Track state for later use in config loading
+
+        if pipeline_space is None:
+            try:
+                # Extract the root directory from config_path
+                str_path_temp = str(config_path)
+                if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                    root_dir = Path(
+                        str_path_temp.split(
+                            "/configs/",
+                            maxsplit=1,
+                        )[0].split("\\configs\\", maxsplit=1)[0]
+                    )
+                # If no /configs/ in path, assume it's either:
+                # 1. The root directory itself
+                # 2. A direct config file path (ends with .yaml/.yml)
+                elif str_path_temp.endswith((".yaml", ".yml")):
+                    # It's a direct config file path, go up two levels
+                    root_dir = Path(str_path_temp).parent.parent
+                else:
+                    # It's the root directory itself
+                    root_dir = Path(str_path_temp)
+
+                state = ScaleFMState.create_or_load(path=root_dir, load_only=True)
+                pipeline_space = state.lock_and_get_search_space()
+
+                if pipeline_space is None:
+                    raise ValueError(
+                        "Could not load pipeline_space from disk. "
+                        "Please provide pipeline_space argument or ensure "
+                        "the ScaleFMState was created with search_space saved."
+                    )
+            except Exception as e:
+                raise ValueError(
+                    f"pipeline_space not provided and could not be loaded from disk: {e}"
+                ) from e
+        else:
+            # User provided a pipeline_space - validate it matches the one on disk
+            from scalefm.exceptions import ScaleFMError
+
+            try:
+                str_path_temp = str(config_path)
+                if "/configs/" in str_path_temp or "\\configs\\" in str_path_temp:
+                    root_dir = Path(
+                        str_path_temp.split("/configs/")[0].split("\\configs\\")[0]
+                    )
+                # If no /configs/ in path, assume it's either:
+                # 1. The root directory itself
+                # 2. A direct config file path (ends with .yaml/.yml)
+                elif str_path_temp.endswith((".yaml", ".yml")):
+                    # It's a direct config file path, go up two levels
+                    root_dir = Path(str_path_temp).parent.parent
+                else:
+                    # It's the root directory itself
+                    root_dir = Path(str_path_temp)
+
+                state = ScaleFMState.create_or_load(path=root_dir, load_only=True)
+                disk_space = state.lock_and_get_search_space()
+
+                if disk_space is not None:
+                    # Validate that provided space matches disk space
+                    import pickle
+
+                    if pickle.dumps(disk_space) != pickle.dumps(pipeline_space):
+                        raise ScaleFMError(
+                            "The pipeline_space provided does not match the one saved on"
+                            " disk.\\nPipeline space location:"
+                            f" {root_dir / 'pipeline_space.pkl'}\\nPlease either:\\n  1."
+                            " Don't provide pipeline_space (it will be loaded"
+                            " automatically), or\\n  2. Provide the same pipeline_space"
+                            " that was used in scalefm.acquire()"
+                        )
+            except ScaleFMError:
+                raise
+            except Exception:  # noqa: S110, BLE001
+                # If we can't load/validate, just continue with provided space
+                pass
+
+        # Determine config_id from path
+        str_path = str(config_path)
+        trial_id = None
+
+        if not str_path.endswith(".yaml") and not str_path.endswith(".yml"):
+            if str_path.removesuffix("/").split("/")[-1].startswith("config_"):
+                # Extract trial_id from path like "configs/config_1"
+                trial_id = str_path.removesuffix("/").split("/")[-1]
+            else:
+                if config_id is None:
+                    raise ValueError(
+                        "When providing a results folder, you must also provide a"
+                        " config_id."
+                    )
+                trial_id = config_id
+        else:
+            # Extract trial_id from yaml path like "configs/config_1/config.yaml"
+            path_parts = str_path.replace("\\", "/").split("/")
+            for i, part in enumerate(path_parts):
+                if part == "configs" and i + 1 < len(path_parts):
+                    trial_id = path_parts[i + 1]
+                    break
+
+        # Use the locked method from ScaleFMState to safely read the trial
+        if trial_id is not None and state is not None:
+            try:
+                trial = state.lock_and_get_trial_by_id(trial_id)
+                config_dict = dict(trial.config)  # Convert Mapping to dict
+            except Exception:  # noqa: BLE001
+                # Fallback to direct file read if trial can't be loaded
+                str_path_fallback = str(config_path)
+                if not str_path_fallback.endswith(
+                    ".yaml"
+                ) and not str_path_fallback.endswith(".yml"):
+                    str_path_fallback += "/config.yaml"
+                config_path = Path(str_path_fallback)
+                with config_path.open("r") as f:
+                    config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+        else:
+            # Fallback to direct file read
+            str_path_fallback = str(config_path)
+            if not str_path_fallback.endswith(".yaml") and not str_path_fallback.endswith(
+                ".yml"
+            ):
+                str_path_fallback += "/config.yaml"
+            config_path = Path(str_path_fallback)
+            with config_path.open("r") as f:
+                config_dict = yaml.load(f, Loader=yaml.SafeLoader)
+
+    else:
+        config_dict = config
+
+    if (
+        any(ScaleFMCompatConverter._SAMPLING_PREFIX in key for key in config_dict)
+        and pipeline_space is None
+    ):
+        raise ValueError(
+            "The provided ScaleFM-space config requires the correct pipeline_space to"
+            " be "
+            "resolved. Please provide a pipeline_space argument to load_config."
+        )
+
+    # Handle different pipeline space types
+    if not isinstance(pipeline_space, PipelineSpace):
+        # For SearchSpace (classic), just return the config dict
+        return dict(config_dict) if isinstance(config_dict, Mapping) else config_dict
+
+    # For PipelineSpace, resolve it
+    converted_dict = ScaleFMCompatConverter.from_scalefm_config(config_dict)
+
+    pipeline, _ = resolve(
+        pipeline_space,
+        domain_sampler=OnlyPredefinedValuesSampler(converted_dict.predefined_samplings),
+        environment_values=converted_dict.environment_values,
+    )
+
+    # Print the resolved pipeline
+
+    pipeline_dict = dict(**pipeline.get_attrs())
+
+    for name, value in pipeline_dict.items():
+        if isinstance(value, Operation):
+            # If the operator is a not a string, we convert it to a callable.
+            if isinstance(value.operator, str):
+                pipeline_dict[name] = format_value(value)
+            else:
+                pipeline_dict[name] = convert_operation_to_callable(value)
+
+    return pipeline_dict
+
+
+def load_pipeline_space(
+    root_directory: str | Path,
+) -> PipelineSpace | SearchSpace:
+    """Load the pipeline space from an scalefm run directory.
+
+    This is a convenience function that loads the pipeline space that was saved
+    during an scalefm.acquire() call. The pipeline space is automatically saved to disk
+    and can be loaded to inspect it or use it with other scalefm utilities.
+
+    Args:
+        root_directory: Path to the scalefm results directory (the same path
+            that was passed to scalefm.acquire()).
+
+    Returns:
+        The pipeline space that was used in the scalefm run.
+
+    Raises:
+        FileNotFoundError: If no scalefm state is found at the given path.
+        ValueError: If no pipeline space was saved in the scalefm run.
+
+    Example:
+        ```python
+        # After running scalefm
+        scalefm.acquire(
+            evaluate_pipeline=my_function,
+            pipeline_space=MySpace(),
+            root_directory="results",
+        )
+
+        # Later, load the space
+        space = scalefm.load_pipeline_space("results")
+        ```
+    """
+    from scalefm.state import ScaleFMState
+
+    root_directory = Path(root_directory)
+
+    try:
+        state = ScaleFMState.create_or_load(path=root_directory, load_only=True)
+        pipeline_space = state.lock_and_get_search_space()
+
+        if pipeline_space is None:
+            raise ValueError(
+                f"No pipeline space was saved in the run at: {root_directory}\n"
+                "This can happen if the run was created before pipeline space "
+                "persistence was added, or if the pipeline_space.pkl file was deleted."
+            )
+
+        return pipeline_space
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"No scalefm state found at: {root_directory}\n"
+            "Please provide a valid scalefm results directory."
+        ) from e
+
+
+def load_optimizer_info(
+    root_directory: str | Path,
+) -> OptimizerInfo:
+    """Load the optimizer information from an scalefm run directory.
+
+    This function loads the optimizer metadata that was saved during an
+    scalefm.acquire() call, including the optimizer name and its configuration
+    parameters. This is useful for inspecting what optimizer was used and with what
+    settings.
+
+    Args:
+        root_directory: Path to the scalefm results directory (the same path
+            that was passed to scalefm.acquire()).
+
+    Returns:
+        A dictionary containing:
+            - 'name': The name of the optimizer (e.g., 'bayesian_optimization')
+            - 'info': Additional optimizer configuration (e.g., initialization kwargs)
+
+    Raises:
+        FileNotFoundError: If no scalefm state is found at the given path.
+
+    Example:
+        ```python
+        # After running scalefm
+        scalefm.acquire(
+            evaluate_pipeline=my_function,
+            pipeline_space=MySpace(),
+            root_directory="results",
+            optimizer="bayesian_optimization",
+        )
+
+        # Later, check what optimizer was used
+        optimizer_info = scalefm.load_optimizer_info("results")
+        print(f"Optimizer: {optimizer_info['name']}")
+        print(f"Config: {optimizer_info['info']}")
+        ```
+    """
+    from scalefm.state import ScaleFMState
+
+    root_directory = Path(root_directory)
+
+    try:
+        state = ScaleFMState.create_or_load(path=root_directory, load_only=True)
+        return state.lock_and_get_optimizer_info()
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"No scalefm state found at: {root_directory}\n"
+            "Please provide a valid scalefm results directory."
+        ) from e
+
+
+__all__ = [
+    "acquire",
+    "analyze",
+    "create_config",
+    "import_trials",
+    "load_config",
+    "load_optimizer_info",
+    "load_pipeline_space",
+    "predict",
+    "save_pipeline_results",
+]

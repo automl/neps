@@ -1,25 +1,10 @@
 [project]
-name = "extrapolaw"
+name = "scalefm"
 version = "v0.1.0"
 description = "Automated Scaling Analysis helps deep learning experts find the optimum Architectural and Hyperparameter choices."
 authors = [
     { name = "Nastaran Alipour", email = "alipourn@cs.uni-freiburg.de" },
-    { name = "Neeratyoy Mallik"},
-    { name = "Eddie Bergman" },
-    { name = "Anton Merlin Geburek" },
-    { name = "Simon Schrodi" },
-    { name = "Soham Basu" },
-    { name = "Lum Birinxhiku" },
-    { name = "Tarek Abou Chakra" },
-    { name = "Samir Garibov" },
-    { name = "Gopalji Gaur" },
-    { name = "Maciej Janowski" },
-    { name = "Ema Mekic" },
     { name = "Philip Alex Ambattu" },
-    { name = "Daniel Rogalla" },
-    { name = "Carl Hvarfner" },
-    { name = "Binxin Ru" },
-    { name = "Timur Carstensen" },
     { name = "Johannes Hog" },
     { name = "Frank Hutter" },
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
@@ -70,12 +55,12 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/automl/extrapolaw"
-repository = "https://github.com/automl/extrapolaw"
-documentation = "https://automl.github.io/extrapolaw/"
+homepage = "https://github.com/automl/scalefm"
+repository = "https://github.com/automl/scalefm"
+documentation = "https://automl.github.io/scalefm/"
 
 [project.optional-dependencies]
-# External optimizers are opt-in: `pip install extrapolaw[carbs]`.
+# External optimizers are opt-in: `pip install scalefm[carbs]`.
 carbs = [
     "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea",
 ]
@@ -100,9 +85,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 include = [
-    "extrapolaw",
-    "extrapolaw.*",
-    "extrapolaw_examples",
+    "scalefm",
+    "scalefm.*",
+    "scalefm_examples",
 ]
 exclude = []
 
@@ -118,10 +103,10 @@ build-backend = "setuptools.build_meta"
 target-version = "py311"
 output-format = "full"
 line-length = 90
-src = ["extrapolaw"]
+src = ["scalefm"]
 
 exclude = [
-    "extrapolaw_examples",
+    "scalefm_examples",
     ".bzr",
     ".direnv",
     ".eggs",
@@ -248,7 +233,7 @@ ignore = [
     "PT011", # Catch value error to broad
     "ARG001", # unused param
 ]
-"tests/test_extrapolaw_space/*.py" = [
+"tests/test_scalefm_space/*.py" = [
     "E501", # Line length for architecture strings
 ]
 "tests/worker_scaling_study/*.py" = [
@@ -256,7 +241,7 @@ ignore = [
 ]
 
 "__init__.py" = ["I002"]
-"extrapolaw_examples/*" = [
+"scalefm_examples/*" = [
     "INP001",
     "I002",
     "E741",
@@ -269,12 +254,12 @@ ignore = [
     "E501",
 ]
 "docs/*" = ["INP001"]
-"extrapolaw/space/extrapolaw_spaces/sampling.py" = [
+"scalefm/space/scalefm_spaces/sampling.py" = [
   "T201",   # print() is intentional for IOSampler user interaction
   "RET508", # else after break is needed for error messages
 ]
 # TODO
-"extrapolaw/optimizers/**.py" = [
+"scalefm/optimizers/**.py" = [
   "D", # Documentation of everything
   "ARG002", # Unused arguments, bunch of them in inits
   "PLR0913", # Too many arguments...
@@ -282,7 +267,7 @@ ignore = [
 
 
 [tool.ruff.lint.isort]
-known-first-party = ["extrapolaw"]
+known-first-party = ["scalefm"]
 known-third-party = []
 required-imports = ["from __future__ import annotations"]
 no-lines-before = ["future"]
@@ -300,7 +285,6 @@ max-args = 10 # Changed from default of 5
 addopts = "-m 'not ci_examples'"
 markers = [
     "ci_examples",
-    "core_examples",
     "runtime",
     "summary_csv",
 ]
@@ -308,7 +292,7 @@ filterwarnings = "ignore::DeprecationWarning:torch.utils.tensorboard.*:"
 
 [tool.mypy]
 python_version = "3.11"  # Match minimum supported version
-packages = ["extrapolaw"]
+packages = ["scalefm"]
 show_error_codes = true
 
 namespace_packages = true

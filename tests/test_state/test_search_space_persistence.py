@@ -1,6 +1,6 @@
-"""Tests for search space persistence in ExtrapolawState.
+"""Tests for search space persistence in ScaleFMState.
 
-This file focuses on low-level ExtrapolawState functionality:
+This file focuses on low-level ScaleFMState functionality:
 - Saving and loading search spaces (PipelineSpace and SearchSpace)
 - Backward compatibility (runs without search space)
 - Testing utility functions like load_pipeline_space and load_optimizer_info
@@ -15,16 +15,16 @@ from pathlib import Path
 
 import pytest
 
-from extrapolaw.exceptions import ExtrapolawError
-from extrapolaw.optimizers import OptimizerInfo
-from extrapolaw.space import HPOCategorical, HPOFloat, HPOInteger, SearchSpace
-from extrapolaw.space.extrapolaw_spaces.parameters import (
+from scalefm.exceptions import ScaleFMError
+from scalefm.optimizers import OptimizerInfo
+from scalefm.space import HPOCategorical, HPOFloat, HPOInteger, SearchSpace
+from scalefm.space.scalefm_spaces.parameters import (
     Categorical,
     Float,
     Integer,
     PipelineSpace,
 )
-from extrapolaw.state import BudgetInfo, ExtrapolawState, OptimizationState, SeedSnapshot
+from scalefm.state import BudgetInfo, OptimizationState, ScaleFMState, SeedSnapshot
 
 
 class SimpleSpace(PipelineSpace):
@@ -55,7 +55,7 @@ def test_search_space_saved_and_loaded_pipeline_space(tmp_path: Path) -> None:
     pipeline_space = SimpleSpace()
 
     # Create state with search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -70,7 +70,7 @@ def test_search_space_saved_and_loaded_pipeline_space(tmp_path: Path) -> None:
     assert (root_dir / "pipeline_space.pkl").exists()
 
     # Load state and verify search space
-    state2 = ExtrapolawState.create_or_load(path=root_dir, load_only=True)
+    state2 = ScaleFMState.create_or_load(path=root_dir, load_only=True)
     loaded_space = state2.lock_and_get_search_space()
 
     assert loaded_space is not None
@@ -94,7 +94,7 @@ def test_search_space_saved_and_loaded_search_space(tmp_path: Path) -> None:
     )
 
     # Create state with search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -109,7 +109,7 @@ def test_search_space_saved_and_loaded_search_space(tmp_path: Path) -> None:
     assert (root_dir / "pipeline_space.pkl").exists()
 
     # Load state and verify search space
-    state2 = ExtrapolawState.create_or_load(path=root_dir, load_only=True)
+    state2 = ScaleFMState.create_or_load(path=root_dir, load_only=True)
     loaded_space = state2.lock_and_get_search_space()
 
     assert loaded_space is not None
@@ -120,11 +120,11 @@ def test_search_space_saved_and_loaded_search_space(tmp_path: Path) -> None:
 
 
 def test_search_space_not_provided_backward_compatible(tmp_path: Path) -> None:
-    """Test that ExtrapolawState works without search space (backward compatibility)."""
+    """Test that ScaleFMState works without search space (backward compatibility)."""
     root_dir = tmp_path / "test_run"
 
     # Create state WITHOUT search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -138,7 +138,7 @@ def test_search_space_not_provided_backward_compatible(tmp_path: Path) -> None:
     assert not (root_dir / "pipeline_space.pkl").exists()
 
     # Load state and verify search space is None
-    state2 = ExtrapolawState.create_or_load(path=root_dir, load_only=True)
+    state2 = ScaleFMState.create_or_load(path=root_dir, load_only=True)
     loaded_space = state2.lock_and_get_search_space()
 
     assert loaded_space is None
@@ -146,13 +146,13 @@ def test_search_space_not_provided_backward_compatible(tmp_path: Path) -> None:
 
 def test_load_pipeline_space_function_pipeline_space(tmp_path: Path) -> None:
     """Test the load_pipeline_space utility function with PipelineSpace."""
-    from extrapolaw import load_pipeline_space
+    from scalefm import load_pipeline_space
 
     root_dir = tmp_path / "test_run"
     pipeline_space = SimpleSpace()
 
     # Create state with search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -175,7 +175,7 @@ def test_load_pipeline_space_function_pipeline_space(tmp_path: Path) -> None:
 
 def test_load_pipeline_space_function_search_space(tmp_path: Path) -> None:
     """Test the load_pipeline_space utility function with SearchSpace."""
-    from extrapolaw import load_pipeline_space
+    from scalefm import load_pipeline_space
 
     root_dir = tmp_path / "test_run"
     search_space = SearchSpace(
@@ -186,7 +186,7 @@ def test_load_pipeline_space_function_search_space(tmp_path: Path) -> None:
     )
 
     # Create state with search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -210,22 +210,22 @@ def test_load_pipeline_space_function_not_found(tmp_path: Path) -> None:
     """Test that load_pipeline_space raises FileNotFoundError for non-existent
     directory.
     """
-    from extrapolaw import load_pipeline_space
+    from scalefm import load_pipeline_space
 
     root_dir = tmp_path / "nonexistent"
 
-    with pytest.raises(FileNotFoundError, match="No extrapolaw state found"):
+    with pytest.raises(FileNotFoundError, match="No scalefm state found"):
         load_pipeline_space(root_dir)
 
 
 def test_load_pipeline_space_function_no_space_saved(tmp_path: Path) -> None:
     """Test that load_pipeline_space raises ValueError when no search space was saved."""
-    from extrapolaw import load_pipeline_space
+    from scalefm import load_pipeline_space
 
     root_dir = tmp_path / "test_run"
 
     # Create state WITHOUT search space
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=OptimizerInfo(name="test", info={}),
         optimizer_state=OptimizationState(
@@ -242,7 +242,7 @@ def test_load_pipeline_space_function_no_space_saved(tmp_path: Path) -> None:
 
 def test_load_optimizer_info_function(tmp_path: Path) -> None:
     """Test the load_optimizer_info utility function."""
-    from extrapolaw import load_optimizer_info
+    from scalefm import load_optimizer_info
 
     root_dir = tmp_path / "test_run"
 
@@ -251,7 +251,7 @@ def test_load_optimizer_info_function(tmp_path: Path) -> None:
         name="bayesian_optimization",
         info={"acquisition": "EI", "initial_design_size": 10},
     )
-    ExtrapolawState.create_or_load(
+    ScaleFMState.create_or_load(
         path=root_dir,
         optimizer_info=optimizer_info,
         optimizer_state=OptimizationState(
@@ -274,18 +274,18 @@ def test_load_optimizer_info_function_not_found(tmp_path: Path) -> None:
     """Test that load_optimizer_info raises FileNotFoundError for non-existent
     directory.
     """
-    from extrapolaw import load_optimizer_info
+    from scalefm import load_optimizer_info
 
     root_dir = tmp_path / "nonexistent"
 
-    with pytest.raises(FileNotFoundError, match="No extrapolaw state found"):
+    with pytest.raises(FileNotFoundError, match="No scalefm state found"):
         load_optimizer_info(root_dir)
 
 
 def test_import_trials_saves_search_space(tmp_path: Path) -> None:
     """Test that import_trials saves the search space to disk."""
-    from extrapolaw import import_trials, load_pipeline_space
-    from extrapolaw.state.pipeline_eval import UserResultDict
+    from scalefm import import_trials, load_pipeline_space
+    from scalefm.state.pipeline_eval import UserResultDict
 
     root_dir = tmp_path / "test_import"
 
@@ -314,8 +314,8 @@ def test_import_trials_saves_search_space(tmp_path: Path) -> None:
 
 def test_import_trials_validates_search_space(tmp_path: Path) -> None:
     """Test that import_trials validates the search space against what's on disk."""
-    from extrapolaw import import_trials
-    from extrapolaw.state.pipeline_eval import UserResultDict
+    from scalefm import import_trials
+    from scalefm.state.pipeline_eval import UserResultDict
 
     root_dir = tmp_path / "test_import_validate"
 
@@ -331,7 +331,7 @@ def test_import_trials_validates_search_space(tmp_path: Path) -> None:
     )
 
     # Try to import again with a different space - should raise error
-    with pytest.raises(ExtrapolawError, match="pipeline space on disk does not match"):
+    with pytest.raises(ScaleFMError, match="pipeline space on disk does not match"):
         import_trials(
             evaluated_trials=evaluated_trials,
             root_directory=root_dir,
@@ -341,8 +341,8 @@ def test_import_trials_validates_search_space(tmp_path: Path) -> None:
 
 def test_import_trials_without_space_loads_from_disk(tmp_path: Path) -> None:
     """Test that import_trials can load pipeline space from disk when not provided."""
-    from extrapolaw import import_trials, load_pipeline_space
-    from extrapolaw.state.pipeline_eval import UserResultDict
+    from scalefm import import_trials, load_pipeline_space
+    from scalefm.state.pipeline_eval import UserResultDict
 
     root_dir = tmp_path / "test_import_auto_load"
 
@@ -377,8 +377,8 @@ def test_import_trials_without_space_fails_on_new_directory(tmp_path: Path) -> N
     """Test that import_trials raises error when space is not provided and directory
     is new.
     """
-    from extrapolaw import import_trials
-    from extrapolaw.state.pipeline_eval import UserResultDict
+    from scalefm import import_trials
+    from scalefm.state.pipeline_eval import UserResultDict
 
     root_dir = tmp_path / "test_import_no_space_error"
 
@@ -399,8 +399,8 @@ def test_import_trials_without_space_fails_on_new_directory(tmp_path: Path) -> N
 
 def test_import_trials_validates_provided_space_against_disk(tmp_path: Path) -> None:
     """Test that when both space is provided and exists on disk, they are validated."""
-    from extrapolaw import import_trials
-    from extrapolaw.state.pipeline_eval import UserResultDict
+    from scalefm import import_trials
+    from scalefm.state.pipeline_eval import UserResultDict
 
     root_dir = tmp_path / "test_import_validation"
 
@@ -427,7 +427,7 @@ def test_import_trials_validates_provided_space_against_disk(tmp_path: Path) -> 
     )
 
     # Third import with different space - should fail
-    with pytest.raises(ExtrapolawError, match="pipeline space on disk does not match"):
+    with pytest.raises(ScaleFMError, match="pipeline space on disk does not match"):
         import_trials(
             evaluated_trials=evaluated_trials_2,
             root_directory=root_dir,

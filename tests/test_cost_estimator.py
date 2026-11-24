@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from extrapolaw.utils.cost_estimator import CostEstimator
+from scalefm.utils.cost_estimator import CostEstimator
 
 RECORDS = [
     {"config": {"width": 256, "layers": 6}, "cost": 1.2e9},

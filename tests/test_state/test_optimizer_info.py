@@ -11,17 +11,17 @@ from typing import Any
 
 import pytest
 
-import extrapolaw
-from extrapolaw import algorithms
-from extrapolaw.exceptions import ExtrapolawError
-from extrapolaw.optimizers import OptimizerInfo, load_optimizer
-from extrapolaw.space import HPOFloat, HPOInteger, SearchSpace
-from extrapolaw.space.extrapolaw_spaces.parameters import (
+import scalefm
+from scalefm import algorithms
+from scalefm.exceptions import ScaleFMError
+from scalefm.optimizers import OptimizerInfo, load_optimizer
+from scalefm.space import HPOFloat, HPOInteger, SearchSpace
+from scalefm.space.scalefm_spaces.parameters import (
     Float,
     Integer,
     PipelineSpace,
 )
-from extrapolaw.state import BudgetInfo, ExtrapolawState, OptimizationState, SeedSnapshot
+from scalefm.state import BudgetInfo, OptimizationState, ScaleFMState, SeedSnapshot
 
 
 @pytest.fixture
@@ -29,8 +29,8 @@ def space() -> SearchSpace:
     return SearchSpace({"x": HPOFloat(0, 1), "y": HPOInteger(1, 27)})
 
 
-def _create_or_load(path: Path, info: OptimizerInfo) -> ExtrapolawState:
-    return ExtrapolawState.create_or_load(
+def _create_or_load(path: Path, info: OptimizerInfo) -> ScaleFMState:
+    return ScaleFMState.create_or_load(
         path=path,
         optimizer_info=info,
         optimizer_state=OptimizationState(
@@ -122,7 +122,7 @@ def test_resume_accepts_settings_not_recorded_on_disk(
         partial(algorithms.bayesian_optimization, initial_design_size=5),  # type: ignore
         space,
     )
-    with pytest.raises(ExtrapolawError, match="optimizer info on disk does not match"):
+    with pytest.raises(ScaleFMError, match="optimizer info on disk does not match"):
         _create_or_load(root, different)
 
 
@@ -135,9 +135,10 @@ def test_auto_resume_of_custom_optimizer_raises_clear_error(tmp_path: Path) -> N
     _create_or_load(root, OptimizerInfo(name="<lambda>", info={}))
 
     with pytest.raises(ValueError, match="custom optimizer '<lambda>'"):
-        extrapolaw.acquire(
+        scalefm.acquire(
             evaluate_pipeline=lambda x, epochs: x + epochs,
             pipeline_space=_PipelineSpace(),
             root_directory=root,
             worker_evaluations_to_spend=1,
+            optimizer="auto",
         )

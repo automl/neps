@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from extrapolaw.utils.pareto import pareto_efficient
+from scalefm.utils.pareto import pareto_efficient
 
 
 def test_pareto_efficient() -> None:

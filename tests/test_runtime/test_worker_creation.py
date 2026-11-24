@@ -4,22 +4,22 @@ from pathlib import Path
 
 import pytest
 
-from extrapolaw import Float, PipelineSpace
-from extrapolaw.optimizers import OptimizerInfo
-from extrapolaw.optimizers.algorithms import random_search
-from extrapolaw.runtime import (
+from scalefm import Float, PipelineSpace
+from scalefm.optimizers import OptimizerInfo
+from scalefm.optimizers.algorithms import random_search
+from scalefm.runtime import (
     DefaultReportValues,
     DefaultWorker,
     OnErrorPossibilities,
     WorkerSettings,
 )
-from extrapolaw.state import ExtrapolawState, OptimizationState, SeedSnapshot
+from scalefm.state import OptimizationState, ScaleFMState, SeedSnapshot
 
 
 @pytest.fixture
-def extrapolaw_state(tmp_path: Path) -> ExtrapolawState:
-    return ExtrapolawState.create_or_load(
-        path=tmp_path / "extrapolaw_state",
+def scalefm_state(tmp_path: Path) -> ScaleFMState:
+    return ScaleFMState.create_or_load(
+        path=tmp_path / "scalefm_state",
         optimizer_info=OptimizerInfo(name="blah", info={"nothing": "here"}),
         optimizer_state=OptimizationState(
             budget=None, seed_snapshot=SeedSnapshot.new_capture(), shared_state={}
@@ -32,7 +32,7 @@ class ASpace(PipelineSpace):
     a = Float(0, 1)
 
 
-def test_create_worker_manual_id(extrapolaw_state: ExtrapolawState) -> None:
+def test_create_worker_manual_id(scalefm_state: ScaleFMState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -52,7 +52,7 @@ def test_create_worker_manual_id(extrapolaw_state: ExtrapolawState) -> None:
     optimizer = random_search(ASpace())
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         settings=settings,
         optimizer=optimizer,
         evaluation_fn=eval_fn,
@@ -60,10 +60,10 @@ def test_create_worker_manual_id(extrapolaw_state: ExtrapolawState) -> None:
     )
 
     assert worker.worker_id == test_worker_id
-    assert extrapolaw_state.lock_and_get_optimizer_state().worker_ids == [test_worker_id]
+    assert scalefm_state.lock_and_get_optimizer_state().worker_ids == [test_worker_id]
 
 
-def test_create_worker_auto_id(extrapolaw_state: ExtrapolawState) -> None:
+def test_create_worker_auto_id(scalefm_state: ScaleFMState) -> None:
     settings = WorkerSettings(
         on_error=OnErrorPossibilities.IGNORE,
         default_report_values=DefaultReportValues(),
@@ -81,13 +81,11 @@ def test_create_worker_auto_id(extrapolaw_state: ExtrapolawState) -> None:
     optimizer = random_search(ASpace())
 
     worker = DefaultWorker.new(
-        state=extrapolaw_state,
+        state=scalefm_state,
         settings=settings,
         optimizer=optimizer,
         evaluation_fn=eval_fn,
     )
 
     assert worker.worker_id == "worker_0"
-    assert extrapolaw_state.lock_and_get_optimizer_state().worker_ids == [
-        worker.worker_id
-    ]
+    assert scalefm_state.lock_and_get_optimizer_state().worker_ids == [worker.worker_id]

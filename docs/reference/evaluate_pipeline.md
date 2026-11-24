@@ -1,9 +1,9 @@
 # The `evaluate_pipeline` function
 
 > **TL;DR**
-> *Sync*: return a dict with at least the loss and the training cost ⟶ Extrapolaw records it automatically.
-> *Async*: pass `is_async=True` to `extrapolaw.acquire()`, launch a job, and call `extrapolaw.save_pipeline_results()` when the job finishes.
-> *Plots*: pass `live_plots=True` to `extrapolaw.acquire()` (sync) or to `extrapolaw.save_pipeline_results()` (async) to redraw them after every result.
+> *Sync*: return a dict with at least the loss and the training cost ⟶ ScaleFM records it automatically.
+> *Async*: call `scalefm.acquire(evaluate_pipeline=None, is_async=True)` to only sample configurations, launch a job for each, and call `scalefm.save_pipeline_results()` when the job finishes.
+> *Plots*: pass `live_plots=True` to `scalefm.acquire()` (sync) or to `scalefm.save_pipeline_results()` (async) to redraw them after every result.
 
 ---
 
@@ -12,23 +12,23 @@
 | Allowed return  | When to use                                 | Minimal example                                  |
 | --------------- | ------------------------------------------- | ------------------------------------------------ |
 | **Dict**        | every evaluation                            | `{"objective_to_minimize": loss, "cost": flops}` |
-| **`None`**      | you launch the job elsewhere (SLURM, k8s …); needs `is_async=True` | *see Async below*                  |
 | **Exception**   | the evaluation failed (raise or return it)  | `raise RuntimeError("diverged")`                 |
 
-A plain number is not enough for a scaling study, so any other value, a single
-float included, stops the run with a `ValueError`. Only with a `cost_estimator`
-passed to `extrapolaw.acquire()` may you return just the loss, Extrapolaw then adds
+A plain number is not enough for a scaling study, so any other value, `None` or a
+single float included, stops the run with a `ValueError`. To train the configurations
+elsewhere (Slurm, k8s, ...), use the asynchronous mode below instead. Only with a `cost_estimator`
+passed to `scalefm.acquire()` may you return just the loss, ScaleFM then adds
 the estimated cost.
 
 ## 2 Result dictionary keys
 
 | key                       | purpose                                                                                          | required?                                      |
 | ------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| `objective_to_minimize`   | the loss Extrapolaw minimises                                                                    | **yes**                                        |
+| `objective_to_minimize`   | the loss ScaleFM minimises                                                                    | **yes**                                        |
 | `cost`                    | the training cost, e.g. FLOPs; also counts towards `total_cost_to_spend`                         | **yes**, unless a `cost_estimator` provides it |
 | `inference_cost`          | the cost of using the model once, e.g. the FLOPs of one forward pass; the scaling plots are also drawn over it | optional                         |
-| `n_params`                | the model size; used by `extrapolaw.predict()`                                                   | optional                                       |
-| `n_data`                  | the amount of training data, e.g. tokens, samples or table cells; used by `extrapolaw.predict()` | optional                                       |
+| `n_params`                | the model size; `scalefm.predict()` fits `chinchilla3` and the model size and data on it       | optional, **yes** for those fits               |
+| `n_data`                  | the amount of training data, e.g. tokens, samples or table cells; as `n_params`                   | optional, **yes** for those fits               |
 | `downstream_performances` | the model's performance on downstream tasks, by name, e.g. `{"hellaswag_acc": 0.41}`; each gets its own scaling plot | optional                   |
 | `learning_curve`          | list of intermediate objectives                                                                  | optional                                       |
 | `info_dict`               | any YAML‑serialisable dict, saved as `extra` in the trial’s `report.yaml`                        | optional                                       |
@@ -52,7 +52,7 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 [Scaling plots](analyse.md#scaling-plots) for what is drawn from these values.
 
 > **Live plots**  When `evaluate_pipeline` returns its result (sync), the worker records it
-> and refreshes `root_directory/summary/`. Pass `live_plots=True` to `extrapolaw.acquire()` to also
+> and refreshes `root_directory/summary/`. Pass `live_plots=True` to `scalefm.acquire()` to also
 > redraw the plots every time: the scaling plots, plus anything the optimizer
 > provides. See
 > [Analysing Runs](analyse.md#live-plots-during-a-run).
@@ -63,16 +63,15 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
 ### 3.1 Design
 
-1. **The Python side** (your `evaluate_pipeline` function)
-
-   * **creates & submits** a job script.
-   * returns `None` so the worker thread isn’t blocked.
-   * this is only allowed with `extrapolaw.acquire(..., is_async=True)`; without it,
-     returning `None` stops the run with a `ValueError`.
-2. **The submit script** or **the job** must call
+1. **`scalefm.acquire(evaluate_pipeline=None, is_async=True)`** only samples
+   configurations. Each one is written to `root_directory/configs/config_<id>/config.yaml`
+   and stays pending. Passing an `evaluate_pipeline` together with `is_async=True`
+   raises a `ValueError`.
+2. **You launch a job** for every pending configuration, reading its `config.yaml`.
+3. **The job** calls
 
    ```python
-   extrapolaw.save_pipeline_results(
+   scalefm.save_pipeline_results(
        user_result=result_dict,
        pipeline_id=pipeline_id,
        root_directory=root_directory,
@@ -84,51 +83,60 @@ plotted as `1 - value`, so that lower is better in every scaling plot. See
 
 ### 3.2 Code walk‑through
 
-`submit.py` – called by Extrapolaw synchronously
+`submit.py` – samples a round of configurations and submits a Slurm job for each
 
 ```python
 from pathlib import Path
 import os
 
-ROOT_DIRECTORY = Path("path/to/save/results")  # the same as passed to extrapolaw.acquire()
+import yaml
 
-def evaluate_pipeline(
-    pipeline_directory: Path,  # Extrapolaw injects this automatically
-    pipeline_id: str,          # idem
-    learning_rate: float,
-    optimizer: str,
-):
-    # 1) write a Slurm script (replace CHANGE_ME__PARTITION_NAME with your cluster's partition)
-    script = f"""#!/bin/bash
+import scalefm
+
+ROOT_DIRECTORY = Path("path/to/save/results")
+
+
+class Space(scalefm.PipelineSpace):
+    learning_rate = scalefm.Float(1e-5, 1e-1, log=True)
+    optimizer = scalefm.Categorical(["sgd", "adam"])
+
+
+scalefm.acquire(
+    pipeline_space=Space(),
+    root_directory=ROOT_DIRECTORY,
+    is_async=True,  # Only sample, `evaluate_pipeline` stays None
+    worker_evaluations_to_spend=4,  # Configurations in this round
+)
+
+for config_dir in sorted((ROOT_DIRECTORY / "configs").glob("config_*")):
+    script_path = config_dir / "submit.sh"
+    if script_path.exists():  # Submitted in an earlier round
+        continue
+    config = yaml.safe_load((config_dir / "config.yaml").read_text())
+    pipeline_id = config_dir.name.removeprefix("config_")
+    # Replace CHANGE_ME__PARTITION_NAME with your cluster's partition
+    script_path.write_text(f"""#!/bin/bash
 #SBATCH --time=0-00:10
 #SBATCH --job-name=trial_{pipeline_id}
 #SBATCH --partition=CHANGE_ME__PARTITION_NAME
-#SBATCH --output={pipeline_directory}/%j.out
-#SBATCH --error={pipeline_directory}/%j.err
+#SBATCH --output={config_dir}/%j.out
+#SBATCH --error={config_dir}/%j.err
 
-python run_pipeline.py \
-       --learning_rate {learning_rate} \
-       --optimizer {optimizer} \
-       --pipeline_id {pipeline_id} \
+python run_pipeline.py \\
+       --learning_rate {config["learning_rate"]} \\
+       --optimizer {config["optimizer"]} \\
+       --pipeline_id {pipeline_id} \\
        --root_dir {ROOT_DIRECTORY}
-"""
-
-    # 2) submit and RETURN None (async)
-    script_path = pipeline_directory / "submit.sh"
-    script_path.write_text(script)
+""")
     os.system(f"sbatch {script_path}")
-
-    return None  # ⟵ signals async mode
 ```
 
-Extrapolaw injects only `pipeline_directory`, `previous_pipeline_directory` and
-`pipeline_id` (see [Extra injected arguments](#4-extra-injected-arguments)), so pass
-the root directory of the run to the job yourself.
+Run it again for the next round, it only submits the new configurations.
 
 `run_pipeline.py` – executed on the compute node
 
 ```python
-import argparse, json, time, extrapolaw
+import argparse, json, time, scalefm
 from pathlib import Path
 
 parser = argparse.ArgumentParser()
@@ -152,7 +160,7 @@ except Exception as e:
         "exception": e,
     }
 
-extrapolaw.save_pipeline_results(
+scalefm.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
@@ -160,18 +168,20 @@ extrapolaw.save_pipeline_results(
 ```
 
 * No worker idles while your job is in the queue ➜ better throughput.
-* The job must report `cost` itself: the `cost_estimator` passed to `extrapolaw.acquire()`
+* The job must report `cost` itself: the `cost_estimator` passed to `scalefm.acquire()`
   only fills in a missing cost for results returned by `evaluate_pipeline`, not for those
-  saved with `extrapolaw.save_pipeline_results()`.
+  saved with `scalefm.save_pipeline_results()`.
+* Pending configurations have no cost yet, so they do not count towards
+  `total_cost_to_spend`: bound every round with `worker_evaluations_to_spend`.
 * Crashes inside the job still mark the trial *CRASHED* instead of hanging.
 
 ### 3.3 Live plots
 
-In async mode the result is recorded by `extrapolaw.save_pipeline_results()` in your job, not by
+In async mode the result is recorded by `scalefm.save_pipeline_results()` in your job, not by
 the worker, so that is where you ask for the plots to be redrawn:
 
 ```python
-extrapolaw.save_pipeline_results(
+scalefm.save_pipeline_results(
     user_result=result,
     pipeline_id=args.pipeline_id,
     root_directory=Path(args.root_dir),
@@ -181,13 +191,13 @@ extrapolaw.save_pipeline_results(
 
 This refreshes the general plots (the scaling plots) in
 `root_directory/summary/`. Optimizer-specific artifacts need the optimizer object, so
-they are only drawn by `extrapolaw.acquire(..., live_plots=True)`. To redraw everything once all
-jobs are done, call `extrapolaw.analyze(root_directory)`; see
-[Analysing Runs](analyse.md#plots-and-reports-extrapolawanalyze).
+they are only drawn by `scalefm.acquire(..., live_plots=True)`. To redraw everything once all
+jobs are done, call `scalefm.analyze(root_directory)`; see
+[Analysing Runs](analyse.md#plots-and-reports-scalefmanalyze).
 
 ### 3.4 Common pitfalls
 
-* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `total_evaluations_to_spend` and/or `total_cost_to_spend`) when calling `extrapolaw.acquire`.
+* When using async approach, one worker, may create as many trials as possible, of course that in `Slurm` or other workload managers it's impossible to overload the system because of limitations set for each user, but if you want to control resources used for optimization, it's crucial to set desired stopping criteria (e.g `total_evaluations_to_spend` and/or `total_cost_to_spend`) when calling `scalefm.acquire`.
 
 ## 4 Extra injected arguments
 
@@ -203,7 +213,7 @@ Use them to handle logging and result persistence.
 
 ## 5 Checklist
 
-* [x] Return a dict, **or** `None` together with `is_async=True`.
+* [x] Return a dict, **or** pass no `evaluate_pipeline` with `is_async=True` and report from the job.
 * [x] Include `cost` when using cost budgets.
-* [x] When returning `None`, make sure **exactly one** call to `extrapolaw.save_pipeline_results` happens.
+* [x] With `is_async=True`, make sure **exactly one** call to `scalefm.save_pipeline_results` happens per configuration.
 * [x] Save checkpoints and artefacts in `pipeline_directory`.

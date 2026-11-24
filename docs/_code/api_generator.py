@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Modules whose members should not include inherited attributes or methods
 NO_INHERITS = tuple()
 
-SRCDIR = Path("extrapolaw").absolute().resolve()
+SRCDIR = Path("scalefm").absolute().resolve()
 ROOT = SRCDIR.parent
 TAB = "    "
 
