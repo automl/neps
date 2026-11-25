@@ -57,6 +57,7 @@
 # Requires Python 3.11+. In Colab, run the cell below; locally, see the
 # [README](README.md).
 
+# %cd /content
 # !rm -rf /content/scalefm_repo
 # !git clone --depth 1 https://github.com/automl/scalefm.git /content/scalefm_repo
 # %cd /content/scalefm_repo/tutorials
