@@ -783,20 +783,38 @@ class ChinchillaGuidedScaling(ScalingOptimizer):
         from matplotlib.colors import LogNorm, Normalize
 
         from scalefm.plot.scaling_plots import INK, PARETO_COLOR, _style
+        from scalefm.prediction.power_law import smoothed_learning_curves
 
         fig, ax = plt.subplots(figsize=(7.2, 4.4))
         low, high = min(param_counts), max(param_counts)
         norm = LogNorm(vmin=low, vmax=high) if high > low > 0 else Normalize(low, high)
         cmap = plt.colormaps["viridis"]
 
-        # The learning curves, coloured by parameter count
+        # The raw learning curves, faint, coloured by parameter count
         for curve in learning_curves:
             ax.plot(
                 [point.flops for point in curve],
                 [point.loss for point in curve],
+                linewidth=0.8,
+                alpha=0.25,
+                color=cmap(norm(curve[0].n_params)),
+                zorder=1,
+            )
+
+        # The same curves Gaussian smoothed, as the approach 1 envelope fit sees them
+        smoothed = smoothed_learning_curves(
+            [
+                [(p.n_params, p.n_data, p.loss, p.flops) for p in curve]
+                for curve in learning_curves
+            ]
+        )
+        for n_params, flops, loss in smoothed or []:
+            ax.plot(
+                flops,
+                loss,
                 linewidth=1.5,
                 alpha=0.8,
-                color=cmap(norm(curve[0].n_params)),
+                color=cmap(norm(n_params)),
                 zorder=1,
             )
 

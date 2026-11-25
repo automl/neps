@@ -225,6 +225,43 @@ def _smoothed_curve(
     return float(np.median(n_params)), covered, log_loss, log_data
 
 
+def _log_flops_grid(curves: list[list[Row]]) -> np.ndarray | None:
+    """`LC_ENVELOPE_NUM_FLOPS` log10(flops) values spanning all learning curves."""
+    curve_flops = [
+        float(point[3]) for curve in curves for point in curve if len(point) == 4
+    ]
+    curve_flops = [f for f in curve_flops if np.isfinite(f) and f > 0]
+    if not curve_flops or min(curve_flops) == max(curve_flops):
+        return None
+    return np.linspace(
+        np.log10(min(curve_flops)), np.log10(max(curve_flops)), LC_ENVELOPE_NUM_FLOPS
+    )
+
+
+def smoothed_learning_curves(
+    curves: list[list[Row]],
+) -> list[tuple[float, np.ndarray, np.ndarray]] | None:
+    """Every learning curve as `_learning_curve_envelope` sees it.
+
+    Returns one (n_params, flops, loss) per usable curve, interpolated on the shared
+    log-flops grid and Gaussian smoothed, or None if the curves span no flops range.
+    Curves with fewer than two usable points are left out.
+    """
+    log_flops_grid = _log_flops_grid(curves)
+    if log_flops_grid is None:
+        return None
+    smoothed_curves = []
+    for curve in curves:
+        smoothed = _smoothed_curve(curve, log_flops_grid)
+        if smoothed is None:
+            continue
+        n_params, covered, log_loss, _log_data = smoothed
+        smoothed_curves.append(
+            (n_params, 10.0 ** log_flops_grid[covered], 10.0**log_loss)
+        )
+    return smoothed_curves
+
+
 def _learning_curve_envelope(curves: list[list[Row]]) -> list[Row]:
     """Chinchilla approach 1: the most efficient (n_params, n_data) at each budget.
 
@@ -232,15 +269,9 @@ def _learning_curve_envelope(curves: list[list[Row]]) -> list[Row]:
     flops to loss; at `LC_ENVELOPE_NUM_FLOPS` log-spaced flops values the run with
     the lowest loss gives that budget's (n_params, n_data, loss, flops) row.
     """
-    curve_flops = [
-        float(point[3]) for curve in curves for point in curve if len(point) == 4
-    ]
-    curve_flops = [f for f in curve_flops if np.isfinite(f) and f > 0]
-    if not curve_flops or min(curve_flops) == max(curve_flops):
+    log_flops_grid = _log_flops_grid(curves)
+    if log_flops_grid is None:
         return []
-    log_flops_grid = np.linspace(
-        np.log10(min(curve_flops)), np.log10(max(curve_flops)), LC_ENVELOPE_NUM_FLOPS
-    )
 
     best_log_loss = np.full(len(log_flops_grid), np.inf)
     best_n_params = np.full(len(log_flops_grid), np.nan)

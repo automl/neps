@@ -227,7 +227,7 @@ def get_power_law_curvature(  # noqa: C901, PLR0915
     A = A * (N_scale**alpha)
     B = B * (D_scale**beta)
 
-    logger.info(
+    logger.debug(
         f"Fitted scaling law parameters: E={E:.6f}, A={A:.6e}, B={B:.6e},"
         f" alpha={alpha:.4f}, beta={beta:.4f}"
     )

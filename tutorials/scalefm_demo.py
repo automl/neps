@@ -57,11 +57,17 @@
 # Requires Python 3.11+. In Colab, run the cell below; locally, see the
 # [README](README.md).
 
-# !git clone --depth 1 https://github.com/automl/scalefm.git /content/scalefm
-# %cd /content/scalefm/tutorials
-# !pip install -e "/content/scalefm[carbs]"
-# Surrogate benchmark of TabPFN, it makes every run take a fraction of a second
-# !pip install scan-bench
+# !rm -rf /content/scalefm_repo
+# !git clone --depth 1 https://github.com/automl/scalefm.git /content/scalefm_repo
+# %cd /content/scalefm_repo/tutorials
+# !uv pip install --system torch==2.9.1 torchvision==0.24.1 --index-url https://download.pytorch.org/whl/cpu
+# !uv pip install --system -e "/content/scalefm_repo"
+# Surrogate benchmark of TabPFN, it makes every run take a fraction of a second.
+# Its own dependencies include all of autogluon, only the parts it imports are installed
+# !uv pip install --system --no-deps scan-bench
+# !uv pip install --system autogluon.tabular tabpfn xgboost lightgbm seaborn scikit-learn tqdm
+# The editable install is only seen after a kernel restart, so it is put on the path
+import sys; sys.path[:0] = ["/content/scalefm_repo", "/content/scalefm_repo/tutorials"]
 
 # +
 import logging
@@ -97,7 +103,7 @@ def show(*images, width=480):
 
 # -
 
-# ## The pipeline
+# ## The evalaution pipeline
 #
 # `evaluate_pipeline` is the function `scalefm.acquire` calls with every config. It
 # trains a model and returns what the scaling analysis needs: the loss to minimize, the
@@ -165,14 +171,14 @@ class TabPFNSpace(scalefm.PipelineSpace):
 
 
 # Every acquisition gets the same FLOP budget, at most a tenth of it per run, and we
-# predict at a target 20x the cost of the largest run.
+# predict at two targets, about 3.6x and 20x the cost of the largest run.
 
 # +
 RESULTS = Path("results/scaling_tutorial")
 
 MAX_COST_PER_RUN = 2.8e14
 BUDGET = MAX_COST_PER_RUN * 10
-TARGETS = [5.6e15]  # 20x bigger than the max search cost
+TARGETS = [1e15, 5.6e15]  # About 3.6x and 20x the cost of the largest run
 
 
 # -
@@ -207,9 +213,7 @@ TARGETS = [5.6e15]  # 20x bigger than the max search cost
 # its parameter count in cells (`data_multipliers`), and grows the models until the
 # budget is spent. From these runs it reads off the lowest loss at each compute, the
 # compute-optimal frontier. Like the Chinchilla paper it keeps a fixed training recipe,
-# so it runs on a version of the space with constant hyperparameters. Each run also
-# reports its learning curve, as rows of (cells seen, FLOPs, loss), and approach 1
-# reads the frontier off the curves rather than only off the final losses:
+# so it runs on a version of the space with constant hyperparameters:
 
 # +
 class TabPFNChinchillaSpace(scalefm.PipelineSpace):
@@ -222,26 +226,11 @@ class TabPFNChinchillaSpace(scalefm.PipelineSpace):
     lr = 1e-3 # lr = scalefm.Float(1e-4, 5e-2, log=True)
 
 
-def evaluate_pipeline_with_lc(**config) -> dict:
-    """`evaluate_pipeline`, also reporting the learning curve of the run."""
-    result = evaluate_pipeline(**config)
-    flops_per_cell = result["cost"] / result["n_data"]
-    # The surrogate has no checkpoints: a checkpoint is the same run on fewer cells
-    cells = [int(result["n_data"] * 2 ** (-k / 2)) for k in range(8, -1, -1)]
-    cells = [c for c in cells if c >= tabpfn.MIN_CELLS]
-    runs = [tabpfn.build_config(**{**config, "total_cells": c}) for c in cells]
-    losses = [r["predictions"]["mean"] for r in loss_benchmark.query_many(runs)]
-    result["learning_curve"] = [  # Rows of (cells seen, FLOPs, loss)
-        [c, c * flops_per_cell, loss] for c, loss in zip(cells, losses)
-    ]
-    return result
-
-
 CHINCHILLA1 = RESULTS / "chinchilla1"
 
 tabpfn.set_seed(0)
 scalefm.acquire(
-    evaluate_pipeline=evaluate_pipeline_with_lc,
+    evaluate_pipeline=evaluate_pipeline,
     pipeline_space=TabPFNChinchillaSpace(),
     root_directory=CHINCHILLA1,
     optimizer=(
@@ -256,33 +245,24 @@ scalefm.acquire(
     cost_estimator=tabpfn.flops_estimator,
     total_cost_to_spend=BUDGET,
     overwrite_root_directory=True,
-    live_plots=True,  # Refreshes the plots in `summary/` after every run
 )
 # -
-
-# ### Learning curves and their envelope
-#
-# The lowest loss any run reached at each compute is the envelope of the learning
-# curves, the compute-optimal frontier. Approach 1 plots the curves, coloured by model
-# size, with their envelope and a power law through it to `summary/`:
-
-show(CHINCHILLA1 / "summary/flops_vs_loss_with_lc.png", width=640)
 
 # ### Loss and model size with `chinchilla3`
 #
 # `scalefm.predict` reads the runs back from the root directory and fits the
 # predictor of the optimizer, here Chinchilla's approach 3 law $L(N, D)$:
 
-(chinchilla_prediction,) = scalefm.predict(CHINCHILLA1, target_costs=TARGETS)
-print(f"C={TARGETS[0]:.1e}: loss {chinchilla_prediction.loss:.3f},"
-      f" N*={chinchilla_prediction.n_params:.2e},"
-      f" D*={chinchilla_prediction.n_data:.2e}")
-print("config:", chinchilla_prediction.config) # Will retun None as Chinchilla fit doesn't model parameter space
+chinchilla_predictions = scalefm.predict(CHINCHILLA1, target_costs=TARGETS)
+for target, prediction in zip(TARGETS, chinchilla_predictions):
+    print(f"C={target:.1e}: loss {prediction.loss:.3f},"
+          f" N*={prediction.n_params:.2e}, D*={prediction.n_data:.2e}")
+    print("config:", prediction.config)  # None, the Chinchilla fit doesn't model the space
 
 # ### The scaling plots
 #
 # `predict` also saves plots of its fit to `summary/`: every run, the compute-loss
-# frontier, and the fit, with the prediction at the target cost:
+# frontier, and the fit, with the predictions at the target costs:
 
 show(CHINCHILLA1 / "summary/pre_train/loss_over_cost.png",
      *[CHINCHILLA1 / f"summary/pre_train/parameters/{name}_over_cost.png"
@@ -311,17 +291,18 @@ scalefm.acquire(
     overwrite_root_directory=True,
 )
 
-(prediction,) = scalefm.predict(DEFAULT, target_costs=TARGETS)
-print(f"C={TARGETS[0]:.1e}: loss {prediction.loss:.3f},"
-      f" N*={prediction.n_params:.2e}, D*={prediction.n_data:.2e}")
-print("config:", prediction.config)
+predictions = scalefm.predict(DEFAULT, target_costs=TARGETS)
+for target, prediction in zip(TARGETS, predictions):
+    print(f"C={target:.1e}: loss {prediction.loss:.3f},"
+          f" N*={prediction.n_params:.2e}, D*={prediction.n_data:.2e}")
+    print("config:", prediction.config)
 show(DEFAULT / "summary/pre_train/loss_over_cost.png")
 # -
 
 # ### The individual hyperparameters
 #
-# Every hyperparameter gets its own fit over the frontier runs, and a prediction at the
-# target:
+# Every hyperparameter gets its own fit over the frontier runs, and a prediction at
+# each target:
 
 show(*[DEFAULT / f"summary/pre_train/parameters/{name}_over_cost.png"
        for name in ["total_cells", "lr",]],
