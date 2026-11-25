@@ -10,7 +10,8 @@ authors = [
     { name = "Danny Stoll", email = "stolld@cs.uni-freiburg.de" },
 ]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 keywords = [
     "Deep Learning",
     "Scaling Laws",
@@ -25,7 +26,6 @@ classifiers = [
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
-  "License :: OSI Approved :: Apache Software License",
   "Operating System :: POSIX :: Linux",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: MacOS",
@@ -102,7 +102,7 @@ exclude = []
 
 [build-system]
 requires = [
-    "setuptools>=68.2.2",
+    "setuptools>=77",
     "wheel>=0.41.2",
 ]
 
