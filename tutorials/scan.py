@@ -31,7 +31,9 @@
 
 # !git clone --depth 1 https://github.com/automl/scalefm.git /content/scalefm_repo
 # %cd /content/scalefm_repo/tutorials
-# !pip install -e "/content/scalefm_repo[carbs]"
+# !pip install -e /content/scalefm_repo
+# CARBS is not on PyPI, so it is installed from GitHub
+# !pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"
 # Surrogate benchmark of TabPFN, it makes every run take a fraction of a second
 # !pip install scan-bench
 

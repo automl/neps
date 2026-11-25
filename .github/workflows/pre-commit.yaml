@@ -34,6 +34,6 @@ jobs:
         prune-cache: false
         cache-dependency-glob: "**/pyproject.toml"
     - name: install pre-commit hooks
-      run: uv run --all-extras pre-commit install
+      run: uv run --all-extras --all-groups pre-commit install
     - name: Run pre-commit hooks
-      run: uv run --all-extras pre-commit run --all-files
+      run: uv run --all-extras --all-groups pre-commit run --all-files

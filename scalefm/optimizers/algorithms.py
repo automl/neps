@@ -564,7 +564,8 @@ def carbs(
         For scaling studies, where the cost of a configuration varies by orders of
         magnitude and you want good configurations at every cost, not just one.
 
-    CARBS is an external library, install it with `pip install scalefm[carbs]`.
+    CARBS is an external library that is not on PyPI, install it with
+    `pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"`.
 
     It needs the cost of every evaluation. Either return a `cost` from your
     `evaluate_pipeline`, or pass a `cost_estimator` to `scalefm.acquire()`. With
@@ -598,7 +599,9 @@ def carbs(
         search_center_shrink_param: The parameter to shrink for
             `search_center_cost_fraction`, e.g. the size of the dataset.
     """
-    module = _import_external_optimizer("scalefm.optimizers.carbs", extra="carbs")
+    module = _import_external_optimizer(
+        "scalefm.optimizers.carbs", name="carbs", install=_CARBS_INSTALL
+    )
 
     if isinstance(pipeline_space, PipelineSpace):
         converted_space = convert_scalefm_to_classic_search_space(pipeline_space)
@@ -701,7 +704,10 @@ def chinchilla(
     )
 
 
-def _import_external_optimizer(module: str, *, extra: str) -> Any:
+_CARBS_INSTALL = 'pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"'
+
+
+def _import_external_optimizer(module: str, *, name: str, install: str) -> Any:
     """Import the module of an optimizer that wraps an optional, external library."""
     import importlib
 
@@ -709,8 +715,8 @@ def _import_external_optimizer(module: str, *, extra: str) -> Any:
         return importlib.import_module(module)
     except ImportError as e:
         raise ImportError(
-            f"The '{extra}' optimizer needs an external library that is not installed."
-            f" Install it with `pip install scalefm[{extra}]`."
+            f"The '{name}' optimizer needs an external library that is not installed."
+            f" Install it with `{install}`."
         ) from e
 
 

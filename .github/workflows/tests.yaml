@@ -34,5 +34,5 @@ jobs:
           prune-cache: true
           cache-dependency-glob: "**/pyproject.toml"
       - name: run tests
-        run: uv run --all-extras pytest -m ""
+        run: uv run --all-extras --all-groups pytest -m ""
 

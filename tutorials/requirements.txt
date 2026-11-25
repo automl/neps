@@ -1,5 +1,5 @@
 scalefm>=0.1.0
-# CARBS, as in the `carbs` extra of scalefm, for the benchmark of the demo
+# CARBS for the benchmark of the demo. It is not on PyPI, the `carbs` package there is unrelated
 carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea
 # Surrogate benchmark of TabPFN, the pipeline of the demo
 scan-bench>=1.0

@@ -1,4 +1,5 @@
-"""CARBS is an external library, install it with `pip install scalefm[carbs]`.
+"""CARBS is an external library that is not on PyPI, install it with
+`pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"`.
 
 CARBS keeps its observations in memory and checkpoints them to its own directory. Here
 it is stateless instead: a new CARBS instance is built on every ask and replays the

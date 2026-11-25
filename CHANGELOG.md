@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `scalefm.acquire(cost_estimator=..., max_cost_per_config=...)` for scaling studies. The cost estimator is a function or, for finite spaces, a JSON table. It fills in the `cost` of evaluations that do not report one and is handed to optimizers inheriting from `ScalingOptimizer`.
-- `carbs` optimizer, wrapping [CARBS](https://github.com/imbue-ai/carbs).
+- `carbs` optimizer, wrapping [CARBS](https://github.com/imbue-ai/carbs). CARBS is not on PyPI, so it is not an extra of ScaleFM; install it from GitHub, see the [optimizer docs](https://automl.github.io/scalefm/latest/reference/optimizers/#31-carbs).
 - `chinchilla` optimizer for [Chinchilla](https://arxiv.org/abs/2203.15556) guided scaling studies.
 - Added scaling plots also with the inference cost in with CSV outputs. `evaluate_pipeline` can return an `inference_cost` and `downstream_performances` next to the `cost`.
 - `evaluate_pipeline` can return the model size `n_params` and the amount of training data `n_data`, which `scalefm.predict()` uses.

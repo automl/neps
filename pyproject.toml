@@ -60,10 +60,6 @@ repository = "https://github.com/automl/scalefm"
 documentation = "https://automl.github.io/scalefm/"
 
 [project.optional-dependencies]
-# External optimizers are opt-in: `pip install scalefm[carbs]`.
-carbs = [
-    "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea",
-]
 dev = [
     "ruff",
     "pre-commit>=3,<4",
@@ -82,6 +78,19 @@ dev = [
     "mike",
     "black",  # This allows mkdocstrings to format signatures in the docs
 ]
+
+# External optimizers are opt-in. CARBS is not on PyPI (the `carbs` package there is an
+# unrelated project) and PyPI rejects packages with git dependencies, so it is a
+# dependency group, which is not published, instead of an extra. Install it with
+# `pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"`, or in the repo with `uv sync --group carbs`.
+[dependency-groups]
+carbs = [
+    "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea",
+]
+
+[tool.uv]
+# fonttools 4.69.0 (a dependency of matplotlib) was published with cp311 wheels only.
+constraint-dependencies = ["fonttools!=4.69.0"]
 
 [tool.setuptools.packages.find]
 include = [

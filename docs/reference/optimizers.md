@@ -123,7 +123,7 @@ They draw on three arguments of `scalefm.acquire()`, see
 
 | Optimizer | Approach | Supports | Install |
 | :- | :- | :- | :- |
-| [`carbs`][scalefm.optimizers.algorithms.carbs] | Cost-aware BO along the pareto front of objective and cost | `Integer` and `Float` parameters, no fidelities | `pip install scalefm[carbs]` |
+| [`carbs`][scalefm.optimizers.algorithms.carbs] | Cost-aware BO along the pareto front of objective and cost | `Integer` and `Float` parameters, no fidelities | see [3.1 CARBS](#31-carbs) |
 | [`chinchilla`][scalefm.optimizers.algorithms.chinchilla] | Splits compute between model size and data on ISO-FLOP levels | Needs `cost_estimator` and `total_cost_to_spend`, no fidelities | Included |
 
 ### 3.1 CARBS
@@ -150,8 +150,9 @@ If the center of the space is too expensive to start from, set
 e.g. the size of the dataset, is halved until the search center costs at most that
 fraction of `max_cost_per_config`.
 
-CARBS wraps an external library, so it is not installed with ScaleFM. Install it with
-`pip install scalefm[carbs]`. It does not keep any files of its own. Its state is
+CARBS wraps an external library, so it is not installed with ScaleFM. It is not on PyPI
+(the `carbs` package there is an unrelated project), so install it from GitHub with
+`pip install "carbs @ git+https://github.com/imbue-ai/carbs@8f7fee08658ad567d9dd6b6233247bc37d9962ea"`.{#carbs-install} It does not keep any files of its own. Its state is
 rebuilt from the trials in the `root_directory` whenever a configuration is sampled, so
 runs can be continued and parallelized like with any other optimizer.
 
