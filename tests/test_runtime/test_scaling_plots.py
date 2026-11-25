@@ -61,16 +61,21 @@ def test_scaling_plots_are_written(tmp_path: Path) -> None:
     for name in (
         "pre_train/loss_over_cost",
         "pre_train/loss_over_inference_cost",
+        "downstream/task_acc/task_acc_over_cost",
+        "downstream/task_acc/task_acc_over_inference_cost",
+    ):
+        assert (summary / f"{name}.png").exists()
+        assert len(pd.read_csv(summary / f"{name}.csv")) == 6
+
+    for name in (
         "pre_train/parameters/width_over_cost",
         "pre_train/parameters/lr_over_cost",
         "pre_train/parameters/n_params_over_cost",
         "pre_train/parameters/width_over_inference_cost",
-        "downstream/task_acc/task_acc_over_cost",
-        "downstream/task_acc/task_acc_over_inference_cost",
         "downstream/task_acc/parameters/width_over_cost",
     ):
         assert (summary / f"{name}.png").exists()
-        assert len(pd.read_csv(summary / f"{name}.csv")) == 6
+        assert not (summary / f"{name}.csv").exists()
 
     assert not (summary / "pre_train/parameters/inference_cost_over_cost.png").exists()
     downstream = pd.read_csv(summary / "downstream/task_acc/task_acc_over_cost.csv")
@@ -81,7 +86,7 @@ def test_scaling_plots_are_written(tmp_path: Path) -> None:
     pareto = pd.read_csv(summary / "pre_train/pareto_over_cost.csv")
     assert len(pareto) == table["on_frontier"].sum()
     assert {"trial_id", "cost", "loss", "n_params", "width", "lr"} <= set(pareto)
-    assert "width" in (summary / "pre_train/pareto_over_cost.txt").read_text()
+    assert not list(summary.rglob("*.txt"))
 
     predictions = pd.read_csv(summary / "pre_train/predictions_over_cost.csv")
     largest = table["cost"].max()
@@ -190,7 +195,3 @@ def test_predict_saves_the_targets_and_the_convergence(tmp_path: Path) -> None:
     for name in ("loss_over_cost", "loss_over_inference_cost", "task_acc_over_cost"):
         assert (summary / "convergence" / f"{name}.png").exists()
     assert len(pd.read_csv(summary / "convergence/loss_over_cost.csv")) > 0
-
-    scalefm.analyze(root)
-    predictions = pd.read_csv(summary / "pre_train/predictions_over_cost.csv")
-    assert list(predictions["target_cost"]) == [1e14, 1e15]

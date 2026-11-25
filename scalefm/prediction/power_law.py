@@ -464,8 +464,12 @@ def _snap_to_log_base_grid(value: float, param: Any) -> float:
 def predict_full(
     fit: PowerLawFullFit, space: SearchSpace, target_flops: float
 ) -> dict[str, Any]:
-    """The config whose HPs the per-HP power laws extrapolate to `target_flops`."""
+    """The config whose HPs the per-HP power laws extrapolate to `target_flops`, and
+    in `fitted_config` the values of the power laws in the bounds of the space, before
+    they are rounded to it.
+    """
     extrapolated_config: dict[str, Any] = {}
+    fitted_config: dict[str, float] = {}
     for param_name, param in space.searchables.items():
         predicted_hp, _, _ = predict_from_loglog_fit(
             fit.hp_fits[param_name],
@@ -473,6 +477,7 @@ def predict_full(
             log_scale=_fits_in_log_space(param),
         )
         predicted_hp = np.clip(predicted_hp, param.domain.lower, param.domain.upper)
+        fitted_config[param_name] = float(predicted_hp)
         predicted_hp = _snap_to_log_base_grid(float(predicted_hp), param)
         extrapolated_config[param_name] = param.domain.cast_one(
             float(predicted_hp), frm=param.domain
@@ -480,6 +485,7 @@ def predict_full(
 
     return {
         "extrapolated_config": extrapolated_config,
+        "fitted_config": fitted_config,
         "pareto_ids": fit.pareto_ids,
         "pareto_configs": fit.pareto_configs,
         "pareto_flops": fit.pareto_flops,

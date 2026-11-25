@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added scaling plots also with the inference cost in with CSV outputs. `evaluate_pipeline` can return an `inference_cost` and `downstream_performances` next to the `cost`.
 - `evaluate_pipeline` can return the model size `n_params` and the amount of training data `n_data`, which `scalefm.predict()` uses.
 - Each scaling optimizer names the scaling law fitted on its runs (`ScalingOptimizer.predictor`, `chinchilla3` for `chinchilla`). `scalefm.predict()` and the `loss_over_cost` plot both use it.
-- The scaling plots are per task, in `summary/pre_train/` and `summary/downstream/<name>/`, with the fit extended to the target costs, the Pareto front and the predictions as text and CSV files, and parameter plots with what the fit predicts for each parameter.
+- The scaling plots are per task, in `summary/pre_train/` and `summary/downstream/<name>/`, with the fit extended to the target costs, the Pareto front and the predictions as CSV files, and parameter plots with what the fit predicts for each parameter.
 - `scalefm.predict()` predicts at 10 and 100 times the largest cost of the runs by default, takes `target_inference_costs`, and saves the target costs to `summary/targets.json` and how the predictions converged to `summary/convergence/`.
 
 ### Changed
@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Workers started together on a new `root_directory` no longer crash with `EOFError` reading a half-written `optimizer_state.pkl`: the state files are replaced whole, and `optimizer_info.yaml` is written last.
+- Grid search and `chinchilla` runs stop normally once every configuration was evaluated, instead of failing with `WorkerFailedToGetPendingTrialsError`.
+- Parameter plots draw the power-law fit as a straight line instead of steps.
+
 
 ### Removed
 - **BREAKING:** The HPO optimizers that scaling studies do not use: `successive_halving`, `hyperband`, `mo_hyperband`, `asha`, `moasha`, `async_hb`, `priorband`, `ifbo`, `pibo`, `primo`, `scalefm_hyperband`, `scalefm_priorband`, `scalefm_regularized_evolution` and `scalefm_local_and_incumbent`. `bayesian_optimization`, `random_search`, `grid_search`, `complex_random_search`, `scalefm_random_search`, `carbs` and `chinchilla` remain.

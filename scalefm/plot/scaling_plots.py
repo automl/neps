@@ -209,6 +209,10 @@ def predict_over(
         else:
             for name in names:
                 predicted[name] = [p.config[name] for p in predictions]  # type: ignore[index]
+                predicted[f"{name}_fit"] = [
+                    p.info[target]["fitted_config"][name]  # type: ignore[index]
+                    for p in predictions
+                ]
     return predicted
 
 
@@ -228,11 +232,10 @@ def _draw_fit(
     inside = line[line[cost] <= largest_run]
     beyond = line[line[cost] >= inside[cost].max()]
     targets = fit[fit["target"]]
-    ax.plot(inside[cost], inside[column], color=INK, linewidth=2, label=label)
+    y = f"{column}_fit" if f"{column}_fit" in fit else column
+    ax.plot(inside[cost], inside[y], color=INK, linewidth=2, label=label)
     if len(beyond) > 1:
-        ax.plot(
-            beyond[cost], beyond[column], color=INK, linewidth=2, linestyle=(0, (4, 3))
-        )
+        ax.plot(beyond[cost], beyond[y], color=INK, linewidth=2, linestyle=(0, (4, 3)))
     ax.scatter(
         targets[cost],
         targets[column],
@@ -355,18 +358,10 @@ def _pareto(
 
 def _predictions(fit: pd.DataFrame, metric: str, cost: str) -> pd.DataFrame:
     """What the fit predicts at the target costs."""
-    table = fit[fit["target"]].drop(columns="target")
+    fitted = [column for column in fit if column.endswith("_fit")]
+    table = fit[fit["target"]].drop(columns=["target", *fitted])
     table[metric] = _own_units(metric, table[metric])
     return table.rename(columns={cost: f"target_{cost}", metric: _name(metric)})
-
-
-def _tables(name: str, table: pd.DataFrame) -> list[Artifact]:
-    """`table` as a CSV, and aligned in a text file to read."""
-    text = table.to_string(index=False, float_format="{:.4g}".format)
-    return [
-        Artifact(name, table, ArtifactType.CSV),
-        Artifact(name, text + "\n", ArtifactType.TEXT),
-    ]
 
 
 def plot_scaling(
@@ -434,21 +429,21 @@ def plot_scaling(
                 Artifact(name, figure, ArtifactType.FIGURE),
                 Artifact(name, points, ArtifactType.CSV),
             ]
-            artifacts += _tables(
-                f"{folder}/pareto_over_{cost}", _pareto(runs, metric, cost, configs)
+            pareto = _pareto(runs, metric, cost, configs)
+            artifacts.append(
+                Artifact(f"{folder}/pareto_over_{cost}", pareto, ArtifactType.CSV)
             )
             if metric in fit:
-                artifacts += _tables(
-                    f"{folder}/predictions_over_{cost}", _predictions(fit, metric, cost)
+                predictions = _predictions(fit, metric, cost)
+                artifacts.append(
+                    Artifact(
+                        f"{folder}/predictions_over_{cost}", predictions, ArtifactType.CSV
+                    )
                 )
             for parameter in parameters:
                 name = f"{folder}/parameters/{parameter.replace('.', '_')}_over_{cost}"
                 figure = plot_parameter_over_cost(runs, parameter, cost, fit, label)
-                columns = ["trial_id", cost, parameter, "loss", "on_frontier"]
-                artifacts += [
-                    Artifact(name, figure, ArtifactType.FIGURE),
-                    Artifact(name, runs[columns], ArtifactType.CSV),
-                ]
+                artifacts.append(Artifact(name, figure, ArtifactType.FIGURE))
     return artifacts
 
 
@@ -481,8 +476,8 @@ def _plain_log_labels(ax: Axes) -> None:
 def _style(ax: Axes, title: str, xlabel: str, ylabel: str) -> None:
     """Light axes and grid, so the data stands out."""
     ax.set_title(title, loc="left", color=INK, fontsize=12, pad=10)
-    ax.set_xlabel(xlabel, color=SECONDARY_INK)
-    ax.set_ylabel(ylabel, color=SECONDARY_INK)
+    ax.set_xlabel(f"{xlabel} (log)", color=SECONDARY_INK)
+    ax.set_ylabel(f"{ylabel} (log)", color=SECONDARY_INK)
     ax.spines[["top", "right"]].set_visible(False)
     ax.spines[["left", "bottom"]].set_color(AXIS_COLOR)
     ax.tick_params(which="both", color=AXIS_COLOR, labelcolor=SECONDARY_INK)

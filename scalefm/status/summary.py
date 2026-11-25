@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import inspect
-import json
 import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -226,9 +225,7 @@ class SummaryWriter:
 
     def _plot_artifacts(self, trials: Sequence[Trial]) -> list[Artifact]:
         try:
-            return plot_scaling(
-                trials, self._run_fit(), self._target_costs(), self._search_space()
-            )
+            return plot_scaling(trials, self._run_fit(), space=self._search_space())
         except Exception as e:  # noqa: BLE001
             logger.error(f"Failed to create the summary plot: {e}")
             return []
@@ -242,11 +239,6 @@ class SummaryWriter:
         except Exception:  # noqa: BLE001
             return "power_law"
         return info.get("derived", {}).get("predictor", "power_law")
-
-    def _target_costs(self) -> dict[str, list[float]] | None:
-        """The target costs of the last `scalefm.predict()`, if any."""
-        path = self.summary_dir / "targets.json"
-        return json.loads(path.read_text()) if path.exists() else None
 
     def _search_space(self) -> SearchSpace | None:
         """The search space of the run, of the classic kind the scaling laws take."""
