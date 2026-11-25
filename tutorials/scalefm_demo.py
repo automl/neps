@@ -28,9 +28,9 @@
 #   </tr>
 # </table>
 #
-# ScaleFM automates that via this five components:
+# ScaleFM automates that with these five components:
 #
-# 1. ** Search space** `scalefm.PipelineSpace` declares the hyperparameters of a run as
+# 1. **Search space.** `scalefm.PipelineSpace` declares the hyperparameters of a run as
 #    `scalefm.Integer` or `scalefm.Float`, on a linear or log scale. Each one is either a
 #    compute-scaling parameter (`is_compute_scaling=True`), such as the model size or the
 #    amount of data, or an ordinary hyperparameter, such as the learning rate. ScAn uses
@@ -49,7 +49,7 @@
 #    every downstream metric, the predictions at the target compute and how they
 #    converged as runs finished; `acquire` adds live plots.
 #
-# This notebook analyzes scaling behaviour of [TabPFN](https://github.com/PriorLabs/TabPFN), a transformer
+# This notebook analyzes the scaling behaviour of [TabPFN](https://github.com/PriorLabs/TabPFN), a transformer
 # for tabular data, on a surrogate benchmark built from thousands of real training
 # runs on NanoTabPFN.
 
@@ -61,10 +61,9 @@
 # !rm -rf /content/scalefm_repo
 # !git clone --depth 1 https://github.com/automl/scalefm.git /content/scalefm_repo
 # %cd /content/scalefm_repo/tutorials
-# !uv pip install --system torch==2.9.1 torchvision==0.24.1 --index-url https://download.pytorch.org/whl/cpu
 # !uv pip install --system -e "/content/scalefm_repo"
 # Surrogate benchmark of TabPFN, it makes every run take a fraction of a second.
-# Its own dependencies include all of autogluon, only the parts it imports are installed
+# scan-bench depends on all of autogluon; only the parts it imports are installed
 # !uv pip install --system --no-deps scan-bench
 # !uv pip install --system autogluon.tabular tabpfn xgboost lightgbm seaborn scikit-learn tqdm
 # The editable install is only seen after a kernel restart, so it is put on the path
@@ -104,7 +103,7 @@ def show(*images, width=480):
 
 # -
 
-# ## The evalaution pipeline
+# ## The evaluation pipeline
 #
 # `evaluate_pipeline` is the function `scalefm.acquire` calls with every config. It
 # trains a model and returns what the scaling analysis needs: the loss to minimize, the
@@ -269,7 +268,9 @@ show(CHINCHILLA1 / "summary/pre_train/loss_over_cost.png",
      *[CHINCHILLA1 / f"summary/pre_train/parameters/{name}_over_cost.png"
        for name in ["n_params", "n_data"]])
 
-# The config is `None`: $L(N, D)$ fit doesn't model parameter space directly. Let's fallback to `power_law fit` to model all underlying HPs and predict their corresponding value in target regime.
+# The config is `None`: the $L(N, D)$ fit doesn't model the hyperparameters. The next
+# section falls back to `power_law`, which fits every hyperparameter and predicts its
+# value at each target.
 
 # ## 2. The default scaling pipeline
 #
@@ -306,7 +307,7 @@ show(DEFAULT / "summary/pre_train/loss_over_cost.png")
 # each target:
 
 show(*[DEFAULT / f"summary/pre_train/parameters/{name}_over_cost.png"
-       for name in ["total_cells", "lr",]],
+       for name in ["total_cells", "lr"]],
      width=420)
 
 # The prediction at each target, loss, model size, data and config, is saved as a
