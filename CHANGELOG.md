@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Each scaling optimizer names the scaling law fitted on its runs (`ScalingOptimizer.predictor`, `chinchilla3` for `chinchilla`). `scalefm.predict()` and the `loss_over_cost` plot both use it.
 - The scaling plots are per task, in `summary/pre_train/` and `summary/downstream/<name>/`, with the fit extended to the target costs, the Pareto front and the predictions as CSV files, and parameter plots with what the fit predicts for each parameter.
 - `scalefm.predict()` predicts at 10 and 100 times the largest cost of the runs by default, takes `target_inference_costs`, and saves the target costs to `summary/targets.json` and how the predictions converged to `summary/convergence/`.
+- An LLM pre-training scaling study as a real-world example with asynchronous evaluation, training each config on up to 4 GPUs.
 
 ### Changed
 - **BREAKING:** Renamed `scalefm.run()` to `scalefm.acquire()`.

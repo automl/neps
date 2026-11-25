@@ -1,6 +1,7 @@
 # Real World Examples
 
 - [TabPFN Scaling Study on ScAn-Bench](#tabpfn-scaling-study-on-scan-bench)
+- [LLM Pre-training Scaling Study](#llm-pre-training-scaling-study)
 - [OpenCLIP Scaling Study](#openclip-scaling-study)
 
 ## **TabPFN Scaling Study on ScAn-Bench**
@@ -10,6 +11,12 @@ A scaling study of TabPFN on the ScAn-Bench surrogate benchmark, which needs the
 ```bash
 python tabpfn_scan_bench.py
 ```
+
+## **LLM Pre-training Scaling Study**
+
+A scaling study of small Llama-style language models pre-trained on FineWeb-Edu. Random search samples width, depth, number of tokens and optimization hyperparameters. Each config is trained by its own Slurm job on 1, 2 or 4 GPUs, chosen by a memory probe. `scalefm.predict()` then fits the scaling law and predicts the loss at larger budgets.
+
+See [`llm_pretraining/README.md`](https://github.com/automl/scalefm/tree/master/scalefm_examples/real_world/llm_pretraining/README.md) for the full workflow and setup.
 
 ## **OpenCLIP Scaling Study**
 
