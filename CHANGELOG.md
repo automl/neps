@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+
 ### Added
 - `scalefm.acquire(cost_estimator=..., max_cost_per_config=...)` for scaling studies. The cost estimator is a function or, for finite spaces, a JSON table. It fills in the `cost` of evaluations that do not report one and is handed to optimizers inheriting from `ScalingOptimizer`.
 - `carbs` optimizer, wrapping [CARBS](https://github.com/imbue-ai/carbs).
@@ -45,4 +47,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ScaleFM was forked from [NePS](https://github.com/automl/neps) 0.17.0. The earlier history is in [CHANGELOG_NEPS.md](CHANGELOG_NEPS.md).
 
-[unreleased]: https://github.com/automl/scalefm/compare/v0.17.0...HEAD
+[0.2.0]: https://github.com/automl/scalefm/compare/v0.1.0...HEAD

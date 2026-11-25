@@ -1,6 +1,6 @@
 [project]
 name = "scalefm"
-version = "v0.1.0"
+version = "v0.2.0"
 description = "Automated Scaling Analysis helps deep learning experts find the optimum Architectural and Hyperparameter choices."
 authors = [
     { name = "Nastaran Alipour", email = "alipourn@cs.uni-freiburg.de" },
@@ -315,7 +315,7 @@ no_implicit_optional = true
 check_untyped_defs = true
 
 [tool.bumpversion]
-current_version = "0.1.0"
+current_version = "0.2.0"
 commit = true
 tag = false  # tag master after the release PR is merged, see CONTRIBUTING.md
 

@@ -12,6 +12,6 @@ authors:
   - family-names: Stoll
     given-names: Danny
 title: "ScaleFM"
-version: 0.1.0
+version: 0.2.0
 date-released: 2026-11-23
 url: "https://github.com/automl/scalefm"
