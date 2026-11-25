@@ -5,7 +5,7 @@
 
 ## **TabPFN Scaling Study on ScAn-Bench**
 
-A scaling study of TabPFN on the ScAn-Bench surrogate benchmark, which needs the `scan_bench` package. Random search samples model and data sizes under a FLOP budget, with a `cost_estimator` that gives the FLOPs of a configuration before it runs. Each evaluation reports its validation loss, its FLOPs, its number of parameters and data, and the NLL on real data as a downstream performance. `scalefm.analyze()` and `scalefm.predict()` then fit the scaling law and predict the loss at larger budgets.
+A scaling study of TabPFN on the ScAn-Bench surrogate benchmark, which needs the `scan_bench` package. Random search samples model and data sizes under a FLOP budget, with a `cost_estimator` that gives the FLOPs of a configuration before it runs. Each evaluation reports its validation loss, its FLOPs, its number of parameters and data, and the NLL on real data as a downstream performance. `scalefm.predict()` then fits the scaling law and predicts the loss at larger budgets.
 
 ```bash
 python tabpfn_scan_bench.py

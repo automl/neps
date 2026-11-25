@@ -95,5 +95,4 @@ if __name__ == "__main__":
         max_cost_per_config=MAX_COST_PER_RUN,
         total_cost_to_spend=TOTAL_COST,
     )
-    scalefm.analyze(root_directory)
     scalefm.predict(root_directory, TARGET_FLOPS)

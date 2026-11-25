@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bayesian_optimization` passes the space's constants to `constraints_func`, like `random_search` does.
 - **BREAKING:** The summary no longer has `best_config.txt`, `best_config_trajectory.txt`, `short.csv` and the incumbent trajectory, and the scaling data is no longer logged to TensorBoard.
 - `optimizer="auto"` picks `bayesian_optimization` for a space without priors and fidelities, `random_search` otherwise (sampling from the priors), and `complex_random_search` for a space that cannot be converted to a classic one. A fidelity is set to its maximum as it's not used in any optimizer for now.
+- The TabPFN example runs only `scalefm.predict()`, since `acquire()` and `predict()` already write the summary.
 
 ### Fixed
 - Workers started together on a new `root_directory` no longer crash with `EOFError` reading a half-written `optimizer_state.pkl`: the state files are replaced whole, and `optimizer_info.yaml` is written last.
